@@ -1,0 +1,24 @@
+﻿{
+  "name": "graph-mind-backend",
+  "version": "1.0.0",
+  "description": "Graph Mind Backend API — Hybrid GraphRAG, Knowledge Extraction & Decision Support Engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  },
+  "keywords": [
+    "graph-mind",
+    "backend",
+    "graphrag",
+    "knowledge-graph",
+    "llmops"
+  ],
+  "author": "Graph Mind Team",
+  "license": "ISC"
+}

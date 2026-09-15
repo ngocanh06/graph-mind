@@ -1,0 +1,11 @@
+{
+  "name": "graph-mind",
+  "version": "1.0.0",
+  "description": "Graph Mind — Enterprise Knowledge Observatory (React + Python FastAPI)",
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "start:frontend": "npm --prefix frontend run start",
+    "build:frontend": "npm --prefix frontend run build",
+    "start": "npm --prefix frontend run dev"
+  }
+}
