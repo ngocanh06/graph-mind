@@ -85,26 +85,27 @@ export default function LandingPage({
           {/* Logo */}
           <div
             onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }}
             title={isVi ? "Cuộn lên đầu trang" : "Scroll to top"}
           >
-            <div style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              background: "linear-gradient(135deg, #00e5ff, #0284c7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 0 16px rgba(0,229,255,0.4)"
-            }}>
-              <i className="fa-solid fa-bolt" style={{ fontSize: "15px", color: "#010f1a" }}></i>
-            </div>
-            <div>
-              <div style={{ fontSize: "16px", fontWeight: "800", letterSpacing: "-0.01em", color: "#ffffff" }}>
+            <img
+              src="/logo-icon.svg"
+              alt="Graph Mind Logo"
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "10px",
+                objectFit: "contain",
+                boxShadow: "0 0 16px rgba(0,229,255,0.4)",
+                filter: "drop-shadow(0 0 6px rgba(0,229,255,0.3))",
+                display: "block"
+              }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ fontSize: "16px", fontWeight: "800", letterSpacing: "-0.01em", color: "#ffffff", lineHeight: "1.15" }}>
                 GRAPH MIND
               </div>
-              <div style={{ fontSize: "9px", letterSpacing: "0.08em", color: "#00e5ff", textTransform: "uppercase", fontWeight: "700" }}>
+              <div style={{ fontSize: "9px", letterSpacing: "0.08em", color: "#00e5ff", textTransform: "uppercase", fontWeight: "700", marginTop: "3px" }}>
                 KNOWLEDGE OBSERVATORY
               </div>
             </div>
@@ -1138,22 +1139,18 @@ export default function LandingPage({
           {/* Column 1: Company Info & Dashed Box */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-              <div style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "6px",
-                background: "#00e5ff",
-                color: "#011624",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "13px",
-                fontWeight: "900",
-                boxShadow: "0 0 14px rgba(0, 229, 255, 0.45)",
-                flexShrink: 0
-              }}>
-                <i className="fa-solid fa-bolt"></i>
-              </div>
+              <img
+                src="/logo-icon.svg"
+                alt="AEGIS GRAPH MIND"
+                style={{
+                  width: "30px",
+                  height: "30px",
+                  borderRadius: "7px",
+                  objectFit: "contain",
+                  boxShadow: "0 0 14px rgba(0, 229, 255, 0.45)",
+                  flexShrink: 0
+                }}
+              />
               <h3 style={{ fontSize: "14px", fontWeight: "800", color: "#ffffff", margin: 0, letterSpacing: "0.02em" }}>
                 CÔNG TY CỔ PHẦN AEGIS GRAPH MIND
               </h3>

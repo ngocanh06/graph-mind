@@ -104,18 +104,18 @@ export default function LoginPage({
           onClick={onBackToLanding}
           style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", zIndex: 2 }}
         >
-          <div style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, #00e5ff, #0284c7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 0 20px rgba(0,229,255,0.4)"
-          }}>
-            <i className="fa-solid fa-bolt" style={{ fontSize: "16px", color: "#010f1a" }}></i>
-          </div>
+          <img
+            src="/logo-icon.svg"
+            alt="Graph Mind Logo"
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "10px",
+              objectFit: "contain",
+              boxShadow: "0 0 20px rgba(0,229,255,0.45)",
+              filter: "drop-shadow(0 0 6px rgba(0,229,255,0.3))"
+            }}
+          />
           <div>
             <div style={{ fontSize: "17px", fontWeight: "800", color: "#ffffff", letterSpacing: "-0.01em" }}>
               GRAPH MIND
