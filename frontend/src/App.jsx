@@ -10,15 +10,15 @@ import DemoBanner from "./components/DemoBanner";
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 
-import ExecutiveView from "./views/ExecutiveView";
-import CopilotView from "./views/CopilotView";
-import KnowledgeView from "./views/KnowledgeView";
-import SearchView from "./views/SearchView";
-import ConnectorsView from "./views/ConnectorsView";
-import RiskView from "./views/RiskView";
-import DocumentsView from "./views/DocumentsView";
-import ReportsView from "./views/ReportsView";
-import AdminView from "./views/AdminView";
+import ExecutiveView from "./views/m4_decision_support/ExecutiveView";
+import CopilotView from "./views/m3_hybrid_copilot/CopilotView";
+import KnowledgeView from "./views/m2_knowledge_editor/KnowledgeView";
+import SearchView from "./views/m5_multifacet_search/SearchView";
+import ConnectorsView from "./views/m1_data_sync/ConnectorsView";
+import RiskView from "./views/m4_decision_support/RiskView";
+import DocumentsView from "./views/m2_knowledge_editor/DocumentsView";
+import ReportsView from "./views/m4_decision_support/ReportsView";
+import AdminView from "./views/m6_admin_security/AdminView";
 
 const VALID_VIEWS = [
   "executive",
