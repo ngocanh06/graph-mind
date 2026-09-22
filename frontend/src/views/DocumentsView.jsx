@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 
-export default function DocumentsView({ onNavigate, t, lang }) {
+export default function DocumentsView({ onNavigate, t, lang, role }) {
   const isVi = lang === "vi";
+  const isSalesRole = role === "standard";
   const [selectedDocId, setSelectedDocId] = useState("doc-1");
   const [docFilter, setDocFilter] = useState("ALL");
   const [verifiedDocs, setVerifiedDocs] = useState({});
@@ -122,8 +123,16 @@ export default function DocumentsView({ onNavigate, t, lang }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
         <div>
-          <div className="section-label">{t.docs_title || (isVi ? "Khám phá Tài liệu & Trích xuất Tri thức" : "Document Explorer & Extraction Workbench")}</div>
-          <div className="section-sub">{t.docs_sub || (isVi ? "Thu nạp tệp đa định dạng, soi chiếu thực thể gắn thẻ và quy trình xác thực HITL" : "Multi-modal file ingestion, in-situ entity highlighting, and human verification loop")}</div>
+          <div className="section-label">
+            {isSalesRole
+              ? (isVi ? "Kho Hợp Đồng & Báo Giá Doanh Nghiệp" : "Enterprise Contracts & Quotes Repository")
+              : (t.docs_title || (isVi ? "Khám phá Tài liệu & Trích xuất Tri thức" : "Document Explorer & Extraction Workbench"))}
+          </div>
+          <div className="section-sub">
+            {isSalesRole
+              ? (isVi ? "Tra cứu hợp đồng cung ứng, phụ lục giá bán, lịch sử đơn hàng và đối soát tài khoản khách hàng." : "Inspect supply contracts, pricing addendums, order ledgers, and customer reconciliation records.")
+              : (t.docs_sub || (isVi ? "Thu nạp tệp đa định dạng, soi chiếu thực thể gắn thẻ và quy trình xác thực HITL" : "Multi-modal file ingestion, in-situ entity highlighting, and human verification loop"))}
+          </div>
         </div>
 
         <div className="flex items-center gap-space-xs">
@@ -199,16 +208,18 @@ export default function DocumentsView({ onNavigate, t, lang }) {
                         {doc.risk}
                       </span>
                     </td>
-                    <td className="p-space-sm">
+                    <td className="p-space-sm text-center">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDocId(doc.id);
                           showToast(isVi ? `Đang mở bản xem trước của ${doc.name}` : `Opening inspector for ${doc.name}`);
                         }}
-                        className="btn sm"
+                        className={`btn sm ${isSelected ? "primary" : ""}`}
+                        style={{ whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: "5px" }}
                       >
-                        {isSelected ? (isVi ? "Đang chọn" : "Viewing") : (isVi ? "Xem" : "Inspect")}
+                        <i className="fa-regular fa-eye"></i>
+                        <span>{isVi ? "Xem" : "View"}</span>
                       </button>
                     </td>
                   </tr>
@@ -361,16 +372,29 @@ export default function DocumentsView({ onNavigate, t, lang }) {
 
             <div className="flex items-center justify-between gap-space-xs">
               <button
-                onClick={() => onNavigate("knowledge")}
+                onClick={() => {
+                  if (isSalesRole) {
+                    onNavigate("search");
+                  } else {
+                    onNavigate("knowledge");
+                  }
+                }}
                 className="btn sm flex-1 text-center"
               >
-                {isVi ? "Mở Đồ thị Tri thức" : "View in Graph"}
+                {isSalesRole ? (isVi ? "Tác Nghiệp Khách Hàng" : "Client Operations") : (isVi ? "Mở Đồ thị Tri thức" : "View in Graph")}
               </button>
               <button
                 onClick={() => onNavigate("copilot")}
                 className="btn sm flex-1 text-center"
               >
-                {isVi ? "Hỏi Copilot về Tài liệu" : "Query Copilot"}
+                {isVi ? "Hỏi Copilot" : "Query Copilot"}
+              </button>
+              <button
+                onClick={() => showToast(isVi ? `Đang xuất & tải xuống ${activeDoc.name}...` : `Downloading ${activeDoc.name}...`)}
+                className="btn sm"
+                title={isVi ? "Tải xuống tài liệu" : "Download document"}
+              >
+                <i className="fa-solid fa-download"></i>
               </button>
             </div>
           </div>

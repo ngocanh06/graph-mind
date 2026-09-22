@@ -10,6 +10,7 @@ export default function NavRail({
   t,
   lang,
   role = "executive",
+  currentUser,
   onRoleChange
 }) {
   const isVi = lang === "vi";
@@ -17,81 +18,81 @@ export default function NavRail({
   // Role persona metadata & partitioned view definitions
   const ROLE_CONFIGS = {
     executive: {
-      badge: "EXECUTIVE",
-      name: "Dieu Hoang",
-      initials: "DH",
-      title: isVi ? "Lãnh đạo · Giám đốc Tài chính (CFO)" : "Executive · Chief Financial Officer",
+      badge: "EXECUTIVE BOARD",
+      name: "Hoàng Minh Điều",
+      initials: "HĐ",
+      title: isVi ? "Ban Lãnh Đạo · Giám Đốc Điều Hành (CEO / C-Suite)" : "Executive Leadership · C-Suite / CEO",
       color: "#0891b2",
-      colorBg: "rgba(8, 145, 178, 0.12)",
-      primaryGroup: isVi ? "Phân hệ Chiến lược & Điều hành" : "Strategic Intelligence",
+      colorBg: "rgba(8, 145, 178, 0.08)",
+      primaryGroup: isVi ? "Chiến lược & Điều hành" : "Strategic Intelligence",
       primary: [
         { id: "executive", label: t.nav_executive, idx: "01", icon: "pulse" },
         { id: "risk", label: t.nav_risk, idx: "02", badge: "3", icon: "risk" },
         { id: "reports", label: t.nav_reports, idx: "03", icon: "reports" },
         { id: "copilot", label: t.nav_copilot, idx: "04", icon: "copilot" }
       ],
-      secondaryGroup: isVi ? "Mở rộng & Tra cứu" : "Extended Explorations",
+      secondaryGroup: isVi ? "Mở rộng & Tra cứu" : "Explorations",
       secondary: [
         { id: "knowledge", label: t.nav_knowledge, idx: "05", icon: "knowledge" },
         { id: "search", label: t.nav_search, idx: "06", icon: "search" }
       ]
     },
     knowledge_manager: {
-      badge: "KNOWLEDGE MGR",
+      badge: isVi ? "TRƯỞNG PHÒNG" : "DEPT MANAGER",
       name: "Trần M. Anh",
       initials: "TA",
-      title: isVi ? "Quản lý Tri thức · Trưởng ban Dữ liệu" : "Knowledge Manager · Data Lead",
+      title: isVi ? "Trưởng Phòng · Quản lý Cấp trung" : "Department Head · Middle Management",
       color: "#059669",
-      colorBg: "rgba(5, 150, 105, 0.12)",
-      primaryGroup: isVi ? "Phân hệ Đồ thị & Dữ liệu" : "Knowledge & Extraction Suite",
+      colorBg: "rgba(5, 150, 105, 0.08)",
+      primaryGroup: isVi ? "Bộ phận & Tiến độ" : "Department Operations",
       primary: [
-        { id: "knowledge", label: t.nav_knowledge, idx: "01", icon: "knowledge" },
+        { id: "reports", label: isVi ? "Báo Cáo Phòng Ban" : "Department Reports", idx: "01", icon: "reports" },
         { id: "documents", label: t.nav_documents, idx: "02", icon: "documents" },
         { id: "copilot", label: t.nav_copilot, idx: "03", icon: "copilot" },
-        { id: "connectors", label: t.nav_connectors, idx: "04", icon: "connectors" }
+        { id: "risk", label: t.nav_risk, idx: "04", badge: "2", icon: "risk" }
       ],
-      secondaryGroup: isVi ? "Tra cứu & Tổng quan" : "Search & Overview",
+      secondaryGroup: isVi ? "Tra cứu & Tri thức" : "Search & Knowledge",
       secondary: [
-        { id: "search", label: t.nav_search, idx: "05", icon: "search" },
-        { id: "executive", label: t.nav_executive, idx: "06", icon: "pulse" }
+        { id: "search", label: t.nav_search, idx: "05", icon: "search" }
       ]
     },
     it_admin: {
-      badge: "IT ADMIN",
+      badge: isVi ? "ADMIN HỆ THỐNG & TRI THỨC" : "SYS & KNOWLEDGE ADMIN",
       name: "SecOps Admin",
       initials: "SA",
-      title: isVi ? "Quản trị Hệ thống · SecOps & LLMOps" : "IT Administrator · SecOps Lead",
+      title: isVi ? "Quản trị viên Hệ thống & Tri thức · SecOps Lead" : "System & Knowledge Administrator · SecOps Lead",
       color: "#d97706",
-      colorBg: "rgba(217, 119, 6, 0.12)",
-      primaryGroup: isVi ? "Phân hệ Quản trị & Vận hành" : "System & LLMOps Control",
+      colorBg: "rgba(217, 119, 6, 0.08)",
+      primaryGroup: isVi ? "Hệ thống & Tri thức" : "System & Knowledge",
       primary: [
         { id: "admin", label: t.nav_admin, idx: "01", icon: "admin" },
-        { id: "connectors", label: t.nav_connectors, idx: "02", icon: "connectors" },
-        { id: "knowledge", label: t.nav_knowledge, idx: "03", icon: "knowledge" }
+        { id: "knowledge", label: t.nav_knowledge, idx: "02", icon: "knowledge" },
+        { id: "connectors", label: t.nav_connectors, idx: "03", icon: "connectors" },
+        { id: "documents", label: t.nav_documents, idx: "04", icon: "documents" }
       ],
-      secondaryGroup: isVi ? "Giám sát & Tra cứu" : "Monitoring & Search",
+      secondaryGroup: isVi ? "Giám sát & Tra cứu" : "Monitoring",
       secondary: [
-        { id: "search", label: t.nav_search, idx: "04", icon: "search" },
-        { id: "executive", label: t.nav_executive, idx: "05", icon: "pulse" }
+        { id: "search", label: t.nav_search, idx: "05", icon: "search" },
+        { id: "reports", label: t.nav_reports, idx: "06", icon: "reports" },
+        { id: "executive", label: t.nav_executive, idx: "07", icon: "pulse" }
       ]
     },
     standard: {
-      badge: "OPERATIONS",
+      badge: isVi ? "CHUYÊN VIÊN KINH DOANH" : "SALES EXECUTIVE",
       name: "Nguyễn V. Nam",
       initials: "NN",
-      title: isVi ? "Chuyên viên Nghiệp vụ · Vận hành" : "Operations & Sales Specialist",
-      color: "#7c3aed",
-      colorBg: "rgba(124, 58, 237, 0.12)",
-      primaryGroup: isVi ? "Phân hệ Tác nghiệp & Tra cứu" : "Workplace Operations",
+      title: isVi ? "Chuyên viên Kinh doanh & Khách hàng" : "Sales & Account Executive",
+      color: "#2563eb",
+      colorBg: "rgba(37, 99, 235, 0.08)",
+      primaryGroup: isVi ? "Nghiệp vụ Bán hàng" : "Sales & Clients",
       primary: [
-        { id: "search", label: t.nav_search, idx: "01", icon: "search" },
-        { id: "copilot", label: t.nav_copilot, idx: "02", icon: "copilot" },
-        { id: "documents", label: t.nav_documents, idx: "03", icon: "documents" }
+        { id: "search", label: isVi ? "Tác Nghiệp Khách Hàng" : "Client Operations", idx: "01", icon: "search" },
+        { id: "copilot", label: isVi ? "Trợ Lý AI" : "AI Copilot", idx: "02", icon: "copilot" },
+        { id: "documents", label: isVi ? "Kho Hợp Đồng & Báo Giá" : "Contracts & Quotes", idx: "03", icon: "documents" },
+        { id: "reports", label: isVi ? "Báo Cáo Công Việc" : "Work Reports", idx: "04", icon: "reports" }
       ],
-      secondaryGroup: isVi ? "Tham khảo Lãnh đạo" : "Executive Reference",
-      secondary: [
-        { id: "executive", label: t.nav_executive, idx: "04", icon: "pulse" }
-      ]
+      secondaryGroup: null,
+      secondary: []
     }
   };
 
@@ -124,85 +125,77 @@ export default function NavRail({
 
   return (
     <aside className={`rail ${isOpen ? "open" : ""}`} id="rail">
-      {/* Toggle button */}
-      <button className="rail-toggle" onClick={onToggleOpen} title="Toggle navigation">
-        <i className={`fa-solid ${isOpen ? "fa-chevron-left" : "fa-chevron-right"}`} style={{ fontSize: "10px" }} />
-      </button>
-
-      {/* Brand logo */}
-      <div className="rail-brand" onClick={onOpenLanding} title={isVi ? "Về Trang Chủ Giới Thiệu" : "Back to Landing Page"}>
-        <div className="brand-mark"></div>
-        <div className="brand-text">
-          GRAPH MIND<span>{t.brand_sub}</span>
+      {/* Brand logo header with clean integrated toggle button */}
+      <div className="rail-brand">
+        <div
+          className="brand-left"
+          onClick={isOpen ? onOpenLanding : onToggleOpen}
+          title={isOpen ? (isVi ? "Về Trang Chủ Giới Thiệu" : "Back to Landing Page") : (isVi ? "Nhấp để mở rộng thanh điều hướng" : "Click to expand sidebar")}
+          style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", flex: isOpen ? 1 : "none", minWidth: 0 }}
+        >
+          <div className="brand-mark"></div>
+          {isOpen && (
+            <div className="brand-text">
+              GRAPH MIND<span>{t.brand_sub}</span>
+            </div>
+          )}
         </div>
+
+        {isOpen && (
+          <button
+            className="rail-toggle-btn"
+            onClick={onToggleOpen}
+            title={isVi ? "Thu gọn thanh điều hướng" : "Collapse sidebar"}
+            aria-label="Toggle navigation"
+          >
+            <i className="fa-solid fa-chevron-left" style={{ fontSize: "12px" }} />
+          </button>
+        )}
       </div>
 
-      {/* Dynamic Role Indicator & Switcher Card (Only expanded when rail open) */}
+      {/* Role Indicator Card */}
       <div style={{
-        margin: "10px 10px 4px",
-        padding: isOpen ? "8px 10px" : "6px 2px",
-        borderRadius: "var(--r-md)",
-        background: currentRoleConfig.colorBg,
-        border: `1px solid ${currentRoleConfig.color}40`,
+        margin: "10px 10px 6px",
+        padding: isOpen ? "9px 12px" : "8px 4px",
+        borderRadius: "8px",
+        background: "var(--surface-2)",
+        border: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         gap: "4px",
         transition: "all var(--transition-fast)"
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: isOpen ? "space-between" : "center", width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", justifyContent: isOpen ? "flex-start" : "center" }}>
+          <span style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            background: currentRoleConfig.color,
+            flexShrink: 0,
+            boxShadow: `0 0 6px ${currentRoleConfig.color}80`
+          }} />
+          {isOpen && (
             <span style={{
-              width: "7px",
-              height: "7px",
-              borderRadius: "50%",
-              background: currentRoleConfig.color,
-              display: "inline-block",
-              boxShadow: `0 0 8px ${currentRoleConfig.color}`
-            }} />
-            {isOpen && (
-              <span style={{
-                fontSize: "9.5px",
-                fontWeight: "800",
-                letterSpacing: "0.06em",
-                color: currentRoleConfig.color,
-                fontFamily: "var(--f-mono)"
-              }}>
-                {currentRoleConfig.badge}
-              </span>
-            )}
-          </div>
-
-          {isOpen && onRoleChange && (
-            <select
-              value={role}
-              onChange={(e) => onRoleChange(e.target.value)}
-              style={{
-                fontSize: "10px",
-                fontWeight: "600",
-                background: "transparent",
-                border: "none",
-                color: "var(--text-2)",
-                cursor: "pointer",
-                outline: "none"
-              }}
-              title={isVi ? "Chuyển đổi vai trò người dùng" : "Switch role persona"}
-            >
-              <option value="executive">Executive</option>
-              <option value="knowledge_manager">Knowledge Mgr</option>
-              <option value="it_admin">IT Admin</option>
-              <option value="standard">Operations</option>
-            </select>
+              fontSize: "11px",
+              fontWeight: "750",
+              letterSpacing: "0.03em",
+              color: currentRoleConfig.color,
+              fontFamily: "var(--f-body)",
+              whiteSpace: "nowrap",
+              textTransform: "uppercase"
+            }}>
+              {currentRoleConfig.badge}
+            </span>
           )}
         </div>
 
         {isOpen && (
           <div style={{
-            fontSize: "10.5px",
-            color: "var(--text-3)",
-            lineHeight: "1.3",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis"
+            fontSize: "11.5px",
+            color: "var(--text-2)",
+            lineHeight: "1.4",
+            fontWeight: "500",
+            wordBreak: "break-word"
           }}>
             {currentRoleConfig.title}
           </div>
@@ -212,7 +205,7 @@ export default function NavRail({
       {/* Role-Partitioned Navigation Items */}
       <nav className="rail-nav">
         {/* Primary Group */}
-        <div className="rail-group-label" style={{ color: currentRoleConfig.color }}>
+        <div className="rail-group-label">
           {currentRoleConfig.primaryGroup}
         </div>
 
@@ -227,10 +220,8 @@ export default function NavRail({
             >
               <span className="n-icon">{renderIcon(item.icon)}</span>
               <span className="n-label">{item.label}</span>
-              {item.badge ? (
+              {item.badge && (
                 <span className="n-badge">{item.badge}</span>
-              ) : (
-                <span className="n-idx">{item.idx}</span>
               )}
             </div>
           );
@@ -239,7 +230,7 @@ export default function NavRail({
         {/* Secondary Group (Extended cross-functional access) */}
         {currentRoleConfig.secondary && currentRoleConfig.secondary.length > 0 && (
           <>
-            <div className="rail-group-label" style={{ marginTop: "10px" }}>
+            <div className="rail-group-label" style={{ marginTop: "12px" }}>
               {currentRoleConfig.secondaryGroup}
             </div>
             {currentRoleConfig.secondary.map((item) => {
@@ -253,77 +244,15 @@ export default function NavRail({
                 >
                   <span className="n-icon">{renderIcon(item.icon)}</span>
                   <span className="n-label">{item.label}</span>
-                  <span className="n-idx">{item.idx}</span>
+                  {item.badge && (
+                    <span className="n-badge">{item.badge}</span>
+                  )}
                 </div>
               );
             })}
           </>
         )}
       </nav>
-
-      {/* Rail Footer */}
-      <div className="rail-foot">
-        {/* System telemetry */}
-        <div className="rail-health" title={isVi ? "247 nguồn dữ liệu đồng bộ ổn định" : "247 sources synced healthy"}>
-          <span className="pulse-dot"></span>
-          <div className="h-text">
-            <div className="h-title">{t.system_health_title}</div>
-            <div className="h-sub">{t.system_health_sub}</div>
-          </div>
-        </div>
-
-        {/* User Card */}
-        <div
-          className="rail-user"
-          onClick={() => onNavigate("admin")}
-          title={isVi ? "Xem quyền hạn trong Quản trị viên" : "View permissions in Admin"}
-        >
-          <div className="avatar" style={{ border: `1.5px solid ${currentRoleConfig.color}` }}>
-            {currentRoleConfig.initials}
-          </div>
-          <div className="u-text">
-            <div className="u-name">{currentRoleConfig.name}</div>
-            <div className="u-role">{currentRoleConfig.title}</div>
-          </div>
-        </div>
-
-        {/* Explicit Role Switching / Sign Out Button */}
-        {isOpen && (
-          <div style={{ padding: "6px 10px 0" }}>
-            <button
-              onClick={onLogout}
-              style={{
-                width: "100%",
-                padding: "6px 8px",
-                background: "var(--surface-2)",
-                border: "1px solid var(--border-soft)",
-                borderRadius: "var(--r-sm)",
-                fontSize: "10.5px",
-                fontWeight: "600",
-                color: "var(--text-3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-                cursor: "pointer",
-                transition: "all var(--transition-fast)"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--cyan)";
-                e.currentTarget.style.borderColor = "var(--cyan)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--text-3)";
-                e.currentTarget.style.borderColor = "var(--border-soft)";
-              }}
-              title={isVi ? "Đổi vai trò người dùng hoặc đăng xuất" : "Switch role or sign out"}
-            >
-              <i className="fa-solid fa-arrow-right-from-bracket" style={{ fontSize: "11px" }}></i>
-              <span>{isVi ? "Đổi Vai Trò / Đăng Xuất" : "Switch Role / Sign Out"}</span>
-            </button>
-          </div>
-        )}
-      </div>
     </aside>
   );
 }

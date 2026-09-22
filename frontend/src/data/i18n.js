@@ -1,4 +1,4 @@
-﻿export const I18N = {
+export const I18N = {
   en: {
     brand_sub: "EKMP OBSERVATORY",
     intelligence: "Intelligence",
@@ -16,7 +16,7 @@
 
     system_health_title: "System Health",
     system_health_sub: "All pipelines nominal",
-    user_role: "Executive · CFO",
+    user_role: "Executive Leadership · C-Suite / CEO",
     kpulse_label: "247 sources synced · <b>AI reasoning active</b>",
 
     // Executive View
@@ -114,7 +114,7 @@
 
     system_health_title: "Trạng thái Hệ thống",
     system_health_sub: "Tất cả đường ống ổn định",
-    user_role: "Lãnh đạo · Giám đốc Tài chính",
+    user_role: "Ban Lãnh Đạo · Giám Đốc Điều Hành (CEO / C-Suite)",
     kpulse_label: "247 nguồn đã đồng bộ · <b>AI đang suy luận</b>",
 
     // Executive View

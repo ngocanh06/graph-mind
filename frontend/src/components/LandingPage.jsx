@@ -35,7 +35,7 @@ export default function LandingPage({
   };
 
   return (
-    <div style={{ fontFamily: "var(--f-body, 'Inter', sans-serif)", background: "#ffffff", color: "#002b3d", width: "100%", overflowX: "hidden" }}>
+    <div style={{ fontFamily: "var(--f-body, 'Inter', sans-serif)", background: "#ffffff", color: "#002b3d", width: "100%", overflowX: "clip" }}>
       {/* Toast */}
       {subscribedToast && (
         <div style={{
@@ -61,12 +61,14 @@ export default function LandingPage({
       )}
 
       {/* ======================================================== */}
-      {/* STICKY TOP HEADER (ALWAYS VISIBLE WHILE SCROLLING)       */}
+      {/* FIXED TOP HEADER (ALWAYS VISIBLE WHILE SCROLLING)        */}
       {/* ======================================================== */}
       <header style={{
-        position: "sticky",
+        position: "fixed",
         top: 0,
-        zIndex: 999,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
         background: "rgba(1, 15, 26, 0.95)",
         backdropFilter: "blur(14px)",
         WebkitBackdropFilter: "blur(14px)",
@@ -113,7 +115,10 @@ export default function LandingPage({
           {/* Smooth Scroll Nav Links (Single-page scroll down) */}
           <nav style={{ display: "flex", alignItems: "center", gap: "28px" }}>
             <button
-              onClick={(e) => scrollToSection(e, "why-us")}
+              onClick={(e) => {
+                e?.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
               style={{
                 background: "transparent",
                 color: "#ffffff",
@@ -128,7 +133,7 @@ export default function LandingPage({
               onMouseEnter={(e) => { e.currentTarget.style.color = "#00e5ff"; e.currentTarget.style.opacity = "1"; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = "#ffffff"; e.currentTarget.style.opacity = "0.92"; }}
             >
-              {isVi ? "Tại Sao Chọn?" : "Why Us?"}
+              {isVi ? "Trang Chủ" : "Home"}
             </button>
 
             <button
@@ -270,7 +275,7 @@ export default function LandingPage({
       {/* ======================================================== */}
       {/* SECTION 1: DARK MIDNIGHT HERO                            */}
       {/* ======================================================== */}
-      <section style={{ background: "linear-gradient(180deg, #010f1a 0%, #021727 100%)", color: "#ffffff", padding: "20px 0 70px 0" }}>
+      <section style={{ background: "linear-gradient(180deg, #010f1a 0%, #021727 100%)", color: "#ffffff", padding: "85px 0 70px 0" }}>
         {/* Hero Content Grid (50% Left / 50% Right) */}
         <div style={{
           maxWidth: "1240px",

@@ -13,12 +13,12 @@ export default function AdminView({ onNavigate, t, lang }) {
   };
 
   const [permissions, setPermissions] = useState({
-    customer: { sales: true, finance: true, hr: false, legal: true, exec: true },
-    orders: { sales: true, finance: true, hr: false, legal: false, exec: true },
-    payroll: { sales: false, finance: true, hr: true, legal: false, exec: true },
-    contracts: { sales: true, finance: true, hr: false, legal: true, exec: true },
-    risk: { sales: false, finance: true, hr: false, legal: true, exec: true },
-    sop: { sales: true, finance: true, hr: true, legal: true, exec: true }
+    customer: { exec: true, admin: true, manager: true, ops: true },
+    orders: { exec: true, admin: true, manager: true, ops: true },
+    payroll: { exec: true, admin: true, manager: false, ops: false },
+    contracts: { exec: true, admin: true, manager: true, ops: false },
+    risk: { exec: true, admin: true, manager: true, ops: false },
+    sop: { exec: true, admin: true, manager: true, ops: true }
   });
 
   const togglePermission = (domain, role) => {
@@ -73,10 +73,10 @@ export default function AdminView({ onNavigate, t, lang }) {
       {/* ADMIN TABS NAVIGATION */}
       <div className="admin-tabs flex flex-wrap gap-space-2xs bg-surface-container-low p-space-2xs rounded-lg border border-outline-variant/30" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
         {[
-          { id: "perms", label: isVi ? "Phân quyền Tri thức" : "Knowledge Permissions", symbol: "🛡️" },
-          { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", symbol: "👥" },
-          { id: "audit", label: isVi ? "Nhật ký Kiểm toán (Audit)" : "Audit Trail", symbol: "📜" },
-          { id: "cost", label: isVi ? "Sử dụng AI & Chi phí (LLMOps)" : "LLMOps & Cost Governance", symbol: "📈" }
+          { id: "perms", label: isVi ? "Phân quyền Tri thức" : "Knowledge Permissions", icon: "fa-solid fa-shield-halved", color: "#0284c7" },
+          { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: "fa-solid fa-users-gear", color: "#8b5cf6" },
+          { id: "audit", label: isVi ? "Nhật ký Kiểm toán (Audit)" : "Audit Trail", icon: "fa-solid fa-clipboard-list", color: "#f59e0b" },
+          { id: "cost", label: isVi ? "Sử dụng AI & Chi phí (LLMOps)" : "LLMOps & Cost Governance", icon: "fa-solid fa-chart-line", color: "#10b981" }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -87,17 +87,17 @@ export default function AdminView({ onNavigate, t, lang }) {
               gap: "8px",
               padding: "8px 16px",
               borderRadius: "var(--r-sm)",
-              fontSize: "12px",
-              fontWeight: "700",
+              fontSize: "12.5px",
+              fontWeight: activeTab === tab.id ? "700" : "600",
               cursor: "pointer",
               transition: "all 0.15s ease",
               background: activeTab === tab.id ? "var(--surface)" : "transparent",
-              color: activeTab === tab.id ? "var(--cyan)" : "var(--text-3)",
+              color: activeTab === tab.id ? "var(--text-1)" : "var(--text-3)",
               border: activeTab === tab.id ? "1px solid var(--border-strong)" : "1px solid transparent",
               boxShadow: activeTab === tab.id ? "var(--shadow-sm)" : "none"
             }}
           >
-            <span style={{ fontSize: "14px" }}>{tab.symbol}</span>
+            <i className={tab.icon} style={{ fontSize: "14px", color: tab.color }}></i>
             <span>{tab.label}</span>
           </button>
         ))}
@@ -113,7 +113,7 @@ export default function AdminView({ onNavigate, t, lang }) {
               {isVi ? "Ma trận Phân quyền Truy cập Miền Tri thức (RBAC Matrix)" : "Role-Based Knowledge Access Control (RBAC Matrix)"}
             </span>
             <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-              {isVi ? "Nhấp vào biểu tượng để bật/tắt quyền" : "Click icons to toggle permissions"}
+              {isVi ? "Nhấp vào ô để bật/tắt quyền truy xuất miền tri thức" : "Click cells to toggle domain permissions"}
             </span>
           </div>
 
@@ -122,11 +122,10 @@ export default function AdminView({ onNavigate, t, lang }) {
               <thead>
                 <tr style={{ background: "var(--surface-2)", color: "var(--text-2)", borderBottom: "1px solid var(--border)" }}>
                   <th style={{ padding: "10px 14px", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Miền Tri thức" : "Knowledge Domain"}</th>
-                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>Sales</th>
-                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>Finance</th>
-                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>HR</th>
-                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>Legal</th>
-                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>Executive</th>
+                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Ban Lãnh Đạo (C-Suite/CEO)" : "Executive Board"}</th>
+                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Admin (HT & Tri thức)" : "Sys & Knowledge Admin"}</th>
+                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Quản lý Cấp trung" : "Middle Manager"}</th>
+                  <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "700", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Chuyên viên Kinh doanh (Sales)" : "Sales Executive"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,7 +134,7 @@ export default function AdminView({ onNavigate, t, lang }) {
                     <td style={{ padding: "10px 14px", fontWeight: "600", textTransform: "capitalize", color: "var(--text-1)" }}>
                       {domain}
                     </td>
-                    {["sales", "finance", "hr", "legal", "exec"].map((r) => {
+                    {["exec", "admin", "manager", "ops"].map((r) => {
                       const hasPerm = roles[r];
                       return (
                         <td
@@ -145,8 +144,10 @@ export default function AdminView({ onNavigate, t, lang }) {
                         >
                           <span
                             style={{
-                              display: "inline-block",
-                              padding: "3px 10px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              padding: "4px 10px",
                               borderRadius: "4px",
                               fontWeight: "700",
                               fontSize: "11px",
@@ -155,7 +156,8 @@ export default function AdminView({ onNavigate, t, lang }) {
                               border: `1px solid ${hasPerm ? "rgba(5, 150, 105, 0.25)" : "var(--border)"}`
                             }}
                           >
-                            {hasPerm ? "✓ ALLOWED" : "— DENIED"}
+                            <i className={`fa-solid ${hasPerm ? "fa-check" : "fa-ban"}`} style={{ fontSize: "10px" }}></i>
+                            {hasPerm ? "ALLOWED" : "DENIED"}
                           </span>
                         </td>
                       );
@@ -181,7 +183,8 @@ export default function AdminView({ onNavigate, t, lang }) {
               onClick={() => showToast(isVi ? "Đã mở hộp thoại thêm người dùng mới!" : "Invite user dialog opened!")}
               className="btn primary sm"
             >
-              + {isVi ? "Thêm Người dùng" : "Add User"}
+              <i className="fa-solid fa-user-plus" style={{ marginRight: "6px" }}></i>
+              {isVi ? "Thêm Người dùng" : "Add User"}
             </button>
           </div>
 
@@ -198,32 +201,32 @@ export default function AdminView({ onNavigate, t, lang }) {
               </thead>
               <tbody>
                 <tr className="border-b border-outline-variant/10">
-                  <td className="p-space-sm font-semibold text-on-surface">Tran M. Anh</td>
-                  <td className="p-space-sm text-outline font-mono">anh.tran@enterprise.com</td>
-                  <td className="p-space-sm"><span className="pill green uppercase font-bold text-[10px]">KNOWLEDGE MANAGER</span></td>
+                  <td className="p-space-sm font-semibold text-on-surface">Hoàng Minh Điều (CEO)</td>
+                  <td className="p-space-sm text-outline font-mono">executive@graphmind.ai</td>
+                  <td className="p-space-sm"><span className="pill red uppercase font-bold text-[10px]">{isVi ? "BAN LÃNH ĐẠO (CEO / C-SUITE)" : "EXECUTIVE (CEO / C-SUITE)"}</span></td>
+                  <td className="p-space-sm text-green-500 font-bold">Hardware Token</td>
+                  <td className="p-space-sm text-primary font-bold">Active Now</td>
+                </tr>
+                <tr className="border-b border-outline-variant/10">
+                  <td className="p-space-sm font-semibold text-on-surface">SecOps Admin</td>
+                  <td className="p-space-sm text-outline font-mono">admin@graphmind.ai</td>
+                  <td className="p-space-sm"><span className="pill amber uppercase font-bold text-[10px]">{isVi ? "ADMIN HỆ THỐNG & TRI THỨC" : "SYS & KNOWLEDGE ADMIN"}</span></td>
+                  <td className="p-space-sm text-green-500 font-bold">Hardware Token</td>
+                  <td className="p-space-sm text-outline">5 min ago</td>
+                </tr>
+                <tr className="border-b border-outline-variant/10">
+                  <td className="p-space-sm font-semibold text-on-surface">Trần M. Anh</td>
+                  <td className="p-space-sm text-outline font-mono">manager@graphmind.ai</td>
+                  <td className="p-space-sm"><span className="pill green uppercase font-bold text-[10px]">{isVi ? "QUẢN LÝ CẤP TRUNG (TRƯỞNG PHÒNG)" : "DEPARTMENT MANAGER"}</span></td>
                   <td className="p-space-sm text-green-500 font-bold">Enabled</td>
                   <td className="p-space-sm text-outline">10 min ago</td>
                 </tr>
-                <tr className="border-b border-outline-variant/10">
-                  <td className="p-space-sm font-semibold text-on-surface">Le V. Hung</td>
-                  <td className="p-space-sm text-outline font-mono">hung.le@enterprise.com</td>
-                  <td className="p-space-sm"><span className="pill cyan uppercase font-bold text-[10px]">FINANCE ANALYST</span></td>
-                  <td className="p-space-sm text-green-500 font-bold">Enabled</td>
-                  <td className="p-space-sm text-outline">28 min ago</td>
-                </tr>
-                <tr className="border-b border-outline-variant/10">
-                  <td className="p-space-sm font-semibold text-on-surface">Pham Q. Linh</td>
-                  <td className="p-space-sm text-outline font-mono">linh.pham@enterprise.com</td>
-                  <td className="p-space-sm"><span className="pill amber uppercase font-bold text-[10px]">ACCOUNT MGR</span></td>
-                  <td className="p-space-sm text-green-500 font-bold">Enabled</td>
-                  <td className="p-space-sm text-outline">1 hour ago</td>
-                </tr>
                 <tr>
-                  <td className="p-space-sm font-semibold text-on-surface">Executive Board Member</td>
-                  <td className="p-space-sm text-outline font-mono">cfo@enterprise.com</td>
-                  <td className="p-space-sm"><span className="pill red uppercase font-bold text-[10px]">EXECUTIVE (CFO)</span></td>
-                  <td className="p-space-sm text-green-500 font-bold">Hardware Token</td>
-                  <td className="p-space-sm text-primary font-bold">Active Now</td>
+                  <td className="p-space-sm font-semibold text-on-surface">Nguyễn V. Nam</td>
+                  <td className="p-space-sm text-outline font-mono">sales@graphmind.ai</td>
+                  <td className="p-space-sm"><span className="pill cyan uppercase font-bold text-[10px]">{isVi ? "CHUYÊN VIÊN KINH DOANH (SALES)" : "SALES EXECUTIVE"}</span></td>
+                  <td className="p-space-sm text-green-500 font-bold">Enabled</td>
+                  <td className="p-space-sm text-outline">25 min ago</td>
                 </tr>
               </tbody>
             </table>
