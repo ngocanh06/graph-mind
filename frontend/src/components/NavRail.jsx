@@ -132,7 +132,19 @@ export default function NavRail({
 
       {/* Brand logo */}
       <div className="rail-brand" onClick={onOpenLanding} title={isVi ? "Về Trang Chủ Giới Thiệu" : "Back to Landing Page"}>
-        <div className="brand-mark"></div>
+        <img
+          src="/logo-icon.svg"
+          alt="Graph Mind Logo"
+          style={{
+            width: "28px",
+            height: "28px",
+            borderRadius: "8px",
+            objectFit: "contain",
+            flexShrink: 0,
+            boxShadow: "0 0 10px rgba(0,229,255,0.35)",
+            filter: "drop-shadow(0 0 4px rgba(0,229,255,0.25))"
+          }}
+        />
         <div className="brand-text">
           GRAPH MIND<span>{t.brand_sub}</span>
         </div>

@@ -55,7 +55,32 @@ export default function Topbar({
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <div className="crumb">
+        <div className="crumb" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <img
+            src="/logo-icon.svg"
+            alt="Graph Mind"
+            onClick={onOpenLanding}
+            title={lang === "vi" ? "Về Trang Chủ" : "Back to Landing"}
+            style={{
+              width: "26px",
+              height: "26px",
+              borderRadius: "7px",
+              objectFit: "contain",
+              flexShrink: 0,
+              cursor: "pointer",
+              boxShadow: "0 0 8px rgba(0,229,255,0.3)",
+              filter: "drop-shadow(0 0 3px rgba(0,229,255,0.2))",
+              transition: "transform 0.15s ease, box-shadow 0.15s ease"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.08)";
+              e.currentTarget.style.boxShadow = "0 0 14px rgba(0,229,255,0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "0 0 8px rgba(0,229,255,0.3)";
+            }}
+          />
           <span className="crumb-title" style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-1)" }}>
             {currentTitle}
           </span>
