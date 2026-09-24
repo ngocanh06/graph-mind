@@ -1,19 +1,25 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: graphmind_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-graphmind}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-graphmind_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-graphmind_db}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # ============================================================================
+  # POSTGRESQL (Đã tắt do đang sử dụng PostgreSQL cài trực tiếp trên Windows)
+  # ============================================================================
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: graphmind_postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER:-graphmind}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-graphmind_secret}
+  #     POSTGRES_DB: ${POSTGRES_DB:-graphmind_db}
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
 
+  # ============================================================================
+  # NEO4J GRAPH DATABASE
+  # ============================================================================
   neo4j:
     image: neo4j:5.20-community
     container_name: graphmind_neo4j
@@ -27,6 +33,9 @@ services:
     volumes:
       - neo4j_data:/data
 
+  # ============================================================================
+  # QDRANT VECTOR DATABASE
+  # ============================================================================
   qdrant:
     image: qdrant/qdrant:v1.9.0
     container_name: graphmind_qdrant
@@ -38,6 +47,6 @@ services:
       - qdrant_data:/qdrant/storage
 
 volumes:
-  postgres_data:
+  # postgres_data:
   neo4j_data:
   qdrant_data:
