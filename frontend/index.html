@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="vi">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,10 +7,12 @@
     <link rel="icon" type="image/svg+xml" href="/logo-icon.svg" />
     <link rel="alternate icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+
+    <!-- Google Fonts: Inter & Manrope with full Vietnamese diacritics support -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link
@@ -25,6 +27,11 @@
         html, body {
           margin: 0;
           padding: 0;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          letter-spacing: normal;
+          text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
         body {
           overscroll-behavior: none;
@@ -37,7 +44,18 @@
         }
       }
       ::-webkit-scrollbar {
-        display: none;
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.35);
+        border-radius: 6px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.6);
       }
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -49,8 +67,8 @@
             colors: {
               outline: "#849396",
               "on-error-container": "#ffdad6",
-              primary: "#c3f5ff",
-              "on-surface-variant": "#bac9cc",
+              primary: "#0284c7",
+              "on-surface-variant": "#64748b",
               "secondary-container": "#0566d9",
               "surface-container-highest": "#31353c",
               "primary-fixed-dim": "#00daf3",
@@ -58,47 +76,47 @@
               "on-primary-fixed-variant": "#004f58",
               error: "#ffb4ab",
               secondary: "#adc6ff",
-              "on-primary": "#00363d",
-              "surface-container": "#1c2026",
-              background: "#10141a",
-              "surface-container-high": "#262a31",
+              "on-primary": "#ffffff",
+              "surface-container": "#f8fafc",
+              background: "#ffffff",
+              "surface-container-high": "#f1f5f9",
               "inverse-on-surface": "#2d3137",
               "on-primary-fixed": "#001f24",
               "inverse-primary": "#006875",
               "on-error": "#690005",
-              "surface-variant": "#31353c",
+              "surface-variant": "#f1f5f9",
               "on-tertiary": "#003824",
               "primary-container": "#00e5ff",
               "secondary-fixed-dim": "#adc6ff",
-              "tertiary": "#a8ffd2",
+              tertiary: "#059669",
               "tertiary-fixed": "#6ffbbe",
               "on-tertiary-fixed-variant": "#005236",
               "on-secondary": "#002e6a",
-              "outline-variant": "#3b494c",
-              "surface-dim": "#10141a",
+              "outline-variant": "#cbd5e1",
+              "surface-dim": "#f8fafc",
               "on-secondary-container": "#e6ecff",
-              "surface-container-lowest": "#0a0e14",
+              "surface-container-lowest": "#ffffff",
               "on-tertiary-fixed": "#002113",
-              "surface-container-low": "#181c22",
-              "on-background": "#dfe2eb",
-              "on-surface": "#dfe2eb",
+              "surface-container-low": "#ffffff",
+              "on-background": "#0f172a",
+              "on-surface": "#0f172a",
               "tertiary-fixed-dim": "#4edea3",
               "on-secondary-fixed": "#001a42",
-              surface: "#10141a",
+              surface: "#ffffff",
               "surface-tint": "#00daf3",
-              "inverse-surface": "#dfe2eb",
+              "inverse-surface": "#0f172a",
               "secondary-fixed": "#d8e2ff",
               "on-tertiary-container": "#006645",
-              "surface-bright": "#353940",
+              "surface-bright": "#ffffff",
               "primary-fixed": "#9cf0ff",
               "tertiary-container": "#5be9ad",
               "error-container": "#93000a",
             },
             borderRadius: {
-              DEFAULT: "0.125rem",
-              lg: "0.25rem",
-              xl: "0.5rem",
-              full: "0.75rem",
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "1rem",
             },
             spacing: {
               "space-2xs": "0.125rem",
@@ -115,37 +133,37 @@
               "space-xs": "0.25rem",
             },
             fontFamily: {
-              "body-sm": ["Geist", "sans-serif"],
-              "body-lg": ["Geist", "sans-serif"],
-              "headline-lg-mobile": ["Geist", "sans-serif"],
-              "body-md": ["Geist", "sans-serif"],
+              "body-sm": ["Inter", "sans-serif"],
+              "body-lg": ["Inter", "sans-serif"],
+              "headline-lg-mobile": ["Manrope", "Inter", "sans-serif"],
+              "body-md": ["Inter", "sans-serif"],
               "label-caps": ["JetBrains Mono", "monospace"],
-              "title-sm": ["Geist", "sans-serif"],
-              "headline-md": ["Geist", "sans-serif"],
-              "headline-lg": ["Geist", "sans-serif"],
-              "display-hero": ["Geist", "sans-serif"],
+              "title-sm": ["Inter", "sans-serif"],
+              "headline-md": ["Manrope", "Inter", "sans-serif"],
+              "headline-lg": ["Manrope", "Inter", "sans-serif"],
+              "display-hero": ["Manrope", "Inter", "sans-serif"],
               "code-sm": ["JetBrains Mono", "monospace"],
               "metric-tabular-lg": ["JetBrains Mono", "monospace"],
             },
             fontSize: {
-              "body-sm": ["12px", { lineHeight: "18px", letterSpacing: "0.01em", fontWeight: "400" }],
-              "body-lg": ["15px", { lineHeight: "24px", letterSpacing: "0em", fontWeight: "400" }],
-              "headline-lg-mobile": ["22px", { lineHeight: "30px", letterSpacing: "-0.015em", fontWeight: "600" }],
-              "body-md": ["13px", { lineHeight: "20px", letterSpacing: "0em", fontWeight: "400" }],
-              "label-caps": ["10px", { lineHeight: "14px", letterSpacing: "0.08em", fontWeight: "600" }],
-              "title-sm": ["15px", { lineHeight: "22px", letterSpacing: "-0.1em", fontWeight: "500" }],
-              "headline-md": ["20px", { lineHeight: "28px", letterSpacing: "-0.015em", fontWeight: "600" }],
-              "headline-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "600" }],
-              "display-hero": ["40px", { lineHeight: "48px", letterSpacing: "-0.025em", fontWeight: "600" }],
-              "code-sm": ["12px", { lineHeight: "16px", letterSpacing: "0em", fontWeight: "400" }],
-              "metric-tabular-lg": ["24px", { lineHeight: "30px", letterSpacing: "-0.02em", fontWeight: "500" }],
+              "body-sm": ["12.5px", { lineHeight: "19px", letterSpacing: "normal", fontWeight: "400" }],
+              "body-lg": ["15px", { lineHeight: "24px", letterSpacing: "normal", fontWeight: "400" }],
+              "headline-lg-mobile": ["22px", { lineHeight: "30px", letterSpacing: "normal", fontWeight: "700" }],
+              "body-md": ["13.5px", { lineHeight: "21px", letterSpacing: "normal", fontWeight: "400" }],
+              "label-caps": ["10.5px", { lineHeight: "15px", letterSpacing: "0.04em", fontWeight: "600" }],
+              "title-sm": ["15px", { lineHeight: "22px", letterSpacing: "normal", fontWeight: "600" }],
+              "headline-md": ["20px", { lineHeight: "28px", letterSpacing: "normal", fontWeight: "700" }],
+              "headline-lg": ["28px", { lineHeight: "36px", letterSpacing: "normal", fontWeight: "800" }],
+              "display-hero": ["38px", { lineHeight: "48px", letterSpacing: "normal", fontWeight: "800" }],
+              "code-sm": ["12px", { lineHeight: "16px", letterSpacing: "normal", fontWeight: "400" }],
+              "metric-tabular-lg": ["24px", { lineHeight: "30px", letterSpacing: "normal", fontWeight: "700" }],
             },
           },
         },
       };
     </script>
   </head>
-  <body class="bg-background font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary">
+  <body class="antialiased selection:bg-cyan-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

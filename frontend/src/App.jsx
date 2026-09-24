@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { I18N } from "./data/i18n";
 import { INITIAL_DATA } from "./data/mockData";
+import { ENTERPRISE_ROLES } from "./data/roles";
 import { fetchHealth, fetchSignals, fetchEntities } from "./services/api";
 
 import Topbar from "./components/Topbar";
@@ -9,29 +10,88 @@ import DemoBanner from "./components/DemoBanner";
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 
-import ExecutiveView from "./views/ExecutiveView";
-import CopilotView from "./views/CopilotView";
-import KnowledgeView from "./views/KnowledgeView";
-import SearchView from "./views/SearchView";
-import ConnectorsView from "./views/ConnectorsView";
-import RiskView from "./views/RiskView";
-import DocumentsView from "./views/DocumentsView";
-import ReportsView from "./views/ReportsView";
-import AdminView from "./views/AdminView";
+import ExecutiveView from "./views/m4_decision_support/ExecutiveView";
+import CopilotView from "./views/m3_hybrid_copilot/CopilotView";
+import KnowledgeView from "./views/m2_knowledge_editor/KnowledgeView";
+import SearchView from "./views/m5_multifacet_search/SearchView";
+import ConnectorsView from "./views/m1_data_sync/ConnectorsView";
+import RiskView from "./views/m4_decision_support/RiskView";
+import DocumentsView from "./views/m2_knowledge_editor/DocumentsView";
+import ReportsView from "./views/m4_decision_support/ReportsView";
+import AdminView from "./views/m6_admin_security/AdminView";
+
+const VALID_VIEWS = [
+  "executive",
+  "copilot",
+  "knowledge",
+  "search",
+  "connectors",
+  "risk",
+  "documents",
+  "reports",
+  "admin"
+];
+
+function getInitialRouting() {
+  try {
+    // 1. Kiểm tra query parameters (?view=... hoặc ?mode=...)
+    const params = new URLSearchParams(window.location.search);
+    const queryView = params.get("view");
+    const queryMode = params.get("mode");
+
+    if (queryView && VALID_VIEWS.includes(queryView)) {
+      return { mode: "app", view: queryView };
+    }
+    if (queryMode === "login" || queryMode === "landing") {
+      return { mode: queryMode, view: "executive" };
+    }
+
+    // 2. Kiểm tra URL hash (#admin, #search, #login, #landing, ...)
+    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+    if (hash === "login") return { mode: "login", view: "executive" };
+    if (hash === "landing") return { mode: "landing", view: "executive" };
+    if (VALID_VIEWS.includes(hash)) {
+      return { mode: "app", view: hash };
+    }
+
+    // 3. Phục hồi từ localStorage khi người dùng bấm F5
+    const savedMode = localStorage.getItem("aegis_page_mode");
+    const savedView = localStorage.getItem("aegis_current_view");
+
+    if (savedMode === "app") {
+      const activeView = (savedView && VALID_VIEWS.includes(savedView)) ? savedView : "executive";
+      return { mode: "app", view: activeView };
+    }
+    if (savedMode === "login") return { mode: "login", view: "executive" };
+    if (savedMode === "landing") return { mode: "landing", view: "executive" };
+  } catch (e) {
+    console.error("Error determining initial route:", e);
+  }
+
+  // Mặc định nếu chưa từng truy cập
+  return { mode: "app", view: "executive" };
+}
 
 export default function App() {
+  const initialRoute = getInitialRouting();
   const [lang, setLang] = useState(() => localStorage.getItem("aegis_lang") || "en");
   const [theme, setTheme] = useState(() => localStorage.getItem("aegis_theme") || "light");
-  const [role, setRole] = useState("executive");
-  const [view, setView] = useState("executive");
-  const [pageMode, setPageMode] = useState(() => {
+  const [role, setRole] = useState(() => {
     try {
-      const p = new URLSearchParams(window.location.search).get("mode");
-      if (p === "app") return "app";
-      if (p === "landing") return "landing";
+      const saved = localStorage.getItem("aegis_user");
+      if (saved) return JSON.parse(saved).id || "executive";
     } catch (e) {}
-    return "landing"; // Default is the authentic Graph Mind Enterprise Knowledge Observatory!
-  }); // "app" | "landing" | "login"
+    return "executive";
+  });
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("aegis_user");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return ENTERPRISE_ROLES.executive;
+  });
+  const [view, setView] = useState(initialRoute.view);
+  const [pageMode, setPageMode] = useState(initialRoute.mode); // "app" | "landing" | "login"
   const [isRailOpen, setIsRailOpen] = useState(true);
   const [demoStep, setDemoStep] = useState(1);
   const [selectedEntity, setSelectedEntity] = useState("abc");
@@ -66,6 +126,39 @@ export default function App() {
     }
   }, [pageMode]);
 
+  // Đồng bộ pageMode & view vào localStorage và URL Hash
+  useEffect(() => {
+    try {
+      localStorage.setItem("aegis_page_mode", pageMode);
+      if (pageMode === "landing") {
+        window.history.replaceState(null, "", window.location.pathname + "#landing");
+      } else if (pageMode === "login") {
+        window.history.replaceState(null, "", window.location.pathname + "#login");
+      } else if (pageMode === "app") {
+        localStorage.setItem("aegis_current_view", view);
+        window.history.replaceState(null, "", window.location.pathname + "#" + view);
+      }
+    } catch (e) {}
+  }, [pageMode, view]);
+
+  // Lắng nghe sự kiện hashchange nếu người dùng điều hướng bằng URL
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+      if (hash === "login") {
+        setPageMode("login");
+      } else if (hash === "landing") {
+        setPageMode("landing");
+      } else if (VALID_VIEWS.includes(hash)) {
+        setPageMode("app");
+        setView(hash);
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
   // Check Python FastAPI backend
   useEffect(() => {
     async function initData() {
@@ -87,6 +180,11 @@ export default function App() {
 
   const handleRoleChange = (newRole) => {
     setRole(newRole);
+    const user = ENTERPRISE_ROLES[newRole] || ENTERPRISE_ROLES.executive;
+    setCurrentUser(user);
+    try {
+      localStorage.setItem("aegis_user", JSON.stringify(user));
+    } catch (e) {}
     if (newRole === "executive") setView("executive");
     else if (newRole === "knowledge_manager") setView("knowledge");
     else if (newRole === "it_admin") setView("admin");
@@ -129,19 +227,25 @@ export default function App() {
   if (pageMode === "login") {
     return (
       <LoginPage
-        onEnterPlatform={(chosenRole) => {
-          const targetRole = chosenRole || role || "executive";
-          setRole(targetRole);
+        onEnterPlatform={(authenticatedUser) => {
+          const user = (authenticatedUser && authenticatedUser.id)
+            ? authenticatedUser
+            : (ENTERPRISE_ROLES[authenticatedUser] || ENTERPRISE_ROLES.executive);
+          setCurrentUser(user);
+          setRole(user.id);
+          setView(user.defaultView || "executive");
+          try {
+            localStorage.setItem("aegis_user", JSON.stringify(user));
+          } catch (e) {}
           setPageMode("app");
-          // Route immediately to role-specific primary workspace!
-          if (targetRole === "executive") setView("executive");
-          else if (targetRole === "knowledge_manager") setView("knowledge");
-          else if (targetRole === "it_admin") setView("admin");
-          else if (targetRole === "standard") setView("search");
-          else setView("executive");
         }}
         onBackToLanding={() => setPageMode("landing")}
-        onSelectRole={setRole}
+        onSelectRole={(r) => {
+          if (typeof r === "string" && ENTERPRISE_ROLES[r]) {
+            setRole(r);
+            setCurrentUser(ENTERPRISE_ROLES[r]);
+          }
+        }}
         role={role}
         lang={lang}
         t={t}
@@ -163,6 +267,7 @@ export default function App() {
         t={t}
         lang={lang}
         role={role}
+        currentUser={currentUser}
         onRoleChange={handleRoleChange}
       />
 
@@ -173,25 +278,18 @@ export default function App() {
           lang={lang}
           theme={theme}
           role={role}
+          currentUser={currentUser}
           onThemeChange={setTheme}
           onLangChange={setLang}
           onRoleChange={handleRoleChange}
           onOpenLanding={() => setPageMode("landing")}
+          onLogout={() => setPageMode("login")}
           onNavigate={setView}
           t={t}
           apiConnected={apiConnected}
         />
 
         <main className="workspace">
-          {/* Guided Demo Banner */}
-          {view === "executive" && (
-            <DemoBanner
-              currentStep={demoStep}
-              onStepClick={handleDemoStep}
-              t={t}
-            />
-          )}
-
           {view === "executive" && (
             <ExecutiveView
               entities={entities}
@@ -230,6 +328,8 @@ export default function App() {
               onSelectEntity={setSelectedEntity}
               t={t}
               lang={lang}
+              role={role}
+              currentUser={currentUser}
             />
           )}
 
@@ -242,6 +342,7 @@ export default function App() {
               onNavigate={setView}
               t={t}
               lang={lang}
+              role={role}
             />
           )}
 
@@ -250,6 +351,7 @@ export default function App() {
               onNavigate={setView}
               t={t}
               lang={lang}
+              role={role}
             />
           )}
 
