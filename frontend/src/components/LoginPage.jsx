@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ENTERPRISE_ROLES, authenticateByEmail } from "../data/roles";
+import { loginApi } from "../services/api";
 
 export default function LoginPage({
   onEnterPlatform,
@@ -11,25 +12,75 @@ export default function LoginPage({
 }) {
   const isVi = lang === "vi";
 
-  // Khởi tạo username ngắn gọn mặc định theo vai trò ban đầu (vd: 'cfo')
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("••••••••••••");
+  // Thông tin đăng nhập
+  const [identifier, setIdentifier] = useState("exec");
+  const [password, setPassword] = useState("123456");
   const [rememberMe, setRememberMe] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // Nhanh chóng chọn tài khoản mẫu đã seed trong DB
+  const handleQuickSelect = (u, p) => {
+    setIdentifier(u);
+    setPassword(p);
+    setErrorMessage("");
+  };
 
   // Xử lý gửi form đăng nhập
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const targetIdentifier = (identifier || "").trim();
+    if (!targetIdentifier) {
+      setErrorMessage(isVi ? "Vui lòng nhập tên đăng nhập hoặc email." : "Please enter username or email.");
+      return;
+    }
+    if (!password) {
+      setErrorMessage(isVi ? "Vui lòng nhập mật khẩu." : "Please enter password.");
+      return;
+    }
+
     setIsAuthenticating(true);
 
-    // Mặc định đăng nhập tài khoản tác nghiệp hoặc theo danh tính được nhập
-    const targetIdentifier = (identifier || "").trim() || "ops";
-    const authenticatedUser = authenticateByEmail(targetIdentifier);
-    setTimeout(() => {
+    try {
+      // 1. Gọi API FastAPI xác thực qua PostgreSQL
+      const data = await loginApi(targetIdentifier, password);
+
+      // Lưu JWT Token và User Info
+      if (data.access_token) {
+        localStorage.setItem("aegis_token", data.access_token);
+        localStorage.setItem("aegis_auth_user", JSON.stringify(data.user));
+      }
+
+      setSuccessMessage(isVi ? "Xác thực thành công! Đang chuyển hướng..." : "Authentication successful! Redirecting...");
+
+      // Ánh xạ sang cấu hình Role tương ứng trong frontend
+      const targetRoleKey = data.user.role;
+      const roleConfig = ENTERPRISE_ROLES[targetRoleKey] || authenticateByEmail(targetIdentifier);
+      const userProfile = {
+        ...roleConfig,
+        name: data.user.full_name || roleConfig.name,
+        email: data.user.email || roleConfig.email,
+        username: data.user.username,
+      };
+
+      setTimeout(() => {
+        setIsAuthenticating(false);
+        onSelectRole?.(userProfile.id);
+        onEnterPlatform?.(userProfile);
+      }, 500);
+
+    } catch (err) {
+      console.warn("Backend auth failed:", err);
+      // Hiển thị lỗi từ backend
+      setErrorMessage(
+        err.message || (isVi ? "Tài khoản hoặc mật khẩu không chính xác." : "Invalid username or password.")
+      );
       setIsAuthenticating(false);
-      onSelectRole?.(authenticatedUser.id);
-      onEnterPlatform?.(authenticatedUser);
-    }, 350);
+    }
   };
 
   return (
@@ -247,6 +298,86 @@ export default function LoginPage({
               {isVi ? "Trang Chủ" : "Landing"}
             </button>
           </div>
+
+          {/* Hộp chọn nhanh tài khoản hệ thống đã seed */}
+          <div style={{
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: "8px",
+            padding: "10px 12px",
+            marginBottom: "16px"
+          }}>
+            <div style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", marginBottom: "6px", display: "flex", justifyContent: "space-between" }}>
+              <span>{isVi ? "TÀI KHOẢN MẪU ĐÃ CÓ TRONG POSTGRESQL:" : "SEEDED POSTGRESQL ACCOUNTS:"}</span>
+              <span style={{ color: "#0284c7" }}>Pass: 123456</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+              {[
+                { key: "exec", label: "exec", name: isVi ? "Lãnh đạo" : "Executive", color: "#0891b2" },
+                { key: "admin", label: "admin", name: "Admin", color: "#d97706" },
+                { key: "manager", label: "manager", name: isVi ? "Quản lý" : "Manager", color: "#059669" },
+                { key: "ops", label: "ops", name: isVi ? "Nghiệp vụ" : "Operations", color: "#2563eb" },
+              ].map((acc) => (
+                <button
+                  key={acc.key}
+                  type="button"
+                  onClick={() => handleQuickSelect(acc.key, "123456")}
+                  style={{
+                    background: identifier === acc.key ? `${acc.color}15` : "#ffffff",
+                    border: `1.5px solid ${identifier === acc.key ? acc.color : "#cbd5e1"}`,
+                    borderRadius: "6px",
+                    padding: "6px 4px",
+                    cursor: "pointer",
+                    textAlign: "center",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  <div style={{ fontSize: "11.5px", fontWeight: "700", color: acc.color }}>{acc.label}</div>
+                  <div style={{ fontSize: "9.5px", color: "#64748b", marginTop: "2px" }}>{acc.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Thông báo lỗi nếu đăng nhập sai */}
+          {errorMessage && (
+            <div style={{
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#dc2626",
+              padding: "10px 14px",
+              borderRadius: "6px",
+              fontSize: "12.5px",
+              fontWeight: "600",
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}>
+              <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "14px" }}></i>
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Thông báo thành công */}
+          {successMessage && (
+            <div style={{
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              color: "#16a34a",
+              padding: "10px 14px",
+              borderRadius: "6px",
+              fontSize: "12.5px",
+              fontWeight: "600",
+              marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}>
+              <i className="fa-solid fa-circle-check" style={{ fontSize: "14px" }}></i>
+              <span>{successMessage}</span>
+            </div>
+          )}
 
           {/* Form Đăng Nhập */}
           <form onSubmit={handleSubmit}>
