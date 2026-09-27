@@ -5,10 +5,20 @@ Architecture: Hybrid GraphRAG Reasoning, Ontology Graph, Human-in-the-loop QC & 
 """
 
 import os
+import logging
+from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
+
+try:
+    from app.db.postgres.database import engine, AsyncSessionLocal
+except ImportError:
+    from db.postgres.database import engine, AsyncSessionLocal
 
 try:
     from app.db.mock_knowledge_db import (
@@ -27,10 +37,34 @@ except ImportError:
         LLMOPS_METRICS
     )
 
+try:
+    from app.api.v1.auth import router as auth_router
+except ImportError:
+    from api.v1.auth import router as auth_router
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: kiểm tra kết nối PostgreSQL. Shutdown: đóng engine."""
+    # Startup
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        logger.info("[OK] PostgreSQL connected successfully")
+        print("[OK] PostgreSQL connected successfully")
+    except Exception as e:
+        logger.warning(f"[WARN] PostgreSQL not available: {e}")
+        print(f"[WARN] PostgreSQL not available: {e}")
+    yield
+    # Shutdown
+    await engine.dispose()
+    logger.info("PostgreSQL connection pool closed")
+
+
 app = FastAPI(
     title="Graph Mind Enterprise Knowledge Observatory API",
     description="Python Backend Engine for Graph Mind (AEGIS EKMP) Platform",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 # Enable CORS for all local ports (3000, 3001, 5173, etc.)
@@ -41,6 +75,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Authentication routers (/api/v1/auth and /api/auth)
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 
 # --- Pydantic Schemas ---
 class CopilotQueryRequest(BaseModel):

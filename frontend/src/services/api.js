@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Graph Mind — API Service
  * Communicates with Python FastAPI backend (port 5000) with offline fallback
  */
@@ -49,6 +49,31 @@ export async function queryCopilot(query, lang = "en") {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, lang })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {}
+  return null;
+}
+
+export async function loginApi(identifier, password) {
+  const res = await fetch(`${API_BASE}/v1/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || "Đăng nhập không thành công.");
+  }
+  return data;
+}
+
+export async function getCurrentUserApi(token) {
+  try {
+    const res = await fetch(`${API_BASE}/v1/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
     if (res.ok) return await res.json();
   } catch (e) {}
