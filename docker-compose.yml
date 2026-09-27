@@ -15,7 +15,7 @@ services:
   #   ports:
   #     - "5432:5432"
   #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./postgres_data:/var/lib/postgresql/data
 
   # ============================================================================
   # NEO4J GRAPH DATABASE
@@ -31,7 +31,7 @@ services:
       - "7474:7474" # HTTP Browser
       - "7687:7687" # Bolt Protocol
     volumes:
-      - neo4j_data:/data
+      - ./neo4j_data:/data
 
   # ============================================================================
   # QDRANT VECTOR DATABASE
@@ -44,9 +44,4 @@ services:
       - "6333:6333" # REST API
       - "6334:6334" # gRPC
     volumes:
-      - qdrant_data:/qdrant/storage
-
-volumes:
-  # postgres_data:
-  neo4j_data:
-  qdrant_data:
+      - ./qdrant_data:/qdrant/storage

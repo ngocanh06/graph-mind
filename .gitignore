@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
+docker-compose.yml
+neo4j_data/
+qdrant_data/
