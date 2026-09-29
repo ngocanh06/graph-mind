@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function ReportsView({ onNavigate, t, lang, role = "executive" }) {
+export default function ReportsView({ onNavigate, t, lang, role = "executive", currentUser }) {
   const isVi = lang === "vi";
   const isSalesRole = role === "standard";
 
@@ -8,8 +8,9 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
   const [timeRange, setTimeRange] = useState("today");
   const [depth, setDepth] = useState("comprehensive");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [hasGeneratedReport, setHasGeneratedReport] = useState(!isSalesRole);
   const [generatedDate, setGeneratedDate] = useState(
-    isSalesRole ? "20 Th09 2026, 11:30" : "15 Sep 2026, 10:00"
+    isSalesRole ? "" : "15 Sep 2026, 10:00"
   );
   const [toastMsg, setToastMsg] = useState("");
   const [managerApproved, setManagerApproved] = useState(false);
@@ -24,13 +25,14 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
     setIsGenerating(true);
     showToast(
       isSalesRole
-        ? (isVi ? "Trợ lý AI đang quét nhật ký cuộc gọi, email và phiếu điều phối EDR..." : "AI scanning call logs, emails, and EDR dispatch tickets...")
+        ? (isVi ? "Trợ lý AI đang quét nhật ký cuộc gọi, email và dữ liệu tác nghiệp..." : "AI scanning call logs, emails, and activity data...")
         : (isVi ? "Đang tổng hợp dữ liệu từ 247 nguồn tri thức qua Hybrid GraphRAG..." : "Synthesizing 247 knowledge sources via Hybrid GraphRAG...")
     );
     setTimeout(() => {
       setIsGenerating(false);
+      setHasGeneratedReport(true);
       setGeneratedDate(
-        new Date().toLocaleDateString("en-GB", {
+        new Date().toLocaleDateString(isVi ? "vi-VN" : "en-GB", {
           day: "numeric",
           month: "short",
           year: "numeric",
@@ -40,7 +42,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
       );
       showToast(
         isSalesRole
-          ? (isVi ? "Đã tái lập Báo cáo ca tác nghiệp bán hàng hoàn chỉnh!" : "Sales shift report compiled successfully!")
+          ? (isVi ? "Đã tái lập Báo cáo ca tác nghiệp hoàn chỉnh!" : "Shift report compiled successfully!")
           : (isVi ? "Báo cáo Lãnh đạo đã được tạo thành công!" : "Executive Briefing synthesized and ready for review!")
       );
     }, 1100);
@@ -484,7 +486,9 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
                   </span>
                   <span className="rep-pill-tag rep-pill-neutral">
                     <i className="fa-solid fa-id-badge"></i>
-                    {isVi ? "Chuyên viên: Nguyễn V. Nam · Mã GM-088" : "Specialist: Nguyen V. Nam · ID GM-088"}
+                    {isVi
+                      ? `Chuyên viên: ${currentUser?.name || "Chuyên viên Nghiệp vụ"} · Mã @${currentUser?.username || "ops"}`
+                      : `Specialist: ${currentUser?.name || "Operations Specialist"} · ID @${currentUser?.username || "ops"}`}
                   </span>
                   {managerApproved ? (
                     <span className="rep-pill-tag rep-pill-green">
@@ -496,10 +500,15 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
                       <i className="fa-solid fa-hourglass-half"></i>
                       {isVi ? "Đang chờ Trưởng phòng duyệt" : "Pending Manager Sign-off"}
                     </span>
-                  ) : (
+                  ) : hasGeneratedReport ? (
                     <span className="rep-pill-tag rep-pill-neutral" style={{ color: "#2563eb", background: "rgba(37, 99, 235, 0.06)", borderColor: "rgba(37, 99, 235, 0.2)" }}>
                       <i className="fa-solid fa-pen-nib"></i>
                       {isVi ? "Bản thảo ca đang cập nhật" : "Current Active Shift Draft"}
+                    </span>
+                  ) : (
+                    <span className="rep-pill-tag rep-pill-neutral" style={{ color: "var(--text-4)", background: "var(--surface-2)" }}>
+                      <i className="fa-solid fa-clock"></i>
+                      {isVi ? "Chưa khởi tạo báo cáo" : "No report initialized"}
                     </span>
                   )}
                 </div>
@@ -509,8 +518,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
                 </h1>
                 <p style={{ fontSize: "13.5px", color: "var(--text-3)", margin: 0, lineHeight: 1.5 }}>
                   {isVi
-                    ? "Tổng hợp kết quả xử lý tài khoản khách hàng VIP, giữ chân doanh số và nhật ký tác nghiệp hợp đồng của Chuyên viên Nguyễn V. Nam"
-                    : "Comprehensive synthesis of VIP client account interventions, retention revenue, and shift execution logs"}
+                    ? `Tổng hợp kết quả xử lý và nhật ký tác nghiệp của ${currentUser?.name || "Chuyên viên Nghiệp vụ"}`
+                    : `Comprehensive operational log and shift synthesis for ${currentUser?.name || "Operations Specialist"}`}
                 </p>
               </div>
 
@@ -537,7 +546,9 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
 
                 <button
                   onClick={handleSubmitToManager}
+                  disabled={!hasGeneratedReport}
                   className="rep-btn primary-gradient"
+                  style={{ opacity: !hasGeneratedReport ? 0.6 : 1 }}
                   title={isVi ? "Gửi báo cáo lên Trưởng phòng Trần M. Anh" : "Submit report to Dept Manager"}
                 >
                   <i className="fa-solid fa-paper-plane"></i>
@@ -559,17 +570,17 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
               </div>
               <div>
                 <div className="rep-kpi-val">
-                  4 / 4
+                  {hasGeneratedReport ? "4 / 4" : "0 / 0"}
                   <span style={{ fontSize: "13px", fontWeight: "700", color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: "12px" }}>
-                    100% SLA
+                    {hasGeneratedReport ? "100% SLA" : "0% SLA"}
                   </span>
                 </div>
                 <div className="rep-progress-track">
-                  <div className="rep-progress-fill" style={{ width: "100%", background: "linear-gradient(90deg, #10b981, #059669)" }}></div>
+                  <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "100%" : "0%", background: "linear-gradient(90deg, #10b981, #059669)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
                   <i className="fa-solid fa-clock" style={{ fontSize: "11px", color: "var(--text-4)" }}></i>
-                  <span>{isVi ? "Tốc độ xử lý TB: 12 phút / ca" : "Avg turnaround: 12m"}</span>
+                  <span>{hasGeneratedReport ? (isVi ? "Tốc độ xử lý TB: 12 phút / ca" : "Avg turnaround: 12m") : (isVi ? "Tốc độ xử lý TB: --" : "Avg turnaround: --")}</span>
                 </div>
               </div>
             </div>
@@ -584,17 +595,17 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
               </div>
               <div>
                 <div className="rep-kpi-val" style={{ color: "#2563eb" }}>
-                  4.1 Tỷ VND
+                  {hasGeneratedReport ? "4.1 Tỷ VND" : "0 đ"}
                   <span style={{ fontSize: "13px", fontWeight: "700", color: "#2563eb", background: "rgba(37, 99, 235, 0.08)", padding: "2px 8px", borderRadius: "12px" }}>
-                    +2.4% MoM
+                    {hasGeneratedReport ? "+2.4% MoM" : "+0% MoM"}
                   </span>
                 </div>
                 <div className="rep-progress-track">
-                  <div className="rep-progress-fill" style={{ width: "88%", background: "linear-gradient(90deg, #38bdf8, #2563eb)" }}></div>
+                  <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "88%" : "0%", background: "linear-gradient(90deg, #38bdf8, #2563eb)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
                   <i className="fa-solid fa-building" style={{ fontSize: "11px", color: "var(--text-4)" }}></i>
-                  <span>ABC Corp (1.2B) & Delta Trading (2.9B)</span>
+                  <span>{hasGeneratedReport ? "ABC Corp (1.2B) & Delta Trading (2.9B)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
                 </div>
               </div>
             </div>
@@ -609,14 +620,14 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
               </div>
               <div>
                 <div className="rep-kpi-val">
-                  3 <span style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-3)" }}>{isVi ? "Bộ hoàn tất" : "Packets"}</span>
+                  {hasGeneratedReport ? "3" : "0"} <span style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-3)" }}>{isVi ? "Bộ hoàn tất" : "Packets"}</span>
                 </div>
                 <div className="rep-progress-track">
-                  <div className="rep-progress-fill" style={{ width: "75%", background: "linear-gradient(90deg, #fbbf24, #d97706)" }}></div>
+                  <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "75%" : "0%", background: "linear-gradient(90deg, #fbbf24, #d97706)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
                   <i className="fa-solid fa-tags" style={{ fontSize: "11px", color: "var(--text-4)" }}></i>
-                  <span>1 Báo giá Cloud · 1 Phụ lục · 1 EDR</span>
+                  <span>{hasGeneratedReport ? "1 Báo giá Cloud · 1 Phụ lục · 1 EDR" : (isVi ? "Chưa phát sinh chứng từ & báo giá" : "No dispatches")}</span>
                 </div>
               </div>
             </div>
@@ -631,17 +642,17 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
               </div>
               <div>
                 <div className="rep-kpi-val" style={{ color: "#059669" }}>
-                  98.5 <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-4)" }}>/ 100</span>
+                  {hasGeneratedReport ? "98.5" : "--"} <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-4)" }}>/ 100</span>
                   <span style={{ fontSize: "12px", fontWeight: "700", color: "#0891b2", background: "rgba(6, 182, 212, 0.1)", padding: "2px 8px", borderRadius: "12px" }}>
-                    Hạng A+
+                    {hasGeneratedReport ? "Hạng A+" : (isVi ? "Chưa xếp hạng" : "Unranked")}
                   </span>
                 </div>
                 <div className="rep-progress-track">
-                  <div className="rep-progress-fill" style={{ width: "98.5%", background: "linear-gradient(90deg, #2dd4bf, #059669)" }}></div>
+                  <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "98.5%" : "0%", background: "linear-gradient(90deg, #2dd4bf, #059669)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
                   <i className="fa-solid fa-medal" style={{ fontSize: "11px", color: "#0891b2" }}></i>
-                  <span>{isVi ? "Top 5% năng suất khối Kinh doanh" : "Top 5% frontline productivity"}</span>
+                  <span>{hasGeneratedReport ? (isVi ? "Top 5% năng suất khối Kinh doanh" : "Top 5% frontline productivity") : (isVi ? "Đang chờ dữ liệu đánh giá ca" : "Pending shift assessment")}</span>
                 </div>
               </div>
             </div>
@@ -736,319 +747,370 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive" })
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Row 1 */}
-                  <tr>
-                    <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
-                      09:15
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
-                          ABC
+                  {!hasGeneratedReport ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: "center", padding: "48px 20px", color: "var(--text-4)" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                          <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)" }}>
+                            <i className="fa-solid fa-clipboard-list" style={{ fontSize: "20px" }}></i>
+                          </div>
+                          <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-2)" }}>
+                            {isVi ? "Chưa có nhật ký tác nghiệp nào trong ca này" : "No shift activity records logged yet"}
+                          </span>
+                          <span style={{ fontSize: "12px", color: "var(--text-4)", maxWidth: "460px", lineHeight: "1.5" }}>
+                            {isVi
+                              ? "Các hành động xử lý ca cảnh báo, tạo báo giá hoặc tương tác Copilot sẽ tự động ghi vết và xuất hiện tại đây."
+                              : "Action items, quotes, and Copilot workflows will automatically be tracked and logged here."}
+                          </span>
                         </div>
-                        <div>
-                          <div style={{ fontWeight: "700", fontSize: "13.5px" }}>ABC Corporation</div>
-                          <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Tier-1 Enterprise</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
-                        {isVi ? "Xử lý cảnh báo sụt giảm đơn hàng (-32%)" : "Order cadence drop alert (-32%)"}
-                      </div>
-                      <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
-                        {isVi ? "Rủi ro phơi nhiễm hợp đồng CT-2026-18 (1.2B)" : "Contract CT-2026-18 expiration exposure"}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
-                        {isVi
-                          ? "Copilot tra cứu tiền lệ CT-2024; áp dụng gói chiết khấu 10% giữ chân tài khoản; xuất phiếu EDR"
-                          : "Copilot matched CT-2024 precedent; applied 10% retention package; issued EDR ticket"}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
-                        #EDR-8821
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <span className="rep-status-chip" style={{ background: "rgba(16, 185, 129, 0.1)", color: "#059669" }}>
-                        <span className="rep-status-dot" style={{ background: "#059669" }}></span>
-                        {isVi ? "Đã Giải Quyết" : "Resolved"}
-                      </span>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {/* Row 1 */}
+                      <tr>
+                        <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
+                          09:15
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
+                              ABC
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>ABC Corporation</div>
+                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Tier-1 Enterprise</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
+                            {isVi ? "Xử lý cảnh báo sụt giảm đơn hàng (-32%)" : "Order cadence drop alert (-32%)"}
+                          </div>
+                          <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
+                            {isVi ? "Rủi ro phơi nhiễm hợp đồng CT-2026-18 (1.2B)" : "Contract CT-2026-18 expiration exposure"}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                            {isVi
+                              ? "Copilot tra cứu tiền lệ CT-2024; áp dụng gói chiết khấu 10% giữ chân tài khoản; xuất phiếu EDR"
+                              : "Copilot matched CT-2024 precedent; applied 10% retention package; issued EDR ticket"}
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
+                            #EDR-8821
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <span className="rep-status-chip" style={{ background: "rgba(16, 185, 129, 0.1)", color: "#059669" }}>
+                            <span className="rep-status-dot" style={{ background: "#059669" }}></span>
+                            {isVi ? "Đã Giải Quyết" : "Resolved"}
+                          </span>
+                        </td>
+                      </tr>
 
-                  {/* Row 2 */}
-                  <tr>
-                    <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
-                      10:30
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.1)", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
-                          DT
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Delta Trading Ltd</div>
-                          <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Phân Phối Độc Quyền</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
-                        {isVi ? "Nguy cơ rời bỏ dòng Sản phẩm B (-44%)" : "Churn risk on Product line B (-44%)"}
-                      </div>
-                      <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
-                        {isVi ? "Tài khoản đối tác thương mại 2.9 Tỷ VND" : "2.9B VND commercial distribution account"}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
-                        {isVi
-                          ? "Rà soát điều khoản thỏa thuận độc quyền; gửi thư mời làm việc trực tiếp với Giám đốc Mua hàng"
-                          : "Audited exclusivity agreement clauses; scheduled direct sync with Procurement Director"}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
-                        #EDR-8825
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <span className="rep-status-chip" style={{ background: "rgba(245, 158, 11, 0.1)", color: "#d97706" }}>
-                        <span className="rep-status-dot" style={{ background: "#d97706" }}></span>
-                        {isVi ? "Đang Theo Dõi" : "In Progress"}
-                      </span>
-                    </td>
-                  </tr>
+                      {/* Row 2 */}
+                      <tr>
+                        <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
+                          10:30
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.1)", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
+                              DT
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Delta Trading Ltd</div>
+                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Phân Phối Độc Quyền</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
+                            {isVi ? "Nguy cơ rời bỏ dòng Sản phẩm B (-44%)" : "Churn risk on Product line B (-44%)"}
+                          </div>
+                          <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
+                            {isVi ? "Tài khoản đối tác thương mại 2.9 Tỷ VND" : "2.9B VND commercial distribution account"}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                            {isVi
+                              ? "Rà soát điều khoản thỏa thuận độc quyền; gửi thư mời làm việc trực tiếp với Giám đốc Mua hàng"
+                              : "Audited exclusivity agreement clauses; scheduled direct sync with Procurement Director"}
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
+                            #EDR-8825
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <span className="rep-status-chip" style={{ background: "rgba(245, 158, 11, 0.1)", color: "#d97706" }}>
+                            <span className="rep-status-dot" style={{ background: "#d97706" }}></span>
+                            {isVi ? "Đang Theo Dõi" : "In Progress"}
+                          </span>
+                        </td>
+                      </tr>
 
-                  {/* Row 3 */}
-                  <tr>
-                    <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
-                      11:15
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(6, 182, 212, 0.1)", color: "#0891b2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
-                          VP
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Tập đoàn Dược Phẩm V</div>
-                          <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Dược Phẩm & Y Tế</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
-                        {isVi ? "Phát hành báo giá gói mở rộng Cloud" : "Issued Cloud enterprise expansion quote"}
-                      </div>
-                      <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
-                        {isVi ? "Nâng cấp hạ tầng bảo mật dữ liệu GxP" : "GxP compliant data infrastructure"}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
-                        {isVi
-                          ? "Lập bảng báo giá chính thức 450 triệu VND gửi qua email chính thức kèm chứng thư số"
-                          : "Dispatched official 450M VND quotation via verified secure email with digital certificate"}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
-                        #BG-2026-09
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <span className="rep-status-chip" style={{ background: "rgba(37, 99, 235, 0.08)", color: "#2563eb" }}>
-                        <span className="rep-status-dot" style={{ background: "#2563eb" }}></span>
-                        {isVi ? "Đã Gửi Báo Giá" : "Dispatched"}
-                      </span>
-                    </td>
-                  </tr>
+                      {/* Row 3 */}
+                      <tr>
+                        <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
+                          11:15
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(6, 182, 212, 0.1)", color: "#0891b2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
+                              VP
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Tập đoàn Dược Phẩm V</div>
+                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Dược Phẩm & Y Tế</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
+                            {isVi ? "Phát hành báo giá gói mở rộng Cloud" : "Issued Cloud enterprise expansion quote"}
+                          </div>
+                          <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
+                            {isVi ? "Nâng cấp hạ tầng bảo mật dữ liệu GxP" : "GxP compliant data infrastructure"}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                            {isVi
+                              ? "Lập bảng báo giá chính thức 450 triệu VND gửi qua email chính thức kèm chứng thư số"
+                              : "Dispatched official 450M VND quotation via verified secure email with digital certificate"}
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
+                            #BG-2026-09
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <span className="rep-status-chip" style={{ background: "rgba(37, 99, 235, 0.08)", color: "#2563eb" }}>
+                            <span className="rep-status-dot" style={{ background: "#2563eb" }}></span>
+                            {isVi ? "Đã Gửi Báo Giá" : "Dispatched"}
+                          </span>
+                        </td>
+                      </tr>
 
-                  {/* Row 4 */}
-                  <tr>
-                    <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
-                      14:00
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.1)", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
-                          SM
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Logistics Sao Mai</div>
-                          <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Đối tác Vận tải</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
-                        {isVi ? "Tháo gỡ vướng mắc thanh toán công nợ 45 ngày" : "Negotiated 45-day credit terms annex"}
-                      </div>
-                      <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
-                        {isVi ? "Đối soát công nợ & bổ sung cam kết bảo lãnh" : "Receivables reconciliation & bank guarantee"}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
-                        {isVi
-                          ? "Hoàn thiện phụ lục bổ sung cam kết bảo lãnh ngân hàng, hoàn tất ký nháy giữa hai bên"
-                          : "Finalized annex with bank guarantee commitment, completed preliminary signatures"}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
-                        #PL-2026-44
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <span className="rep-status-chip" style={{ background: "rgba(16, 185, 129, 0.1)", color: "#059669" }}>
-                        <span className="rep-status-dot" style={{ background: "#059669" }}></span>
-                        {isVi ? "Hoàn Tất Ký" : "Completed"}
-                      </span>
-                    </td>
-                  </tr>
+                      {/* Row 4 */}
+                      <tr>
+                        <td style={{ fontFamily: "var(--f-mono)", fontSize: "12px", fontWeight: "700", color: "#2563eb" }}>
+                          14:00
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.1)", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
+                              SM
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Logistics Sao Mai</div>
+                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Đối tác Vận tải</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: "600", color: "var(--text-1)" }}>
+                            {isVi ? "Tháo gỡ vướng mắc thanh toán công nợ 45 ngày" : "Negotiated 45-day credit terms annex"}
+                          </div>
+                          <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
+                            {isVi ? "Đối soát công nợ & bổ sung cam kết bảo lãnh" : "Receivables reconciliation & bank guarantee"}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                            {isVi
+                              ? "Hoàn thiện phụ lục bổ sung cam kết bảo lãnh ngân hàng, hoàn tất ký nháy giữa hai bên"
+                              : "Finalized annex with bank guarantee commitment, completed preliminary signatures"}
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0284c7", background: "rgba(14, 165, 233, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
+                            #PL-2026-44
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <span className="rep-status-chip" style={{ background: "rgba(16, 185, 129, 0.1)", color: "#059669" }}>
+                            <span className="rep-status-dot" style={{ background: "#059669" }}></span>
+                            {isVi ? "Hoàn Tất Ký" : "Completed"}
+                          </span>
+                        </td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
           {/* 5. OFFICIAL DOSSIER REPORT DOCUMENT */}
-          <div className="rep-doc-dossier">
-            <div className="rep-doc-stripe"></div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
-              <div>
-                <div style={{ fontSize: "11.5px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <i className="fa-solid fa-building-circle-check"></i>
-                  GRAPH MIND · KHỐI KINH DOANH & PHÁT TRIỂN DOANH NGHIỆP
-                </div>
-                <h2 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-1)", margin: "4px 0 2px 0", letterSpacing: "-0.01em" }}>
-                  {isVi ? "Văn Bản Báo Cáo Tác Nghiệp Ca Làm Việc — Ngày 20/09/2026" : "Sales Operations Shift Dossier — 20 Sep 2026"}
-                </h2>
-                <div style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "4px" }}>
-                  {isVi ? "Người lập:" : "Reporter:"} <b style={{ color: "var(--text-1)" }}>Nguyễn V. Nam (Chuyên viên Kinh doanh)</b> · {isVi ? "Quản lý:" : "Supervisor:"} <b style={{ color: "var(--text-1)" }}>Trần M. Anh (Trưởng phòng)</b> · {isVi ? "Cập nhật:" : "Synthesized:"} {generatedDate}
-                </div>
-              </div>
-
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontFamily: "var(--f-mono)", fontSize: "11px", color: "var(--text-4)", background: "var(--surface-2)", padding: "4px 10px", borderRadius: "6px", border: "1px solid var(--border)" }}>
-                  DOC-ID: #GM-EOD-2026-0920
-                </span>
-              </div>
-            </div>
-
-            {/* Section I */}
-            <div>
-              <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                <i className="fa-solid fa-circle-check"></i>
-                I. {isVi ? "TỔNG QUAN KẾT QUẢ CÔNG VIỆC TRONG CA" : "SHIFT PERFORMANCE SUMMARY"}
-              </div>
-              <div style={{ background: "var(--surface-2)", padding: "14px 18px", borderRadius: "10px", border: "1px solid var(--border-soft)", fontSize: "13.5px", lineHeight: "1.65", color: "var(--text-1)" }}>
-                {isVi
-                  ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao 42 tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm 4 ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản ABC Corporation (1.2 tỷ VND) và kiểm soát rủi ro phân phối tại Delta Trading Ltd (2.9 tỷ VND)."
-                  : "During today's operational shift, the specialist monitored 42 assigned enterprise accounts. Handled and resolved 4 high-priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for ABC Corporation ($1.2B VND) and mitigated distribution channel risks for Delta Trading ($2.9B VND)."}
-              </div>
-            </div>
-
-            {/* Section II */}
-            <div>
-              <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                <i className="fa-solid fa-lightbulb"></i>
-                II. {isVi ? "ĐỀ XUẤT & KIẾN NGHỊ GỬI TRƯỞNG PHÒNG TRẦN M. ANH" : "ESCALATIONS & RECOMMENDATIONS"}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", shrink: 0, marginTop: "2px" }}>
-                    1
-                  </div>
-                  <div style={{ fontSize: "13px", lineHeight: "1.55", color: "var(--text-1)" }}>
-                    <b style={{ color: "#2563eb" }}>{isVi ? "Cấp hạn mức duyệt chiết khấu nhanh (10% - 12%):" : "Fast-Track Discount Authorization (10% - 12%):"}</b>{" "}
-                    {isVi
-                      ? "Đề xuất Trưởng phòng xem xét cấp thẩm quyền áp dụng mức chiết khấu 10% - 12% trực tiếp trong hợp đồng gia hạn CT-2026-18 nếu khách hàng ABC Corp cam kết kỳ hạn 24 tháng trước ngày 30/09."
-                      : "Request managerial pre-approval for a 10%-12% volume rebate on CT-2026-18 if ABC Corp commits to a 24-month contract before Sep 30."}
-                  </div>
-                </div>
-
-                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", shrink: 0, marginTop: "2px" }}>
-                    2
-                  </div>
-                  <div style={{ fontSize: "13px", lineHeight: "1.55", color: "var(--text-1)" }}>
-                    <b style={{ color: "#2563eb" }}>{isVi ? "Đôn đốc Pháp chế phê duyệt bảo lãnh thanh toán:" : "Expedite Legal Review on Credit Guarantee:"}</b>{" "}
-                    {isVi
-                      ? "Nhờ Trưởng phòng đôn đốc bộ phận Pháp chế phê duyệt phụ lục bảo lãnh thanh toán của Logistics Sao Mai trong sáng mai để hoàn tất ký kết."
-                      : "Prompt Legal department to expedite approval on Logistics Sao Mai's credit guarantee annex tomorrow morning."}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Section III */}
-            <div>
-              <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                <i className="fa-solid fa-calendar-check"></i>
-                III. {isVi ? "KẾ HOẠCH TÁC NGHIỆP CA TIẾP THEO" : "UPCOMING SHIFT ACTION PLAN"}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "10px" }}>
-                <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
-                  <b style={{ color: "#2563eb" }}>09:00:</b> {isVi ? "Gọi điện xác nhận lịch họp với GĐ Mua hàng ABC Corp." : "Confirm meeting schedule with Procurement Director at ABC Corp."}
-                </div>
-                <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
-                  <b style={{ color: "#2563eb" }}>11:00:</b> {isVi ? "Hoàn tất hợp đồng điện tử đã ký nháy cho Logistics Sao Mai." : "Execute countersigned digital contract for Logistics Sao Mai."}
-                </div>
-                <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
-                  <b style={{ color: "#2563eb" }}>14:30:</b> {isVi ? "Rà soát 5 hợp đồng đối tác sẽ hết hạn trong Quý 4/2026." : "Audit 5 enterprise partner contracts maturing in Q4 2026."}
-                </div>
-              </div>
-            </div>
-
-            {/* Section IV: Manager Sign-off Certificate Box */}
-            <div className="rep-sign-box">
-              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "linear-gradient(135deg, #059669 0%, #10b981 100%)", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "800", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)" }}>
-                  TA
+          {!hasGeneratedReport ? (
+            <div className="rep-doc-dossier" style={{ textAlign: "center", padding: "48px 24px" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", maxWidth: "560px", margin: "0 auto" }}>
+                <div style={{ width: "54px", height: "54px", borderRadius: "14px", background: "rgba(37, 99, 235, 0.08)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>
+                  <i className="fa-solid fa-file-signature"></i>
                 </div>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "14px", fontWeight: "800", color: "var(--text-1)" }}>
-                      {isVi ? "Trần M. Anh · Trưởng Phòng Quản Lý" : "Tran M. Anh · Department Head"}
-                    </span>
-                    <span className="rep-status-chip" style={{ background: managerApproved ? "rgba(16, 185, 129, 0.15)" : "rgba(37, 99, 235, 0.1)", color: managerApproved ? "#059669" : "#2563eb" }}>
-                      <i className={`fa-solid ${managerApproved ? "fa-certificate" : "fa-signature"}`}></i>
-                      {managerApproved ? (isVi ? "ĐÃ PHÊ DUYỆT & KÝ SỐ" : "VERIFIED & SIGNED") : (isVi ? "SẴN SÀNG TIẾP NHẬN" : "READY FOR REVIEW")}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: "12.5px", color: "var(--text-2)", margin: "4px 0 0 0", lineHeight: 1.45, maxWidth: "680px" }}>
-                    {managerApproved
-                      ? (isVi
-                        ? "“Đã xem và phê duyệt toàn bộ báo cáo ca của Chuyên viên Nam. Đánh giá cao tốc độ phản hồi case ABC Corp. Đồng ý chủ trương chiết khấu 10% kèm cam kết hợp đồng 24 tháng.”"
-                        : "“Reviewed and verified Nam's shift report. Commendable response speed on ABC Corp account. Approved 10% discount policy for 24-month contract renewal.”")
-                      : (isVi
-                        ? "“Nhấn nút 'Trình Duyệt Ngay' bên phải để hoàn tất gửi báo cáo ca lên hệ thống đánh giá KPI của Trưởng phòng.”"
-                        : "“Click 'Submit Now' on the right to transmit your shift dossier for formal managerial sign-off.”")}
+                  <h3 style={{ fontSize: "18px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0" }}>
+                    {isVi ? "Chưa Khởi Tạo Báo Cáo Ca Làm Việc" : "Shift Dossier Not Yet Generated"}
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "var(--text-3)", lineHeight: "1.6", margin: 0 }}>
+                    {isVi
+                      ? `Hệ thống chưa tạo văn bản báo cáo cho ca làm việc của ${currentUser?.name || "Chuyên viên Nghiệp vụ"}. Bạn có thể bấm nút "AI Soạn Báo Cáo" phía trên để Copilot tự động quét dữ liệu và lập báo cáo.`
+                      : `No shift dossier has been compiled yet. Click the "AI Compile Report" button above to synthesize real-time logs into an official dossier.`}
                   </p>
-                  <div style={{ fontSize: "11px", color: "var(--text-4)", fontFamily: "var(--f-mono)", marginTop: "4px" }}>
-                    Mã xác thực số: SHA256: 7f89b2c...a889 · Khối phê duyệt nội bộ
+                </div>
+                <button
+                  onClick={handleGenerateBriefing}
+                  disabled={isGenerating}
+                  className="rep-btn magic"
+                  style={{ marginTop: "8px" }}
+                >
+                  <i className={`fa-solid ${isGenerating ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles"}`}></i>
+                  <span>{isGenerating ? (isVi ? "AI Đang Soạn..." : "Compiling...") : (isVi ? "AI Soạn Báo Cáo Ngay" : "Compile Report Now")}</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rep-doc-dossier">
+              <div className="rep-doc-stripe"></div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
+                <div>
+                  <div style={{ fontSize: "11.5px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <i className="fa-solid fa-building-circle-check"></i>
+                    GRAPH MIND · KHỐI KINH DOANH & PHÁT TRIỂN DOANH NGHIỆP
+                  </div>
+                  <h2 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-1)", margin: "4px 0 2px 0", letterSpacing: "-0.01em" }}>
+                    {isVi ? "Văn Bản Báo Cáo Tác Nghiệp Ca Làm Việc" : "Sales Operations Shift Dossier"}
+                  </h2>
+                  <div style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "4px" }}>
+                    {isVi ? "Người lập:" : "Reporter:"} <b style={{ color: "var(--text-1)" }}>{currentUser?.name || "Chuyên viên Nghiệp vụ"}</b> · {isVi ? "Quản lý:" : "Supervisor:"} <b style={{ color: "var(--text-1)" }}>Trần M. Anh (Trưởng phòng)</b> · {isVi ? "Cập nhật:" : "Synthesized:"} {generatedDate}
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontFamily: "var(--f-mono)", fontSize: "11px", color: "var(--text-4)", background: "var(--surface-2)", padding: "4px 10px", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                    DOC-ID: #GM-EOD-2026-0920
+                  </span>
+                </div>
+              </div>
+
+              {/* Section I */}
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                  <i className="fa-solid fa-circle-check"></i>
+                  I. {isVi ? "TỔNG QUAN KẾT QUẢ CÔNG VIỆC TRONG CA" : "SHIFT PERFORMANCE SUMMARY"}
+                </div>
+                <div style={{ background: "var(--surface-2)", padding: "14px 18px", borderRadius: "10px", border: "1px solid var(--border-soft)", fontSize: "13.5px", lineHeight: "1.65", color: "var(--text-1)" }}>
+                  {isVi
+                    ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản ABC Corporation (1.2 tỷ VND) và kiểm soát rủi ro phân phối tại Delta Trading Ltd (2.9 tỷ VND)."
+                    : "During today's operational shift, the specialist monitored assigned enterprise accounts. Handled and resolved priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for ABC Corporation ($1.2B VND) and mitigated distribution channel risks for Delta Trading ($2.9B VND)."}
+                </div>
+              </div>
+
+              {/* Section II */}
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                  <i className="fa-solid fa-lightbulb"></i>
+                  II. {isVi ? "ĐỀ XUẤT & KIẾN NGHỊ GỬI TRƯỞNG PHÒNG TRẦN M. ANH" : "ESCALATIONS & RECOMMENDATIONS"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", shrink: 0, marginTop: "2px" }}>
+                      1
+                    </div>
+                    <div style={{ fontSize: "13px", lineHeight: "1.55", color: "var(--text-1)" }}>
+                      <b style={{ color: "#2563eb" }}>{isVi ? "Cấp hạn mức duyệt chiết khấu nhanh (10% - 12%):" : "Fast-Track Discount Authorization (10% - 12%):"}</b>{" "}
+                      {isVi
+                        ? "Đề xuất Trưởng phòng xem xét cấp thẩm quyền áp dụng mức chiết khấu 10% - 12% trực tiếp trong hợp đồng gia hạn CT-2026-18 nếu khách hàng ABC Corp cam kết kỳ hạn 24 tháng trước ngày 30/09."
+                        : "Request managerial pre-approval for a 10%-12% volume rebate on CT-2026-18 if ABC Corp commits to a 24-month contract before Sep 30."}
+                    </div>
+                  </div>
+
+                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", shrink: 0, marginTop: "2px" }}>
+                      2
+                    </div>
+                    <div style={{ fontSize: "13px", lineHeight: "1.55", color: "var(--text-1)" }}>
+                      <b style={{ color: "#2563eb" }}>{isVi ? "Đôn đốc Pháp chế phê duyệt bảo lãnh thanh toán:" : "Expedite Legal Review on Credit Guarantee:"}</b>{" "}
+                      {isVi
+                        ? "Nhờ Trưởng phòng đôn đốc bộ phận Pháp chế phê duyệt phụ lục bảo lãnh thanh toán của Logistics Sao Mai trong sáng mai để hoàn tất ký kết."
+                        : "Prompt Legal department to expedite approval on Logistics Sao Mai's credit guarantee annex tomorrow morning."}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {!managerApproved && (
-                <button
-                  onClick={handleSubmitToManager}
-                  className="rep-btn primary-gradient"
-                  style={{ padding: "10px 20px" }}
-                >
-                  <i className="fa-solid fa-signature"></i>
-                  <span>{isVi ? "Trình Duyệt Ngay" : "Submit Now"}</span>
-                </button>
-              )}
+              {/* Section III */}
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                  <i className="fa-solid fa-calendar-check"></i>
+                  III. {isVi ? "KẾ HOẠCH TÁC NGHIỆP CA TIẾP THEO" : "UPCOMING SHIFT ACTION PLAN"}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "10px" }}>
+                  <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
+                    <b style={{ color: "#2563eb" }}>09:00:</b> {isVi ? "Gọi điện xác nhận lịch họp với GĐ Mua hàng ABC Corp." : "Confirm meeting schedule with Procurement Director at ABC Corp."}
+                  </div>
+                  <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
+                    <b style={{ color: "#2563eb" }}>11:00:</b> {isVi ? "Hoàn tất hợp đồng điện tử đã ký nháy cho Logistics Sao Mai." : "Execute countersigned digital contract for Logistics Sao Mai."}
+                  </div>
+                  <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
+                    <b style={{ color: "#2563eb" }}>14:30:</b> {isVi ? "Rà soát 5 hợp đồng đối tác sẽ hết hạn trong Quý 4/2026." : "Audit 5 enterprise partner contracts maturing in Q4 2026."}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section IV: Manager Sign-off Certificate Box */}
+              <div className="rep-sign-box">
+                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                  <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "linear-gradient(135deg, #059669 0%, #10b981 100%)", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "800", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)" }}>
+                    TA
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "14px", fontWeight: "800", color: "var(--text-1)" }}>
+                        {isVi ? "Trần M. Anh · Trưởng Phòng Quản Lý" : "Tran M. Anh · Department Head"}
+                      </span>
+                      <span className="rep-status-chip" style={{ background: managerApproved ? "rgba(16, 185, 129, 0.15)" : "rgba(37, 99, 235, 0.1)", color: managerApproved ? "#059669" : "#2563eb" }}>
+                        <i className={`fa-solid ${managerApproved ? "fa-certificate" : "fa-signature"}`}></i>
+                        {managerApproved ? (isVi ? "ĐÃ PHÊ DUYỆT & KÝ SỐ" : "VERIFIED & SIGNED") : (isVi ? "SẴN SÀNG TIẾP NHẬN" : "READY FOR REVIEW")}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: "12.5px", color: "var(--text-2)", margin: "4px 0 0 0", lineHeight: 1.45, maxWidth: "680px" }}>
+                      {managerApproved
+                        ? (isVi
+                          ? `“Đã xem và phê duyệt toàn bộ báo cáo ca của ${currentUser?.name || "Chuyên viên"}. Đánh giá cao tốc độ phản hồi. Đồng ý chủ trương phương án tác nghiệp.”`
+                          : `“Reviewed and verified ${currentUser?.name || "Specialist"}'s shift report. Commendable response speed. Approved operational policies.”`)
+                        : (isVi
+                          ? "“Nhấn nút 'Trình Duyệt Ngay' bên phải để hoàn tất gửi báo cáo ca lên hệ thống đánh giá KPI của Trưởng phòng.”"
+                          : "“Click 'Submit Now' on the right to transmit your shift dossier for formal managerial sign-off.”")}
+                    </p>
+                    <div style={{ fontSize: "11px", color: "var(--text-4)", fontFamily: "var(--f-mono)", marginTop: "4px" }}>
+                      Mã xác thực số: SHA256: 7f89b2c...a889 · Khối phê duyệt nội bộ
+                    </div>
+                  </div>
+                </div>
+
+                {!managerApproved && (
+                  <button
+                    onClick={handleSubmitToManager}
+                    className="rep-btn primary-gradient"
+                    style={{ padding: "10px 20px" }}
+                  >
+                    <i className="fa-solid fa-signature"></i>
+                    <span>{isVi ? "Trình Duyệt Ngay" : "Submit Now"}</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     );

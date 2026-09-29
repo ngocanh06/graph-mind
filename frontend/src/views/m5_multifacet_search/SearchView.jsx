@@ -32,8 +32,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     setTimeout(() => setToastMsg(""), 3500);
   };
 
-  // Danh sách các ca tác nghiệp cần xử lý trong ngày của nhân viên
-  const [assignedTasks, setAssignedTasks] = useState([
+  // Danh sách các ca tác nghiệp cần xử lý trong ngày của nhân viên (Mặc định trống cho role standard)
+  const [assignedTasks, setAssignedTasks] = useState(isSalesRole ? [] : [
     {
       id: "task-1",
       priority: "CRITICAL",
@@ -92,6 +92,13 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       status: "PENDING"
     }
   ]);
+
+  useEffect(() => {
+    setActiveTab(role === "standard" ? "tasks" : "search");
+    if (role === "standard") {
+      setAssignedTasks([]);
+    }
+  }, [role]);
 
   const handleOpenEmailModal = (task) => {
     setSelectedTaskAction(task);
@@ -270,35 +277,37 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       {(() => {
         const PERSONA = {
           standard: {
-            initials: "NN",
+            initials: currentUser?.avatar || "OP",
             bgGradient: "linear-gradient(135deg, #2563eb, #0284c7)",
             shadowColor: "rgba(37, 99, 235, 0.25)",
-            title: isVi ? "Tác Nghiệp Khách Hàng — Nguyễn V. Nam" : "Client Operations Hub — Nguyen V. Nam",
-            badge: isVi ? "CHUYÊN VIÊN KINH DOANH" : "SALES EXECUTIVE",
+            title: isVi
+              ? `Tác Nghiệp Khách Hàng — ${currentUser?.name || "Chuyên viên Nghiệp vụ"}`
+              : `Client Operations Hub — ${currentUser?.name || "Operations Specialist"}`,
+            badge: isVi ? (currentUser?.badge || "CHUYÊN VIÊN NGHIỆP VỤ") : "OPERATIONS SPECIALIST",
             badgeColor: "#2563eb",
             badgeBg: "rgba(37, 99, 235, 0.08)",
             badgeBorder: "rgba(37, 99, 235, 0.2)",
             subtitle: isVi
-              ? "Phòng Kinh doanh & Khách hàng Doanh nghiệp · Ca làm việc: 08:00 - 17:30 · Phân quyền: Nghiệp vụ Bán hàng (Sales Tier)"
-              : "Corporate Sales & Account Management · Shift: 08:00 - 17:30 · Sales Access Tier",
+              ? `${currentUser?.department || "Phòng Nghiệp vụ & Vận hành"} · Ca làm việc: 08:00 - 17:30 · Phân quyền: Nghiệp vụ (Operations Tier)`
+              : `${currentUser?.departmentEn || "Operations Department"} · Shift: 08:00 - 17:30 · Operations Access Tier`,
             tabTasksLabel: isVi ? "Ca Việc Của Tôi" : "My Assigned Cases",
             tabSearchLabel: isVi ? "Tra Cứu Quy Trình & Hợp Đồng" : "Search & Evidence",
             metric1Label: isVi ? "Hồ sơ cần xử lý hôm nay" : "Active Cases Today",
-            metric1Val: `${pendingCount} / ${assignedTasks.length} ca`,
-            metric1Sub: isVi ? "2 ca mức độ nghiêm trọng cao" : "2 high-priority alerts",
-            metric1Color: "#dc2626",
+            metric1Val: assignedTasks.length > 0 ? `${pendingCount} / ${assignedTasks.length} ca` : "0 / 0 ca",
+            metric1Sub: assignedTasks.length > 0 ? (isVi ? `${pendingCount} ca cần xử lý` : `${pendingCount} pending`) : (isVi ? "Chưa có ca việc cần xử lý" : "No active cases"),
+            metric1Color: assignedTasks.length > 0 ? "#dc2626" : "var(--text-3)",
             metric2Label: isVi ? "Thời gian xử lý trung bình" : "Avg Resolution SLA",
-            metric2Val: "1.4 giờ (SLA < 2h)",
-            metric2Sub: isVi ? "✓ Đạt chuẩn cam kết dịch vụ" : "Within enterprise SLA",
-            metric2Color: "#059669",
+            metric2Val: assignedTasks.length > 0 ? "1.4 giờ (SLA < 2h)" : "--",
+            metric2Sub: assignedTasks.length > 0 ? (isVi ? "✓ Đạt chuẩn cam kết dịch vụ" : "Within enterprise SLA") : (isVi ? "Chưa ghi nhận ca làm việc" : "No active shifts"),
+            metric2Color: assignedTasks.length > 0 ? "#059669" : "var(--text-3)",
             metric3Label: isVi ? "Khách hàng & Hợp đồng phụ trách" : "Assigned Accounts",
-            metric3Val: "18 đơn vị",
-            metric3Sub: isVi ? "Bao gồm VIP ABC Corporation" : "Including VIP ABC Corp",
-            metric3Color: "var(--cyan)",
+            metric3Val: assignedTasks.length > 0 ? "18 đơn vị" : "0 đơn vị",
+            metric3Sub: assignedTasks.length > 0 ? (isVi ? "Bao gồm VIP ABC Corporation" : "Including VIP ABC Corp") : (isVi ? "Chưa gán tài khoản phụ trách" : "No accounts assigned"),
+            metric3Color: assignedTasks.length > 0 ? "var(--cyan)" : "var(--text-3)",
             metric4Label: isVi ? "Trợ lực bởi AI Copilot" : "AI Copilot Assistance",
-            metric4Val: "89.4%",
-            metric4Sub: isVi ? "Tiết kiệm ~2.5 giờ làm việc/ngày" : "Saves ~2.5 hours/day",
-            metric4Color: "#2563eb",
+            metric4Val: assignedTasks.length > 0 ? "89.4%" : "--",
+            metric4Sub: assignedTasks.length > 0 ? (isVi ? "Tiết kiệm ~2.5 giờ làm việc/ngày" : "Saves ~2.5 hours/day") : (isVi ? "Chưa có tương tác cùng AI" : "No AI sessions logged"),
+            metric4Color: assignedTasks.length > 0 ? "#2563eb" : "var(--text-3)",
           },
           knowledge_manager: {
             initials: "TA",
@@ -664,7 +673,46 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
 
           {/* Cards Ca Việc */}
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {assignedTasks.map((task) => {
+            {assignedTasks.length === 0 ? (
+              <div style={{
+                background: "var(--surface)",
+                border: "1.5px dashed var(--border)",
+                borderRadius: "var(--r-lg)",
+                padding: "64px 24px",
+                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "14px",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.02)"
+              }}>
+                <div style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background: "rgba(37, 99, 235, 0.08)",
+                  color: "#2563eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px"
+                }}>
+                  <i className="fa-solid fa-clipboard-list"></i>
+                </div>
+                <div style={{ maxWidth: "480px" }}>
+                  <h4 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0" }}>
+                    {isVi ? "Chưa có ca tác nghiệp nào được phân công" : "No Operational Cases Assigned"}
+                  </h4>
+                  <p style={{ fontSize: "13px", color: "var(--text-3)", margin: 0, lineHeight: "1.5" }}>
+                    {isVi
+                      ? "Hộp ca việc của bạn hiện đang trống. Khi hệ thống phát hiện biến động tín hiệu khách hàng, hợp đồng sắp hết hạn hoặc quy trình SOP được phân công, các nhiệm vụ sẽ tự động hiển thị tại đây."
+                      : "Your case queue is currently clear. Assigned operational tasks, churn alerts, and renewal notices will appear here in real-time."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              assignedTasks.map((task) => {
               const isResolved = task.status === "RESOLVED";
               return (
                 <div
@@ -886,7 +934,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                   </div>
                 </div>
               );
-            })}
+            })
+          )}
           </div>
         </div>
       ) : (
