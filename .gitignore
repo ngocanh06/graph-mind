@@ -7,7 +7,15 @@ __pycache__/
 *.env
 backend/.env
 .DS_Store
+
+# Databases & local storage
 neo4j_data/
+neo4j_import/
 qdrant_data/
 postgres_data/
 pgadmin_data/
+
+# Environments & logs
+venv/
+.venv/
+*.log
