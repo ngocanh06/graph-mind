@@ -4,4 +4,10 @@ build/
 __pycache__/
 *.pyc
 .env
+*.env
+backend/.env
 .DS_Store
+neo4j_data/
+qdrant_data/
+postgres_data/
+pgadmin_data/
