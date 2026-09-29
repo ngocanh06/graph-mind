@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "12345678"
-    POSTGRES_DB: str = "graph-mind"
+    POSTGRES_DB: str = "graph_mind"
 
     @property
     def async_database_url(self) -> str:
