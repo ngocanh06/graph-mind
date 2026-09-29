@@ -1,0 +1,16 @@
+import psycopg2
+conn = psycopg2.connect(dbname='graph_mind', user='postgres', password='12345678', host='localhost', port='5432')
+cur = conn.cursor()
+cur.execute("SELECT username, email, full_name, is_active, is_superuser, created_at FROM users;")
+rows = cur.fetchall()
+print(f"Tổng số user: {len(rows)}")
+print("-" * 70)
+for r in rows:
+    print(f"Username : {r[0]}")
+    print(f"Email    : {r[1]}")
+    print(f"Full name: {r[2]}")
+    print(f"Active   : {r[3]}  |  Superuser: {r[4]}")
+    print(f"Created  : {r[5]}")
+    print("-" * 70)
+cur.close()
+conn.close()
