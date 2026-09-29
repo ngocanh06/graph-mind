@@ -4,7 +4,19 @@ build/
 __pycache__/
 *.pyc
 .env
+*.env
+backend/.env
 .DS_Store
 docker-compose.yml
+
+# Databases & local storage
 neo4j_data/
+neo4j_import/
 qdrant_data/
+postgres_data/
+pgadmin_data/
+
+# Environments & logs
+venv/
+.venv/
+*.log
