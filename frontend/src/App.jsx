@@ -308,6 +308,8 @@ export default function App() {
               t={t}
               lang={lang}
               apiConnected={apiConnected}
+              role={role}
+              currentUser={currentUser}
             />
           )}
 
@@ -343,6 +345,7 @@ export default function App() {
               t={t}
               lang={lang}
               role={role}
+              currentUser={currentUser}
             />
           )}
 
@@ -352,6 +355,7 @@ export default function App() {
               t={t}
               lang={lang}
               role={role}
+              currentUser={currentUser}
             />
           )}
 

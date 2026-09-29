@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { queryCopilot } from "../../services/api";
 
-export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
+export default function CopilotView({ onNavigate, t, lang, apiConnected, role = "standard", currentUser }) {
   const isVi = lang === "vi";
+  const isSalesRole = role === "standard";
   const [queryInput, setQueryInput] = useState("");
   const [isInferring, setIsInferring] = useState(false);
   const [activeThread, setActiveThread] = useState(1);
@@ -22,8 +23,15 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
     setTimeout(() => setToastMsg(""), 3500);
   };
 
-  // Lịch sử chat theo thread
-  const [threads, setThreads] = useState({
+  // Lịch sử chat theo thread (Mặc định sạch sẽ/trống cho role standard)
+  const [threads, setThreads] = useState(isSalesRole ? {
+    1: {
+      id: 1,
+      title: isVi ? "Phiên tác nghiệp mới" : "New Operational Session",
+      scope: isVi ? "Bán hàng & Vận hành" : "Sales & Ops",
+      messages: []
+    }
+  } : {
     1: {
       id: 1,
       title: isVi ? "Khách hàng VIP ABC Corp & Hợp đồng CT-18" : "VIP ABC Corp Churn & Contract CT-18",
@@ -112,7 +120,21 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
     }
   });
 
-  const currentThreadData = threads[activeThread] || threads[1];
+  useEffect(() => {
+    if (role === "standard") {
+      setThreads({
+        1: {
+          id: 1,
+          title: isVi ? "Phiên tác nghiệp mới" : "New Operational Session",
+          scope: isVi ? "Bán hàng & Vận hành" : "Sales & Ops",
+          messages: []
+        }
+      });
+      setActiveThread(1);
+    }
+  }, [role]);
+
+  const currentThreadData = threads[activeThread] || threads[1] || { id: 1, title: isVi ? "Phiên tác nghiệp mới" : "New Session", scope: "Sales & Ops", messages: [] };
   const hasUserInteracted = useRef(false);
 
   // Auto scroll tin nhắn mới khi có tương tác
@@ -312,6 +334,10 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
     }, 850);
   };
 
+  const lastBotMsg = currentThreadData?.messages?.filter((m) => m.sender === "copilot").slice(-1)[0];
+  const currentGraphNodes = lastBotMsg?.graphNodes || [];
+  const currentCitations = lastBotMsg?.citations || [];
+
   return (
     <div
       className="view active"
@@ -390,7 +416,7 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11.5px", color: "var(--text-3)" }}>
-          <span>{isVi ? "Chuyên viên:" : "Operator:"} <b style={{ color: "var(--text-1)" }}>Nguyễn V. Nam (@ops)</b></span>
+          <span>{isVi ? "Chuyên viên:" : "Operator:"} <b style={{ color: "var(--text-1)" }}>{currentUser?.name || "Chuyên viên Nghiệp vụ"} (@{currentUser?.username || "ops"})</b></span>
           <span>·</span>
           <span style={{ color: "var(--cyan)", fontFamily: "var(--f-mono)", fontWeight: "700" }}>MILVUS + NEO4J</span>
         </div>
@@ -707,7 +733,43 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
             gap: "18px",
             minHeight: 0
           }}>
-            {currentThreadData.messages.map((msg) => {
+            {currentThreadData.messages.length === 0 ? (
+              <div style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "48px 16px",
+                textAlign: "center",
+                gap: "14px"
+              }}>
+                <div style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "50%",
+                  background: "rgba(0, 229, 255, 0.08)",
+                  color: "var(--cyan)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px"
+                }}>
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <div style={{ maxWidth: "420px" }}>
+                  <h4 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0" }}>
+                    {isVi ? "Trợ Lý AI Sẵn Sàng Phục Vụ" : "AI Copilot Ready"}
+                  </h4>
+                  <p style={{ fontSize: "13px", color: "var(--text-3)", margin: 0, lineHeight: "1.5" }}>
+                    {isVi
+                      ? "Chưa có tin nhắn trong phiên tác nghiệp này. Hãy nhập câu hỏi ở ô bên dưới hoặc chọn các câu hỏi mẫu để bắt đầu tra cứu tri thức và hỗ trợ xử lý công việc."
+                      : "No messages in this operational session yet. Type a question below or pick a prompt to begin."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              currentThreadData.messages.map((msg) => {
               const isUser = msg.sender === "user";
               return (
                 <div
@@ -846,7 +908,8 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
                   )}
                 </div>
               );
-            })}
+            })
+          )}
 
             {isInferring && (
               <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", color: "var(--cyan)", padding: "6px 0", fontWeight: "600" }}>
@@ -959,11 +1022,11 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
                 fontWeight: "700",
                 padding: "2px 7px",
                 borderRadius: "4px",
-                background: "var(--green-soft)",
-                color: "var(--green)",
-                border: "1px solid var(--green-dim)"
+                background: currentGraphNodes.length > 0 ? "var(--green-soft)" : "var(--surface-3)",
+                color: currentGraphNodes.length > 0 ? "var(--green)" : "var(--text-4)",
+                border: `1px solid ${currentGraphNodes.length > 0 ? "var(--green-dim)" : "var(--border)"}`
               }}>
-                4 NODES
+                {currentGraphNodes.length} NODES
               </span>
             </div>
 
@@ -972,49 +1035,63 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
             </p>
 
             {/* Visualizer đồ thị mini */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              {[
-                { name: "ABC Corporation", type: "Khách hàng VIP", icon: "fa-building", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" },
-                { name: "Contract CT-2026-18", type: "Hợp đồng (1.2B)", icon: "fa-file-signature", color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
-                { name: "Sản phẩm A", type: "Linh kiện", icon: "fa-box-archive", color: "#0284c7", bg: "#e0f2fe", border: "#7dd3fc" },
-                { name: "Tín hiệu giảm -32%", type: "Cảnh báo rủi ro", icon: "fa-triangle-exclamation", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" }
-              ].map((n, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border-soft)",
-                    gap: "8px"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
-                    <i className={`fa-solid ${n.icon}`} style={{ color: n.color, fontSize: "11px", width: "12px", textAlign: "center", flexShrink: 0 }}></i>
-                    <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {n.name}
+            {currentGraphNodes.length === 0 ? (
+              <div style={{
+                padding: "20px 10px",
+                textAlign: "center",
+                color: "var(--text-3)",
+                fontSize: "12px",
+                background: "var(--surface-2)",
+                borderRadius: "6px",
+                border: "1px dashed var(--border-soft)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "6px"
+              }}>
+                <i className="fa-solid fa-circle-nodes" style={{ fontSize: "18px", color: "var(--text-4)" }}></i>
+                <span>{isVi ? "Chưa có thực thể liên quan" : "No entities referenced"}</span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {currentGraphNodes.map((n, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "7px 10px",
+                      borderRadius: "6px",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border-soft)",
+                      gap: "8px"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
+                      <i className={`fa-solid ${n.icon || "fa-circle-nodes"}`} style={{ color: n.color || "var(--cyan)", fontSize: "11px", width: "12px", textAlign: "center", flexShrink: 0 }}></i>
+                      <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {n.label || n.name}
+                      </span>
+                    </div>
+
+                    <span style={{
+                      fontSize: "9.5px",
+                      fontWeight: "700",
+                      padding: "1px 6px",
+                      borderRadius: "4px",
+                      background: n.bg || "var(--surface-3)",
+                      color: n.color || "var(--text-2)",
+                      border: `1px solid ${n.border || "var(--border)"}`,
+                      flexShrink: 0,
+                      whiteSpace: "nowrap"
+                    }}>
+                      {n.type}
                     </span>
                   </div>
-
-                  <span style={{
-                    fontSize: "9.5px",
-                    fontWeight: "700",
-                    padding: "1px 6px",
-                    borderRadius: "4px",
-                    background: n.bg,
-                    color: n.color,
-                    border: `1px solid ${n.border}`,
-                    flexShrink: 0,
-                    whiteSpace: "nowrap"
-                  }}>
-                    {n.type}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 2. BỘ TRÍCH DẪN NGUỒN VĂN BẢN GỐC (CITATION VIEWER) */}
@@ -1044,11 +1121,11 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
                 fontWeight: "700",
                 padding: "2px 7px",
                 borderRadius: "4px",
-                background: "var(--blue-soft)",
-                color: "var(--blue)",
-                border: "1px solid var(--blue-dim)"
+                background: currentCitations.length > 0 ? "var(--blue-soft)" : "var(--surface-3)",
+                color: currentCitations.length > 0 ? "var(--blue)" : "var(--text-4)",
+                border: `1px solid ${currentCitations.length > 0 ? "var(--blue-dim)" : "var(--border)"}`
               }}>
-                L5 PROVENANCE
+                {currentCitations.length > 0 ? "L5 PROVENANCE" : "0 CITATION"}
               </span>
             </div>
 
@@ -1056,99 +1133,74 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
               {isVi ? "Bấm vào để xem đoạn văn bản gốc:" : "Click to view original excerpt:"}
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div
-                onClick={() =>
-                  setActiveCitation({
-                    title: "Contract_CT-2026-18.pdf — Trang 2, Điều 4.2",
-                    type: "PDF HỢP ĐỒNG",
-                    content:
-                      "Điều 4.2 (Hiệu lực hợp đồng): Hợp đồng này có giá trị hiệu lực đến hết ngày 18 tháng 10 năm 2026. Trong trường hợp Bên B (Tập đoàn ABC) có nhu cầu tái ký hoặc gia hạn hợp đồng, hai bên sẽ tiến hành rà soát chỉ tiêu mua sắm tối thiểu 15 ngày trước ngày kết thúc hợp đồng. Nếu không có văn bản gia hạn, các mức giá ưu đãi cam kết sẽ tự động mất hiệu lực."
-                  })
-                }
-                style={{
-                  padding: "9px 11px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-soft)",
-                  borderRadius: "var(--r-md)",
-                  cursor: "pointer",
-                  transition: "all var(--transition-fast)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "5px"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                  <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--cyan)", display: "flex", alignItems: "center", gap: "6px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    <i className="fa-solid fa-file-pdf" style={{ color: "var(--red)", fontSize: "12px", flexShrink: 0 }}></i>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>Contract_CT-2026-18.pdf</span>
-                  </span>
-                  <span style={{ fontSize: "10px", fontFamily: "var(--f-mono)", color: "var(--text-4)", flexShrink: 0, whiteSpace: "nowrap" }}>Trang 2</span>
-                </div>
-                <p style={{
-                  fontSize: "11px",
-                  color: "var(--text-3)",
-                  margin: 0,
-                  lineHeight: "1.4",
-                  fontStyle: "italic",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  borderLeft: "2px solid var(--cyan)",
-                  paddingLeft: "7px"
-                }}>
-                  "...Thời hạn hiệu lực đến hết ngày 18 tháng 10 năm 2026. Nếu không tái ký trước 15 ngày..."
-                </p>
+            {currentCitations.length === 0 ? (
+              <div style={{
+                padding: "20px 10px",
+                textAlign: "center",
+                color: "var(--text-3)",
+                fontSize: "12px",
+                background: "var(--surface-2)",
+                borderRadius: "6px",
+                border: "1px dashed var(--border-soft)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "6px"
+              }}>
+                <i className="fa-solid fa-quote-left" style={{ fontSize: "18px", color: "var(--text-4)" }}></i>
+                <span>{isVi ? "Chưa có trích dẫn nguồn gốc" : "No citations available"}</span>
               </div>
-
-              <div
-                onClick={() =>
-                  setActiveCitation({
-                    title: "CRM_Account_Ledger_2026.xlsx — Dòng 142",
-                    type: "BẢNG TÍNH SHEETS",
-                    content:
-                      "Bản ghi CRM ID #142 (ABC Corporation):\n• Tháng 7: 8 đơn hàng — Doanh thu 680,000,000 VND\n• Tháng 8: 5 đơn hàng — Doanh thu 420,000,000 VND\n• Tháng 9: 3 đơn hàng — Doanh thu 260,000,000 VND\n• Tốc độ tăng trưởng: -32.4% (Tín hiệu rời bỏ mức độ cao, cần can thiệp chăm sóc khẩn cấp)."
-                  })
-                }
-                style={{
-                  padding: "9px 11px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-soft)",
-                  borderRadius: "var(--r-md)",
-                  cursor: "pointer",
-                  transition: "all var(--transition-fast)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "5px"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                  <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--green)", display: "flex", alignItems: "center", gap: "6px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    <i className="fa-solid fa-file-excel" style={{ color: "var(--green)", fontSize: "12px", flexShrink: 0 }}></i>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>CRM_Account_Ledger_2026.xlsx</span>
-                  </span>
-                  <span style={{ fontSize: "10px", fontFamily: "var(--f-mono)", color: "var(--text-4)", flexShrink: 0, whiteSpace: "nowrap" }}>Dòng 142</span>
-                </div>
-                <p style={{
-                  fontSize: "11px",
-                  color: "var(--text-3)",
-                  margin: 0,
-                  lineHeight: "1.4",
-                  fontStyle: "italic",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  borderLeft: "2px solid var(--green)",
-                  paddingLeft: "7px"
-                }}>
-                  "...Tháng 8: 5 đơn hàng. Tháng 9: 3 đơn hàng. Nhịp mua hàng giảm 32.4%..."
-                </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {currentCitations.map((c, i) => (
+                  <div
+                    key={i}
+                    onClick={() =>
+                      setActiveCitation({
+                        title: `${c.title} — ${c.location || c.page || ""}`,
+                        type: c.type || "TÀI LIỆU",
+                        content: c.excerpt || ""
+                      })
+                    }
+                    style={{
+                      padding: "9px 11px",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border-soft)",
+                      borderRadius: "var(--r-md)",
+                      cursor: "pointer",
+                      transition: "all var(--transition-fast)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "5px"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                      <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--cyan)", display: "flex", alignItems: "center", gap: "6px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <i className={`fa-solid ${c.type === "SHEETS" ? "fa-file-excel" : c.type === "DOCX" ? "fa-file-word" : "fa-file-pdf"}`} style={{ color: "var(--red)", fontSize: "12px", flexShrink: 0 }}></i>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</span>
+                      </span>
+                      <span style={{ fontSize: "10px", fontFamily: "var(--f-mono)", color: "var(--text-4)", flexShrink: 0, whiteSpace: "nowrap" }}>{c.page || c.location}</span>
+                    </div>
+                    <p style={{
+                      fontSize: "11px",
+                      color: "var(--text-3)",
+                      margin: 0,
+                      lineHeight: "1.4",
+                      fontStyle: "italic",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      borderLeft: "2px solid var(--cyan)",
+                      paddingLeft: "7px"
+                    }}>
+                      {c.excerpt}
+                    </p>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

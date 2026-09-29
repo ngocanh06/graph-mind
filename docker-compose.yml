@@ -1,6 +1,46 @@
 version: '3.8'
 
 services:
+  # ============================================================================
+  # POSTGRESQL (Đã tắt do đang sử dụng PostgreSQL cài trực tiếp trên Windows)
+  # Nếu muốn dùng lại qua Docker, hãy bỏ comment phần này và phần pgadmin bên dưới.
+  # ============================================================================
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: postgres_db
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: 12345678
+  #     POSTGRES_DB: graphmind_db
+  #   volumes:
+  #     - ./postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d graphmind_db"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: pgadmin
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5050:80"
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@graphmind.local
+  #     PGADMIN_DEFAULT_PASSWORD: admin123
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./pgadmin_data:/var/lib/pgadmin
+
+  # ============================================================================
+  # NEO4J GRAPH DATABASE
+  # ============================================================================
   neo4j:
     image: neo4j:5.18.0
     container_name: neo4j_db
@@ -15,7 +55,7 @@ services:
       - NEO4J_apoc_import_file_use__neo4j__config=true
       - NEO4JLABS_PLUGINS=["apoc"]
     volumes:
-      - neo4j_data:/data
+      - ./neo4j_data:/data
       - ./neo4j_import:/var/lib/neo4j/import
     healthcheck:
       test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1" ]
@@ -23,6 +63,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # ============================================================================
+  # QDRANT VECTOR DATABASE
+  # ============================================================================
   qdrant:
     image: qdrant/qdrant:v1.8.2
     container_name: qdrant_db
@@ -31,50 +74,4 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - qdrant_data:/qdrant/storage
-
-  # ── PostgreSQL ─────────────────────────────────────────────────────────────
-  postgres:
-    image: postgres:16-alpine
-    container_name: postgres_db
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 12345678
-      POSTGRES_DB: graphmind_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d graphmind_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ── pgAdmin (optional — UI quản lý DB) ────────────────────────────────────
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin
-    restart: unless-stopped
-    ports:
-      - "5050:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@graphmind.local
-      PGADMIN_DEFAULT_PASSWORD: admin123
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-
-volumes:
-  neo4j_data:
-    name: neo4j_data
-  qdrant_data:
-    name: qdrant_data
-  postgres_data:
-    name: postgres_data
-  pgadmin_data:
-    name: pgadmin_data
-
+      - ./qdrant_data:/qdrant/storage
