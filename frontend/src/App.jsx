@@ -331,6 +331,7 @@ export default function App() {
               selectedEntity={selectedEntity}
               onSelectEntity={setSelectedEntity}
               onUpdateEntity={handleUpdateEntity}
+              onNavigate={setView}
               t={t}
               lang={lang}
             />
