@@ -13,12 +13,26 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     setActiveTab(role === "standard" ? "tasks" : "search");
   }, [role]);
 
-  const [query, setQuery] = useState("contracts expiring next 30 days with declining customer activity");
-  const [searchMode, setSearchMode] = useState("hybrid"); // "semantic" | "graph" | "hybrid" | "evidence"
+  const [query, setQuery] = useState("Alpha Corp hợp đồng dịch vụ bồi thường");
+  const [debouncedQuery, setDebouncedQuery] = useState("Alpha Corp hợp đồng dịch vụ bồi thường");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchMode, setSearchMode] = useState("hybrid"); // "hybrid" | "semantic" | "graph"
   const [filterDept, setFilterDept] = useState("ALL");
-  const [filterType, setFilterType] = useState("ALL");
-  const [filterRisk, setFilterRisk] = useState("ALL");
+  const [filterDate, setFilterDate] = useState("ALL");
+  const [filterValue, setFilterValue] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [activeCategory, setActiveCategory] = useState("ALL"); // "ALL" | "CONTRACT" | "CUSTOMER" | "PRODUCT" | "DOCUMENT"
+  const [viewLayout, setViewLayout] = useState("grouped"); // "grouped" | "table"
   const [toastMsg, setToastMsg] = useState("");
+
+  useEffect(() => {
+    setIsSearching(true);
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+      setIsSearching(false);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [query]);
 
   // Modal xử lý ca nghiệp vụ
   const [selectedTaskAction, setSelectedTaskAction] = useState(null);
@@ -150,98 +164,270 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   };
 
   const SAMPLE_QUERIES = [
-    { label: isVi ? "Hợp đồng sắp hết hạn <30 ngày" : "Contracts expiring <30d", text: "contracts expiring next 30 days with declining customer activity" },
-    { label: isVi ? "Khách hàng ABC giảm sản lượng" : "ABC Corp churn signals", text: "ABC Corporation order frequency drop pattern and contract exposure" },
-    { label: isVi ? "Chuỗi cung ứng Sản phẩm A" : "Product A supply chain", text: "Product A enterprise core delivery to ABC Corporation dependencies" },
-    { label: isVi ? "SOP đối soát công nợ" : "Reconciliation SOP owner", text: "Finance Department SOP-04 reconciliation document owner verification" }
+    { label: isVi ? "Alpha Corp bồi thường hợp đồng" : "Alpha Corp contract indemnity", text: "Alpha Corp hợp đồng dịch vụ bồi thường" },
+    { label: isVi ? "Hợp đồng sắp hết hạn <30 ngày" : "Contracts expiring <30d", text: "hợp đồng sắp hết hạn dưới 30 ngày" },
+    { label: isVi ? "Khách hàng Enterprise Tier 1" : "Enterprise Tier 1 clients", text: "Khách hàng Doanh nghiệp Chiến lược Tier 1" },
+    { label: isVi ? "SOP rà soát điều khoản bồi thường" : "SOP liability review", text: "SOP rà soát điều khoản bồi thường thiệt hại đối tác" },
+    { label: isVi ? "Cloud Knowledge Graph Hosting" : "Cloud Graph Hosting", text: "Cloud Knowledge Graph Hosting dịch vụ SLA" }
   ];
 
-  const ALL_RESULTS = [
+  // ============================================================
+  // SCREEN-020 DATASETS: 4 GROUPED ENTITY CLUSTERS (STITCH SPEC)
+  // ============================================================
+  const CONTRACT_RESULTS = [
     {
-      id: "res-1",
-      entityId: "ct18",
+      id: "cuad-42",
+      code: "CUAD_042",
       type: "CONTRACT",
-      title: "Contract CT-2026-18 — ABC Corporation",
-      pill: "red",
-      pillText: isVi ? "Hết hạn 18/10 (12 ngày)" : "Expires 18/10 (12d)",
+      title: isVi ? "Hợp đồng Dịch vụ Công nghệ Thông tin & Lưu trữ Tri thức" : "IT Services & Knowledge Cloud Agreement",
+      client: "Alpha Corp (Việt Nam)",
+      dept: "LEGAL",
+      deptName: isVi ? "Pháp chế & R&D" : "Legal & R&D",
+      value: "1.200.000.000 đ",
+      numValue: 1200000000,
+      date: "15/01/2026",
+      status: "VALID",
+      statusText: isVi ? "Còn hiệu lực" : "Active",
       snippet: isVi
-        ? "Hợp đồng cung cấp linh kiện cho Dây chuyền A. Tổng giá trị cam kết 1.2 tỷ VND/năm. Đã kích hoạt cảnh báo rủi ro sụt giảm tần suất đặt hàng."
-        : "Manufacturing component supply agreement for Line A. Total value 1.2B VND. Triggered anomaly alert due to declining order frequency.",
-      score: 0.96,
-      graphPath: "ABC Corp → CT-2026-18 → Product A Line → Churn Alert (High)",
+        ? "...Điều khoản 12.2 quy định về giới hạn trách nhiệm bồi thường thiệt hại và mức phạt vi phạm cam kết chất lượng dịch vụ SLA tối đa 8% tổng giá trị hợp đồng..."
+        : "...Clause 12.2 limits aggregate liability and indemnification damages for SLA performance breaches to 8% of total agreement value...",
+      highlight: isVi ? "giới hạn trách nhiệm bồi thường" : "liability and indemnification",
+      sourceDoc: "Contract_CUAD_042.pdf, Điều 12.2",
+      agent: isVi ? "Trích xuất bởi AEGIS Agent" : "Extracted by AEGIS Agent",
+      score: 0.98,
+      risk: "Low"
+    },
+    {
+      id: "cuad-89",
+      code: "CUAD_089",
+      type: "CONTRACT",
+      title: isVi ? "Thỏa thuận Bảo mật Thông tin & Quyền Sở Hữu Trí Tuệ (NDA)" : "Mutual Non-Disclosure & IP Agreement (NDA)",
+      client: "Alpha Corp",
+      dept: "LEGAL",
+      deptName: isVi ? "Pháp chế & R&D" : "Legal & R&D",
+      value: "500.000.000 đ",
+      numValue: 500000000,
+      date: "10/02/2026",
+      status: "VALID",
+      statusText: isVi ? "Còn hiệu lực" : "Active",
+      snippet: isVi
+        ? "...Trách nhiệm liên đới và nghĩa vụ bồi thường toàn bộ thiệt hại phát sinh trực tiếp trong trường hợp làm lộ lọt mã nguồn, cơ sở dữ liệu tri thức hoặc bí mật kinh doanh..."
+        : "...Joint liability and full indemnification obligations for direct damages arising from proprietary knowledge graph source code disclosure...",
+      highlight: isVi ? "nghĩa vụ bồi thường" : "indemnification obligations",
+      sourceDoc: "NDA_AlphaCorp_2026.pdf, p.3",
+      agent: isVi ? "Phòng Pháp chế lưu trữ" : "Legal Vault Archive",
+      score: 0.94,
+      risk: "Low"
+    },
+    {
+      id: "ct-18",
+      code: "CT-2026-18",
+      type: "CONTRACT",
+      title: isVi ? "Hợp đồng Cung ứng Linh kiện Điện tử Sản xuất A" : "Component Supply Agreement — Line A",
+      client: "Tập đoàn ABC (ABC Corporation)",
+      dept: "SALES",
+      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
+      value: "1.200.000.000 đ",
+      numValue: 1200000000,
+      date: "18/10/2026",
+      status: "EXPIRING",
+      statusText: isVi ? "Sắp hết hạn (<30 ngày)" : "Expiring in 12d",
+      snippet: isVi
+        ? "...Hợp đồng cung ứng linh kiện sản xuất chủ lực trị giá 1,2 tỷ VND. Quy định chế tài bồi thường phạt chậm giao hàng 0.5%/ngày..."
+        : "...Manufacturing supply agreement worth 1.2B VND. Stipulates delay liquidated damages at 0.5% per calendar day...",
+      highlight: isVi ? "bồi thường phạt chậm giao hàng" : "liquidated damages",
       sourceDoc: "Contract_CT-2026-18.pdf, p.2",
-      dept: "Sales",
-      risk: "High",
-      confidence: "94%"
-    },
-    {
-      id: "res-2",
-      entityId: "abc",
-      type: "CUSTOMER",
-      title: "Tập đoàn ABC (ABC Corporation)",
-      pill: "red",
-      pillText: isVi ? "Khách hàng Rủi ro Cao" : "High Risk Churn",
-      snippet: isVi
-        ? "Khách hàng đối tác loại A. Tần suất mua hàng giảm 32.5% trong 60 ngày. Chưa có biên bản ghi nhận tiếp xúc gia hạn hợp đồng."
-        : "Strategic Tier-1 client. Purchasing cadence decreased 32.5% over 60 days. No recorded outreach logged in CRM or Drive folders.",
-      score: 0.92,
-      graphPath: "ABC Corp → Order Cadence Drop → Contract Expiration Risk",
-      sourceDoc: "CRM_Account_Ledger_2026.xlsx, Row 41",
-      dept: "Sales",
-      risk: "High",
-      confidence: "91%"
-    },
-    {
-      id: "res-3",
-      entityId: "prod-a",
-      type: "PRODUCT",
-      title: "Linh kiện Điện tử Sản phẩm A",
-      pill: "amber",
-      pillText: isVi ? "Ảnh hưởng Doanh thu" : "Revenue Exposure",
-      snippet: isVi
-        ? "Linh kiện cốt lõi chiếm 41% cơ cấu đơn hàng của ABC Corp. Tồn kho chuỗi cung ứng hiện tại đủ đáp ứng 45 ngày."
-        : "Core electronic module accounting for 41% of ABC Corp order value. Supply chain safety buffer stands at 45 days.",
-      score: 0.88,
-      graphPath: "Product A → Supply Chain → ABC Corporation Orders",
-      sourceDoc: "ERP_Inventory_Ledger_Q3.csv",
-      dept: "Operations",
-      risk: "Med",
-      confidence: "86%"
-    },
-    {
-      id: "res-4",
-      entityId: "doc-sop",
-      type: "SOP",
-      title: "SOP-04 — Quy trình Đối soát & Thu hồi Công nợ",
-      pill: "cyan",
-      pillText: isVi ? "Cần Xác thực" : "Needs Review",
-      snippet: isVi
-        ? "Quy trình đối soát công nợ nội bộ. Tài liệu thiếu trường phòng ban và người lập hợp lệ, đang nằm trong hàng đợi xác thực."
-        : "Internal financial reconciliation procedure. Missing department metadata and author field; pending validation queue.",
-      score: 0.79,
-      graphPath: "SOP-04 → Finance Dept → Outstanding Receivables (8.6B)",
-      sourceDoc: "SOP-04_Reconciliation.docx, p.4",
-      dept: "Finance",
-      risk: "Med",
-      confidence: "74%"
+      agent: isVi ? "ERP Connector" : "ERP Connector",
+      score: 0.89,
+      risk: "High"
     }
   ];
 
-  const filteredResults = ALL_RESULTS.filter((r) => {
-    if (filterDept !== "ALL" && r.dept !== filterDept) return false;
-    if (filterType !== "ALL" && r.type !== filterType) return false;
-    if (filterRisk !== "ALL" && r.risk !== filterRisk) return false;
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      const match =
-        r.title.toLowerCase().includes(q) ||
-        r.snippet.toLowerCase().includes(q) ||
-        r.graphPath.toLowerCase().includes(q) ||
-        r.type.toLowerCase().includes(q);
-      if (!match && searchMode === "keyword") return false;
+  const CUSTOMER_RESULTS = [
+    {
+      id: "cust-881",
+      code: "CUST-881",
+      type: "CUSTOMER",
+      name: "Alpha Corporation Vietnam Ltd.",
+      tier: isVi ? "Doanh nghiệp Chiến lược (Enterprise Tier 1)" : "Strategic Enterprise Tier 1",
+      revenue: "4.820.000.000 đ",
+      orders: isVi ? "18 đơn hàng" : "18 orders",
+      dept: "SALES",
+      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
+      contact: "Tran M. Anh (Procurement Dir.)",
+      status: "VALID",
+      statusText: isVi ? "Đang giao dịch" : "Active Client",
+      numValue: 4820000000,
+      score: 0.95
+    },
+    {
+      id: "cust-104",
+      code: "CUST-104",
+      type: "CUSTOMER",
+      name: "Tập đoàn ABC (ABC Corporation)",
+      tier: isVi ? "Khách hàng Trọng điểm" : "Key Account",
+      revenue: "3.450.000.000 đ",
+      orders: isVi ? "14 đơn hàng" : "14 orders",
+      dept: "SALES",
+      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
+      contact: "Lê V. Hùng (Purchasing Lead)",
+      status: "EXPIRING",
+      statusText: isVi ? "Cảnh báo sụt giảm 32%" : "Churn Warning 32%",
+      numValue: 3450000000,
+      score: 0.91
+    },
+    {
+      id: "cust-502",
+      code: "CUST-502",
+      type: "CUSTOMER",
+      name: "Delta Global Logistics JSC",
+      tier: isVi ? "Đối tác Chuỗi Cung ứng" : "Supply Chain Partner",
+      revenue: "2.100.000.000 đ",
+      orders: isVi ? "9 đơn hàng" : "9 orders",
+      dept: "OPS",
+      deptName: isVi ? "Vận hành (Operations)" : "Operations",
+      contact: "Ngô T. Bình (Logistics Dir.)",
+      status: "VALID",
+      statusText: isVi ? "Đang giao dịch" : "Active Client",
+      numValue: 2100000000,
+      score: 0.83
+    }
+  ];
+
+  const PRODUCT_RESULTS = [
+    {
+      id: "prod-cloud-01",
+      code: "PROD-CLOUD-01",
+      type: "PRODUCT",
+      name: "Cloud Knowledge Graph Hosting",
+      desc: isVi ? "Hạ tầng lưu trữ đồ thị tri thức đám mây chuyên dụng, đang triển khai cho hợp đồng CUAD_042" : "Dedicated cloud knowledge graph hosting environment deployed for CUAD_042",
+      dept: "LEGAL",
+      deptName: isVi ? "Pháp chế & R&D" : "R&D",
+      badge: isVi ? "Đang triển khai" : "Deployed",
+      status: "VALID",
+      statusText: isVi ? "Hoạt động" : "Active",
+      value: "450.000.000 đ/năm",
+      numValue: 450000000,
+      score: 0.92
+    },
+    {
+      id: "prod-ai-copilot",
+      code: "PROD-AI-COPILOT",
+      type: "PRODUCT",
+      name: "Gói thuê bao Enterprise AI Copilot",
+      desc: isVi ? "Bản quyền trợ lý AI thông minh hàng năm cho 50 người dùng doanh nghiệp kết nối GraphRAG" : "Enterprise AI Copilot annual license for 50 knowledge workers with GraphRAG",
+      dept: "SALES",
+      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
+      badge: isVi ? "Hoạt động" : "Active",
+      status: "VALID",
+      statusText: isVi ? "Hoạt động" : "Active",
+      value: "680.000.000 đ/năm",
+      numValue: 680000000,
+      score: 0.88
+    },
+    {
+      id: "prod-maint-247",
+      code: "PROD-MAINT-247",
+      type: "PRODUCT",
+      name: "Dịch vụ Hỗ trợ Vận hành SLA 99.9%",
+      desc: isVi ? "Bao gồm điều khoản giám sát rủi ro chuỗi cung ứng 24/7 và cam kết hoàn phí nếu vi phạm SLA" : "24/7 monitoring service with contractually guaranteed SLA service credits",
+      dept: "OPS",
+      deptName: isVi ? "Vận hành (Operations)" : "Operations",
+      badge: "SLA 99.9%",
+      status: "VALID",
+      statusText: isVi ? "Hoạt động" : "Active",
+      value: "240.000.000 đ/năm",
+      numValue: 240000000,
+      score: 0.85
+    }
+  ];
+
+  const DOCUMENT_RESULTS = [
+    {
+      id: "sop-leg-004",
+      code: "SOP-LEG-004",
+      type: "DOCUMENT",
+      title: isVi ? "SOP-LEG-004: Quy trình rà soát điều khoản bồi thường thiệt hại hợp đồng đối tác" : "SOP-LEG-004: Partner Contract Indemnity & Liability Audit Procedure",
+      format: "PDF",
+      dept: "LEGAL",
+      deptName: isVi ? "Pháp chế & R&D" : "Legal & R&D",
+      date: "12/08/2026",
+      size: "2.4 MB",
+      pages: isVi ? "18 trang" : "18 pages",
+      status: "VALID",
+      statusText: isVi ? "Đã duyệt" : "Verified",
+      snippet: isVi
+        ? "Tài liệu tiêu chuẩn hướng dẫn các bước rà soát ngưỡng giới hạn bồi thường, bảo hiểm trách nhiệm pháp lý và thủ tục hòa giải trước tòa."
+        : "Standard operational procedure specifying liability cap thresholds, indemnification review steps, and dispute resolution.",
+      score: 0.96
+    },
+    {
+      id: "sop-fin-002",
+      code: "SOP-FIN-002",
+      type: "DOCUMENT",
+      title: isVi ? "SOP-FIN-002: Hướng dẫn lập hóa đơn và đối soát công nợ dịch vụ Cloud RAG" : "SOP-FIN-002: Cloud RAG Invoicing & Reconciliation Guidelines",
+      format: "DOCX",
+      dept: "FINANCE",
+      deptName: isVi ? "Kế toán & Tài chính" : "Finance",
+      date: "05/09/2026",
+      size: "1.1 MB",
+      pages: isVi ? "12 trang" : "12 pages",
+      status: "VALID",
+      statusText: isVi ? "Đã duyệt" : "Verified",
+      snippet: isVi
+        ? "Quy trình đối soát tự động giữa hệ thống đo lường truy vấn đồ thị tri thức với phần mềm hóa đơn điện tử doanh nghiệp."
+        : "Automated reconciliation guideline between Graph query metrics and ERP e-invoicing pipelines.",
+      score: 0.89
+    },
+    {
+      id: "sop-04",
+      code: "SOP-04",
+      type: "DOCUMENT",
+      title: isVi ? "SOP-04: Quy trình Đối soát & Thu hồi Công nợ Khách hàng Doanh nghiệp" : "SOP-04: Enterprise Accounts Receivable Reconciliation Procedure",
+      format: "DOCX",
+      dept: "FINANCE",
+      deptName: isVi ? "Kế toán & Tài chính" : "Finance",
+      date: "20/09/2026",
+      size: "8.6B VND",
+      pages: isVi ? "8 trang" : "8 pages",
+      status: "EXPIRING",
+      statusText: isVi ? "Cần cập nhật" : "Needs Review",
+      snippet: isVi
+        ? "Tài liệu quy trình đối soát 8,6 tỷ VND công nợ quý 3 đối với khách hàng VIP, đang nằm trong hàng đợi xác thực thông tin."
+        : "Internal procedure governing 8.6B VND enterprise receivables; currently pending departmental metadata sign-off.",
+      score: 0.84
+    }
+  ];
+
+  // Helper lọc đa chiều
+  const matchesFacet = (item) => {
+    if (filterDept !== "ALL" && item.dept !== filterDept) return false;
+    if (filterStatus !== "ALL" && item.status !== filterStatus) return false;
+    if (filterValue !== "ALL") {
+      if (filterValue === "500M" && (!item.numValue || item.numValue < 500000000)) return false;
+      if (filterValue === "1B" && (!item.numValue || item.numValue < 1000000000)) return false;
+    }
+    if (debouncedQuery.trim()) {
+      const q = debouncedQuery.toLowerCase();
+      const tokens = q.split(/\s+/).filter(Boolean);
+      const corpus = `${item.title || ""} ${item.name || ""} ${item.code || ""} ${item.client || ""} ${item.snippet || ""} ${item.desc || ""} ${item.deptName || ""}`.toLowerCase();
+      const matchesAnyToken = tokens.some((tok) => corpus.includes(tok));
+      if (!matchesAnyToken && searchMode === "keyword") return false;
+      if (!matchesAnyToken) return false;
     }
     return true;
-  });
+  };
+
+  const filteredContracts = CONTRACT_RESULTS.filter(matchesFacet);
+  const filteredCustomers = CUSTOMER_RESULTS.filter(matchesFacet);
+  const filteredProducts = PRODUCT_RESULTS.filter(matchesFacet);
+  const filteredDocuments = DOCUMENT_RESULTS.filter(matchesFacet);
+
+  const totalResultsCount =
+    filteredContracts.length +
+    filteredCustomers.length +
+    filteredProducts.length +
+    filteredDocuments.length;
 
   const pendingCount = assignedTasks.filter((t) => t.status === "PENDING").length;
 
@@ -939,489 +1125,1079 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
           </div>
         </div>
       ) : (
-        /* TAB 2: CÔNG CỤ TÌM KIẾM NGỮ NGHĨA HYBRID GRAPHRAG */
+        /* ============================================================ */
+        /* TAB 2: SCREEN-020 ENTERPRISE MULTI-FACET SEARCH (STITCH UI)  */
+        /* ============================================================ */
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* SEARCH HERO */}
+          
+          {/* SCREEN-020 HEADER BANNER */}
           <div style={{
             background: "var(--surface)",
             border: "1px solid var(--border)",
             borderRadius: "var(--r-lg)",
-            padding: "28px 24px",
+            padding: "20px 24px",
             boxShadow: "var(--shadow-sm)",
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
-            textAlign: "center"
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "14px"
           }}>
-            <h1 style={{
-              fontSize: "20px",
-              fontWeight: "800",
-              color: "var(--text-1)",
-              margin: "0 0 6px 0",
-              letterSpacing: "-0.01em"
-            }}>
-              {isVi ? "Tra Cứu Quy Trình SOP, Hợp Đồng & Chính Sách" : "Operational Knowledge & Evidence Retrieval"}
-            </h1>
-            <p style={{
-              fontSize: "13.5px",
-              color: "var(--text-3)",
-              maxWidth: "650px",
-              margin: "0 0 20px 0",
-              lineHeight: "1.5"
-            }}>
-              {isVi
-                ? "Truy xuất nhanh điều khoản phạt, chính sách chiết khấu và quy trình nghiệp vụ đã được kiểm chứng."
-                : "Fast hybrid retrieval across contract clauses, discount policies, and verified enterprise SOPs."}
-            </p>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+                <h2 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-1)", margin: 0, letterSpacing: "-0.01em" }}>
+                  SCREEN-020 — {isVi ? "Enterprise Multi-facet Search (Tìm Kiếm Hợp Nhất Đa Chiều)" : "Enterprise Multi-facet Search"}
+                </h2>
+                <span style={{
+                  fontSize: "11px",
+                  fontWeight: "750",
+                  padding: "2px 8px",
+                  borderRadius: "4px",
+                  background: "var(--surface-3)",
+                  color: "var(--text-2)",
+                  border: "1px solid var(--border-soft)",
+                  fontFamily: "var(--f-mono)"
+                }}>
+                  M5 Module • 4 Sections Grouping
+                </span>
+              </div>
+              <p style={{ fontSize: "12.5px", color: "var(--text-3)", margin: "4px 0 0 0", lineHeight: "1.4" }}>
+                {isVi
+                  ? "Tìm kiếm ngữ nghĩa kết hợp từ khóa trên Customer, Product, Contract và Document kèm bộ lọc đa chiều (phòng ban, ngày, giá trị, hiệu lực)."
+                  : "Unified semantic & keyword retrieval across Customer, Product, Contract, and Document entities with multi-facet filters."}
+              </p>
+            </div>
 
-            {/* Search Input Bar */}
+            {/* Quick Engine Mode Switcher */}
             <div style={{
-              width: "100%",
-              maxWidth: "760px",
               display: "flex",
               alignItems: "center",
               background: "var(--surface-2)",
-              border: "1.5px solid var(--border)",
+              padding: "3px",
               borderRadius: "8px",
-              padding: "8px 14px",
-              boxShadow: "var(--shadow-sm)"
+              border: "1px solid var(--border)"
             }}>
-              <i className="fa-solid fa-magnifying-glass" style={{ color: "var(--cyan)", fontSize: "16px", marginRight: "12px", flexShrink: 0 }}></i>
-              <input
-                type="text"
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  fontSize: "14px",
-                  color: "var(--text-1)",
-                  fontWeight: "500"
-                }}
-                placeholder={isVi ? "Nhập câu hỏi, tên khách hàng, mã hợp đồng hoặc điều khoản..." : "Search entities, contracts, relationships, or questions..."}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              {query && (
-                <button
-                  onClick={() => setQuery("")}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: "var(--text-4)",
-                    cursor: "pointer",
-                    marginRight: "8px"
-                  }}
-                >
-                  <i className="fa-solid fa-xmark"></i>
-                </button>
-              )}
-              <button
-                onClick={() => showToast(isVi ? "Đang chạy tìm kiếm Hybrid GraphRAG..." : "Executing Hybrid GraphRAG Search...")}
-                className="btn primary sm"
-                style={{ flexShrink: 0, padding: "7px 16px" }}
-              >
-                {isVi ? "Tìm kiếm" : "Search"}
-              </button>
-            </div>
-
-            {/* Search Mode Toggles */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "16px", flexWrap: "wrap", justifyContent: "center" }}>
-              <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", marginRight: "4px" }}>
-                {isVi ? "CHẾ ĐỘ TÌM:" : "SEARCH ENGINE:"}
-              </span>
               {[
-                { id: "hybrid", label: isVi ? "Đồ thị + Ngữ nghĩa (Hybrid)" : "Hybrid GraphRAG" },
-                { id: "semantic", label: isVi ? "Vector Ngữ nghĩa" : "Semantic Vector" },
-                { id: "evidence", label: isVi ? "Trích dẫn Bằng chứng (PDF/XLSX)" : "Cited Evidence" }
-              ].map((mode) => (
+                { id: "hybrid", label: isVi ? "Hybrid GraphRAG" : "Hybrid GraphRAG" },
+                { id: "semantic", label: isVi ? "Vector Ngữ nghĩa" : "Vector" },
+                { id: "keyword", label: isVi ? "Từ khóa chính xác" : "Keyword" }
+              ].map((m) => (
                 <button
-                  key={mode.id}
+                  key={m.id}
                   onClick={() => {
-                    setSearchMode(mode.id);
-                    showToast(isVi ? `Đã chuyển sang chế độ: ${mode.label}` : `Retriever switched to ${mode.label}`);
+                    setSearchMode(m.id);
+                    showToast(isVi ? `Chế độ máy tìm kiếm: ${m.label}` : `Search engine mode: ${m.label}`);
                   }}
                   style={{
                     padding: "5px 12px",
                     borderRadius: "6px",
                     fontSize: "11.5px",
-                    fontWeight: "600",
+                    fontWeight: "700",
                     cursor: "pointer",
                     border: "none",
-                    transition: "all 0.15s ease",
-                    background: searchMode === mode.id ? "var(--cyan)" : "var(--surface-2)",
-                    color: searchMode === mode.id ? "#ffffff" : "var(--text-2)",
-                    boxShadow: searchMode === mode.id ? "var(--shadow-sm)" : "none"
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sample query shortcuts */}
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "14px" }}>
-              <span style={{ fontSize: "11.5px", color: "var(--text-4)", fontWeight: "600" }}>
-                {isVi ? "Gợi ý truy vấn nghiệp vụ:" : "Sample prompts:"}
-              </span>
-              {SAMPLE_QUERIES.map((sq, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setQuery(sq.text);
-                    showToast(isVi ? `Đã chọn truy vấn mẫu: ${sq.label}` : `Query loaded: ${sq.label}`);
-                  }}
-                  style={{
-                    padding: "3px 10px",
-                    background: "var(--surface-2)",
-                    borderRadius: "6px",
-                    border: "1px solid var(--border-soft)",
-                    fontSize: "12px",
-                    color: "var(--cyan)",
-                    cursor: "pointer",
+                    background: searchMode === m.id ? "var(--surface)" : "transparent",
+                    color: searchMode === m.id ? "var(--cyan)" : "var(--text-3)",
+                    boxShadow: searchMode === m.id ? "var(--shadow-sm)" : "none",
                     transition: "all 0.15s ease"
                   }}
                 >
-                  "{sq.label}"
+                  {m.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* SEARCH BODY: FILTERS SIDEBAR + RESULTS */}
+          {/* MAIN SEARCH CONTAINER (STITCH CARD) */}
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "260px 1fr",
-            gap: "20px",
-            alignItems: "start"
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-xl)",
+            boxShadow: "var(--shadow-md)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column"
           }}>
-            {/* FILTERS SIDEBAR */}
+            
+            {/* TOP BAR: BIG SEARCH INPUT & FACETED FILTERS */}
             <div style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--r-lg)",
-              padding: "18px 20px",
-              boxShadow: "var(--shadow-sm)",
+              padding: "24px 28px",
+              background: "var(--surface-2)",
+              borderBottom: "1px solid var(--border)",
               display: "flex",
               flexDirection: "column",
               gap: "18px"
             }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)", paddingBottom: "10px" }}>
-                <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-1)" }}>
-                  {isVi ? "Bộ lọc Tác nghiệp" : "Faceted Filters"}
-                </span>
-                <button
-                  onClick={() => {
-                    setFilterDept("ALL");
-                    setFilterType("ALL");
-                    setFilterRisk("ALL");
+              
+              {/* BIG SEARCH INPUT */}
+              <div style={{ position: "relative", width: "100%", maxWidth: "860px", margin: "0 auto" }}>
+                <i
+                  className="fa-solid fa-magnifying-glass"
+                  style={{
+                    position: "absolute",
+                    left: "18px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--cyan)",
+                    fontSize: "18px"
                   }}
-                  style={{ background: "transparent", border: "none", fontSize: "12px", color: "var(--cyan)", cursor: "pointer", fontWeight: "600" }}
-                >
-                  {isVi ? "Đặt lại" : "Reset"}
-                </button>
-              </div>
+                ></i>
 
-              {/* Department filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ fontSize: "10.5px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {isVi ? "PHÒNG BAN" : "DEPARTMENT"}
-                </div>
-                {["ALL", "Sales", "Finance", "Operations"].map((d) => (
-                  <div
-                    key={d}
-                    onClick={() => setFilterDept(d)}
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={isVi ? "Nhập từ khóa hoặc câu hỏi: Alpha Corp hợp đồng dịch vụ bồi thường..." : "Search entities, contracts, clauses, or questions..."}
+                  style={{
+                    width: "100%",
+                    fontSize: "14.5px",
+                    fontWeight: "500",
+                    background: "var(--surface)",
+                    color: "var(--text-1)",
+                    border: "2px solid var(--border)",
+                    borderRadius: "14px",
+                    padding: "13px 180px 13px 48px",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                    outline: "none",
+                    transition: "border-color 0.2s ease, box-shadow 0.2s ease"
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "var(--cyan)";
+                    e.target.style.boxShadow = "0 0 0 4px rgba(8, 145, 178, 0.12)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "var(--border)";
+                    e.target.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                  }}
+                />
+
+                <div style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}>
+                  {query && (
+                    <button
+                      onClick={() => setQuery("")}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--text-4)",
+                        cursor: "pointer",
+                        padding: "4px 8px",
+                        fontSize: "14px"
+                      }}
+                      title={isVi ? "Xóa tìm kiếm" : "Clear"}
+                    >
+                      <i className="fa-solid fa-xmark"></i>
+                    </button>
+                  )}
+                  <span style={{
+                    fontSize: "11px",
+                    fontFamily: "var(--f-mono)",
+                    background: "var(--surface-3)",
+                    color: "var(--text-3)",
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--border-soft)"
+                  }}>
+                    ⌘ + K
+                  </span>
+                  <button
+                    onClick={() => showToast(isVi ? "Đang truy xuất kết quả tìm kiếm đa chiều..." : "Running multi-facet search...")}
+                    className="btn primary sm"
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 10px",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      fontSize: "12.5px",
-                      transition: "all 0.15s ease",
-                      background: filterDept === d ? "var(--surface-3)" : "transparent",
-                      color: filterDept === d ? "var(--cyan)" : "var(--text-2)",
-                      fontWeight: filterDept === d ? "700" : "500"
+                      borderRadius: "10px",
+                      padding: "8px 18px",
+                      fontWeight: "700",
+                      boxShadow: "0 2px 6px rgba(8, 145, 178, 0.25)"
                     }}
                   >
-                    <span>{d === "ALL" ? (isVi ? "Tất cả phòng ban" : "All Departments") : d}</span>
-                    <span style={{ fontSize: "11px", color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>
-                      {d === "ALL" ? "5" : d === "Sales" ? "2" : d === "Finance" ? "1" : "2"}
-                    </span>
-                  </div>
-                ))}
+                    {isSearching ? (
+                      <i className="fa-solid fa-spinner fa-spin"></i>
+                    ) : (
+                      isVi ? "Tìm kiếm" : "Search"
+                    )}
+                  </button>
+                </div>
               </div>
 
-              {/* Entity Type filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ fontSize: "10.5px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {isVi ? "LOẠI THỰC THỂ" : "ENTITY TYPE"}
-                </div>
-                {["ALL", "CUSTOMER", "CONTRACT", "PRODUCT", "SOP"].map((t) => (
-                  <div
-                    key={t}
-                    onClick={() => setFilterType(t)}
+              {/* MULTI-FACET FILTER CHIPS ROW (DROPDOWNS THEO STITCH SPEC) */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+                fontSize: "12px",
+                paddingTop: "4px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                  <span style={{ color: "var(--text-3)", fontWeight: "750", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <i className="fa-solid fa-sliders" style={{ color: "var(--cyan)" }}></i>
+                    {isVi ? "Bộ lọc đa chiều:" : "Multi-facet Filters:"}
+                  </span>
+
+                  {/* 1. Phòng ban Dropdown */}
+                  <select
+                    value={filterDept}
+                    onChange={(e) => setFilterDept(e.target.value)}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 10px",
-                      borderRadius: "6px",
+                      background: "var(--surface)",
+                      color: "var(--text-1)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      fontWeight: "600",
                       cursor: "pointer",
-                      fontSize: "12.5px",
-                      transition: "all 0.15s ease",
-                      background: filterType === t ? "var(--surface-3)" : "transparent",
-                      color: filterType === t ? "var(--cyan)" : "var(--text-2)",
-                      fontWeight: filterType === t ? "700" : "500"
+                      outline: "none"
                     }}
                   >
-                    <span>{t === "ALL" ? (isVi ? "Tất cả thực thể" : "All Types") : t}</span>
-                    <span style={{ fontSize: "11px", color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>
-                      {t === "ALL" ? "5" : "1"}
-                    </span>
+                    <option value="ALL">{isVi ? "Phòng ban: Tất cả" : "Dept: All"}</option>
+                    <option value="LEGAL">{isVi ? "Phòng ban: Pháp chế & R&D" : "Dept: Legal & R&D"}</option>
+                    <option value="SALES">{isVi ? "Phòng ban: Bán hàng (Sales)" : "Dept: Sales"}</option>
+                    <option value="FINANCE">{isVi ? "Phòng ban: Kế toán & Tài chính" : "Dept: Finance"}</option>
+                    <option value="OPS">{isVi ? "Phòng ban: Vận hành (Operations)" : "Dept: Operations"}</option>
+                  </select>
+
+                  {/* 2. Ngày tạo Dropdown */}
+                  <select
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    style={{
+                      background: "var(--surface)",
+                      color: "var(--text-1)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    <option value="ALL">{isVi ? "Ngày tạo: Toàn bộ thời gian" : "Created: All Time"}</option>
+                    <option value="30D">{isVi ? "Ngày tạo: 30 ngày qua" : "Created: Past 30 Days"}</option>
+                    <option value="2026">{isVi ? "Ngày tạo: Năm nay (2026)" : "Created: Year 2026"}</option>
+                  </select>
+
+                  {/* 3. Giá trị giao dịch Dropdown */}
+                  <select
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                    style={{
+                      background: "var(--surface)",
+                      color: "var(--text-1)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    <option value="ALL">{isVi ? "Giá trị: Mọi mức" : "Value: Any Amount"}</option>
+                    <option value="500M">{isVi ? "Giá trị: > 500 Triệu VNĐ" : "Value: > 500M VND"}</option>
+                    <option value="1B">{isVi ? "Giá trị: > 1 Tỷ VNĐ" : "Value: > 1B VND"}</option>
+                  </select>
+
+                  {/* 4. Hiệu lực / Trạng thái Dropdown */}
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    style={{
+                      background: "var(--surface)",
+                      color: "var(--text-1)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    <option value="ALL">{isVi ? "Hiệu lực: Tất cả" : "Status: All"}</option>
+                    <option value="VALID">{isVi ? "Hiệu lực: Còn hiệu lực" : "Status: Active"}</option>
+                    <option value="EXPIRING">{isVi ? "Hiệu lực: Sắp hết hạn (<30 ngày)" : "Status: Expiring (<30d)"}</option>
+                  </select>
+
+                  {(filterDept !== "ALL" || filterDate !== "ALL" || filterValue !== "ALL" || filterStatus !== "ALL") && (
+                    <button
+                      onClick={() => {
+                        setFilterDept("ALL");
+                        setFilterDate("ALL");
+                        setFilterValue("ALL");
+                        setFilterStatus("ALL");
+                        showToast(isVi ? "Đã đặt lại tất cả bộ lọc" : "Filters reset");
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--cyan)",
+                        fontWeight: "700",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        textDecoration: "underline"
+                      }}
+                    >
+                      {isVi ? "Đặt lại lọc" : "Reset Filters"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Right controls: View Toggle & Count */}
+                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "2px"
+                  }}>
+                    <button
+                      onClick={() => setViewLayout("grouped")}
+                      title={isVi ? "Xem theo 4 nhóm thực thể" : "Grouped View"}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        border: "none",
+                        cursor: "pointer",
+                        background: viewLayout === "grouped" ? "var(--surface-3)" : "transparent",
+                        color: viewLayout === "grouped" ? "var(--cyan)" : "var(--text-3)",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px"
+                      }}
+                    >
+                      <i className="fa-solid fa-table-cells-large"></i>
+                      <span>{isVi ? "Nhóm 4 mục" : "Sections"}</span>
+                    </button>
+                    <button
+                      onClick={() => setViewLayout("table")}
+                      title={isVi ? "Xem dạng bảng hợp nhất" : "Unified Table"}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        border: "none",
+                        cursor: "pointer",
+                        background: viewLayout === "table" ? "var(--surface-3)" : "transparent",
+                        color: viewLayout === "table" ? "var(--cyan)" : "var(--text-3)",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px"
+                      }}
+                    >
+                      <i className="fa-solid fa-table-list"></i>
+                      <span>{isVi ? "Bảng dữ liệu" : "Table"}</span>
+                    </button>
                   </div>
-                ))}
+
+                  <span style={{ fontSize: "12.5px", color: "var(--text-3)" }}>
+                    {isVi ? "Tìm thấy" : "Found"}{" "}
+                    <strong style={{ color: "var(--text-1)", fontWeight: "800" }}>{totalResultsCount} kết quả</strong>{" "}
+                    {isVi ? "trong 4 nhóm thực thể" : "across 4 clusters"}
+                  </span>
+                </div>
               </div>
 
-              {/* File Format filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ fontSize: "10.5px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {isVi ? "ĐỊNH DẠNG FILE" : "FILE FORMAT"}
-                </div>
-                {["ALL", "PDF", "DOCX", "XLSX"].map((fmt) => (
-                  <div
-                    key={fmt}
+              {/* QUICK CATEGORY TABS ROW */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", paddingTop: "2px" }}>
+                {[
+                  { id: "ALL", label: isVi ? "Tất cả kết quả" : "All Results", count: totalResultsCount, icon: "fa-layer-group" },
+                  { id: "CONTRACT", label: isVi ? "Hợp Đồng & CUAD" : "Contracts", count: filteredContracts.length, icon: "fa-file-signature", color: "#6366f1" },
+                  { id: "CUSTOMER", label: isVi ? "Khách Hàng (CRM)" : "Customers", count: filteredCustomers.length, icon: "fa-building", color: "#3b82f6" },
+                  { id: "PRODUCT", label: isVi ? "Sản Phẩm & Dịch Vụ" : "Products", count: filteredProducts.length, icon: "fa-box-open", color: "#10b981" },
+                  { id: "DOCUMENT", label: isVi ? "Tài Liệu & SOP" : "Documents", count: filteredDocuments.length, icon: "fa-file-lines", color: "#64748b" }
+                ].map((cat) => {
+                  const isActive = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveCategory(cat.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        fontWeight: isActive ? "750" : "600",
+                        cursor: "pointer",
+                        border: `1px solid ${isActive ? "var(--cyan)" : "var(--border-soft)"}`,
+                        background: isActive ? "var(--surface)" : "transparent",
+                        color: isActive ? "var(--cyan)" : "var(--text-2)",
+                        boxShadow: isActive ? "var(--shadow-sm)" : "none",
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      <i className={`fa-solid ${cat.icon}`} style={{ color: cat.color || "inherit" }}></i>
+                      <span>{cat.label}</span>
+                      <span style={{
+                        fontSize: "10.5px",
+                        padding: "1px 6px",
+                        borderRadius: "10px",
+                        background: isActive ? "var(--cyan-soft)" : "var(--surface-3)",
+                        color: isActive ? "var(--cyan)" : "var(--text-3)",
+                        fontFamily: "var(--f-mono)",
+                        fontWeight: "700"
+                      }}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* PROMPT SUGGESTIONS SHORTCUTS */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "11.5px", color: "var(--text-4)", fontWeight: "600" }}>
+                  {isVi ? "Gợi ý từ khóa mẫu:" : "Sample queries:"}
+                </span>
+                {SAMPLE_QUERIES.map((sq, i) => (
+                  <button
+                    key={i}
                     onClick={() => {
-                      setFilterType(fmt === "ALL" ? "ALL" : fmt);
-                      showToast(isVi ? `Đã lọc theo định dạng: ${fmt}` : `Filtered by format: ${fmt}`);
+                      setQuery(sq.text);
+                      showToast(isVi ? `Đã chọn: ${sq.label}` : `Query set to ${sq.label}`);
                     }}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 10px",
+                      padding: "2px 8px",
+                      background: "var(--surface)",
                       borderRadius: "6px",
+                      border: "1px solid var(--border-soft)",
+                      fontSize: "11.5px",
+                      color: "var(--cyan)",
                       cursor: "pointer",
-                      fontSize: "12.5px",
-                      transition: "all 0.15s ease",
-                      background: filterType === fmt ? "var(--surface-3)" : "transparent",
-                      color: filterType === fmt ? "var(--cyan)" : "var(--text-2)",
-                      fontWeight: filterType === fmt ? "700" : "500"
+                      transition: "all 0.15s ease"
                     }}
                   >
-                    <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <i className={`fa-solid ${fmt === "PDF" ? "fa-file-pdf text-red-400" : fmt === "DOCX" ? "fa-file-word text-blue-400" : fmt === "XLSX" ? "fa-file-excel text-green-400" : "fa-folder"}`} style={{ fontSize: "12px" }}></i>
-                      {fmt === "ALL" ? (isVi ? "Tất cả file" : "All Files") : fmt}
-                    </span>
-                    <span style={{ fontSize: "11px", color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>
-                      {fmt === "ALL" ? "5" : fmt === "PDF" ? "2" : fmt === "DOCX" ? "2" : "1"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Date range filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ fontSize: "10.5px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {isVi ? "THỜI GIAN CẬP NHẬT" : "DATE RANGE"}
-                </div>
-                {["ALL", "30_DAYS", "THIS_QUARTER", "YEAR_2026"].map((range) => (
-                  <div
-                    key={range}
-                    onClick={() => {
-                      showToast(isVi ? "Đã áp dụng khoảng thời gian tra cứu" : "Date range filter applied");
-                    }}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 10px",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      fontSize: "12.5px",
-                      transition: "all 0.15s ease",
-                      color: "var(--text-2)",
-                      fontWeight: range === "ALL" ? "700" : "500"
-                    }}
-                  >
-                    <span>
-                      {range === "ALL"
-                        ? (isVi ? "Toàn bộ thời gian" : "All Time")
-                        : range === "30_DAYS"
-                        ? (isVi ? "30 ngày gần đây" : "Past 30 Days")
-                        : range === "THIS_QUARTER"
-                        ? (isVi ? "Quý 3/2026" : "Q3 2026")
-                        : (isVi ? "Năm 2026" : "Year 2026")}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Risk filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div style={{ fontSize: "10.5px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {isVi ? "MỨC RỦI RO" : "RISK STATUS"}
-                </div>
-                {["ALL", "High", "Med", "Low"].map((r) => (
-                  <div
-                    key={r}
-                    onClick={() => setFilterRisk(r)}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 10px",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      fontSize: "12.5px",
-                      transition: "all 0.15s ease",
-                      background: filterRisk === r ? "var(--surface-3)" : "transparent",
-                      color: filterRisk === r ? "var(--cyan)" : "var(--text-2)",
-                      fontWeight: filterRisk === r ? "700" : "500"
-                    }}
-                  >
-                    <span>{r === "ALL" ? (isVi ? "Tất cả mức độ" : "All Risk Levels") : r}</span>
-                    <span style={{ fontSize: "11px", color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>
-                      {r === "High" ? "2" : r === "Med" ? "2" : "1"}
-                    </span>
-                  </div>
+                    "{sq.label}"
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* RESULTS LIST */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2px" }}>
-                <span style={{ fontSize: "13px", color: "var(--text-3)" }}>
-                  {isVi ? "Tìm thấy" : "Showing"} <b style={{ color: "var(--text-1)" }}>{filteredResults.length}</b> {isVi ? "kết quả tương quan cao" : "high-confidence matches"}
-                </span>
-                <span style={{ fontSize: "10.5px", color: "var(--text-4)", fontFamily: "var(--f-mono)", textTransform: "uppercase" }}>
-                  SORTED BY: RELEVANCE + PROVENANCE
-                </span>
-              </div>
-
-              {filteredResults.length === 0 ? (
+            {/* RESULTS CONTENT AREA */}
+            <div style={{ padding: "26px 28px", display: "flex", flexDirection: "column", gap: "28px" }}>
+              
+              {totalResultsCount === 0 ? (
+                /* EMPTY STATE (E1 STATE THEO SPEC) */
                 <div style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--r-lg)",
-                  padding: "40px 24px",
+                  padding: "60px 24px",
                   textAlign: "center",
-                  color: "var(--text-3)",
-                  fontSize: "13.5px"
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "14px"
                 }}>
-                  {isVi ? "Không tìm thấy kết quả nào phù hợp với bộ lọc đã chọn." : "No results match your selected search criteria."}
+                  <div style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "50%",
+                    background: "var(--surface-3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "22px",
+                    color: "var(--text-3)"
+                  }}>
+                    <i className="fa-solid fa-magnifying-glass"></i>
+                  </div>
+                  <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
+                    {isVi ? "Không tìm thấy kết quả phù hợp — Hãy thử từ khóa khác" : "No Matching Results Found"}
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "var(--text-3)", maxWidth: "480px", margin: 0, lineHeight: "1.5" }}>
+                    {isVi
+                      ? "Không có hợp đồng, khách hàng, sản phẩm hoặc tài liệu SOP nào khớp với tiêu chí lọc hiện tại. Bạn có thể xóa bớt bộ lọc hoặc gõ tên đối tác cụ thể."
+                      : "Try loosening your filters, checking for spelling, or searching by generic keyword or entity code."}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setQuery("");
+                      setFilterDept("ALL");
+                      setFilterDate("ALL");
+                      setFilterValue("ALL");
+                      setFilterStatus("ALL");
+                      setActiveCategory("ALL");
+                    }}
+                    className="btn sm"
+                    style={{ marginTop: "8px" }}
+                  >
+                    <i className="fa-solid fa-rotate-left" style={{ marginRight: "6px" }}></i>
+                    {isVi ? "Xóa bộ lọc & Xem toàn bộ" : "Reset & Show All"}
+                  </button>
+                </div>
+              ) : viewLayout === "table" ? (
+                /* UNIFIED TABLE VIEW */
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                    <thead>
+                      <tr style={{ background: "var(--surface-2)", borderBottom: "2px solid var(--border)", textAlign: "left" }}>
+                        <th style={{ padding: "10px 14px", fontWeight: "750", color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Loại" : "Type"}</th>
+                        <th style={{ padding: "10px 14px", fontWeight: "750", color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Mã / Tên Thực Thể" : "Identifier / Name"}</th>
+                        <th style={{ padding: "10px 14px", fontWeight: "750", color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Phòng Ban" : "Department"}</th>
+                        <th style={{ padding: "10px 14px", fontWeight: "750", color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Giá Trị / Quy Mô" : "Scale / Value"}</th>
+                        <th style={{ padding: "10px 14px", fontWeight: "750", color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Hiệu Lực" : "Status"}</th>
+                        <th style={{ padding: "10px 14px", fontWeight: "750", color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>{isVi ? "Độ Tương Quan" : "Score"}</th>
+                        <th style={{ padding: "10px 14px", fontWeight: "750", color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase", textAlign: "right" }}>{isVi ? "Thao Tác" : "Actions"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ...filteredContracts.map((c) => ({ ...c, catLabel: "HỢP ĐỒNG", catColor: "#6366f1" })),
+                        ...filteredCustomers.map((cu) => ({ ...cu, catLabel: "KHÁCH HÀNG", catColor: "#3b82f6", title: cu.name, value: cu.revenue })),
+                        ...filteredProducts.map((p) => ({ ...p, catLabel: "SẢN PHẨM", catColor: "#10b981", title: p.name, value: p.value })),
+                        ...filteredDocuments.map((d) => ({ ...d, catLabel: "TÀI LIỆU", catColor: "#64748b", value: d.size }))
+                      ].map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: "1px solid var(--border-soft)", transition: "background 0.15s ease" }}>
+                          <td style={{ padding: "12px 14px" }}>
+                            <span style={{
+                              fontSize: "10.5px",
+                              fontWeight: "800",
+                              padding: "2px 7px",
+                              borderRadius: "4px",
+                              background: "var(--surface-3)",
+                              color: row.catColor,
+                              fontFamily: "var(--f-mono)"
+                            }}>
+                              {row.catLabel}
+                            </span>
+                          </td>
+                          <td style={{ padding: "12px 14px" }}>
+                            <div style={{ fontWeight: "700", color: "var(--text-1)" }}>{row.title}</div>
+                            <div style={{ fontSize: "11.5px", color: "var(--text-3)", fontFamily: "var(--f-mono)" }}>{row.code}</div>
+                          </td>
+                          <td style={{ padding: "12px 14px", color: "var(--text-2)" }}>{row.deptName}</td>
+                          <td style={{ padding: "12px 14px", fontWeight: "700", color: "var(--text-1)" }}>{row.value || "--"}</td>
+                          <td style={{ padding: "12px 14px" }}>
+                            <span style={{
+                              fontSize: "11px",
+                              fontWeight: "700",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: row.status === "VALID" ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
+                              color: row.status === "VALID" ? "#059669" : "#d97706"
+                            }}>
+                              {row.statusText}
+                            </span>
+                          </td>
+                          <td style={{ padding: "12px 14px", fontFamily: "var(--f-mono)", color: "var(--cyan)", fontWeight: "700" }}>
+                            {Math.round(row.score * 100)}%
+                          </td>
+                          <td style={{ padding: "12px 14px", textAlign: "right" }}>
+                            <div style={{ display: "inline-flex", gap: "6px" }}>
+                              <button
+                                onClick={() => {
+                                  onNavigate?.("graph");
+                                  showToast(isVi ? `Đang mở ${row.code} trên Đồ thị Tri thức` : `Opening ${row.code} in Graph`);
+                                }}
+                                className="btn sm"
+                                style={{ padding: "4px 8px", fontSize: "11.5px" }}
+                                title={isVi ? "Xem trên đồ thị" : "View on Graph"}
+                              >
+                                <i className="fa-solid fa-circle-nodes" style={{ color: "var(--cyan)" }}></i>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  onNavigate?.("documents");
+                                  showToast(isVi ? `Đang mở hồ sơ tài liệu của: ${row.title}` : `Opening dossier for: ${row.title}`);
+                                }}
+                                className="btn sm"
+                                style={{ padding: "4px 8px", fontSize: "11.5px" }}
+                                title={isVi ? "Xem trước tài liệu" : "Preview Document"}
+                              >
+                                <i className="fa-solid fa-file-lines"></i>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  onNavigate?.("copilot");
+                                  showToast(isVi ? "Đang mở phiên phân tích cùng Copilot" : "Opening Copilot session");
+                                }}
+                                className="btn primary sm"
+                                style={{ padding: "4px 8px", fontSize: "11.5px" }}
+                                title={isVi ? "Hỏi AI Copilot" : "Ask Copilot"}
+                              >
+                                <i className="fa-solid fa-brain"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                filteredResults.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--r-lg)",
-                      padding: "18px 22px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                      boxShadow: "var(--shadow-sm)",
-                      transition: "all var(--transition-fast)"
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <span style={{
-                          fontSize: "10px",
+                /* GROUPED SECTIONS (4 SECTIONS THEO ĐÚNG STITCH UI) */
+                <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+                  
+                  {/* SECTION 1: HỢP ĐỒNG & ĐIỀU KHOẢN PHÁP LÝ (CUAD) */}
+                  {(activeCategory === "ALL" || activeCategory === "CONTRACT") && filteredContracts.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: "1.5px solid var(--border)",
+                        paddingBottom: "8px"
+                      }}>
+                        <h3 style={{
+                          fontSize: "14px",
                           fontWeight: "800",
-                          background: "var(--surface-3)",
-                          color: "var(--text-3)",
-                          padding: "2px 6px",
-                          borderRadius: "4px",
-                          fontFamily: "var(--f-mono)"
+                          color: "var(--text-1)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          margin: 0
                         }}>
-                          {item.type}
-                        </span>
-                        <span style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-1)" }}>
-                          {item.title}
-                        </span>
-                      </div>
-                      <span className={`pill ${item.pill}`} style={{ fontSize: "10.5px", fontWeight: "700", textTransform: "uppercase" }}>
-                        {item.pillText}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: "13.5px", color: "var(--text-2)", lineHeight: "1.6" }}>
-                      {item.snippet}
-                    </div>
-
-                    {/* WHY THIS RESULT MATCHES */}
-                    <div style={{
-                      background: "var(--surface-2)",
-                      border: "1px solid var(--border-soft)",
-                      borderRadius: "6px",
-                      padding: "8px 12px",
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "12px"
-                    }}>
-                      <span style={{ color: "var(--cyan)", fontWeight: "700" }}>
-                        {isVi ? "LÝ DO KHỚP:" : "WHY THIS MATCHES:"}
-                      </span>
-                      <span style={{ background: "var(--surface)", color: "var(--cyan)", padding: "2px 8px", borderRadius: "4px", border: "1px solid var(--border-soft)" }}>
-                        {isVi ? "Tương đồng" : "Semantic score"} {item.score}
-                      </span>
-                      <span style={{ background: "var(--surface)", color: "var(--text-2)", padding: "2px 8px", borderRadius: "4px", border: "1px solid var(--border-soft)", fontFamily: "var(--f-mono)" }}>
-                        {item.graphPath}
-                      </span>
-                      <span style={{ background: "var(--surface)", color: "var(--text-3)", padding: "2px 8px", borderRadius: "4px", border: "1px solid var(--border-soft)" }}>
-                        {isVi ? "Nguồn:" : "Source:"} {item.sourceDoc}
-                      </span>
-                    </div>
-
-                    {/* Card Action Footer */}
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      paddingTop: "10px",
-                      borderTop: "1px solid var(--border-soft)",
-                      fontSize: "12px",
-                      color: "var(--text-3)"
-                    }}>
-                      <span>
-                        {isVi ? "Độ tin cậy:" : "Confidence:"} <b style={{ color: "#059669" }}>{item.confidence}</b> · {isVi ? "Phòng ban:" : "Dept:"} {item.dept}
-                      </span>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#6366f1", display: "inline-block" }}></span>
+                          <span>{isVi ? "Hợp Đồng & Điều Khoản Pháp Lý (CUAD)" : "Contracts & Legal Clauses (CUAD)"}</span>
+                          <span style={{
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            color: "#6366f1",
+                            background: "rgba(99, 102, 241, 0.1)",
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            border: "1px solid rgba(99, 102, 241, 0.2)"
+                          }}>
+                            {filteredContracts.length} {isVi ? "kết quả" : "results"}
+                          </span>
+                        </h3>
                         <button
                           onClick={() => {
-                            onSelectEntity?.(item.entityId);
-                            onNavigate?.("documents");
-                            showToast(isVi ? `Đang mở hồ sơ tài liệu của: ${item.title}` : `Opening dossier for: ${item.title}`);
+                            setActiveCategory("CONTRACT");
+                            showToast(isVi ? "Đã lọc hiển thị nhóm Hợp đồng" : "Filtered by contracts");
                           }}
-                          className="btn sm"
+                          style={{ background: "transparent", border: "none", color: "var(--cyan)", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
                         >
-                          <i className="fa-solid fa-file-lines" style={{ marginRight: "6px", color: "var(--amber)" }}></i>
-                          {isVi ? "Hồ Sơ Tài Liệu" : "View Dossier"}
-                        </button>
-                        <button
-                          onClick={() => {
-                            onNavigate?.("copilot");
-                            showToast(isVi ? "Đang chuyển sang Trợ lý Copilot..." : "Switching to Copilot...");
-                          }}
-                          className="btn primary sm"
-                        >
-                          <i className="fa-solid fa-brain" style={{ marginRight: "6px" }}></i>
-                          {isVi ? "Hỏi Copilot" : "Ask Copilot"} →
+                          {isVi ? "Lọc riêng nhóm này →" : "View group →"}
                         </button>
                       </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "14px" }}>
+                        {filteredContracts.map((c) => (
+                          <div
+                            key={c.id}
+                            style={{
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "var(--r-lg)",
+                              padding: "18px 20px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "10px",
+                              boxShadow: "var(--shadow-sm)",
+                              transition: "all 0.15s ease"
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                <span style={{
+                                  fontSize: "10.5px",
+                                  fontWeight: "800",
+                                  fontFamily: "var(--f-mono)",
+                                  background: "rgba(99, 102, 241, 0.1)",
+                                  color: "#4f46e5",
+                                  padding: "2px 7px",
+                                  borderRadius: "4px"
+                                }}>
+                                  {c.code}
+                                </span>
+                                <span style={{ fontSize: "13.5px", fontWeight: "750", color: "var(--text-1)" }}>
+                                  {c.title}
+                                </span>
+                              </div>
+                              <span style={{
+                                fontSize: "11px",
+                                fontWeight: "700",
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                background: c.status === "VALID" ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
+                                color: c.status === "VALID" ? "#059669" : "#d97706",
+                                whiteSpace: "nowrap"
+                              }}>
+                                {c.statusText}
+                              </span>
+                            </div>
+
+                            <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0 }}>
+                              {isVi ? "Đối tác:" : "Client:"} <strong style={{ color: "var(--text-1)" }}>{c.client}</strong> • {isVi ? "Giá trị:" : "Value:"} <strong style={{ color: "var(--text-1)" }}>{c.value}</strong> • {isVi ? "Ký:" : "Signed:"} {c.date}
+                            </p>
+
+                            {/* HIGHLIGHTED SNIPPET BOX */}
+                            <div style={{
+                              background: "rgba(245, 158, 11, 0.08)",
+                              border: "1px solid rgba(245, 158, 11, 0.25)",
+                              borderRadius: "8px",
+                              padding: "10px 12px",
+                              fontSize: "12px",
+                              color: "var(--text-1)",
+                              lineHeight: "1.6"
+                            }}>
+                              <span style={{ fontWeight: "700", color: "#b45309", marginRight: "4px" }}>
+                                {isVi ? "Phù hợp từ khóa:" : "Matching excerpt:"}
+                              </span>
+                              <span>
+                                {c.snippet.split(c.highlight).map((part, i, arr) => (
+                                  <React.Fragment key={i}>
+                                    {part}
+                                    {i < arr.length - 1 && (
+                                      <mark style={{ background: "#fde68a", color: "#78350f", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
+                                        {c.highlight}
+                                      </mark>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                              </span>
+                            </div>
+
+                            {/* CARD FOOTER */}
+                            <div style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              paddingTop: "10px",
+                              borderTop: "1px solid var(--border-soft)",
+                              fontSize: "11.5px",
+                              color: "var(--text-4)"
+                            }}>
+                              <span>{c.agent} • {c.sourceDoc}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <button
+                                  onClick={() => {
+                                    onNavigate?.("copilot");
+                                    showToast(isVi ? "Đang gửi yêu cầu phân tích hợp đồng sang Copilot..." : "Switching to Copilot...");
+                                  }}
+                                  style={{ background: "transparent", border: "none", color: "var(--cyan)", fontWeight: "700", cursor: "pointer", fontSize: "12px" }}
+                                >
+                                  {isVi ? "Hỏi AI Copilot" : "Ask Copilot"}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    onNavigate?.("graph");
+                                    showToast(isVi ? `Đang định vị ${c.code} trên Đồ thị Tri thức` : `Locating ${c.code} on Graph`);
+                                  }}
+                                  style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px" }}
+                                >
+                                  {isVi ? "Xem trên đồ thị" : "Graph"}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    onNavigate?.("documents");
+                                    showToast(isVi ? `Mở tài liệu ${c.sourceDoc}` : `Opening ${c.sourceDoc}`);
+                                  }}
+                                  style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px" }}
+                                >
+                                  {isVi ? "Xem trước" : "Preview"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )}
+
+                  {/* SECTION 2: KHÁCH HÀNG (CUSTOMER — CRM ADVENTUREWORKS) */}
+                  {(activeCategory === "ALL" || activeCategory === "CUSTOMER") && filteredCustomers.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: "1.5px solid var(--border)",
+                        paddingBottom: "8px"
+                      }}>
+                        <h3 style={{
+                          fontSize: "14px",
+                          fontWeight: "800",
+                          color: "var(--text-1)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          margin: 0
+                        }}>
+                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#3b82f6", display: "inline-block" }}></span>
+                          <span>{isVi ? "Khách Hàng (Customer — AdventureWorks CRM)" : "Customers (AdventureWorks CRM)"}</span>
+                          <span style={{
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            color: "#3b82f6",
+                            background: "rgba(59, 130, 246, 0.1)",
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            border: "1px solid rgba(59, 130, 246, 0.2)"
+                          }}>
+                            {filteredCustomers.length} {isVi ? "kết quả" : "results"}
+                          </span>
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setActiveCategory("CUSTOMER");
+                            showToast(isVi ? "Đã lọc danh sách Khách hàng" : "Filtered by customers");
+                          }}
+                          style={{ background: "transparent", border: "none", color: "var(--cyan)", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+                        >
+                          {isVi ? "Xem trong CRM →" : "View in CRM →"}
+                        </button>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "14px" }}>
+                        {filteredCustomers.map((cust) => (
+                          <div
+                            key={cust.id}
+                            style={{
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "var(--r-lg)",
+                              padding: "18px 20px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "14px",
+                              boxShadow: "var(--shadow-sm)"
+                            }}
+                          >
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span style={{ fontSize: "14px", fontWeight: "800", color: "var(--text-1)" }}>
+                                  {cust.name}
+                                </span>
+                                <span style={{
+                                  fontSize: "10px",
+                                  fontWeight: "800",
+                                  fontFamily: "var(--f-mono)",
+                                  background: "rgba(59, 130, 246, 0.1)",
+                                  color: "#2563eb",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px"
+                                }}>
+                                  {cust.code}
+                                </span>
+                              </div>
+                              <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0 }}>
+                                {isVi ? "Nhóm khách hàng:" : "Segment:"} <strong style={{ color: "var(--text-2)" }}>{cust.tier}</strong>
+                              </p>
+                              <p style={{ fontSize: "12px", color: "var(--text-2)", margin: 0 }}>
+                                {isVi ? "Doanh thu lũy kế:" : "Cumulative Revenue:"} <strong style={{ color: "var(--text-1)", fontWeight: "800" }}>{cust.revenue}</strong> ({cust.orders})
+                              </p>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                onNavigate?.("graph");
+                                showToast(isVi ? `Mở liên kết thực thể ${cust.name} trên đồ thị` : `Opening graph for ${cust.name}`);
+                              }}
+                              className="btn sm"
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "7px 14px",
+                                fontSize: "12px",
+                                flexShrink: 0
+                              }}
+                            >
+                              <i className="fa-solid fa-circle-nodes" style={{ color: "var(--cyan)" }}></i>
+                              <span>{isVi ? "Đồ thị" : "Graph"}</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SECTION 3: SẢN PHẨM & DỊCH VỤ CUNG CẤP (ERP) */}
+                  {(activeCategory === "ALL" || activeCategory === "PRODUCT") && filteredProducts.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: "1.5px solid var(--border)",
+                        paddingBottom: "8px"
+                      }}>
+                        <h3 style={{
+                          fontSize: "14px",
+                          fontWeight: "800",
+                          color: "var(--text-1)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          margin: 0
+                        }}>
+                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+                          <span>{isVi ? "Sản Phẩm & Dịch Vụ Cung Cấp" : "Products & Enterprise Services"}</span>
+                          <span style={{
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            color: "#10b981",
+                            background: "rgba(16, 185, 129, 0.1)",
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            border: "1px solid rgba(16, 185, 129, 0.2)"
+                          }}>
+                            {filteredProducts.length} {isVi ? "kết quả" : "results"}
+                          </span>
+                        </h3>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px" }}>
+                        {filteredProducts.map((p) => (
+                          <div
+                            key={p.id}
+                            style={{
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "var(--r-lg)",
+                              padding: "16px 18px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px",
+                              boxShadow: "var(--shadow-sm)"
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{
+                                fontSize: "10.5px",
+                                fontWeight: "800",
+                                fontFamily: "var(--f-mono)",
+                                background: "rgba(16, 185, 129, 0.1)",
+                                color: "#059669",
+                                padding: "2px 6px",
+                                borderRadius: "4px"
+                              }}>
+                                {p.code}
+                              </span>
+                              <span style={{ fontSize: "11px", fontWeight: "700", color: "#059669" }}>
+                                {p.value}
+                              </span>
+                            </div>
+                            <h4 style={{ fontSize: "13.5px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
+                              {p.name}
+                            </h4>
+                            <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, lineHeight: "1.5" }}>
+                              {p.desc}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SECTION 4: TÀI LIỆU & QUY TRÌNH SOP NỘI BỘ (DOCUMENT EXPLORER) */}
+                  {(activeCategory === "ALL" || activeCategory === "DOCUMENT") && filteredDocuments.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: "1.5px solid var(--border)",
+                        paddingBottom: "8px"
+                      }}>
+                        <h3 style={{
+                          fontSize: "14px",
+                          fontWeight: "800",
+                          color: "var(--text-1)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          margin: 0
+                        }}>
+                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#64748b", display: "inline-block" }}></span>
+                          <span>{isVi ? "Tài Liệu & Quy Trình SOP Nội Bộ (Document Explorer)" : "Internal Documents & SOPs"}</span>
+                          <span style={{
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            color: "#64748b",
+                            background: "var(--surface-3)",
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            border: "1px solid var(--border)"
+                          }}>
+                            {filteredDocuments.length} {isVi ? "kết quả" : "results"}
+                          </span>
+                        </h3>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {filteredDocuments.map((doc) => (
+                          <div
+                            key={doc.id}
+                            style={{
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "var(--r-md)",
+                              padding: "14px 18px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "14px",
+                              transition: "all 0.15s ease",
+                              boxShadow: "var(--shadow-sm)"
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                              <div style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "8px",
+                                background: doc.format === "PDF" ? "rgba(239, 68, 68, 0.1)" : "rgba(37, 99, 235, 0.1)",
+                                color: doc.format === "PDF" ? "#dc2626" : "#2563eb",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontWeight: "800",
+                                fontSize: "12px",
+                                flexShrink: 0
+                              }}>
+                                {doc.format}
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                <h4 style={{ fontSize: "13.5px", fontWeight: "750", color: "var(--text-1)", margin: 0 }}>
+                                  {doc.title}
+                                </h4>
+                                <span style={{ fontSize: "11.5px", color: "var(--text-3)" }}>
+                                  {doc.deptName} • {isVi ? "Ngày nạp:" : "Uploaded:"} {doc.date} • {doc.size} ({doc.pages})
+                                </span>
+                              </div>
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <button
+                                onClick={() => {
+                                  onNavigate?.("documents");
+                                  showToast(isVi ? `Đang mở tài liệu: ${doc.title}` : `Opening ${doc.title}`);
+                                }}
+                                className="btn sm"
+                                style={{ padding: "6px 12px", fontSize: "12px" }}
+                              >
+                                <i className="fa-solid fa-file-lines" style={{ marginRight: "6px", color: "var(--amber)" }}></i>
+                                {isVi ? "Xem tài liệu" : "Preview"}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
               )}
+
             </div>
           </div>
         </div>

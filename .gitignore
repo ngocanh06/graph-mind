@@ -20,3 +20,5 @@ pgadmin_data/
 venv/
 .venv/
 *.log
+mcp_config.json
+.agents/

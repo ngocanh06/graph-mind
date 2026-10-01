@@ -18,6 +18,7 @@ import SearchView from "./views/m5_multifacet_search/SearchView";
 import ConnectorsView from "./views/m1_data_sync/ConnectorsView";
 import RiskView from "./views/m4_decision_support/RiskView";
 import DocumentsView from "./views/m2_knowledge_editor/DocumentsView";
+import SopView from "./views/m2_knowledge_editor/SopView";
 import ReportsView from "./views/m4_decision_support/ReportsView";
 import AdminView from "./views/m6_admin_security/AdminView";
 
@@ -30,6 +31,8 @@ const VALID_VIEWS = [
   "connectors",
   "risk",
   "documents",
+  "sop",
+  "sop_composer",
   "reports",
   "admin"
 ];
@@ -359,6 +362,17 @@ export default function App() {
               lang={lang}
               role={role}
               currentUser={currentUser}
+            />
+          )}
+
+          {(view === "sop" || view === "sop_composer") && (
+            <SopView
+              onNavigate={setView}
+              t={t}
+              lang={lang}
+              role={role}
+              currentUser={currentUser}
+              initialMode={view === "sop_composer" ? "composer" : "list"}
             />
           )}
 

@@ -7,37 +7,118 @@ export default function KnowledgeView({
   onUpdateEntity,
   onNavigate,
   t,
-  lang = "vi"
+  lang = "vi",
+  role,
+  currentUser
 }) {
   const isVi = lang === "vi";
 
-  // Entity filter chips selection state
+  // Sub-tab navigation: "canvas" | "queue"
+  const [activeTab, setActiveTab] = useState("canvas");
+
+  // Filter chips selection
   const [selectedEntityFilter, setSelectedEntityFilter] = useState("ALL");
-  const [showEmptyOverlay, setShowEmptyOverlay] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [toastMsg, setToastMsg] = useState("");
 
-  // Selected Node state for DRAWER-003
+  // Quick Entity creation modal state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newEntityName, setNewEntityName] = useState("");
+  const [newEntityType, setNewEntityType] = useState("Customer");
+
+  // Selected Node state for Inspector
   const [selectedNode, setSelectedNode] = useState({
-    id: "Clause:12.2",
+    id: "Clause_12.2",
+    name: "Unilateral Liability Cap",
     label: "Mục 12.2: Giới hạn trách nhiệm bồi thường",
     type: "Clause",
-    badge: "Clause:CUAD",
-    subtitle: "Thuộc hợp đồng dịch vụ CUAD_042 với đối tác Alpha Corp",
+    badge: "Clause Node",
+    docSource: "CUAD_Service_Agreement_v4.pdf",
+    chunkId: "Qdrant_Chunk_#402",
+    penaltyLimit: "10% total fee in 12 months",
+    isRisk: true,
+    notes: "Mức trần 10% này thấp hơn tiêu chuẩn 30% của công ty. Cần lưu ý khi soạn phụ lục đàm phán lại.",
     properties: {
       is_unilateral: "true (Bất đối xứng)",
       cap_percentage: "10% (0.10)",
       risk_score: "0.942 (Rất cao)",
       contract_ref: "CUAD_042",
       page_number: "16"
-    },
-    edges: [
-      { name: "CUAD_042 (Contract)", relation: "← [HAS_RISK_LIABILITY]", color: "text-rose-600" },
-      { name: "Alpha Corp (Customer)", relation: "→ [POTENTIAL_EXPOSURE]", color: "text-slate-500" }
-    ],
-    aiInsight: "Cần bổ sung phụ lục điều chỉnh trần trách nhiệm tương ứng 100% cho cả hai bên trước khi gia hạn Hợp đồng kỳ Q4/2026."
+    }
   });
+
+  // Selected Edge state for Floating Toolbar
+  const [selectedEdge, setSelectedEdge] = useState({
+    id: "edge-3",
+    label: "HAS_RISK_LIABILITY",
+    from: "CUAD_042",
+    to: "Clause_12.2",
+    color: "#ba1a1a"
+  });
+
+  // Queue state for Pending Reviews (SCREEN-016-QUEUE)
+  const [queueItems, setQueueItems] = useState([
+    {
+      id: "q-1",
+      source: "Alpha Corp Global",
+      sourceType: "Organization",
+      sourceColor: "bg-blue-600",
+      relation: "PARENT_COMPANY_OF",
+      target: "Alpha Corp Vietnam Ltd",
+      targetType: "Subsidiary",
+      targetColor: "bg-blue-600",
+      confidence: 74.2,
+      doc: "CUAD_Service_Agreement_v4.pdf",
+      clause: isVi ? "Trang 2 • Khổ 4" : "Page 2 • Para 4",
+      status: "pending",
+      selected: true
+    },
+    {
+      id: "q-2",
+      source: "CUAD_Procurement_087",
+      sourceType: "Contract",
+      sourceColor: "bg-indigo-600",
+      relation: "EXPIRES_AT",
+      target: "31/12/2026",
+      targetType: "Date Milestone",
+      targetColor: "bg-amber-600",
+      confidence: 68.5,
+      doc: "CUAD_Procurement_Contract_087.pdf",
+      clause: isVi ? "Trang 18 • Điều 22" : "Page 18 • Art 22",
+      status: "pending",
+      selected: true
+    },
+    {
+      id: "q-3",
+      source: "Lê Hoàng Minh",
+      sourceType: "Employee",
+      sourceColor: "bg-purple-600",
+      relation: "AUTHORIZED_SIGNER",
+      target: "CUAD_042",
+      targetType: "Contract",
+      targetColor: "bg-indigo-600",
+      confidence: 81.0,
+      doc: "Master_NDA_AlphaCorp_Signed.pdf",
+      clause: isVi ? "Phụ lục Ủy quyền" : "Authorization Addendum",
+      status: "pending",
+      selected: true
+    },
+    {
+      id: "q-4",
+      source: "SaaS Engine Pro",
+      sourceType: "Product",
+      sourceColor: "bg-cyan-600",
+      relation: "GOVERNED_BY_SOP",
+      target: "SOP-02",
+      targetType: "Procedure",
+      targetColor: "bg-primary",
+      confidence: 79.4,
+      doc: "SOP_Nghiem_Thu_Phan_Mem_v2.1.docx",
+      clause: isVi ? "Phần 1.2" : "Section 1.2",
+      status: "pending",
+      selected: true
+    }
+  ]);
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -45,555 +126,903 @@ export default function KnowledgeView({
   };
 
   const ENTITY_CHIPS = [
-    { key: "Customer", label: "Customer", count: 24, bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-300", dot: "bg-blue-600" },
-    { key: "Product", label: "Product", count: 18, bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-300", dot: "bg-emerald-600" },
-    { key: "Order", label: "Order", count: 36, bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-300", dot: "bg-amber-600" },
-    { key: "Employee", label: "Employee", count: 12, bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-300", dot: "bg-purple-600" },
-    { key: "Vendor", label: "Vendor", count: 9, bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-300", dot: "bg-orange-600" },
-    { key: "Contract", label: "Contract", count: 15, bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-300", dot: "bg-indigo-600" },
-    { key: "Clause", label: "Clause", count: 48, bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-300 ring-2 ring-rose-400/50", dot: "bg-rose-600" },
+    { key: "Customer", label: "Customer", count: 340, bg: "bg-blue-50 text-blue-800 border-blue-200", dot: "bg-blue-600" },
+    { key: "Product", label: "Product", count: 1120, bg: "bg-cyan-50 text-cyan-800 border-cyan-200", dot: "bg-cyan-600" },
+    { key: "Order", label: "Order", count: 4290, bg: "bg-amber-50 text-amber-900 border-amber-200", dot: "bg-amber-600" },
+    { key: "Employee", label: "Employee", count: 89, bg: "bg-purple-50 text-purple-900 border-purple-200", dot: "bg-purple-600" },
+    { key: "Vendor", label: "Vendor", count: 142, bg: "bg-orange-50 text-orange-900 border-orange-200", dot: "bg-orange-600" },
+    { key: "Contract", label: "Contract", count: 68, bg: "bg-indigo-50 text-indigo-900 border-indigo-200", dot: "bg-indigo-600" },
+    { key: "Clause", label: "Clause", count: 412, bg: "bg-rose-50 text-rose-900 border-rose-200 font-bold", dot: "bg-rose-600" },
   ];
 
-  const handleNodeClick = (nodeData) => {
-    setSelectedNode(nodeData);
-    showToast(`Đã chọn thực thể: ${nodeData.label}`);
+  const handleSaveAttributeChanges = () => {
+    showToast(isVi ? `Đã lưu thuộc tính ${selectedNode.id} và cập nhật vector weights trong Qdrant!` : `Saved attributes for ${selectedNode.id} and updated Qdrant weights!`);
   };
 
-  const resetCanvas = () => {
-    setZoomLevel(100);
-    setPanOffset({ x: 0, y: 0 });
-    showToast("Đã căn giữa sơ đồ đồ thị.");
+  const handleDeleteEntity = () => {
+    showToast(isVi ? `Đã xóa thực thể ${selectedNode.id} khỏi đồ thị Neo4j.` : `Deleted entity ${selectedNode.id} from Neo4j.`);
+  };
+
+  const handleBatchApprove = () => {
+    const selectedCount = queueItems.filter((q) => q.selected && q.status === "pending").length;
+    if (selectedCount === 0) {
+      showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
+      return;
+    }
+    setQueueItems((prev) =>
+      prev.map((item) => (item.selected ? { ...item, status: "approved" } : item))
+    );
+    showToast(isVi ? `Đã duyệt ${selectedCount} quan hệ và đồng bộ thẳng vào Neo4j Production!` : `Approved ${selectedCount} relations and committed to Neo4j Production!`);
+  };
+
+  const handleBatchReject = () => {
+    const selectedCount = queueItems.filter((q) => q.selected && q.status === "pending").length;
+    if (selectedCount === 0) {
+      showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
+      return;
+    }
+    setQueueItems((prev) =>
+      prev.map((item) => (item.selected ? { ...item, status: "rejected" } : item))
+    );
+    showToast(isVi ? `Đã từ chối ${selectedCount} quan hệ khỏi đồ thị.` : `Rejected ${selectedCount} relations from graph.`);
+  };
+
+  const handleRowAction = (id, newStatus) => {
+    setQueueItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+    );
+    showToast(
+      newStatus === "approved"
+        ? (isVi ? "Đã chấp thuận quan hệ tri thức!" : "Relationship approved!")
+        : (isVi ? "Đã từ chối quan hệ tri thức!" : "Relationship rejected!")
+    );
+  };
+
+  const toggleSelectQueue = (id) => {
+    setQueueItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, selected: !item.selected } : item))
+    );
+  };
+
+  const toggleSelectAllQueue = () => {
+    const allSelected = queueItems.every((q) => q.selected);
+    setQueueItems((prev) => prev.map((item) => ({ ...item, selected: !allSelected })));
+  };
+
+  const handleCreateNewEntity = (e) => {
+    e.preventDefault();
+    if (!newEntityName.trim()) return;
+    showToast(isVi ? `Đã khởi tạo thực thể [${newEntityType}: ${newEntityName}] trong Neo4j!` : `Created entity [${newEntityType}: ${newEntityName}] in Neo4j!`);
+    setIsAddModalOpen(false);
+    setNewEntityName("");
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-900">
-
-      {/* TOAST NOTIFICATION */}
+    <div className="space-y-4 font-sans text-on-surface min-h-screen">
+      {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 bg-slate-900 text-white text-xs font-medium rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2 animate-bounce">
-          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-          {toastMsg}
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 bg-surface-container-high border border-primary/40 text-on-surface text-xs font-medium rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
+          <i className="fa-solid fa-circle-check text-primary text-[16px]"></i>
+          <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* SCREEN TITLE & BAR */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-              SCREEN-019 — Knowledge Graph Viewer (Đồ Thị Tri Thức Đa Chiều)
-            </h2>
-            <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-mono">
-              Full-Screen Interactive Canvas + 7 Entity Taxonomies
+      {/* ========================================================================= */}
+      {/* HEADER & CONTROLS (SCREEN-016) */}
+      {/* ========================================================================= */}
+      <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-md bg-secondary-fixed text-on-secondary-fixed text-xs font-bold tracking-wider">
+              SCREEN-016
             </span>
+            <h1 className="text-xl font-bold text-on-surface tracking-tight">
+              {isVi ? "Knowledge Editor — Trực quan hóa & Hiệu chỉnh Tri thức AI" : "Knowledge Editor — AI Knowledge Visualizer & Human-in-the-Loop"}
+            </h1>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Trực quan hóa mạng lưới thực thể và quan hệ liên kết (Neo4j). Có thanh lọc thực thể trên cùng và Drawer chi tiết node bên phải.
+          <p className="text-xs text-on-surface-variant">
+            {isVi
+              ? "Human-in-the-loop: Tinh chỉnh liên kết thực thể, bổ sung ontology và đồng bộ hai chiều Neo4j & Qdrant."
+              : "Human-in-the-loop: Refine entity triples, curate enterprise ontology, and synchronize bidirectionally with Neo4j & Qdrant."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setShowEmptyOverlay(!showEmptyOverlay)}
-            className="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition-colors"
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow hover:bg-blue-700 transition-all flex items-center gap-1.5"
           >
-            {showEmptyOverlay ? "Tắt Empty State" : "Xem Empty State (Ngoài quyền)"}
+            <i className="fa-solid fa-plus text-[14px]"></i>
+            <span>{isVi ? "Thực thể mới" : "New Entity"}</span>
+          </button>
+          <button
+            onClick={() => showToast(isVi ? "Kéo thả giữa 2 node trên canvas để tạo quan hệ mới" : "Drag between 2 nodes on canvas to create relation")}
+            className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+          >
+            <i className="fa-solid fa-link text-[14px]"></i>
+            <span>{isVi ? "Thêm quan hệ" : "Add Relation"}</span>
+          </button>
+          <button
+            onClick={() => showToast(isVi ? "Đã hoàn tác thao tác gần nhất" : "Undone last action")}
+            className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+          >
+            <i className="fa-solid fa-rotate-left text-[14px]"></i>
+            <span>{isVi ? "Hoàn tác" : "Undo"}</span>
+          </button>
+          <button
+            onClick={() => showToast(isVi ? "Đã lưu và đồng bộ toàn bộ đồ thị vào Neo4j + Qdrant!" : "Committed all graph changes to Neo4j + Qdrant!")}
+            className="px-3.5 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-semibold shadow hover:bg-purple-700 transition-all flex items-center gap-1.5"
+          >
+            <i className="fa-solid fa-rotate text-[14px]"></i>
+            <span>{isVi ? "Lưu Neo4j + Qdrant" : "Commit to Neo4j"}</span>
           </button>
         </div>
       </div>
 
-      {/* KNOWLEDGE GRAPH WORKSPACE CONTAINER */}
-      <div className="bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[760px] relative">
+      {/* ========================================================================= */}
+      {/* SUB-BAR: VIEW TOGGLE (CANVAS vs REVIEW QUEUE) & ENTITY COLOR SPECTRUM */}
+      {/* ========================================================================= */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-2xs text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-on-surface-variant px-1">{isVi ? "Lọc thực thể:" : "Filter:"}</span>
 
-        {/* TOP TOOLBAR: FILTER CHIPS (7 ENTITY TYPES) */}
-        <div className="p-3.5 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 flex-shrink-0 z-10">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-500 mr-1 flex items-center gap-1">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              Lọc thực thể:
-            </span>
-
-            {/* 7 Entity Filter Chips */}
-            {ENTITY_CHIPS.map((chip) => {
-              const isActive = selectedEntityFilter === chip.key || selectedEntityFilter === "ALL";
-              return (
-                <button
-                  key={chip.key}
-                  onClick={() => {
-                    if (selectedEntityFilter === chip.key) {
-                      setSelectedEntityFilter("ALL");
-                    } else {
-                      setSelectedEntityFilter(chip.key);
-                    }
-                  }}
-                  className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 transition-all ${
-                    chip.bg
-                  } ${chip.text} ${chip.border} ${
-                    !isActive ? "opacity-40 grayscale" : "opacity-100 hover:scale-105"
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${chip.dot}`}></span>
-                  {chip.label} ({chip.count})
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Canvas Controls (Zoom, Reset, Layout) */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-              <button
-                onClick={() => setZoomLevel((z) => Math.min(z + 15, 180))}
-                className="p-1 text-slate-600 hover:text-slate-900 rounded"
-                title="Phóng to"
+          {/* 7 Taxonomies Chips */}
+          {ENTITY_CHIPS.map((chip) => {
+            const isActive = selectedEntityFilter === chip.key || selectedEntityFilter === "ALL";
+            return (
+              <span
+                key={chip.key}
+                onClick={() => setSelectedEntityFilter(selectedEntityFilter === chip.key ? "ALL" : chip.key)}
+                className={`px-3 py-1 rounded-full border flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all ${
+                  chip.bg
+                } ${!isActive ? "opacity-35 grayscale" : "opacity-100 hover:scale-105"}`}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-              <span className="text-[11px] px-1.5 font-mono text-slate-600 font-medium">{zoomLevel}%</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${chip.dot}`}></span>
+                <span>{chip.label} ({chip.count})</span>
+              </span>
+            );
+          })}
+        </div>
+
+        {/* Tab switch button between Canvas & Queue */}
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={() => setActiveTab("canvas")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              activeTab === "canvas"
+                ? "bg-primary text-on-primary shadow-xs"
+                : "bg-surface-container-low text-on-surface hover:bg-surface-container"
+            }`}
+          >
+            <i className="fa-solid fa-circle-nodes text-[14px]"></i>
+            <span>{isVi ? "Graph Canvas" : "Canvas"}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("queue")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              activeTab === "queue"
+                ? "bg-amber-600 text-white shadow-xs"
+                : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
+            }`}
+          >
+            <i className="fa-solid fa-list-check text-[14px]"></i>
+            <span>{isVi ? "Hàng chờ duyệt NER (114 mục)" : "Review Queue (114)"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 1: INTERACTIVE GRAPH CANVAS (SCREEN-016) */}
+      {/* ========================================================================= */}
+      {activeTab === "canvas" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* LEFT: GRAPH CANVAS SIMULATION (8 Cols) */}
+          <div className="lg:col-span-8 bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5 shadow-xs relative min-h-[600px] overflow-hidden flex flex-col justify-between">
+            {/* Floating Top-Left Subgraph Context */}
+            <div className="absolute top-4 left-4 z-10 bg-surface-container-lowest/90 backdrop-blur px-3 py-1.5 rounded-xl border border-outline-variant/40 shadow-xs flex items-center gap-2 text-xs text-on-surface">
+              <i className="fa-solid fa-circle-nodes text-primary text-[15px]"></i>
+              <span>{isVi ? "Đồ thị con: " : "Subgraph: "}<strong>Hợp đồng Alpha Corp CUAD_042</strong></span>
+            </div>
+
+            {/* Floating Top-Right Zoom Controls */}
+            <div className="absolute top-4 right-4 z-10 bg-surface-container-lowest/90 backdrop-blur p-1 rounded-xl border border-outline-variant/40 shadow-xs flex items-center gap-1 text-xs">
               <button
                 onClick={() => setZoomLevel((z) => Math.max(z - 15, 60))}
-                className="p-1 text-slate-600 hover:text-slate-900 rounded"
+                className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface"
                 title="Thu nhỏ"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
-                </svg>
+                <i className="fa-solid fa-minus text-[13px]"></i>
+              </button>
+              <span className="px-2 font-bold font-mono">{zoomLevel}%</span>
+              <button
+                onClick={() => setZoomLevel((z) => Math.min(z + 15, 180))}
+                className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface"
+                title="Phóng to"
+              >
+                <i className="fa-solid fa-plus text-[13px]"></i>
+              </button>
+              <button
+                onClick={() => setZoomLevel(100)}
+                className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface"
+                title="Căn giữa"
+              >
+                <i className="fa-solid fa-compress text-[13px]"></i>
               </button>
             </div>
-            <button
-              onClick={resetCanvas}
-              className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 flex items-center gap-1 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+
+            {/* Simulated SVG Graph Visual with Arrows & Rich Nodes */}
+            <div className="w-full h-full flex-1 flex items-center justify-center relative my-2 overflow-hidden">
+              <svg
+                className="w-full h-[470px]"
+                fill="none"
+                viewBox="0 0 700 450"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{
+                  transform: `scale(${zoomLevel / 100})`,
+                  transformOrigin: "center center",
+                  transition: "transform 0.2s ease-out"
+                }}
+              >
+                <defs>
+                  <pattern id="canvas-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                    <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#E2E7FF" strokeWidth="0.8" />
+                  </pattern>
+                  <marker id="arrow-blue" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
+                    <polygon points="0 0, 7 3.5, 0 7" fill="#004AC6" />
+                  </marker>
+                  <marker id="arrow-purple" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
+                    <polygon points="0 0, 7 3.5, 0 7" fill="#712AE2" />
+                  </marker>
+                  <marker id="arrow-red" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
+                    <polygon points="0 0, 7 3.5, 0 7" fill="#BA1A1A" />
+                  </marker>
+                </defs>
+
+                <rect width="100%" height="100%" fill="url(#canvas-grid)" />
+
+                {/* Edges / Links with Directional Markers */}
+                <path
+                  d="M 180 180 L 350 140"
+                  stroke="#712AE2"
+                  strokeWidth="2.5"
+                  strokeDasharray="4 4"
+                  markerEnd="url(#arrow-purple)"
+                  className="cursor-pointer"
+                  onClick={() =>
+                    setSelectedEdge({
+                      id: "edge-1",
+                      label: "PARTNER_OF",
+                      from: "Alpha Corp",
+                      to: "CUAD_042",
+                      color: "#712AE2"
+                    })
+                  }
+                />
+                <path
+                  d="M 350 140 L 520 220"
+                  stroke="#004AC6"
+                  strokeWidth="2"
+                  markerEnd="url(#arrow-blue)"
+                  className="cursor-pointer"
+                  onClick={() =>
+                    setSelectedEdge({
+                      id: "edge-2",
+                      label: "INCLUDES_ITEM",
+                      from: "CUAD_042",
+                      to: "Cloud Infra",
+                      color: "#004AC6"
+                    })
+                  }
+                />
+                <path
+                  d="M 350 140 L 350 320"
+                  stroke="#BA1A1A"
+                  strokeWidth="3"
+                  markerEnd="url(#arrow-red)"
+                  className="cursor-pointer"
+                  onClick={() =>
+                    setSelectedEdge({
+                      id: "edge-3",
+                      label: "HAS_RISK_LIABILITY",
+                      from: "CUAD_042",
+                      to: "Clause_12.2",
+                      color: "#BA1A1A"
+                    })
+                  }
+                />
+                <path
+                  d="M 520 220 L 520 340"
+                  stroke="#712AE2"
+                  strokeWidth="2"
+                  markerEnd="url(#arrow-purple)"
+                />
+
+                {/* Edge Labels */}
+                <rect x="230" y="145" width="85" height="20" rx="4" fill="#F2F3FF" stroke="#C3C6D7" strokeWidth="0.5" />
+                <text x="272" y="159" textAnchor="middle" fill="#712AE2" fontSize="10" fontWeight="600" fontFamily="Inter">
+                  PARTNER_OF
+                </text>
+
+                <rect x="408" y="165" width="90" height="20" rx="4" fill="#F2F3FF" stroke="#C3C6D7" strokeWidth="0.5" />
+                <text x="453" y="179" textAnchor="middle" fill="#004AC6" fontSize="10" fontWeight="600" fontFamily="Inter">
+                  INCLUDES_ITEM
+                </text>
+
+                <rect x="308" y="225" width="135" height="22" rx="4" fill="#FFDAD6" stroke="#BA1A1A" strokeWidth="0.5" />
+                <text x="375" y="240" textAnchor="middle" fill="#BA1A1A" fontSize="10" fontWeight="bold" fontFamily="Inter">
+                  HAS_RISK_LIABILITY
+                </text>
+
+                {/* Node 1: Vendor (Alpha Corp) */}
+                <g
+                  className="cursor-pointer group"
+                  transform="translate(180, 180)"
+                  onClick={() => {
+                    setSelectedNode({
+                      id: "Party_AlphaCorp",
+                      name: "Alpha Corporation",
+                      label: "Alpha Corp (Customer VIP)",
+                      type: "Customer",
+                      badge: "Customer Node",
+                      docSource: "CUAD_Service_Agreement_v4.pdf",
+                      chunkId: "Qdrant_Chunk_#101",
+                      penaltyLimit: "N/A",
+                      isRisk: false,
+                      notes: "Khách hàng cấp Enterprise, đã ký hợp đồng dịch vụ CUAD.",
+                      properties: {
+                        credit_rating: "AAA Enterprise",
+                        annual_revenue: "42,000,000,000 VND",
+                        contract_status: "Active (Chờ rà soát Q4)"
+                      }
+                    });
+                    showToast(isVi ? "Đã chọn Node: Alpha Corp" : "Selected Node: Alpha Corp");
+                  }}
+                >
+                  <circle r="42" fill="#EAEDFF" stroke="#004AC6" strokeWidth="2" />
+                  <circle cx="0" cy="0" r="6" fill="#004AC6" />
+                  <text y="-8" textAnchor="middle" fill="#004AC6" fontSize="11" fontWeight="bold" fontFamily="Inter">Alpha Corp</text>
+                  <text y="10" textAnchor="middle" fill="#434655" fontSize="9" fontFamily="Inter">Party / Vendor</text>
+                </g>
+
+                {/* Node 2: Center Contract (CUAD_042) */}
+                <g
+                  className="cursor-pointer group"
+                  transform="translate(350, 140)"
+                  onClick={() => {
+                    setSelectedNode({
+                      id: "CUAD_042",
+                      name: "Master Service Agreement v4",
+                      label: "Hợp đồng dịch vụ CUAD_042",
+                      type: "Contract",
+                      badge: "Contract Node",
+                      docSource: "CUAD_Service_Agreement_v4.pdf",
+                      chunkId: "Qdrant_Chunk_#204",
+                      penaltyLimit: "1.2B VND (Total Valuation)",
+                      isRisk: true,
+                      notes: "Hợp đồng dịch vụ IT có điều khoản giới hạn bồi thường bất lợi.",
+                      properties: {
+                        effective_date: "01/01/2026",
+                        expiration_date: "18/10/2026 (12 ngày còn lại)",
+                        governing_law: "Luật Thương mại Việt Nam"
+                      }
+                    });
+                    showToast(isVi ? "Đã chọn Node: CUAD_042" : "Selected Node: CUAD_042");
+                  }}
+                >
+                  <circle r="48" fill="#EAEDFF" stroke="#712AE2" strokeWidth="3" />
+                  <circle cx="0" cy="0" r="8" fill="#712AE2" />
+                  <text y="-8" textAnchor="middle" fill="#712AE2" fontSize="12" fontWeight="bold" fontFamily="Inter">CUAD_042</text>
+                  <text y="10" textAnchor="middle" fill="#434655" fontSize="9" fontFamily="Inter">Service Agreement</text>
+                </g>
+
+                {/* Node 3: Product / Service */}
+                <g
+                  className="cursor-pointer group"
+                  transform="translate(520, 220)"
+                  onClick={() => {
+                    setSelectedNode({
+                      id: "Cloud_Infra_01",
+                      name: "Cloud Enterprise Infrastructure",
+                      label: "Sản phẩm Cloud Infra",
+                      type: "Product",
+                      badge: "Product Node",
+                      docSource: "AdventureWorks_Sales_Q3_2026.xlsx",
+                      chunkId: "Qdrant_Chunk_#312",
+                      penaltyLimit: "99.9% Uptime SLA",
+                      isRisk: false,
+                      notes: "Hạ tầng đám mây đạt tiêu chuẩn ISO 27001.",
+                      properties: {
+                        sla_commitment: "99.9% Uptime",
+                        monthly_fee: "85,000,000 VND"
+                      }
+                    });
+                    showToast(isVi ? "Đã chọn Node: Cloud Infra" : "Selected Node: Cloud Infra");
+                  }}
+                >
+                  <circle r="38" fill="#F2F3FF" stroke="#0074A6" strokeWidth="2" />
+                  <circle cx="0" cy="0" r="5" fill="#0074A6" />
+                  <text y="-6" textAnchor="middle" fill="#0074A6" fontSize="10" fontWeight="bold" fontFamily="Inter">Cloud Infra</text>
+                  <text y="8" textAnchor="middle" fill="#434655" fontSize="8" fontFamily="Inter">Product</text>
+                </g>
+
+                {/* Node 4: Selected Clause Node (Clause_12.2) with Pulse Ring */}
+                <g
+                  className="cursor-pointer group"
+                  transform="translate(350, 320)"
+                  onClick={() => {
+                    setSelectedNode({
+                      id: "Clause_12.2",
+                      name: "Unilateral Liability Cap",
+                      label: "Mục 12.2: Giới hạn trách nhiệm bồi thường",
+                      type: "Clause",
+                      badge: "Clause Node",
+                      docSource: "CUAD_Service_Agreement_v4.pdf",
+                      chunkId: "Qdrant_Chunk_#402",
+                      penaltyLimit: "10% total fee in 12 months",
+                      isRisk: true,
+                      notes: "Mức trần 10% này thấp hơn tiêu chuẩn 30% của công ty. Cần lưu ý khi soạn phụ lục đàm phán lại.",
+                      properties: {
+                        is_unilateral: "true (Bất đối xứng)",
+                        cap_percentage: "10% (0.10)",
+                        risk_score: "0.942 (Rất cao)",
+                        contract_ref: "CUAD_042",
+                        page_number: "16"
+                      }
+                    });
+                    showToast(isVi ? "Đã chọn Node: Clause_12.2" : "Selected Node: Clause_12.2");
+                  }}
+                >
+                  <circle r="50" fill="#FFDAD6" stroke="#BA1A1A" strokeWidth="3" />
+                  <circle r="56" fill="none" stroke="#BA1A1A" strokeWidth="1.5" strokeDasharray="3 3" className="animate-pulse" />
+                  <circle cx="0" cy="0" r="8" fill="#BA1A1A" />
+                  <text y="-8" textAnchor="middle" fill="#BA1A1A" fontSize="11" fontWeight="bold" fontFamily="Inter">Clause_12.2</text>
+                  <text y="10" textAnchor="middle" fill="#93000A" fontSize="9" fontFamily="Inter">Liability Cap 10%</text>
+                </g>
+
+                {/* Node 5: SLA Condition */}
+                <g
+                  className="cursor-pointer group"
+                  transform="translate(520, 340)"
+                  onClick={() => {
+                    setSelectedNode({
+                      id: "SLA_999",
+                      name: "SLA 99.9% High Availability",
+                      label: "Điều kiện SLA 99.9%",
+                      type: "Clause",
+                      badge: "Requirement Node",
+                      docSource: "CUAD_Service_Agreement_v4.pdf",
+                      chunkId: "Qdrant_Chunk_#512",
+                      penaltyLimit: "5% penalty per 0.1% downtime",
+                      isRisk: false,
+                      notes: "Cam kết chỉ số uptime hạ tầng Cloud.",
+                      properties: {
+                        requirement_type: "Operational SLA",
+                        reporting_cycle: "Monthly"
+                      }
+                    });
+                    showToast(isVi ? "Đã chọn Node: SLA 99.9%" : "Selected Node: SLA 99.9%");
+                  }}
+                >
+                  <circle r="36" fill="#F2F3FF" stroke="#712AE2" strokeWidth="2" />
+                  <circle cx="0" cy="0" r="5" fill="#712AE2" />
+                  <text y="-6" textAnchor="middle" fill="#712AE2" fontSize="10" fontWeight="bold" fontFamily="Inter">SLA 99.9%</text>
+                  <text y="8" textAnchor="middle" fill="#434655" fontSize="8" fontFamily="Inter">Requirement</text>
+                </g>
               </svg>
-              Căn giữa đồ thị
-            </button>
-          </div>
-        </div>
 
-        {/* GRAPH CANVAS + DETAIL PANEL WORKSPACE */}
-        <div className="flex-1 flex overflow-hidden relative">
-
-          {/* MAIN SVG GRAPH CANVAS */}
-          <div id="graph-main-canvas" className="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center">
-
-            {/* Background Grid Pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-40"></div>
-
-            {/* SVG Graph Visualization */}
-            <svg
-              className="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing"
-              viewBox="0 0 1000 650"
-              style={{
-                transform: `scale(${zoomLevel / 100}) translate(${panOffset.x}px, ${panOffset.y}px)`,
-                transformOrigin: "center center",
-                transition: "transform 0.2s ease-out"
-              }}
-            >
-              <defs>
-                {/* Marker Arrows for each link */}
-                <marker id="arrow-blue" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
-                </marker>
-                <marker id="arrow-emerald" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
-                </marker>
-                <marker id="arrow-rose" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" />
-                </marker>
-                <marker id="arrow-indigo" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
-                </marker>
-                <marker id="arrow-amber" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
-                </marker>
-              </defs>
-
-              {/* RELATIONSHIP EDGES (EDGES WITH LABELS & ARROWS) */}
-              {/* Customer -> Order */}
-              <line x1="280" y1="220" x2="480" y2="160" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4" markerEnd="url(#arrow-blue)" />
-              <text x="370" y="180" fill="#93c5fd" fontSize="11" fontFamily="monospace">PLACED_ORDER</text>
-
-              {/* Order -> Product */}
-              <line x1="480" y1="160" x2="720" y2="180" stroke="#10b981" strokeWidth="2" markerEnd="url(#arrow-emerald)" />
-              <text x="590" y="160" fill="#6ee7b7" fontSize="11" fontFamily="monospace">CONTAINS_ITEM</text>
-
-              {/* Customer -> Contract */}
-              <line x1="280" y1="220" x2="380" y2="400" stroke="#6366f1" strokeWidth="2.5" markerEnd="url(#arrow-indigo)" />
-              <text x="310" y="320" fill="#c7d2fe" fontSize="11" fontFamily="monospace">BOUND_BY</text>
-
-              {/* Employee -> Contract */}
-              <line x1="160" y1="440" x2="380" y2="400" stroke="#a855f7" strokeWidth="2" markerEnd="url(#arrow-indigo)" />
-              <text x="240" y="435" fill="#e9d5ff" fontSize="11" fontFamily="monospace">MANAGED_BY</text>
-
-              {/* Contract -> Clause (HAS_RISK_LIABILITY) - HIGHLIGHTED ACTIVE */}
-              <line x1="380" y1="400" x2="680" y2="440" stroke="#f43f5e" strokeWidth="3" markerEnd="url(#arrow-rose)" className="animate-pulse" />
-              <text x="510" y="415" fill="#fda4af" fontSize="11" fontWeight="bold" fontFamily="monospace">HAS_RISK_LIABILITY</text>
-
-              {/* Vendor -> Product */}
-              <line x1="840" y1="340" x2="720" y2="180" stroke="#f97316" strokeWidth="2" markerEnd="url(#arrow-emerald)" />
-              <text x="790" y="270" fill="#fdba74" fontSize="11" fontFamily="monospace">SUPPLIES</text>
-
-              {/* Clause -> Customer (IMPACTS) */}
-              <line x1="680" y1="440" x2="280" y2="220" stroke="#f43f5e" strokeWidth="1.5" strokeDasharray="3 3" markerEnd="url(#arrow-blue)" />
-              <text x="470" y="315" fill="#fca5a5" fontSize="10" fontFamily="monospace">POTENTIAL_EXPOSURE</text>
-
-              {/* NODES (CIRCULAR + COLOR ACCORDING TO 7 TYPES) */}
-
-              {/* 1. Customer Node (Blue) */}
-              <g
-                className="cursor-pointer transform hover:scale-110 transition-transform"
-                onClick={() =>
-                  handleNodeClick({
-                    id: "Customer:Alpha",
-                    label: "Alpha Corp (Customer VIP)",
-                    type: "Customer",
-                    badge: "Customer:CRM",
-                    subtitle: "Đối tác doanh nghiệp chính trong hệ thống CRM AdventureWorks",
-                    properties: {
-                      industry: "Phát triển Phần mềm & Cloud",
-                      credit_rating: "AAA Enterprise",
-                      annual_revenue: "42,000,000,000 VND",
-                      contract_status: "Active (Chờ rà soát Q4)",
-                      account_manager: "Nguyễn Văn An"
-                    },
-                    edges: [
-                      { name: "ORD-9921 (Order)", relation: "→ [PLACED_ORDER]", color: "text-blue-600" },
-                      { name: "CUAD_042 (Contract)", relation: "→ [BOUND_BY]", color: "text-indigo-600" }
-                    ],
-                    aiInsight: "Doanh số tài khoản ổn định nhưng có rủi ro pháp lý liên quan đến điều khoản giới hạn bồi thường đơn phương."
-                  })
-                }
-              >
-                <circle cx="280" cy="220" r="32" fill="#1e3a8a" stroke="#3b82f6" strokeWidth="3" />
-                <text x="280" y="215" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">Alpha Corp</text>
-                <text x="280" y="230" fill="#93c5fd" fontSize="9" textAnchor="middle">Customer</text>
-              </g>
-
-              {/* 2. Order Node (Amber) */}
-              <g
-                className="cursor-pointer transform hover:scale-110 transition-transform"
-                onClick={() =>
-                  handleNodeClick({
-                    id: "Order:ORD-9921",
-                    label: "Đơn hàng ORD-9921",
-                    type: "Order",
-                    badge: "Order:ERP",
-                    subtitle: "Đơn hàng triển khai gói bản quyền ERP Cloud Suite Q3/2026",
-                    properties: {
-                      order_value: "1,200,000,000 VND",
-                      payment_terms: "Net 30 Days",
-                      fulfillment_status: "In Progress (80%)",
-                      created_date: "12/09/2026",
-                      sales_rep: "Lê Hoàng Nam"
-                    },
-                    edges: [
-                      { name: "Alpha Corp (Customer)", relation: "← [PLACED_ORDER]", color: "text-blue-600" },
-                      { name: "ERP Suite (Product)", relation: "→ [CONTAINS_ITEM]", color: "text-emerald-600" }
-                    ],
-                    aiInsight: "Tiến độ nghiệm thu đạt 80%, cần lưu ý cột mốc thanh toán đợt 2 đúng hạn trước ngày 30/10."
-                  })
-                }
-              >
-                <circle cx="480" cy="160" r="28" fill="#78350f" stroke="#f59e0b" strokeWidth="2.5" />
-                <text x="480" y="156" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">ORD-9921</text>
-                <text x="480" y="170" fill="#fde68a" fontSize="9" textAnchor="middle">Order</text>
-              </g>
-
-              {/* 3. Product Node (Emerald) */}
-              <g
-                className="cursor-pointer transform hover:scale-110 transition-transform"
-                onClick={() =>
-                  handleNodeClick({
-                    id: "Product:ERP_Suite",
-                    label: "Sản phẩm ERP Cloud Suite",
-                    type: "Product",
-                    badge: "Product:SaaS",
-                    subtitle: "Giải pháp quản trị nguồn lực doanh nghiệp tích hợp AI",
-                    properties: {
-                      license_type: "Enterprise Unlimited",
-                      sla_commitment: "99.9% Uptime",
-                      hosting_provider: "Global Cloud Hosting",
-                      monthly_fee: "85,000,000 VND",
-                      version: "v4.2.1-LTS"
-                    },
-                    edges: [
-                      { name: "ORD-9921 (Order)", relation: "← [CONTAINS_ITEM]", color: "text-amber-600" },
-                      { name: "Global Cloud (Vendor)", relation: "← [SUPPLIES]", color: "text-orange-600" }
-                    ],
-                    aiInsight: "Hạ tầng Cloud được vận hành bởi Vendor Global Cloud, đáp ứng các chứng chỉ ISO/IEC 27001."
-                  })
-                }
-              >
-                <circle cx="720" cy="180" r="30" fill="#064e3b" stroke="#10b981" strokeWidth="2.5" />
-                <text x="720" y="176" fill="#ffffff" fontSize="10" fontWeight="bold" textAnchor="middle">ERP Suite</text>
-                <text x="720" y="190" fill="#a7f3d0" fontSize="9" textAnchor="middle">Product</text>
-              </g>
-
-              {/* 4. Employee Node (Purple) */}
-              <g
-                className="cursor-pointer transform hover:scale-110 transition-transform"
-                onClick={() =>
-                  handleNodeClick({
-                    id: "Employee:NguyenVanAn",
-                    label: "Nguyễn Văn An (Legal Lead)",
-                    type: "Employee",
-                    badge: "Employee:HR",
-                    subtitle: "Trưởng nhóm Pháp chế & Tuân thủ hợp đồng Enterprise",
-                    properties: {
-                      department: "Phòng Pháp chế (Legal Dept)",
-                      role_title: "Legal Lead Officer",
-                      email: "an.nguyen@graphmind.vn",
-                      managed_contracts: "14 Hợp đồng Active",
-                      access_level: "Level 3 (Unrestricted)"
-                    },
-                    edges: [
-                      { name: "CUAD_042 (Contract)", relation: "→ [MANAGED_BY]", color: "text-indigo-600" }
-                    ],
-                    aiInsight: "Phụ trách rà soát chính các hợp đồng khung CUAD thuộc khối khách hàng doanh nghiệp lớn."
-                  })
-                }
-              >
-                <circle cx="160" cy="440" r="26" fill="#581c87" stroke="#a855f7" strokeWidth="2.5" />
-                <text x="160" y="436" fill="#ffffff" fontSize="10" fontWeight="bold" textAnchor="middle">Văn An</text>
-                <text x="160" y="449" fill="#e9d5ff" fontSize="8.5" textAnchor="middle">Legal Lead</text>
-              </g>
-
-              {/* 5. Contract Node (Indigo) - ACTIVE NODE */}
-              <g
-                className="cursor-pointer transform hover:scale-110 transition-transform"
-                onClick={() =>
-                  handleNodeClick({
-                    id: "Contract:CUAD_042",
-                    label: "Hợp đồng khung CUAD_042",
-                    type: "Contract",
-                    badge: "Contract:CUAD",
-                    subtitle: "Hợp đồng cung cấp dịch vụ phần mềm ký với Alpha Corp",
-                    properties: {
-                      contract_code: "CUAD_042_2026",
-                      effective_date: "01/01/2026",
-                      expiration_date: "31/12/2026 (Còn 91 ngày)",
-                      total_value: "1,200,000,000 VND",
-                      governing_law: "Luật Thương mại Việt Nam"
-                    },
-                    edges: [
-                      { name: "Alpha Corp (Customer)", relation: "← [BOUND_BY]", color: "text-blue-600" },
-                      { name: "Nguyễn Văn An (Employee)", relation: "← [MANAGED_BY]", color: "text-purple-600" },
-                      { name: "Mục 12.2 (Clause)", relation: "→ [HAS_RISK_LIABILITY]", color: "text-rose-600" }
-                    ],
-                    aiInsight: "Hợp đồng có 1 điều khoản rủi ro pháp lý cần đàm phán lại trước thời điểm tái gia hạn."
-                  })
-                }
-              >
-                <circle cx="380" cy="400" r="36" fill="#312e81" stroke="#818cf8" strokeWidth="3.5" />
-                <text x="380" y="395" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">CUAD_042</text>
-                <text x="380" y="410" fill="#c7d2fe" fontSize="9" textAnchor="middle">Contract</text>
-              </g>
-
-              {/* 6. Clause Node (Rose) - SELECTED NODE FOCUS */}
-              <g
-                className="cursor-pointer transform hover:scale-110 transition-transform"
-                onClick={() =>
-                  handleNodeClick({
-                    id: "Clause:12.2",
-                    label: "Mục 12.2: Giới hạn trách nhiệm bồi thường",
-                    type: "Clause",
-                    badge: "Clause:CUAD",
-                    subtitle: "Thuộc hợp đồng dịch vụ CUAD_042 với đối tác Alpha Corp",
-                    properties: {
-                      is_unilateral: "true (Bất đối xứng)",
-                      cap_percentage: "10% (0.10)",
-                      risk_score: "0.942 (Rất cao)",
-                      contract_ref: "CUAD_042",
-                      page_number: "16"
-                    },
-                    edges: [
-                      { name: "CUAD_042 (Contract)", relation: "← [HAS_RISK_LIABILITY]", color: "text-rose-600" },
-                      { name: "Alpha Corp (Customer)", relation: "→ [POTENTIAL_EXPOSURE]", color: "text-slate-500" }
-                    ],
-                    aiInsight: "Cần bổ sung phụ lục điều chỉnh trần trách nhiệm tương ứng 100% cho cả hai bên trước khi gia hạn Hợp đồng kỳ Q4/2026."
-                  })
-                }
-              >
-                <circle cx="680" cy="440" r="34" fill="#881337" stroke="#f43f5e" strokeWidth="3.5" className="animate-pulse" />
-                <text x="680" y="435" fill="#ffffff" fontSize="10.5" fontWeight="bold" textAnchor="middle">Mục 12.2</text>
-                <text x="680" y="450" fill="#fecdd3" fontSize="9" textAnchor="middle">Liability Cap</text>
-              </g>
-
-              {/* 7. Vendor Node (Orange) */}
-              <g
-                className="cursor-pointer transform hover:scale-110 transition-transform"
-                onClick={() =>
-                  handleNodeClick({
-                    id: "Vendor:GlobalCloud",
-                    label: "Global Cloud Hosting Inc.",
-                    type: "Vendor",
-                    badge: "Vendor:Cloud",
-                    subtitle: "Nhà cung cấp hạ tầng trung tâm dữ liệu Cloud Datacenter",
-                    properties: {
-                      country: "Singapore / Regional Hub",
-                      service_level: "Tier-4 Datacenter",
-                      security_cert: "ISO 27001, SOC 2 Type II",
-                      contract_period: "2024 - 2028",
-                      support_sla: "24/7 Premium Response"
-                    },
-                    edges: [
-                      { name: "ERP Suite (Product)", relation: "→ [SUPPLIES]", color: "text-emerald-600" }
-                    ],
-                    aiInsight: "Nhà cung cấp đám mây tin cậy với chỉ số sẵn sàng hạ tầng cam kết 99.99%."
-                  })
-                }
-              >
-                <circle cx="840" cy="340" r="28" fill="#7c2d12" stroke="#f97316" strokeWidth="2.5" />
-                <text x="840" y="336" fill="#ffffff" fontSize="10" fontWeight="bold" textAnchor="middle">Global Cloud</text>
-                <text x="840" y="350" fill="#fed7aa" fontSize="9" textAnchor="middle">Vendor</text>
-              </g>
-            </svg>
-
-            {/* GRAPH LEGEND (BOTTOM-LEFT CORNER) */}
-            <div className="absolute left-4 bottom-4 p-3 bg-slate-900/90 backdrop-blur-md rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2 shadow-lg z-10">
-              <div className="font-bold text-[11px] uppercase tracking-wider text-slate-400 flex items-center justify-between gap-4">
-                <span>Chú giải thực thể (7 loại)</span>
-                <span className="text-[10px] text-slate-500 font-mono">Neo4j Schema</span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Customer (CRM)</div>
-                <div className="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Product (ERP)</div>
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Order (Đơn hàng)</div>
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Employee (Nhân viên)</div>
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Vendor (Nhà CC)</div>
-                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Contract (Hợp đồng)</div>
-                <div className="flex items-center gap-1.5 col-span-2"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Clause (Điều khoản pháp lý CUAD)</div>
-              </div>
+              {/* Floating Context Toolbar for Selected Relationship */}
+              {selectedEdge && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-surface-container-lowest border border-outline-variant/40 p-2 rounded-xl shadow-lg flex items-center gap-2">
+                  <span className="text-xs text-on-surface px-2">
+                    {isVi ? "Cạnh chọn: " : "Selected Edge: "}
+                    <strong className="text-error">{selectedEdge.label}</strong>
+                  </span>
+                  <button
+                    onClick={() => showToast(isVi ? "Đang mở cửa sổ chỉnh sửa loại quan hệ" : "Opening relation modifier")}
+                    className="px-2.5 py-1 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container text-xs font-semibold"
+                  >
+                    {isVi ? "Sửa quan hệ" : "Edit Relation"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedEdge((e) => ({ ...e, label: "BOUND_BY" }));
+                      showToast(isVi ? "Đã đổi thành [BOUND_BY]" : "Changed to [BOUND_BY]");
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-secondary-fixed text-on-secondary-fixed text-xs font-semibold"
+                  >
+                    {isVi ? "Đổi: BOUND_BY" : "Switch: BOUND_BY"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedEdge(null);
+                      showToast(isVi ? "Đã xóa cạnh liên kết" : "Deleted relation edge");
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-error-container text-on-error-container hover:bg-error hover:text-white transition-colors text-xs font-semibold"
+                  >
+                    {isVi ? "Xóa cạnh" : "Delete Edge"}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* EMPTY STATE OVERLAY (RBAC OUT OF SCOPE) */}
-            {showEmptyOverlay && (
-              <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-3 z-30">
-                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
-                  <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <h4 className="text-sm font-bold text-slate-200">Không có thực thể trong phạm vi quyền của bạn</h4>
-                <p className="text-xs text-slate-400 max-w-sm">
-                  Theo cơ chế bảo mật RBAC & Department Scope, tài khoản hiện tại không có quyền truy xuất sơ đồ quan hệ của phòng ban này.
-                </p>
-                <button
-                  onClick={() => setShowEmptyOverlay(false)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-lg border border-slate-700 transition-colors"
-                >
-                  Đóng thông báo xem lại đồ thị
-                </button>
-              </div>
-            )}
-
-          </div>
-
-          {/* RIGHT DRAWER: DRAWER-003 KNOWLEDGE GRAPH NODE DETAIL (360px) */}
-          <aside className="w-[360px] border-l border-slate-200 bg-white flex flex-col flex-shrink-0 transition-all duration-300 z-20 shadow-xl">
-            {/* Panel Header */}
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500"></span>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  DRAWER-003: Chi Tiết Thực Thể
-                </h4>
-              </div>
-              <span className="text-[10px] font-mono bg-rose-50 text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-semibold">
-                {selectedNode.badge}
+            {/* Canvas Footer Status */}
+            <div className="flex flex-wrap items-center justify-between text-on-surface-variant text-xs pt-2 border-t border-surface-container">
+              <span>
+                {isVi
+                  ? "Kéo thả node để tái cấu trúc quan hệ ontology • Giữ Shift để chọn nhiều"
+                  : "Drag nodes to restructure ontology • Hold Shift to multi-select"}
+              </span>
+              <span className="flex items-center gap-1.5 text-primary font-semibold">
+                <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
+                5 Nodes • 4 Edges • Thuật toán Fruchterman-Reingold
               </span>
             </div>
+          </div>
 
-            {/* Node Properties List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs text-slate-700">
-
-              {/* Title & Category */}
-              <div className="space-y-1">
-                <span className="text-slate-400 text-[11px]">Tên thuộc tính định danh:</span>
-                <h3 className="text-sm font-bold text-slate-900">{selectedNode.label}</h3>
-                <p className="text-[11px] text-slate-500">{selectedNode.subtitle}</p>
-              </div>
-
-              {/* Property Grid */}
-              <div className="space-y-2 border-t border-slate-100 pt-3">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Thuộc tính Node (Neo4j KV)
+          {/* RIGHT: ENTITY PROPERTIES & HUMAN FEEDBACK INSPECTOR (4 Cols) */}
+          <div className="lg:col-span-4 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-xs space-y-5 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <i className="fa-solid fa-sliders text-error text-[18px]"></i>
+                  <h3 className="text-base font-bold text-on-surface">
+                    {isVi ? "Thuộc tính Thực thể" : "Entity Properties"}
+                  </h3>
                 </div>
-                <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] font-mono">
-                  {Object.entries(selectedNode.properties).map(([k, v]) => (
-                    <div key={k} className="flex justify-between items-center gap-2">
-                      <span className="text-slate-500">{k}:</span>
-                      <strong className="text-slate-900 truncate">{v}</strong>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Connected Relationships */}
-              <div className="space-y-2 border-t border-slate-100 pt-3">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Mối quan hệ liên kết (Edges)
-                </div>
-                <div className="space-y-2">
-                  {selectedNode.edges.map((edge, idx) => (
-                    <div key={idx} className="p-2.5 rounded-lg border border-slate-200 bg-white flex items-center justify-between">
-                      <div>
-                        <div className="text-[11px] font-semibold text-slate-800">{edge.name}</div>
-                        <div className={`text-[10px] font-mono ${edge.color}`}>{edge.relation}</div>
-                      </div>
-                      <button
-                        onClick={() => showToast(`Đang truy vấn liên kết: ${edge.name}`)}
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        Xem
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* AI Synthesis Insight */}
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1 text-xs">
-                <span className="font-bold text-blue-900 flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Gợi ý hành động từ AI Copilot:
+                <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 text-xs font-bold">
+                  {selectedNode.badge}
                 </span>
-                <p className="text-slate-700 leading-relaxed text-[11px]">{selectedNode.aiInsight}</p>
               </div>
 
+              {/* Selected Node Meta */}
+              <div className="bg-surface-container-low p-3.5 rounded-xl border border-outline-variant/20 space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-on-surface-variant">Entity ID:</span>
+                  <code className="font-mono text-primary bg-primary-fixed/50 px-2 py-0.5 rounded text-[11px] font-bold">
+                    {selectedNode.id}
+                  </code>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-on-surface-variant">{isVi ? "Tài liệu trích xuất:" : "Extracted Source:"}</span>
+                  <span className="text-on-surface font-semibold truncate max-w-[200px]" title={selectedNode.docSource}>
+                    {selectedNode.docSource}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-on-surface-variant">Vector Chunk ID:</span>
+                  <span className="text-on-surface font-mono text-[11px]">{selectedNode.chunkId}</span>
+                </div>
+              </div>
+
+              {/* Editable Attributes Form */}
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-on-surface mb-1">
+                    {isVi ? "Tên điều khoản (clause_name)" : "Clause Name (clause_name)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedNode.name}
+                    onChange={(e) => setSelectedNode({ ...selectedNode, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-surface-container-low rounded-xl text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-on-surface mb-1">
+                    {isVi ? "Giới hạn bồi thường (penalty_limit)" : "Liability Cap (penalty_limit)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedNode.penaltyLimit}
+                    onChange={(e) => setSelectedNode({ ...selectedNode, penaltyLimit: e.target.value })}
+                    className="w-full px-3 py-2 bg-surface-container-low rounded-xl text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-outline-variant/20">
+                  <div>
+                    <p className="font-bold text-on-surface">{isVi ? "Đánh dấu Rủi ro (is_risk)" : "Flag as Risk (is_risk)"}</p>
+                    <p className="text-[11px] text-on-surface-variant">
+                      {isVi ? "Cảnh báo tới hệ thống Copilot & Risk Engine" : "Alerts Copilot & Risk Engine"}
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={selectedNode.isRisk}
+                    onChange={(e) => setSelectedNode({ ...selectedNode, isRisk: e.target.checked })}
+                    className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-on-surface mb-1">
+                    {isVi ? "Ghi chú chuyên viên pháp chế (Human Feedback)" : "Specialist Notes (Human Feedback)"}
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={selectedNode.notes}
+                    onChange={(e) => setSelectedNode({ ...selectedNode, notes: e.target.value })}
+                    className="w-full p-2.5 bg-surface-container-low rounded-xl text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Panel Action Footer */}
-            <div className="p-3.5 border-t border-slate-200 bg-slate-50 flex items-center gap-2">
+            {/* Form Footer Action Buttons */}
+            <div className="space-y-2 pt-4 border-t border-surface-container">
               <button
-                onClick={() => onNavigate && onNavigate("copilot")}
-                className="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center justify-center gap-1 transition-colors"
+                onClick={handleSaveAttributeChanges}
+                className="w-full py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
               >
-                Hỏi AI về Node này
+                <i className="fa-solid fa-circle-check text-[15px]"></i>
+                <span>{isVi ? "Lưu thay đổi thuộc tính" : "Save Attribute Changes"}</span>
               </button>
+
               <button
-                onClick={() => showToast("Đã mở rộng thêm 2 tầng quan hệ lân cận (2-hop exploration)")}
-                className="p-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-200 transition-colors"
-                title="Mở rộng 2-hop"
+                onClick={handleDeleteEntity}
+                className="w-full py-2 rounded-xl bg-surface-container-low text-error hover:bg-error-container hover:text-on-error-container text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
+                <i className="fa-solid fa-trash-can text-[14px]"></i>
+                <span>{isVi ? "Xóa Thực thể khỏi Graph" : "Delete Entity from Graph"}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (onNavigate) onNavigate("copilot");
+                }}
+                className="w-full py-1.5 rounded-xl text-primary hover:bg-primary-fixed/30 text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+              >
+                <i className="fa-solid fa-robot text-[13px]"></i>
+                <span>{isVi ? "Hỏi Copilot về thực thể này" : "Ask Copilot about this node"}</span>
               </button>
             </div>
-          </aside>
-
+          </div>
         </div>
+      )}
 
-      </div>
+      {/* ========================================================================= */}
+      {/* TAB 2: PENDING REVIEW QUEUE (SCREEN-016-QUEUE) */}
+      {/* ========================================================================= */}
+      {activeTab === "queue" && (
+        <div className="space-y-5">
+          {/* Banner for Review Queue */}
+          <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 text-on-surface shadow-xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-amber-200 text-amber-950 font-bold text-xs">
+                  {isVi ? "Cần Human-in-the-loop" : "HITL Required"}
+                </span>
+                <h2 className="text-xl font-bold text-on-surface">
+                  {isVi ? "Hàng chờ duyệt trích xuất tự động (Pending Review Queue)" : "Automated Extraction Pending Review Queue"}
+                </h2>
+              </div>
+              <p className="text-xs text-on-surface-variant max-w-3xl leading-relaxed">
+                {isVi
+                  ? "Các quan hệ thực thể có độ tin cậy mô hình < 85% hoặc phát hiện mâu thuẫn NER cần phê duyệt trước khi ghi vào đồ thị tri thức production."
+                  : "Entity relations with model confidence < 85% or detected NER ambiguities requiring human review before committing to production Graph DB."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBatchApprove}
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow hover:bg-emerald-700 transition-all flex items-center gap-1.5"
+              >
+                <i className="fa-solid fa-check-double text-[15px]"></i>
+                <span>{isVi ? "Duyệt hàng loạt (Approve)" : "Batch Approve"}</span>
+              </button>
+              <button
+                onClick={handleBatchReject}
+                className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow hover:bg-rose-700 transition-all flex items-center gap-1.5"
+              >
+                <i className="fa-solid fa-ban text-[15px]"></i>
+                <span>{isVi ? "Từ chối hàng loạt (Reject)" : "Batch Reject"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Batch Selection Summary Table */}
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-on-surface">
+                <thead className="bg-surface-container-low font-bold text-on-surface-variant uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th className="p-4 w-12 text-center">
+                      <input
+                        type="checkbox"
+                        checked={queueItems.every((q) => q.selected)}
+                        onChange={toggleSelectAllQueue}
+                        className="w-4 h-4 rounded text-primary border-outline-variant"
+                      />
+                    </th>
+                    <th className="p-4">{isVi ? "Thực thể / Nguồn" : "Source Entity"}</th>
+                    <th className="p-4">{isVi ? "Loại quan hệ dự đoán" : "Predicted Relation"}</th>
+                    <th className="p-4">{isVi ? "Thực thể đích" : "Target Entity"}</th>
+                    <th className="p-4 text-center">{isVi ? "Độ tin cậy (%)" : "Confidence (%)"}</th>
+                    <th className="p-4">{isVi ? "Nguồn trích xuất" : "Extracted Source"}</th>
+                    <th className="p-4 text-right">{isVi ? "Hành động nhanh" : "Actions"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-container">
+                  {queueItems.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-surface-container-low/70 transition-colors ${
+                        item.status === "approved"
+                          ? "bg-emerald-50/50"
+                          : item.status === "rejected"
+                          ? "bg-rose-50/50 opacity-60"
+                          : ""
+                      }`}
+                    >
+                      <td className="p-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => toggleSelectQueue(item.id)}
+                          className="w-4 h-4 rounded text-primary border-outline-variant"
+                        />
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${item.sourceColor}`}></span>
+                          <span className="font-bold text-on-surface">{item.source}</span>
+                        </div>
+                        <span className="text-on-surface-variant text-[11px]">Type: {item.sourceType}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className="px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold text-[11px] font-mono">
+                          {item.relation}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${item.targetColor}`}></span>
+                          <span className="font-bold text-on-surface">{item.target}</span>
+                        </div>
+                        <span className="text-on-surface-variant text-[11px]">Type: {item.targetType}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
+                          item.confidence >= 80 ? "bg-amber-100 text-amber-900" : "bg-rose-100 text-rose-900"
+                        }`}>
+                          {item.confidence}%
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-semibold text-on-surface line-clamp-1">{item.doc}</div>
+                        <div className="text-on-surface-variant text-[11px]">{item.clause}</div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {item.status === "approved" ? (
+                            <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
+                              <i className="fa-solid fa-check"></i> {isVi ? "Đã duyệt" : "Approved"}
+                            </span>
+                          ) : item.status === "rejected" ? (
+                            <span className="text-rose-700 font-bold text-[11px] flex items-center gap-1">
+                              <i className="fa-solid fa-xmark"></i> {isVi ? "Đã từ chối" : "Rejected"}
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleRowAction(item.id, "approved")}
+                                className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-700 transition-colors"
+                                title={isVi ? "Chấp thuận" : "Approve"}
+                              >
+                                <i className="fa-solid fa-check text-[15px]"></i>
+                              </button>
+                              <button
+                                onClick={() => showToast(isVi ? `Đang mở trình sửa quan hệ cho ${item.source}` : `Editing ${item.source}`)}
+                                className="p-1.5 rounded-lg hover:bg-surface-container text-primary transition-colors"
+                                title={isVi ? "Chỉnh sửa" : "Edit"}
+                              >
+                                <i className="fa-solid fa-pen-to-square text-[15px]"></i>
+                              </button>
+                              <button
+                                onClick={() => handleRowAction(item.id, "rejected")}
+                                className="p-1.5 rounded-lg hover:bg-rose-100 text-rose-700 transition-colors"
+                                title={isVi ? "Từ chối" : "Reject"}
+                              >
+                                <i className="fa-solid fa-xmark text-[15px]"></i>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer */}
+            <div className="p-4 bg-surface-container-low border-t border-surface-container flex flex-wrap items-center justify-between text-on-surface-variant text-xs gap-3">
+              <span>
+                {isVi ? "Đã chọn" : "Selected"}{" "}
+                <strong className="text-on-surface">{queueItems.filter((q) => q.selected).length}</strong> / {queueItems.length} {isVi ? "mục trong hàng chờ duyệt hôm nay" : "items in queue"}
+              </span>
+              <span className="text-primary font-semibold">
+                {isVi ? "Nhấn [Duyệt hàng loạt] để đồng bộ thẳng vào Neo4j Graph DB" : "Click [Batch Approve] to commit directly to Neo4j"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* QUICK ENTITY CREATION MODAL */}
+      {/* ========================================================================= */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/40 shadow-2xl w-full max-w-md p-6 space-y-4 animate-scaleUp">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container">
+              <h3 className="text-base font-bold text-on-surface">
+                {isVi ? "Thêm Thực thể Mới vào Đồ thị" : "Add New Entity to Graph"}
+              </h3>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-surface-container text-on-surface"
+              >
+                <i className="fa-solid fa-xmark text-[16px]"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewEntity} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-on-surface mb-1">
+                  {isVi ? "Tên Thực thể (Entity Name)" : "Entity Name"}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={isVi ? "Ví dụ: Beta Global Ltd, Điều 5.1..." : "e.g. Beta Global Ltd, Section 5.1..."}
+                  value={newEntityName}
+                  onChange={(e) => setNewEntityName(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-low rounded-xl text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-on-surface mb-1">
+                  {isVi ? "Loại Thực thể (Taxonomy Type)" : "Taxonomy Type"}
+                </label>
+                <select
+                  value={newEntityType}
+                  onChange={(e) => setNewEntityType(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-low rounded-xl text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="Customer">Customer (Khách hàng)</option>
+                  <option value="Product">Product (Sản phẩm)</option>
+                  <option value="Order">Order (Đơn hàng)</option>
+                  <option value="Employee">Employee (Nhân viên)</option>
+                  <option value="Vendor">Vendor (Nhà cung cấp)</option>
+                  <option value="Contract">Contract (Hợp đồng)</option>
+                  <option value="Clause">Clause (Điều khoản)</option>
+                </select>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-semibold"
+                >
+                  {isVi ? "Hủy" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-primary text-on-primary font-bold shadow hover:bg-blue-700"
+                >
+                  {isVi ? "Tạo Thực thể" : "Create Entity"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

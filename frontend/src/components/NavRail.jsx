@@ -59,6 +59,11 @@ export default function NavRail({
           icon: "fa-regular fa-circle-exclamation",
           alertDot: true,
         },
+        {
+          id: "reports",
+          label: isVi ? "Báo cáo điều hành" : "Executive Briefing",
+          icon: "fa-regular fa-chart-bar",
+        },
       ],
     },
     {
@@ -71,7 +76,7 @@ export default function NavRail({
           icon: "fa-regular fa-folder-open",
         },
         {
-          id: "reports",
+          id: "sop",
           label: isVi ? "Quy trình SOP nội bộ" : "Internal SOP Rules",
           icon: "fa-regular fa-clipboard",
         },
