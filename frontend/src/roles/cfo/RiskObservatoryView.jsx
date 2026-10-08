@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Icon from '../../components/ui/Icon';
 
 export default function RiskView({ onNavigate, t, lang }) {
   const isVi = lang === "vi";
@@ -116,7 +117,7 @@ export default function RiskView({ onNavigate, t, lang }) {
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface-container-high border border-primary/40 text-on-surface px-space-md py-space-sm rounded-DEFAULT shadow-2xl flex items-center gap-space-sm animate-bounce">
-          <i className="fa-solid fa-shield-halved text-primary text-[18px]"></i>
+          <Icon name="fa-solid fa-shield-halved text-primary text-[18px]" size={16} />
           <span className="font-body-sm text-body-sm font-medium">{toastMsg}</span>
         </div>
       )}
@@ -241,7 +242,7 @@ export default function RiskView({ onNavigate, t, lang }) {
                           </>
                         ) : (
                           <span className="font-code-sm text-code-sm text-green-500 font-bold flex items-center gap-1">
-                            <i className="fa-solid fa-circle-check text-[14px]"></i>
+                            <Icon name="fa-solid fa-circle-check text-[14px]" size={16} />
                             {status === "resolved" ? (isVi ? "ĐÃ XỬ LÝ" : "RESOLVED") : (isVi ? "ĐÃ BÁO CÁO" : "ESCALATED")}
                           </span>
                         )}
@@ -405,7 +406,7 @@ export default function RiskView({ onNavigate, t, lang }) {
       <div className="panel p-space-md bg-surface-container-low rounded-lg border border-outline-variant/30">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm mb-space-sm pb-space-xs border-b border-outline-variant/20">
           <div className="flex items-center gap-space-xs">
-            <i className="fa-solid fa-sliders text-primary text-[20px]"></i>
+            <Icon name="fa-solid fa-sliders text-primary text-[20px]" size={16} />
             <div>
               <h3 className="font-title-sm text-title-sm font-bold text-on-surface">
                 {isVi ? "Hộp cát Mô phỏng Kịch bản Giảm thiểu Rủi ro (What-If Simulation)" : "Executive Risk Mitigation & Scenario Simulation Sandbox"}

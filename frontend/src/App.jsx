@@ -21,12 +21,14 @@ import DocumentsView from "./views/m2_knowledge_editor/DocumentsView";
 import SopView from "./views/m2_knowledge_editor/SopView";
 import ReportsView from "./views/m4_decision_support/ReportsView";
 import AdminView from "./views/m6_admin_security/AdminView";
+import KnowledgeExplorerView from "./views/m5_multifacet_search/KnowledgeExplorerView";
 
 const VALID_VIEWS = [
   "home",
   "executive",
   "copilot",
   "knowledge",
+  "explorer",
   "search",
   "connectors",
   "risk",
@@ -261,7 +263,7 @@ export default function App() {
 
   // 3. ENTERPRISE WORKSPACE (ROLE-AWARE)
   return (
-    <div className="app-container" style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "#f8fafc" }}>
+    <div className="app-container" style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "var(--bg-app)" }}>
       <Topbar
         view={view}
         lang={lang}
@@ -294,7 +296,7 @@ export default function App() {
           onRoleChange={handleRoleChange}
         />
 
-        <main className="workspace" style={{ flex: 1, overflowY: "auto", minWidth: 0, background: "#f8fafc" }}>
+        <main className="workspace" style={{ flex: 1, overflowY: "auto", minWidth: 0, background: "var(--bg-app)" }}>
           {view === "home" && (
             <HomeView
               onNavigate={setView}
@@ -338,6 +340,12 @@ export default function App() {
               t={t}
               lang={lang}
             />
+          )}
+
+          {view === "explorer" && (
+            <div style={{ height: "100%", overflowY: "auto", padding: 20 }}>
+              <KnowledgeExplorerView lang={lang} />
+            </div>
           )}
 
           {view === "search" && (

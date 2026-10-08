@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import Icon from '../../components/ui/Icon';
+import { fetchRepositoryDocuments, fetchDocumentDetail } from '../../services/api';
 
 export default function DocumentsView({ onNavigate, t, lang, role, currentUser }) {
   const isVi = lang === "vi";
@@ -12,12 +14,28 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [viewMode, setViewMode] = useState("grid"); // "grid" | "table"
 
+  // Live Repository Data states
+  const [docsList, setDocsList] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [summary, setSummary] = useState({
+    total_items: 515,
+    cuad_contracts: 510,
+    adventureworks_datasets: 5,
+    cuad_chunks: 40194,
+    neo4j_nodes: 52120
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(16);
+  const [isLoading, setIsLoading] = useState(false);
+
   // Drawer & Selection state
-  const [selectedDocId, setSelectedDocId] = useState("CUAD_042");
+  const [selectedDocId, setSelectedDocId] = useState("AW_SALES_ORDERS");
+  const [activeDocDetail, setActiveDocDetail] = useState(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(125);
-  const [verifiedDocs, setVerifiedDocs] = useState({ CUAD_042: true });
+  const [verifiedDocs, setVerifiedDocs] = useState({});
   const [toastMsg, setToastMsg] = useState("");
 
   const showToast = (msg) => {
@@ -25,311 +43,55 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
     setTimeout(() => setToastMsg(""), 3500);
   };
 
-  // Mock Knowledge Base Document Dataset (Aligned with Stitch SCREEN-015 & DRAWER-004 specs)
-  const ALL_DOCUMENTS = [
-    {
-      id: "CUAD_042",
-      name: "CUAD_Service_Agreement_v4.pdf",
-      category: isVi ? "Hợp đồng dịch vụ" : "Service Agreement",
-      type: "PDF",
-      dept: "Pháp chế",
-      deptLabel: isVi ? "Pháp chế" : "Legal",
-      owner: "Trần Thị Thu Hương",
-      date: "14/09/2026",
-      lastSynced: "14/09/2026 09:30",
-      status: "Neo4j + Qdrant",
-      statusBadge: isVi ? "Đã xác thực NER + GraphRAG" : "NER + GraphRAG Verified",
-      statusState: "active",
-      risk: "High",
-      riskLabel: isVi ? "Cảnh báo hạn mức" : "High Risk",
-      size: "2.4 MB",
-      chunks: "128 Chunks",
-      hash: "0x8a4c9fc21",
-      schema: "CUAD Contract v2.4",
-      access: "RBAC Strict (Level 3)",
-      previewType: "cuad_contract",
-      entities: [
-        { key: isVi ? "Bên cung cấp" : "Provider Party", val: "Alpha Corp", type: "customer" },
-        { key: isVi ? "Bên tiếp nhận" : "Client Party", val: "AdventureWorks Vietnam", type: "customer" },
-        { key: isVi ? "Điều khoản bồi thường" : "Liability Cap", val: "Section 12.2 (Max 10%)", type: "financial" },
-        { key: isVi ? "Giá trị hợp đồng" : "Contract Value", val: "1.2B VND", type: "financial" },
-        { key: isVi ? "Thời hạn hiệu lực" : "Expiration Date", val: "18/10/2026 (12 ngày)", type: "risk" },
-        { key: isVi ? "Rủi ro pháp lý" : "Identified Risk", val: "Unilateral limitation of liability", type: "risk" }
-      ],
-      neo4jRel: [
-        { from: "Node: Contract (CUAD_042)", rel: "BOUND_BY", to: "Node: Clause (Section 12.2)" },
-        { from: "Node: Clause (Section 12.2)", rel: "HAS_RISK_FLAG", to: "Risk: Unilateral (10% Cap)", isRisk: true }
-      ]
-    },
-    {
-      id: "ERP_ADV_09",
-      name: "AdventureWorks_Sales_Q3_2026.xlsx",
-      category: isVi ? "Dữ liệu CRM/ERP" : "CRM/ERP Data",
-      type: "Sheets",
-      dept: "Kinh doanh",
-      deptLabel: isVi ? "Kinh doanh" : "Sales",
-      owner: "Lê V. Hùng",
-      date: "12/09/2026",
-      lastSynced: "12/09/2026 09:03",
-      status: "Đã map Schema",
-      statusBadge: isVi ? "Đã map Schema" : "Schema Mapped",
-      statusState: "active",
-      risk: "Medium",
-      riskLabel: isVi ? "Sụt giảm nhịp mua" : "Cadence Drop",
-      size: "1.1 MB",
-      chunks: "450 Entities",
-      hash: "0x4f128be10",
-      schema: "ERP Sales Order v1.0",
-      access: "RBAC Dept Only",
-      previewType: "spreadsheet",
-      entities: [
-        { key: isVi ? "Tổng đơn hàng Q3" : "Total Orders Q3", val: "214 records", type: "financial" },
-        { key: isVi ? "Tần suất sụt giảm" : "Cadence Drop", val: "-32% (ABC Corp)", type: "risk" },
-        { key: isVi ? "Khách hàng liên kết" : "Linked Customers", val: "ABC Corp, Delta Trading", type: "customer" },
-        { key: isVi ? "Doanh số thực tế" : "Realized Revenue", val: "4.8B VND", type: "financial" }
-      ],
-      neo4jRel: [
-        { from: "Node: Dataset (ERP_ADV_09)", rel: "AGGREGATES", to: "Node: Customer (ABC Corp)" },
-        { from: "Node: Customer (ABC Corp)", rel: "SHOWS_ANOMALY", to: "Anomaly: Drop (-32%)", isRisk: true }
-      ]
-    },
-    {
-      id: "NDA_ALPHA_26",
-      name: "Master_NDA_AlphaCorp_Signed.pdf",
-      category: isVi ? "Thỏa thuận bảo mật" : "Non-Disclosure",
-      type: "NDA",
-      dept: "Pháp chế",
-      deptLabel: isVi ? "Pháp chế" : "Legal",
-      owner: "Phạm Q. Linh",
-      date: "10/09/2026",
-      lastSynced: "10/09/2026 14:15",
-      status: "Đã index",
-      statusBadge: isVi ? "Đã index Vector" : "Vector Indexed",
-      statusState: "active",
-      risk: "Low",
-      riskLabel: isVi ? "Tiêu chuẩn" : "Standard",
-      size: "850 KB",
-      chunks: "64 Chunks",
-      hash: "0x91dae330a",
-      schema: "NDA Standard v3.1",
-      access: "RBAC Strict (Level 3)",
-      previewType: "nda_contract",
-      entities: [
-        { key: isVi ? "Đối tác ký kết" : "Signatory Partner", val: "Alpha Corp & AdventureWorks", type: "customer" },
-        { key: isVi ? "Thời hạn bảo mật" : "Confidentiality Term", val: "3 years from execution", type: "financial" },
-        { key: isVi ? "Chế tài vi phạm" : "Violation Remedies", val: "Direct damages compensation", type: "risk" }
-      ],
-      neo4jRel: [
-        { from: "Node: Agreement (NDA_ALPHA_26)", rel: "COVERS", to: "Node: Proprietary Tech (EKAI)" }
-      ]
-    },
-    {
-      id: "SOP_IT_2026",
-      name: "SOP_Nghiem_Thu_Phan_Mem_v2.1.docx",
-      category: isVi ? "Quy trình nội bộ" : "Standard Operating Procedure",
-      type: "SOP",
-      dept: "Công nghệ / IT",
-      deptLabel: isVi ? "Công nghệ / IT" : "Technology & IT",
-      owner: "Nguyễn V. Nam",
-      date: "08/09/2026",
-      lastSynced: "08/09/2026 08:40",
-      status: "Đã xuất bản",
-      statusBadge: isVi ? "Đã xuất bản SOP" : "Published SOP",
-      statusState: "active",
-      risk: "Low",
-      riskLabel: isVi ? "An toàn" : "Safe",
-      size: "540 KB",
-      chunks: "32 Chunks",
-      hash: "0x3c78119ae",
-      schema: "SOP Governance v2.1",
-      access: "RBAC Public",
-      previewType: "sop",
-      entities: [
-        { key: isVi ? "Đơn vị thực hiện" : "Executing Dept", val: "IT & QA Engineering", type: "customer" },
-        { key: isVi ? "Chu kỳ nghiệm thu" : "Cycle Window", val: "5 business days before Go-Live", type: "financial" },
-        { key: isVi ? "Tiêu chí phê duyệt" : "Acceptance Gates", val: "100% Critical P0/P1 Passed", type: "risk" }
-      ],
-      neo4jRel: [
-        { from: "Node: SOP (SOP_IT_2026)", rel: "REGULATES", to: "Node: Release Gate (V2.1)" }
-      ]
-    },
-    {
-      id: "CUAD_087",
-      name: "CUAD_Procurement_Contract_087.pdf",
-      category: isVi ? "Hợp đồng cung ứng" : "Procurement Contract",
-      type: "PDF",
-      dept: "Kế toán / Thu mua",
-      deptLabel: isVi ? "Kế toán / Thu mua" : "Accounting & Procurement",
-      owner: "Hoàng T. Mai",
-      date: "05/09/2026",
-      lastSynced: "05/09/2026 16:20",
-      status: "Cảnh báo hạn hợp đồng",
-      statusBadge: isVi ? "Cảnh báo hạn hợp đồng" : "Expiry Warning",
-      statusState: "warning",
-      risk: "High",
-      riskLabel: isVi ? "Sắp hết hạn" : "Expiring Soon",
-      size: "3.1 MB",
-      chunks: "92 Chunks",
-      hash: "0x77c2409f1",
-      schema: "CUAD Procurement v2",
-      access: "RBAC Dept Only",
-      previewType: "cuad_procure",
-      entities: [
-        { key: isVi ? "Nhà cung ứng" : "Vendor", val: "Megatech Logistics JSC", type: "customer" },
-        { key: isVi ? "Hạn hợp đồng" : "Expiration Warning", val: "Hết hạn sau 5 ngày", type: "risk" },
-        { key: isVi ? "Giá trị đơn hàng" : "Purchase Value", val: "860M VND", type: "financial" }
-      ],
-      neo4jRel: [
-        { from: "Node: Contract (CUAD_087)", rel: "SUPPLIED_BY", to: "Node: Vendor (Megatech)" },
-        { from: "Node: Contract (CUAD_087)", rel: "TRIGGERS", to: "Alert: Expiry_5_Days", isRisk: true }
-      ]
-    },
-    {
-      id: "VND_2026_CAT",
-      name: "Vendor_Price_Catalog_2026.xlsx",
-      category: isVi ? "Bảng giá nhà cung cấp" : "Vendor Catalog",
-      type: "Sheets",
-      dept: "Kế toán / Thu mua",
-      deptLabel: isVi ? "Kế toán / Thu mua" : "Accounting & Procurement",
-      owner: "Đỗ M. Tuấn",
-      date: "01/09/2026",
-      lastSynced: "01/09/2026 11:00",
-      status: "Đã index",
-      statusBadge: isVi ? "Đã index" : "Indexed",
-      statusState: "active",
-      risk: "Medium",
-      riskLabel: isVi ? "Biến động giá" : "Price Fluctuation",
-      size: "1.8 MB",
-      chunks: "310 Entities",
-      hash: "0x19ba6602e",
-      schema: "Vendor Catalog v1.2",
-      access: "RBAC Dept Only",
-      previewType: "spreadsheet",
-      entities: [
-        { key: isVi ? "Số lượng danh mục" : "Catalog Items", val: "1,240 items", type: "financial" },
-        { key: isVi ? "Biến động giá" : "Price Variance", val: "+6.8% logistics overhead", type: "risk" }
-      ],
-      neo4jRel: [
-        { from: "Node: Catalog (VND_2026_CAT)", rel: "CONTAINS", to: "Node: Material List" }
-      ]
-    },
-    {
-      id: "ISO_SPEC_01",
-      name: "ISO_27001_Compliance_Spec.pdf",
-      category: isVi ? "Chính sách bảo mật" : "Security Compliance",
-      type: "NDA",
-      dept: "Pháp chế",
-      deptLabel: isVi ? "Pháp chế & IT" : "Legal & IT",
-      owner: "Trần Thị Thu Hương",
-      date: "28/08/2026",
-      lastSynced: "28/08/2026 10:15",
-      status: "Chuẩn hóa ISO",
-      statusBadge: isVi ? "Chuẩn hóa ISO" : "ISO Standardized",
-      statusState: "active",
-      risk: "Low",
-      riskLabel: isVi ? "Tuân thủ" : "Compliant",
-      size: "4.2 MB",
-      chunks: "184 Chunks",
-      hash: "0xaa4411ee8",
-      schema: "ISO 27001 ISMS v2022",
-      access: "RBAC Strict (Level 3)",
-      previewType: "iso_spec",
-      entities: [
-        { key: isVi ? "Tiêu chuẩn" : "Standard", val: "ISO/IEC 27001:2022", type: "customer" },
-        { key: isVi ? "Phạm vi kiểm toán" : "Audit Scope", val: "Cloud & Neo4j Hybrid Store", type: "financial" }
-      ],
-      neo4jRel: [
-        { from: "Node: Policy (ISO_SPEC_01)", rel: "MANDATES", to: "Node: Graph Security Guardrails" }
-      ]
-    },
-    {
-      id: "GRAPH_JSON_88",
-      name: "Product_Catalog_Graph_Export.json",
-      category: isVi ? "Dữ liệu Sản phẩm" : "Product Graph",
-      type: "JSON",
-      dept: "R&D",
-      deptLabel: isVi ? "R&D" : "Research & Development",
-      owner: "Vũ D. Hưng",
-      date: "20/08/2026",
-      lastSynced: "20/08/2026 15:45",
-      status: "Neo4j Native",
-      statusBadge: isVi ? "Neo4j Native" : "Neo4j Native",
-      statusState: "active",
-      risk: "Low",
-      riskLabel: isVi ? "Hợp nhất" : "Unified",
-      size: "920 KB",
-      chunks: "512 Nodes",
-      hash: "0xbb55891ac",
-      schema: "Product Graph Schema v2",
-      access: "RBAC Public",
-      previewType: "json_graph",
-      entities: [
-        { key: isVi ? "Thực thể Node" : "Graph Nodes", val: "512 Product & SKU Nodes", type: "customer" },
-        { key: isVi ? "Quan hệ Edge" : "Graph Edges", val: "1,420 Belongs_To & Depends_On", type: "financial" }
-      ],
-      neo4jRel: [
-        { from: "Node: ProductGraph", rel: "EXPORTS_TO", to: "Neo4j Enterprise Engine" }
-      ]
-    }
-  ];
-
-  // RBAC Filtering according to Stitch Spec:
-  // Admin: view all
-  // Standard user: view documents in their data scope (Kinh doanh or unassigned/public)
-  const accessibleDocs = useMemo(() => {
-    if (isAdmin) return ALL_DOCUMENTS;
-    if (role === "standard") {
-      return ALL_DOCUMENTS.filter(
-        (d) => d.dept === "Kinh doanh" || d.access === "RBAC Public"
-      );
-    }
-    return ALL_DOCUMENTS;
-  }, [isAdmin, role]);
-
-  // Faceted Filtering
-  const filteredDocs = useMemo(() => {
-    return accessibleDocs.filter((doc) => {
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesName = doc.name.toLowerCase().includes(q);
-        const matchesId = doc.id.toLowerCase().includes(q);
-        const matchesOwner = doc.owner.toLowerCase().includes(q);
-        const matchesDept = doc.dept.toLowerCase().includes(q);
-        const matchesCategory = doc.category.toLowerCase().includes(q);
-        if (!matchesName && !matchesId && !matchesOwner && !matchesDept && !matchesCategory) {
-          return false;
-        }
+  // Fetch real documents & datasets from FastAPI backend
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    fetchRepositoryDocuments({
+      search: searchQuery,
+      doc_type: docFilter,
+      dept: deptFilter,
+      limit: pageSize,
+      offset: (currentPage - 1) * pageSize
+    }).then((res) => {
+      if (!active) return;
+      if (res && res.success) {
+        setDocsList(res.data || []);
+        setTotalCount(res.total || 0);
+        if (res.summary) setSummary(res.summary);
       }
-      // Type filter
-      if (docFilter !== "ALL" && doc.type !== docFilter) return false;
-      // Dept filter
-      if (deptFilter !== "ALL" && doc.dept !== deptFilter) return false;
-      // Status filter
-      if (statusFilter !== "ALL") {
-        if (statusFilter === "verified" && !verifiedDocs[doc.id] && doc.statusState !== "active") return false;
-        if (statusFilter === "warning" && doc.statusState !== "warning") return false;
-      }
-      return true;
+      setIsLoading(false);
     });
-  }, [accessibleDocs, searchQuery, docFilter, deptFilter, statusFilter, verifiedDocs]);
+    return () => { active = false; };
+  }, [searchQuery, docFilter, deptFilter, currentPage, pageSize]);
 
-  const activeDoc = ALL_DOCUMENTS.find((d) => d.id === selectedDocId) || ALL_DOCUMENTS[0];
+  const accessibleDocs = docsList;
+  const filteredDocs = docsList;
+
+  const activeDoc = activeDocDetail || docsList.find((d) => d.id === selectedDocId) || docsList[0] || {};
   const isDocVerified = activeDoc ? (verifiedDocs[activeDoc.id] || activeDoc.statusState === "active") : false;
 
   const handleOpenDrawer = (docId) => {
     setSelectedDocId(docId);
     setIsDrawerOpen(true);
+    setIsLoadingDetail(true);
+    setActiveDocDetail(null);
+    fetchDocumentDetail(docId).then((res) => {
+      if (res && res.success) {
+        setActiveDocDetail(res.data);
+      }
+      setIsLoadingDetail(false);
+    });
   };
 
   const handleVerifyCurrentDoc = () => {
-    if (!activeDoc) return;
+    if (!activeDoc || !activeDoc.id) return;
     setVerifiedDocs((prev) => ({ ...prev, [activeDoc.id]: true }));
     showToast(isVi ? `Đã xác thực và đồng bộ toàn bộ thực thể của ${activeDoc.name} vào Neo4j!` : `Verified and synchronized entities from ${activeDoc.name} into Neo4j!`);
   };
 
   const handleDownloadDoc = () => {
-    if (!activeDoc) return;
+    if (!activeDoc || !activeDoc.name) return;
     if (!isAdmin) {
       showToast(isVi ? "Chính sách C4: Tài khoản Standard/Dept Manager chỉ được xem trước (Read-Only). Liên hệ IT Admin để tải tệp gốc." : "Policy C4: Standard/Dept Manager accounts are Read-Only. Contact IT Admin to download raw file.");
       return;
@@ -343,14 +105,16 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
     setDeptFilter("ALL");
     setDateFilter("ALL");
     setStatusFilter("ALL");
+    setCurrentPage(1);
   };
+
 
   return (
     <section className="view active text-on-surface flex flex-col gap-space-md min-h-screen">
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface-container-high border border-primary/40 text-on-surface px-space-md py-space-sm rounded-DEFAULT shadow-2xl flex items-center gap-space-sm animate-bounce">
-          <i className="fa-solid fa-circle-check text-primary text-[18px]"></i>
+          <Icon name="fa-solid fa-circle-check text-primary text-[18px]" size={18} />
           <span className="font-body-sm text-body-sm font-medium">{toastMsg}</span>
         </div>
       )}
@@ -373,8 +137,8 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
           </h1>
           <p className="text-sm text-on-surface-variant leading-relaxed">
             {isVi
-              ? "Khám phá 1,420 tài liệu hợp đồng CUAD, biểu mẫu SOP và tập tin dữ liệu đã trích xuất vào Hybrid GraphRAG. Click vào thẻ để mở bảng xem trước chi tiết (DRAWER-004)."
-              : "Explore 1,420 CUAD contracts, SOP standard operating procedures, and structured datasets ingested into Hybrid GraphRAG. Click any card to open the preview inspector (DRAWER-004)."}
+              ? `Khám phá ${summary.cuad_contracts} tài liệu hợp đồng CUAD (${summary.cuad_chunks?.toLocaleString()} vector chunks trong Qdrant) và dữ liệu AdventureWorks (${summary.neo4j_nodes?.toLocaleString()} thực thể trong Neo4j). Click vào thẻ để mở bảng xem trước chi tiết (DRAWER-004).`
+              : `Explore ${summary.cuad_contracts} CUAD contracts (${summary.cuad_chunks?.toLocaleString()} vector chunks in Qdrant) and AdventureWorks data (${summary.neo4j_nodes?.toLocaleString()} entities in Neo4j). Click any card to open the preview inspector (DRAWER-004).`}
           </p>
         </div>
 
@@ -389,14 +153,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
             }}
             className="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-semibold shadow hover:bg-blue-700 transition-all flex items-center gap-2"
           >
-            <i className="fa-solid fa-circle-plus text-[16px]"></i>
+            <Icon name="fa-solid fa-circle-plus text-[16px]" size={16} />
             <span>{isVi ? "Nạp tài liệu mới" : "Ingest Document"}</span>
           </button>
           <button
             onClick={() => showToast(isVi ? "Đang đồng bộ Schema với Neo4j & Qdrant..." : "Synchronizing Schema with Neo4j & Qdrant...")}
             className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2"
           >
-            <i className="fa-solid fa-rotate text-[16px]"></i>
+            <Icon name="fa-solid fa-rotate text-[16px]" size={16} />
             <span>{isVi ? "Đồng bộ Schema" : "Sync Schema"}</span>
           </button>
         </div>
@@ -409,7 +173,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
           {/* Search bar */}
           <div className="md:col-span-4 relative">
-            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-on-surface-variant text-[15px]"></i>
+            <Icon name="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-on-surface-variant text-[15px]" size={15} />
             <input
               type="text"
               value={searchQuery}
@@ -478,7 +242,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                 }`}
                 title="Grid Cards"
               >
-                <i className="fa-solid fa-grip"></i>
+                <Icon name="fa-solid fa-grip" size={15} />
                 <span className="hidden sm:inline">Grid</span>
               </button>
               <button
@@ -488,7 +252,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                 }`}
                 title="Table List"
               >
-                <i className="fa-solid fa-list"></i>
+                <Icon name="fa-solid fa-list" size={15} />
                 <span className="hidden sm:inline">Table</span>
               </button>
             </div>
@@ -498,7 +262,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
               className="p-2 px-3 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 transition-colors flex items-center justify-center text-xs"
               title={isVi ? "Làm mới bộ lọc" : "Reset filters"}
             >
-              <i className="fa-solid fa-filter-circle-xmark text-[14px]"></i>
+              <Icon name="fa-solid fa-filter-circle-xmark text-[14px]" size={14} />
             </button>
           </div>
         </div>
@@ -508,17 +272,17 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
           <div className="flex flex-wrap items-center gap-3">
             <span>
               {isVi ? "Hiển thị" : "Showing"}{" "}
-              <strong className="text-on-surface">{filteredDocs.length}</strong> / 1,420 {isVi ? "tài liệu" : "documents"}
+              <strong className="text-on-surface">{filteredDocs.length}</strong> / {totalCount} {isVi ? "tài liệu & bộ dữ liệu" : "documents & datasets"}
             </span>
             <span className="inline-block w-1 h-1 rounded-full bg-outline-variant"></span>
             <span className="flex items-center gap-1.5 text-primary font-semibold">
-              <span className="w-2 h-2 rounded-full bg-primary inline-block"></span> 1,280 {isVi ? "Hoạt động" : "Active"}
+              <span className="w-2 h-2 rounded-full bg-primary inline-block"></span> {summary.cuad_contracts} {isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}
             </span>
             <span className="flex items-center gap-1.5 text-tertiary font-semibold">
-              <span className="w-2 h-2 rounded-full bg-tertiary inline-block"></span> 114 {isVi ? "Chờ duyệt NER" : "Pending NER"}
+              <span className="w-2 h-2 rounded-full bg-tertiary inline-block"></span> {summary.cuad_chunks?.toLocaleString()} {isVi ? "Vector Chunks" : "Vector Chunks"}
             </span>
-            <span className="flex items-center gap-1.5 text-error font-semibold">
-              <span className="w-2 h-2 rounded-full bg-error inline-block"></span> 26 {isVi ? "Cảnh báo hạn/xung đột" : "Warnings"}
+            <span className="flex items-center gap-1.5 text-secondary font-semibold">
+              <span className="w-2 h-2 rounded-full bg-secondary inline-block"></span> {summary.neo4j_nodes?.toLocaleString()} {isVi ? "Thực thể Neo4j" : "Neo4j Entities"}
             </span>
           </div>
 
@@ -537,7 +301,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {filteredDocs.length === 0 ? (
             <div className="col-span-full p-12 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 text-outline">
-              <i className="fa-regular fa-folder-open text-3xl mb-2 text-outline/40"></i>
+              <Icon name="fa-regular fa-folder-open text-3xl mb-2 text-outline/40" size={15} />
               <div className="font-semibold text-on-surface">{isVi ? "Không tìm thấy tài liệu phù hợp" : "No matching documents found"}</div>
               <p className="text-xs text-outline mt-1">{isVi ? "Thử xóa bộ lọc hoặc tìm kiếm với từ khóa khác." : "Try clearing filters or searching with another keyword."}</p>
             </div>
@@ -563,10 +327,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                 >
                   <div className="flex items-start justify-between">
                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shadow-2xs ${iconClass}`}>
-                      <i className={`fa-solid ${iconClass.split(" ")[0]} text-[22px]`}></i>
+                      <Icon name="" size={14} />
                     </div>
                     <span className="px-2 py-0.5 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 group-hover:bg-primary group-hover:text-white transition-colors">
-                      <i className="fa-regular fa-eye text-[12px]"></i> {isVi ? "Xem Drawer-004" : "Drawer-004"}
+                      <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem Drawer-004" : "Drawer-004"}
                     </span>
                   </div>
 
@@ -603,7 +367,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                   <div className="flex items-center justify-between pt-1 border-t border-surface-container text-xs">
                     <span className="text-on-surface-variant font-mono">ID: {doc.id}</span>
                     <span className="font-semibold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                      {isVi ? "Chi tiết" : "Details"} <i className="fa-solid fa-chevron-right text-[11px]"></i>
+                      {isVi ? "Chi tiết" : "Details"} <Icon name="fa-solid fa-chevron-right text-[11px]" size={15} />
                     </span>
                   </div>
                 </div>
@@ -651,9 +415,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                         }`}
                       >
                         <td className="p-3.5 flex items-center gap-2.5 text-on-surface">
-                          <i className={`fa-solid ${
-                            doc.type === "Sheets" ? "fa-table text-emerald-600" : doc.type === "NDA" ? "fa-shield-halved text-secondary" : doc.type === "SOP" ? "fa-file-lines text-primary" : doc.type === "JSON" ? "fa-circle-nodes text-primary" : "fa-file-pdf text-rose-600"
-                          } text-[16px]`}></i>
+                          <Icon name="" size={14} />
                           <div>
                             <span className="truncate max-w-[280px] font-medium block">{doc.name}</span>
                             <span className="text-[11px] text-outline block">{doc.category}</span>
@@ -685,7 +447,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                             }}
                             className="px-3 py-1 rounded-lg bg-primary-fixed text-primary hover:bg-primary hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-1.5"
                           >
-                            <i className="fa-regular fa-eye"></i>
+                            <Icon name="fa-regular fa-eye" size={15} />
                             <span>{isVi ? "Xem" : "View"}</span>
                           </button>
                         </td>
@@ -703,24 +465,43 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
       <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-on-surface-variant">
         <div className="flex items-center gap-3">
           <span>{isVi ? "Hiển thị" : "Show"}</span>
-          <select className="bg-surface-container-low px-2.5 py-1.5 rounded-lg text-on-surface font-medium border border-outline-variant/30 focus:outline-none">
-            <option>8 {isVi ? "dòng / trang" : "rows / page"}</option>
-            <option>16 {isVi ? "dòng / trang" : "rows / page"}</option>
-            <option>32 {isVi ? "dòng / trang" : "rows / page"}</option>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="bg-surface-container-low px-2.5 py-1.5 rounded-lg text-on-surface font-medium border border-outline-variant/30 focus:outline-none"
+          >
+            <option value={8}>8 {isVi ? "dòng / trang" : "rows / page"}</option>
+            <option value={16}>16 {isVi ? "dòng / trang" : "rows / page"}</option>
+            <option value={32}>32 {isVi ? "dòng / trang" : "rows / page"}</option>
           </select>
-          <span>{isVi ? "tổng cộng 1,420 bản ghi" : "total 1,420 records"}</span>
+          <span>{isVi ? `tổng cộng ${totalCount} bản ghi` : `total ${totalCount} records`}</span>
         </div>
         <div className="flex items-center gap-1.5 font-semibold">
-          <button className="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface border border-outline-variant/30 transition-colors flex items-center gap-1">
-            <i className="fa-solid fa-chevron-left text-[11px]"></i> {isVi ? "Trước" : "Prev"}
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className={`px-3 py-1.5 rounded-lg bg-surface-container-low border border-outline-variant/30 transition-colors flex items-center gap-1 ${
+              currentPage <= 1 ? "opacity-40 cursor-not-allowed" : "text-on-surface hover:bg-surface-container"
+            }`}
+          >
+            <Icon name="fa-solid fa-chevron-left text-[11px]" size={15} /> {isVi ? "Trước" : "Prev"}
           </button>
-          <button className="w-8 h-8 rounded-lg bg-primary text-on-primary shadow-xs flex items-center justify-center">1</button>
-          <button className="w-8 h-8 rounded-lg hover:bg-surface-container text-on-surface transition-colors flex items-center justify-center">2</button>
-          <button className="w-8 h-8 rounded-lg hover:bg-surface-container text-on-surface transition-colors flex items-center justify-center">3</button>
-          <span className="px-1 text-on-surface-variant">...</span>
-          <button className="w-8 h-8 rounded-lg hover:bg-surface-container text-on-surface transition-colors flex items-center justify-center">142</button>
-          <button className="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface border border-outline-variant/30 transition-colors flex items-center gap-1">
-            {isVi ? "Sau" : "Next"} <i className="fa-solid fa-chevron-right text-[11px]"></i>
+          
+          <span className="px-3 py-1.5 bg-surface-container text-on-surface font-mono rounded-lg">
+            {currentPage} / {Math.max(1, Math.ceil(totalCount / pageSize))}
+          </span>
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(Math.max(1, Math.ceil(totalCount / pageSize)), p + 1))}
+            disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+            className={`px-3 py-1.5 rounded-lg bg-surface-container-low border border-outline-variant/30 transition-colors flex items-center gap-1 ${
+              currentPage >= Math.ceil(totalCount / pageSize) ? "opacity-40 cursor-not-allowed" : "text-on-surface hover:bg-surface-container"
+            }`}
+          >
+            {isVi ? "Sau" : "Next"} <Icon name="fa-solid fa-chevron-right text-[11px]" size={15} />
           </button>
         </div>
       </div>
@@ -748,9 +529,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-xs ${
                   activeDoc.type === "Sheets" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : activeDoc.type === "NDA" ? "bg-purple-50 text-secondary border-purple-200" : activeDoc.type === "SOP" ? "bg-blue-50 text-primary border-blue-200" : "bg-rose-50 text-rose-600 border-rose-200"
                 }`}>
-                  <i className={`fa-solid ${
-                    activeDoc.type === "Sheets" ? "fa-table" : activeDoc.type === "NDA" ? "fa-shield-halved" : activeDoc.type === "SOP" ? "fa-file-lines" : "fa-file-pdf"
-                  } text-[22px]`}></i>
+                  <Icon name="" size={14} />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -772,14 +551,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                   className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
                   title={isDrawerFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
                 >
-                  <i className={`fa-solid ${isDrawerFullscreen ? "fa-compress" : "fa-expand"} text-[15px]`}></i>
+                  <Icon name="" size={14} />
                 </button>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
                   className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
                   title={isVi ? "Đóng" : "Close"}
                 >
-                  <i className="fa-solid fa-xmark text-[16px]"></i>
+                  <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
                 </button>
               </div>
             </div>
@@ -792,19 +571,19 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                 <div className="bg-surface-container-lowest px-4 py-2.5 rounded-xl border border-outline-variant/30 flex items-center justify-between shadow-2xs">
                   <div className="flex items-center gap-1 text-xs">
                     <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="First Page">
-                      <i className="fa-solid fa-angles-left text-[13px]"></i>
+                      <Icon name="fa-solid fa-angles-left text-[13px]" size={15} />
                     </button>
                     <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Prev Page">
-                      <i className="fa-solid fa-chevron-left text-[13px]"></i>
+                      <Icon name="fa-solid fa-chevron-left text-[13px]" size={15} />
                     </button>
                     <span className="font-bold text-on-surface px-2">
                       {isVi ? "Trang 16 / 42" : "Page 16 of 42"}
                     </span>
                     <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Next Page">
-                      <i className="fa-solid fa-chevron-right text-[13px]"></i>
+                      <Icon name="fa-solid fa-chevron-right text-[13px]" size={15} />
                     </button>
                     <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Last Page">
-                      <i className="fa-solid fa-angles-right text-[13px]"></i>
+                      <Icon name="fa-solid fa-angles-right text-[13px]" size={15} />
                     </button>
                   </div>
 
@@ -814,7 +593,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                       className="p-1 rounded hover:bg-surface-container text-on-surface"
                       title="Zoom Out"
                     >
-                      <i className="fa-solid fa-magnifying-glass-minus text-[13px]"></i>
+                      <Icon name="fa-solid fa-magnifying-glass-minus text-[13px]" size={15} />
                     </button>
                     <span className="text-on-surface px-1">{previewZoom}%</span>
                     <button
@@ -822,7 +601,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                       className="p-1 rounded hover:bg-surface-container text-on-surface"
                       title="Zoom In"
                     >
-                      <i className="fa-solid fa-magnifying-glass-plus text-[13px]"></i>
+                      <Icon name="fa-solid fa-magnifying-glass-plus text-[13px]" size={15} />
                     </button>
                     <span className="inline-block w-px h-4 bg-outline-variant mx-1"></span>
                     <button
@@ -830,129 +609,91 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                       className="p-1 rounded hover:bg-surface-container text-on-surface"
                       title="Fit Screen"
                     >
-                      <i className="fa-solid fa-expand text-[13px]"></i>
+                      <Icon name="fa-solid fa-expand text-[13px]" size={15} />
                     </button>
                   </div>
                 </div>
 
                 {/* Document Page Sheet Rendering */}
                 <div className="bg-surface-container-lowest p-7 rounded-2xl border border-outline-variant/30 shadow-sm space-y-5 flex-1 overflow-y-auto leading-relaxed">
-                  {/* Dynamic Document Content according to previewType */}
-                  {activeDoc.previewType === "spreadsheet" ? (
+                  {/* Dynamic Document Content according to live backend detail */}
+                  {isLoadingDetail ? (
+                    <div className="p-12 text-center text-outline space-y-3">
+                      <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <p className="text-xs font-semibold">{isVi ? "Đang tải dữ liệu thực tế từ Neo4j / Qdrant..." : "Loading live data from Neo4j / Qdrant..."}</p>
+                    </div>
+                  ) : activeDocDetail?.records?.length > 0 ? (
+                    /* Real Live AdventureWorks Dataset Preview (Neo4j) */
                     <div className="space-y-4">
                       <div className="text-center pb-3 border-b border-surface-container">
-                        <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">
-                          {isVi ? "BẢNG ĐỐI SOÁT & NHỊP MUA HÀNG — Q3/2026" : "ORDER CADENCE & FULFILLMENT LEDGER — Q3/2026"}
+                        <p className="text-xs font-bold tracking-widest text-primary uppercase">
+                          {isVi ? "BẢN GHI ĐỒ THỊ THỰC TẾ — NEO4J ADVENTUREWORKS" : "LIVE GRAPH RECORDS — NEO4J ADVENTUREWORKS"}
                         </p>
-                        <h2 className="text-lg font-bold text-on-surface mt-1">AdventureWorks Enterprise Orders</h2>
-                        <p className="text-xs text-on-surface-variant">{isVi ? "Nguồn dữ liệu: Google Sheets ERP Export" : "Source: Google Sheets ERP Export"}</p>
+                        <h2 className="text-lg font-bold text-on-surface mt-1">{activeDoc.name}</h2>
+                        <p className="text-xs text-on-surface-variant font-mono">
+                          {isVi ? `Hiển thị 25 bản ghi mẫu từ tập ${activeDoc.chunks || ""}` : `Showing 25 live sample records from ${activeDoc.chunks || ""}`}
+                        </p>
                       </div>
 
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs border border-outline-variant/20 rounded-lg">
-                          <thead className="bg-surface-container-low font-bold text-outline">
+                          <thead className="bg-surface-container-low font-bold text-outline uppercase tracking-wider">
                             <tr>
-                              <th className="p-2">Date</th>
-                              <th className="p-2">Account Name</th>
-                              <th className="p-2">Order Volume</th>
-                              <th className="p-2">Valuation</th>
-                              <th className="p-2">Status</th>
+                              {Object.keys(activeDocDetail.records[0]).map((key) => (
+                                <th key={key} className="p-2.5 font-mono">{key}</th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>
-                            <tr className="border-t border-outline-variant/10">
-                              <td className="p-2 font-mono">12/09</td>
-                              <td className="p-2"><span className="hl customer font-bold">ABC Corporation</span></td>
-                              <td className="p-2"><span className="hl risk font-bold">5.4 units/mo (-32%)</span></td>
-                              <td className="p-2"><span className="hl financial font-bold">420M VND</span></td>
-                              <td className="p-2 text-emerald-600 font-semibold">Delivered</td>
-                            </tr>
-                            <tr className="border-t border-outline-variant/10 bg-surface-container-low/30">
-                              <td className="p-2 font-mono">08/09</td>
-                              <td className="p-2"><span className="hl customer font-bold">Delta Trading Ltd</span></td>
-                              <td className="p-2">2.8 units/mo</td>
-                              <td className="p-2"><span className="hl financial font-bold">290M VND</span></td>
-                              <td className="p-2 text-emerald-600 font-semibold">Delivered</td>
-                            </tr>
+                            {activeDocDetail.records.map((row, rIdx) => (
+                              <tr key={rIdx} className="border-t border-outline-variant/10 hover:bg-surface-container-low/50 transition-colors">
+                                {Object.values(row).map((val, cIdx) => (
+                                  <td key={cIdx} className="p-2.5 font-mono text-on-surface">
+                                    {val === null || val === undefined ? "-" : String(val)}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
                     </div>
-                  ) : activeDoc.previewType === "sop" ? (
+                  ) : activeDocDetail?.chunks_list?.length > 0 ? (
+                    /* Real Live CUAD Contract Preview (Qdrant Chunks) */
                     <div className="space-y-4">
-                      <div className="text-center pb-3 border-b border-surface-container">
-                        <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">
-                          {isVi ? "QUY TRÌNH VẬN HÀNH TIÊU CHUẨN — NGHIỆM THU PHẦN MỀM" : "STANDARD OPERATING PROCEDURE — SOFTWARE ACCEPTANCE"}
+                      <div className="text-center pb-4 border-b border-surface-container">
+                        <p className="text-xs font-bold tracking-widest text-primary uppercase">
+                          {isVi ? "VĂN BẢN HỢP ĐỒNG CUAD — TRÍCH XUẤT TỪ QDRANT" : "CUAD CONTRACT TEXT — EXTRACTED FROM QDRANT"}
                         </p>
-                        <h2 className="text-lg font-bold text-on-surface mt-1">SOP-04: Software Delivery & Go-Live Gates</h2>
-                        <p className="text-xs text-on-surface-variant">Phòng Công nghệ Thông tin & Đảm bảo Chất lượng QA</p>
+                        <h2 className="text-xl font-bold text-on-surface mt-1">{activeDoc.name}</h2>
+                        <p className="text-xs text-on-surface-variant font-mono">
+                          {isVi ? `Tập tin chứa ${activeDoc.chunk_count || activeDocDetail.chunks_list.length} Vector Chunks (Kích thước nhúng 384 dims)` : `Contains ${activeDoc.chunk_count || activeDocDetail.chunks_list.length} Vector Chunks (384-dim embeddings)`}
+                        </p>
                       </div>
 
-                      <div className="space-y-3 text-sm text-on-surface">
-                        <p className="font-bold text-primary">1. Mục đích và Phạm vi kiểm soát (Purpose & Scope)</p>
-                        <p className="text-on-surface-variant">
-                          Quy chuẩn này áp dụng bắt buộc cho toàn bộ bản phát hành module thuộc hệ sinh thái <span className="hl customer">GraphMind Enterprise</span> trước khi đẩy lên môi trường Production.
-                        </p>
-                        <div className="bg-amber-100/90 border border-amber-300 p-4 rounded-xl shadow-xs space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-amber-900 flex items-center gap-1.5 font-bold">
-                              <i className="fa-solid fa-highlighter text-amber-700"></i> Đoạn trích xuất GraphRAG [Chunk #108]
-                            </span>
-                            <span className="bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-full text-[11px]">Độ tin cậy: 99.1%</span>
+                      <div className="space-y-3">
+                        {activeDocDetail.chunks_list.map((c, idx) => (
+                          <div key={idx} className="bg-amber-100/90 border border-amber-300 p-4 rounded-xl shadow-xs space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-amber-900 flex items-center gap-1.5 font-bold">
+                                <Icon name="fa-solid fa-highlighter text-amber-700" size={15} /> Chunk #{c.chunk_id !== undefined ? c.chunk_id : idx}
+                              </span>
+                              <span className="bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-full text-[11px]">
+                                Qdrant Vector Hit
+                              </span>
+                            </div>
+                            <p className="text-amber-950 text-sm font-normal leading-relaxed whitespace-pre-wrap font-sans">
+                              {c.text}
+                            </p>
                           </div>
-                          <p className="text-amber-950 text-sm font-medium leading-relaxed">
-                            "Chu kỳ kiểm thử UAT bắt buộc hoàn tất tối thiểu <span className="hl financial">5 ngày làm việc</span> trước Go-Live. Mọi lỗi bảo mật cấp độ Critical/High <span className="hl risk">[Gate: Zero_Tolerance_P0]</span> phải được khắc phục hoàn toàn và có chữ ký kép từ Trưởng ban IT."
-                          </p>
-                        </div>
+                        ))}
                       </div>
                     </div>
                   ) : (
-                    /* Default Contract / PDF Preview */
-                    <div className="space-y-4">
-                      <div className="text-center pb-4 border-b border-surface-container">
-                        <p className="text-xs font-bold tracking-widest text-on-surface-variant uppercase">
-                          {isVi ? "HỢP ĐỒNG CUNG CẤP DỊCH VỤ CÔNG NGHỆ THÔNG TIN" : "INFORMATION TECHNOLOGY MASTER SERVICES AGREEMENT"}
-                        </p>
-                        <h2 className="text-xl font-bold text-on-surface mt-1">MASTER SERVICES AGREEMENT</h2>
-                        <p className="text-xs text-on-surface-variant">
-                          Giữa CÔNG TY CỔ PHẦN ALPHA CORP và CÔNG TY TNHH ADVENTUREWORKS VIETNAM
-                        </p>
-                      </div>
-
-                      <div className="space-y-4 text-sm leading-relaxed text-on-surface">
-                        <p className="font-bold text-primary">
-                          Điều 12: BẢO ĐẢM VÀ TRÁCH NHIỆM PHÁP LÝ (WARRANTIES AND LIABILITIES)
-                        </p>
-                        <p className="text-on-surface-variant">
-                          12.1. Mỗi Bên cam kết có đầy đủ năng lực pháp lý và thẩm quyền để ký kết và thực hiện các nghĩa vụ quy định tại Thỏa thuận này mà không vi phạm bất kỳ thỏa thuận nào khác với bên thứ ba.
-                        </p>
-
-                        {/* Highlighted Vector Chunk with NER Pills */}
-                        <div className="bg-amber-100/90 border border-amber-300 p-4 rounded-xl shadow-xs space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-amber-900 flex items-center gap-1.5 font-bold">
-                              <i className="fa-solid fa-highlighter text-amber-700"></i> Đoạn trích xuất GraphRAG [Chunk #402]
-                            </span>
-                            <span className="bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-full text-[11px]">
-                              {isVi ? "Độ tin cậy: 98.4%" : "Confidence: 98.4%"}
-                            </span>
-                          </div>
-                          <p className="text-amber-950 text-sm font-medium leading-relaxed">
-                            "12.2. Giới hạn Trách nhiệm bồi thường: Trong mọi trường hợp, tổng nghĩa vụ bồi thường thiệt hại trực tiếp của{" "}
-                            <span className="bg-blue-200 text-blue-900 px-1.5 py-0.5 rounded font-bold text-xs">[Party: Alpha Corp]</span>{" "}
-                            phát sinh từ hoặc liên quan đến Hợp đồng này sẽ không vượt quá mười phần trăm (10%) tổng giá trị dịch vụ thực tế đã thanh toán{" "}
-                            <span className="bg-purple-200 text-purple-900 px-1.5 py-0.5 rounded font-bold text-xs">[Clause: Liability_Cap_10%]</span>{" "}
-                            trong vòng mười hai (12) tháng trước thời điểm phát sinh khiếu nại."
-                          </p>
-                        </div>
-
-                        <p className="text-on-surface-variant">
-                          12.3. Không bên nào phải chịu trách nhiệm đối với bên kia về các thiệt hại gián tiếp, thiệt hại do hậu quả, hoặc tổn thất lợi nhuận dự tính, dù đã được thông báo trước về khả năng xảy ra các tổn thất đó.
-                        </p>
-                        <p className="text-on-surface-variant">
-                          12.4. Các ngoại lệ không áp dụng giới hạn trách nhiệm bao gồm: hành vi cố ý vi phạm, gian lận, hoặc vi phạm nghĩa vụ bảo mật theo Điều 8 (Nghĩa vụ Bảo mật & Dữ liệu).
-                        </p>
-                      </div>
+                    /* Fallback / Loading Detail */
+                    <div className="p-8 text-center text-xs text-outline space-y-2">
+                      <Icon name="fa-regular fa-file-lines text-2xl text-outline/40" size={20} />
+                      <p>{isVi ? "Không có dữ liệu trích xuất hoặc đang kết nối lại dịch vụ..." : "No extraction data available or reconnecting to services..."}</p>
                     </div>
                   )}
                 </div>
@@ -969,7 +710,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                 <div className="space-y-5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-                      <i className="fa-solid fa-circle-nodes text-primary text-[18px]"></i>
+                      <Icon name="fa-solid fa-circle-nodes text-primary text-[18px]" size={18} />
                       <span>{isVi ? "Metadata & Quan hệ Đồ thị" : "Metadata & Graph Mapping"}</span>
                     </h3>
                     <span className="px-2 py-0.5 rounded bg-primary-fixed text-primary font-bold text-xs">
@@ -1015,7 +756,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                             </span>
                           </div>
                           <div className={`pl-4 font-bold flex items-center gap-1 text-[11px] ${rel.isRisk ? "text-error" : "text-secondary"}`}>
-                            <i className="fa-solid fa-arrow-turn-down-right"></i>
+                            <Icon name="fa-solid fa-arrow-turn-down-right" size={15} />
                             <span>[{rel.rel}]</span>
                           </div>
                           <div className="flex items-center gap-2 pl-4">
@@ -1062,7 +803,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                 <div className="space-y-3 pt-4 border-t border-surface-container">
                   {/* C4 Security Callout */}
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs leading-relaxed flex items-start gap-2">
-                    <i className="fa-solid fa-shield-halved text-amber-700 text-[16px] shrink-0 mt-0.5"></i>
+                    <Icon name="fa-solid fa-shield-halved text-amber-700 text-[16px] shrink-0 mt-0.5" size={16} />
                     <div>
                       <strong className="font-bold">{isVi ? "Chính sách bảo mật C4: " : "C4 Security Policy: "}</strong>
                       {isVi
@@ -1081,7 +822,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                           : "bg-primary text-on-primary hover:bg-blue-700"
                       }`}
                     >
-                      <i className={`fa-solid ${isDocVerified ? "fa-check-double" : "fa-stamp"}`}></i>
+                      <Icon name="" size={14} />
                       <span>
                         {isDocVerified
                           ? (isVi ? "✓ Đã xác thực & Đồng bộ vào Neo4j (HITL)" : "✓ Verified & Committed to Neo4j")
@@ -1097,7 +838,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                           : "bg-surface-container-low text-outline border-outline-variant/20 cursor-not-allowed opacity-75"
                       }`}
                     >
-                      <i className="fa-solid fa-cloud-arrow-down text-[15px]"></i>
+                      <Icon name="fa-solid fa-cloud-arrow-down text-[15px]" size={15} />
                       <span>{isVi ? "Tải xuống tài liệu gốc" : "Download Raw Document"}</span>
                       <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
                         isAdmin ? "bg-primary/10 text-primary" : "bg-outline-variant/40 text-outline"
@@ -1114,7 +855,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                         }}
                         className="flex-1 py-2 px-3 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
                       >
-                        <i className="fa-solid fa-circle-nodes text-primary"></i>
+                        <Icon name="fa-solid fa-circle-nodes text-primary" size={15} />
                         <span>{isVi ? "Mở trên Đồ thị" : "Open in Graph"}</span>
                       </button>
                       <button
@@ -1124,7 +865,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
                         }}
                         className="flex-1 py-2 px-3 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
                       >
-                        <i className="fa-solid fa-robot text-cyan-600"></i>
+                        <Icon name="fa-solid fa-robot text-cyan-600" size={15} />
                         <span>{isVi ? "Hỏi Copilot" : "Ask Copilot"}</span>
                       </button>
                     </div>

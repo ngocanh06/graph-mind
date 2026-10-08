@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
+import {
+  Bot, Send, Paperclip, Sparkles, BookOpen, ChevronRight,
+  Search, Plus, FileText, ThumbsUp, ThumbsDown, Copy,
+  ExternalLink, ShieldCheck, AlertCircle, X, Menu, Clock,
+  ArrowUpRight, CheckCircle2, Bookmark, Check
+} from "lucide-react";
 import { queryCopilot } from "../../services/api";
 
 export default function CopilotView({
   onNavigate,
-  t,
+  t = {},
   lang = "vi",
   apiConnected = false,
   role = "executive",
@@ -26,17 +32,21 @@ export default function CopilotView({
   const [activeCitation, setActiveCitation] = useState({
     docName: "CUAD_Service_Agreement_v4.pdf",
     match: "98.6% MATCH",
-    location: "Trang 16, Mục 12.2",
-    entity: "Alpha Corp (Bên A)",
+    location: isVi ? "Trang 16, Mục 12.2" : "Page 16, Clause 12.2",
+    entity: isVi ? "Alpha Corp (Bên A)" : "Alpha Corp (Party A)",
     chunk1: {
       id: "#VEC-8812",
-      title: "Đoạn trích chứng thực 1 (Qdrant Chunk #402)",
-      text: "...Trong mọi trường hợp, Bên A sẽ không chịu trách nhiệm đối với bất kỳ thiệt hại ngẫu nhiên, gián tiếp phát sinh từ việc gián đoạn dịch vụ quá 48 giờ liên tục do trường hợp bất khả kháng..."
+      title: isVi ? "Đoạn trích chứng thực 1 (Qdrant Chunk #402)" : "Verified Excerpt 1 (Qdrant Chunk #402)",
+      text: isVi
+        ? "...Trong mọi trường hợp, Bên A sẽ không chịu trách nhiệm đối với bất kỳ thiệt hại ngẫu nhiên, gián tiếp phát sinh từ việc gián đoạn dịch vụ quá 48 giờ liên tục do trường hợp bất khả kháng..."
+        : "...In no event shall Party A be liable for any incidental or consequential damages arising from service disruption exceeding 48 consecutive hours under force majeure..."
     },
     chunk2: {
       id: "Chunk #403",
-      title: "Đoạn trích chứng thực 2 (Giới hạn bồi thường)",
-      text: "...Tổng mức bồi thường của Bên A cho toàn bộ các khiếu nại trong suốt thời hạn thỏa thuận sẽ không vượt quá số tiền tương đương với 10% tổng phí dịch vụ được thanh toán trong tháng xảy ra sự kiện vi phạm..."
+      title: isVi ? "Đoạn trích chứng thực 2 (Giới hạn bồi thường)" : "Verified Excerpt 2 (Indemnification Cap)",
+      text: isVi
+        ? "...Tổng mức bồi thường của Bên A cho toàn bộ các khiếu nại trong suốt thời hạn thỏa thuận sẽ không vượt quá số tiền tương đương với 10% tổng phí dịch vụ được thanh toán trong tháng xảy ra sự kiện vi phạm..."
+        : "...The aggregate liability of Party A for all claims during the term shall not exceed an amount equivalent to 10% of total service fees paid in the month of breach..."
     },
     neo4jNode: "Clause:Liability_Limit",
     neo4jProps: "is_unilateral = true, cap_percentage = 0.10",
@@ -56,21 +66,29 @@ export default function CopilotView({
       id: "m1",
       sender: "user",
       time: "14:20",
-      userLabel: "Trần Thị Thu Hương (Executive)",
-      text: "Hãy rà soát Hợp đồng dịch vụ CUAD_042 với đối tác Alpha Corp. Có điều khoản nào miễn trừ hoặc giới hạn trách nhiệm bồi thường thiệt hại bất lợi cho doanh nghiệp không?"
+      userLabel: currentUser?.name || (isVi ? "Trần Thị Thu Hương (Executive)" : "Thu Huong Tran (Executive)"),
+      text: isVi
+        ? "Hãy rà soát Hợp đồng dịch vụ CUAD_042 với đối tác Alpha Corp. Có điều khoản nào miễn trừ hoặc giới hạn trách nhiệm bồi thường thiệt hại bất lợi cho doanh nghiệp không?"
+        : "Please review Service Contract CUAD_042 with partner Alpha Corp. Are there any unfavorable liability limitation or exclusion clauses against our enterprise?"
     },
     {
-      id: "m2",
+      id: "copilot",
       sender: "copilot",
       time: "14:20",
       verifiedBadge: "Hybrid GraphRAG Verified",
       confidence: "98.6%",
       citationCount: 2,
       latency: "1.42s latency (Hybrid Vector-Graph Fusion)",
-      introText: "Qua trích xuất kết hợp từ đồ thị tri thức Neo4j và kho véc-tơ Qdrant trên hợp đồng CUAD_Service_Agreement_v4.pdf (thuộc đối tác Alpha Corp), tôi phát hiện 1 điều khoản bất lợi nghiêm trọng tại Mục 12.2:",
+      introText: isVi
+        ? "Qua trích xuất kết hợp từ đồ thị tri thức Neo4j và kho véc-tơ Qdrant trên hợp đồng CUAD_Service_Agreement_v4.pdf (thuộc đối tác Alpha Corp), tôi phát hiện 1 điều khoản bất lợi nghiêm trọng tại Mục 12.2:"
+        : "Through hybrid extraction fusing Neo4j knowledge graph and Qdrant vector database on CUAD_Service_Agreement_v4.pdf (Alpha Corp), I identified 1 critical unfavorable clause at Section 12.2:",
       riskBox: {
-        title: "RỦI RO PHÁP LÝ: Bất đối xứng giới hạn trách nhiệm (Unilateral Liability Cap)",
-        text: 'Điều khoản quy định: "Bên B (doanh nghiệp) phải bồi thường tối đa 100% giá trị hợp đồng khi có sự cố dữ liệu, trong khi Bên A (Alpha Corp) được miễn trừ hoàn toàn đối với mọi thiệt hại gián tiếp và trần trách nhiệm chỉ bằng 10% phí dịch vụ tháng gần nhất."'
+        title: isVi
+          ? "RỦI RO PHÁP LÝ: Bất đối xứng giới hạn trách nhiệm (Unilateral Liability Cap)"
+          : "LEGAL RISK: Unilateral Liability Cap Asymmetry",
+        text: isVi
+          ? 'Điều khoản quy định: "Bên B (doanh nghiệp) phải bồi thường tối đa 100% giá trị hợp đồng khi có sự cố dữ liệu, trong khi Bên A (Alpha Corp) được miễn trừ hoàn toàn đối với mọi thiệt hại gián tiếp và trần trách nhiệm chỉ bằng 10% phí dịch vụ tháng gần nhất."'
+          : 'Clause terms: "Party B (Enterprise) indemnifies up to 100% contract value upon data incident, while Party A (Alpha Corp) is fully exempted from indirect damages and caps liability at only 10% of monthly fee."'
       }
     }
   ]);
@@ -101,649 +119,928 @@ export default function CopilotView({
 
     try {
       if (apiConnected) {
-        const res = await queryCopilot(userText, role);
-        const aiMsg = {
-          id: `ai_${Date.now()}`,
-          sender: "copilot",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          verifiedBadge: "Hybrid GraphRAG Verified",
-          confidence: "96.5%",
-          citationCount: res.citations ? res.citations.length : 1,
-          latency: `${res.latency || 1.12}s latency (Neo4j + Qdrant)`,
-          introText: res.answer || res.response || "Kết quả phân tích từ hệ thống tri thức GraphMind:",
-          riskBox: res.riskAlert ? {
-            title: res.riskAlert.title || "CẢNH BÁO TỐI ƯU HÓA TÁC NGHIỆP",
-            text: res.riskAlert.text || res.riskAlert
-          } : null
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-      } else {
-        // Fallback simulation response
-        setTimeout(() => {
-          const aiMsg = {
-            id: `ai_${Date.now()}`,
+        const response = await queryCopilot(userText, isVi ? "vi" : "en");
+        const data = response?.data || response;
+        const answerText = response?.answer || data?.insight || response?.text || (isVi ? "Hệ thống đã hoàn tất xử lý." : "Processing completed.");
+        const latencyStr = response?.latency ? `${response.latency}s latency` : "1.2s latency";
+        const modelBadge = response?.model || "Qwen2.5-7B + Hybrid GraphRAG";
+        const citationCount = data?.evidenceChips?.length || 1;
+        const confidenceScore = data?.confidenceScore ? `${data.confidenceScore}%` : "98.5%";
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `c_${Date.now()}`,
             sender: "copilot",
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            verifiedBadge: "Hybrid GraphRAG Verified",
-            confidence: "97.8%",
-            citationCount: 2,
-            latency: "1.25s latency (Hybrid Vector-Graph Fusion)",
-            introText: `Đã truy vấn dữ liệu cho câu hỏi: "${userText}". Dưới đây là kết quả trích xuất từ mạng tri thức Neo4j & kho vector Qdrant:`,
-            riskBox: {
-              title: "THÔNG TIN ĐỐI SOÁT HỆ THỐNG",
-              text: `Đã kiểm tra hồ sơ thực thể liên quan trong CRM AdventureWorks & Hợp đồng CUAD. Các tham số vận hành tuân thủ theo tiêu chuẩn RBAC (${role.toUpperCase()}).`
+            verifiedBadge: modelBadge,
+            confidence: confidenceScore,
+            citationCount: citationCount,
+            latency: latencyStr,
+            introText: answerText
+          }
+        ]);
+      } else {
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `c_${Date.now()}`,
+              sender: "copilot",
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              verifiedBadge: "Hybrid GraphRAG Verified",
+              confidence: "97.4%",
+              citationCount: 2,
+              latency: "1.35s latency (Offline Graph Mock)",
+              introText: isVi
+                ? `Hệ thống đã đối soát yêu cầu "${userText}" trên cơ sở tri thức Neo4j và hợp đồng CUAD. Các thực thể liên quan đã được xác thực toàn vẹn.`
+                : `Cross-referenced query "${userText}" across Neo4j knowledge graph and CUAD contracts. Linked entities verified intact.`
             }
-          };
-          setMessages((prev) => [...prev, aiMsg]);
+          ]);
           setIsInferring(false);
-        }, 1200);
+        }, 800);
         return;
       }
     } catch (err) {
-      console.error(err);
-      showToast("Lỗi kết nối AI Copilot API. Đã chuyển sang chế độ mô phỏng.");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `c_err_${Date.now()}`,
+          sender: "copilot",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          verifiedBadge: "Fallback Mode",
+          confidence: "80.0%",
+          citationCount: 0,
+          introText: isVi
+            ? "Đang kết nối lại API Engine... Phản hồi mô phỏng từ bộ đệm GraphMind."
+            : "Reconnecting to API Engine... Fallback simulated response from GraphMind buffer."
+        }
+      ]);
     } finally {
       setIsInferring(false);
     }
   };
 
-  const fillPrompt = (promptText) => {
-    setQueryInput(promptText);
+  const fillPrompt = (text) => {
+    setQueryInput(text);
   };
 
   const clearChatToEmpty = () => {
     setMessages([]);
     setShowEmptyState(true);
-    showToast("Đã khởi tạo phiên trò chuyện mới.");
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-900">
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      background: "var(--base)",
+      position: "relative",
+      overflow: "hidden"
+    }}>
 
-      {/* TOAST NOTIFICATION */}
+      {/* Toast */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 bg-slate-900 text-white text-xs font-medium rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2 animate-bounce">
-          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-          {toastMsg}
+        <div style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          zIndex: 100,
+          background: "var(--surface)",
+          border: "1px solid var(--border-strong)",
+          borderRadius: "var(--r-md)",
+          padding: "12px 18px",
+          boxShadow: "var(--shadow-xl)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--text-1)"
+        }}>
+          <CheckCircle2 size={16} color="var(--green)" />
+          <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* SCREEN TITLE & INFO BAR */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-              SCREEN-018 — Chat UI (Hybrid AI Copilot 3-Column Architecture)
-            </h2>
-            <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-mono">
-              1440 × 900 Canvas Standard
-            </span>
+      {/* ── COPILOT TOPBAR ───────────────────────────────────── */}
+      <div style={{
+        height: 56,
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 20px",
+        flexShrink: 0,
+        gap: 12
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={() => setShowSessionDrawer(!showSessionDrawer)}
+            title={isVi ? "Mở/Đóng danh sách phiên chat" : "Toggle chat sessions"}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "var(--r-md)",
+              border: "1px solid var(--border)",
+              background: showSessionDrawer ? "var(--surface-2)" : "transparent",
+              color: "var(--text-2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer"
+            }}
+          >
+            <Menu size={16} />
+          </button>
+
+          <div style={{ width: 1, height: 20, background: "var(--border-soft)" }} />
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              background: "linear-gradient(135deg, #0F233D 0%, #2563EB 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ffffff"
+            }}>
+              <Bot size={17} strokeWidth={2.2} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--f-display)" }}>
+                <span>GraphMind AI Copilot</span>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: 99,
+                  background: "var(--blue-soft)",
+                  color: "var(--blue)",
+                  border: "1px solid rgba(37,99,235,0.2)"
+                }}>
+                  Qwen2.5-7B LoRA + Neo4j GraphRAG
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Bố cục 3 cột tương tác: [DRAWER-002 Lịch sử phiên - 260px] + [Khung trò chuyện trung tâm] + [DRAWER-001 Trích dẫn bằng chứng - 420px]
-          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Hybrid Query: Neo4j + Qdrant Live
-          </span>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            display: "none",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 10px",
+            borderRadius: "var(--r-md)",
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            fontSize: 11.5,
+            color: "var(--text-3)"
+          }} className="sm-flex">
+            <span>{isVi ? "Phiên:" : "Session:"}</span>
+            <span style={{ fontFamily: "var(--f-mono)", color: "var(--text-1)", fontWeight: 600 }}>SES-9481-EXEC</span>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)" }} />
+          </div>
+
+          <button
+            onClick={clearChatToEmpty}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: "var(--r-md)",
+              border: "1px solid var(--border)",
+              background: "var(--surface-2)",
+              color: "var(--text-2)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            <Plus size={14} />
+            <span>{isVi ? "Phiên mới" : "New Chat"}</span>
+          </button>
+
+          <button
+            onClick={() => setShowCitationDrawer(!showCitationDrawer)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: "var(--r-md)",
+              border: `1px solid ${showCitationDrawer ? "rgba(37,99,235,0.3)" : "var(--border)"}`,
+              background: showCitationDrawer ? "var(--blue-soft)" : "var(--surface-2)",
+              color: showCitationDrawer ? "var(--blue)" : "var(--text-2)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            <BookOpen size={14} />
+            <span>{isVi ? "Trích dẫn & Nguồn (2)" : "Citations (2)"}</span>
+          </button>
         </div>
       </div>
 
-      {/* THE 3-COLUMN DESKTOP SCREEN CONTAINER */}
-      <div className="bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[780px] relative">
+      {/* ── 3-COLUMN WORKSPACE ───────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
-        {/* INNER HEADER / COPILOT GLOBAL BAR */}
-        <div className="h-14 border-b border-slate-200 bg-white px-5 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowSessionDrawer(!showSessionDrawer)}
-              className={`p-2 rounded-lg transition-colors ${
-                showSessionDrawer ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              }`}
-              title="Mở/Đóng danh sách phiên chat (DRAWER-002)"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
-              </svg>
-            </button>
-            <div className="h-5 w-px bg-slate-200"></div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                AI
+        {/* ── COLUMN 1: SESSIONS DRAWER (240px) ───────────────── */}
+        {showSessionDrawer && (
+          <aside style={{
+            width: 240,
+            background: "var(--surface)",
+            borderRight: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+            flexShrink: 0
+          }}>
+            <div style={{ padding: 12, borderBottom: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ position: "relative" }}>
+                <Search size={13} color="var(--text-4)" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
+                <input
+                  type="text"
+                  value={searchHistory}
+                  onChange={(e) => setSearchHistory(e.target.value)}
+                  placeholder={isVi ? "Tìm lịch sử..." : "Search history..."}
+                  style={{
+                    width: "100%",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r-md)",
+                    padding: "6px 10px 6px 28px",
+                    fontSize: 12,
+                    color: "var(--text-1)",
+                    outline: "none"
+                  }}
+                />
               </div>
+
+              <button
+                onClick={clearChatToEmpty}
+                style={{
+                  width: "100%",
+                  padding: "6px 12px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--text-1)",
+                  color: "var(--surface)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  cursor: "pointer"
+                }}
+              >
+                <Plus size={13} />
+                <span>{isVi ? "Tạo hội thoại mới" : "Start New Chat"}</span>
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                  GraphMind AI Copilot
-                  <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
-                    Qwen2.5-7B LoRA + Neo4j GraphRAG
-                  </span>
-                </h3>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "4px 8px" }}>
+                  {isVi ? "Hôm nay" : "Today"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                  <div style={{
+                    padding: "8px 10px",
+                    borderRadius: "var(--r-md)",
+                    background: "var(--blue-soft)",
+                    border: "1px solid rgba(37,99,235,0.2)",
+                    color: "var(--blue)",
+                    cursor: "pointer"
+                  }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {isVi ? "Rà soát hợp đồng CUAD_042..." : "Review contract CUAD_042..."}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 2 }}>
+                      {isVi ? "2 trích dẫn • 14:20" : "2 citations • 14:20"}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding: "8px 10px",
+                    borderRadius: "var(--r-md)",
+                    background: "transparent",
+                    color: "var(--text-2)",
+                    cursor: "pointer"
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {isVi ? "Tần suất đơn hàng Đông Nam" : "Dong Nam order frequency"}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: "var(--text-4)", marginTop: 2 }}>
+                      AdventureWorks • 11:05
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "4px 8px" }}>
+                  {isVi ? "7 ngày qua" : "Previous 7 Days"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                  <div style={{ padding: "8px 10px", borderRadius: "var(--r-md)", color: "var(--text-2)", cursor: "pointer" }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {isVi ? "SOP nghiệm thu phần mềm v2.1" : "SOP Acceptance v2.1"}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: "var(--text-4)", marginTop: 2 }}>
+                      {isVi ? "Thứ 3 • Phòng IT" : "Tue • IT Dept"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              padding: "10px 14px",
+              borderTop: "1px solid var(--border-soft)",
+              background: "var(--surface-2)",
+              fontSize: 11,
+              color: "var(--text-3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}>
+              <span>{isVi ? "Hạn mức:" : "Quota:"} <strong style={{ color: "var(--text-1)" }}>{isVi ? "Không giới hạn" : "Unlimited"}</strong></span>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)" }} />
+            </div>
+          </aside>
+        )}
+
+        {/* ── COLUMN 2: CHAT CONVERSATION VIEWPORT (FLEX-1) ──── */}
+        <div style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--surface)",
+          position: "relative",
+          minWidth: 0
+        }}>
+          {/* Scroll area */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Context notice */}
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div style={{
+                padding: "6px 14px",
+                borderRadius: 99,
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                fontSize: 11.5,
+                color: "var(--text-3)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}>
+                <ShieldCheck size={13} color="var(--blue)" />
+                <span>{isVi ? "Phạm vi:" : "Scope:"} <strong>{isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}</strong> & <strong>AdventureWorks ERP</strong> (RBAC: Executive)</span>
               </div>
             </div>
-          </div>
 
-          {/* Session Metadata & Action Toolbar */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
-              <span className="text-slate-400">Phiên:</span>
-              <span className="font-medium text-slate-800 font-mono">SES-9481-EXEC</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            </div>
-            <button
-              onClick={clearChatToEmpty}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all flex items-center gap-1.5"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-              </svg>
-              Phiên mới
-            </button>
-            <button
-              onClick={() => setShowCitationDrawer(!showCitationDrawer)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all flex items-center gap-1.5 ${
-                showCitationDrawer
-                  ? "bg-blue-50 text-blue-600 border-blue-200"
-                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Trích dẫn & Nguồn (2)
-            </button>
-          </div>
-        </div>
-
-        {/* 3 COLUMNS BODY WRAPPER */}
-        <div className="flex-1 flex overflow-hidden relative bg-slate-50/50">
-
-          {/* ========================================== */}
-          {/* COLUMN 1: DRAWER-002 CHAT SESSION MANAGEMENT (260px) */}
-          {/* ========================================== */}
-          {showSessionDrawer && (
-            <aside className="w-[260px] border-r border-slate-200 bg-white flex flex-col flex-shrink-0 transition-all duration-300 z-10">
-              {/* Sidebar Header / Search */}
-              <div className="p-3 border-b border-slate-100 space-y-2">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchHistory}
-                    onChange={(e) => setSearchHistory(e.target.value)}
-                    placeholder="Tìm lịch sử hội thoại..."
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white"
-                  />
-                  <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+            {/* Empty state */}
+            {showEmptyState && (
+              <div style={{
+                margin: "auto 0",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                padding: 32,
+                gap: 16
+              }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: "var(--blue-soft)",
+                  color: "var(--blue)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <Sparkles size={28} />
                 </div>
-                <button
-                  onClick={clearChatToEmpty}
-                  className="w-full py-1.5 px-3 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Tạo hội thoại mới
-                </button>
-              </div>
-
-              {/* Session List by Time Intervals */}
-              <div className="flex-1 overflow-y-auto p-2 space-y-3 text-xs">
-                {/* Group: Hôm nay */}
                 <div>
-                  <p className="px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hôm nay</p>
-                  <div className="space-y-1 mt-1">
-                    {/* Active Session Item */}
-                    <div className="p-2 rounded-lg bg-blue-50/80 border border-blue-200 text-blue-900 font-medium flex items-start justify-between group cursor-pointer">
-                      <div className="truncate pr-1">
-                        <p className="truncate font-semibold text-slate-800">Rà soát hợp đồng CUAD_042...</p>
-                        <p className="text-[10px] text-blue-600 truncate mt-0.5">2 trích dẫn • 14:20</p>
-                      </div>
-                      <svg className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                      </svg>
-                    </div>
-
-                    {/* Other Sessions */}
-                    <div className="p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-start justify-between group cursor-pointer transition-colors">
-                      <div className="truncate pr-1">
-                        <p className="truncate text-slate-700">Tần suất đơn hàng Đông Nam</p>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">AdventureWorks • 11:05</p>
-                      </div>
-                      <button className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 p-0.5">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                  <h4 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-1)", margin: "0 0 6px", fontFamily: "var(--f-display)" }}>
+                    {isVi ? "Bắt đầu cuộc trò chuyện với AI Copilot" : "Start a Conversation with AI Copilot"}
+                  </h4>
+                  <p style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 440, margin: 0, lineHeight: 1.5 }}>
+                    {isVi
+                      ? "Hỏi đáp tự nhiên trên dữ liệu kinh doanh ERP và hệ thống hợp đồng pháp lý CUAD. Mọi câu trả lời đều có trích dẫn nguồn xác thực."
+                      : "Query freely across AdventureWorks ERP and CUAD legal contracts with grounded evidence citations."}
+                  </p>
                 </div>
 
-                {/* Group: 7 ngày qua */}
-                <div>
-                  <p className="px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">7 ngày qua</p>
-                  <div className="space-y-1 mt-1">
-                    <div className="p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-start justify-between group cursor-pointer transition-colors">
-                      <div className="truncate pr-1">
-                        <p className="truncate text-slate-700">SOP nghiệm thu phần mềm v2.1</p>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">Thứ 3 • Phòng IT</p>
-                      </div>
-                      <button className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 p-0.5">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="p-2 rounded-lg hover:bg-slate-100 text-slate-700 flex items-start justify-between group cursor-pointer transition-colors">
-                      <div className="truncate pr-1">
-                        <p className="truncate text-slate-700">Điều khoản bồi thường thiệt hại HĐ dịch vụ</p>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">Thứ 2 • Đã ghim</p>
-                      </div>
-                      <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 520, width: "100%", textAlign: "left" }}>
+                  <button
+                    onClick={() => fillPrompt(isVi ? "Tìm các hợp đồng dịch vụ sắp hết hạn trong 30 ngày tới" : "Find service agreements expiring in the next 30 days")}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-1)",
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>📄 {isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "Quét các hợp đồng cần tái đàm phán" : "Scan contracts needing renewal"}</div>
+                  </button>
 
-                {/* Group: Tháng trước */}
-                <div>
-                  <p className="px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tháng trước</p>
-                  <div className="space-y-1 mt-1">
-                    <div className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 flex items-start justify-between group cursor-pointer transition-colors">
-                      <div className="truncate pr-1">
-                        <p className="truncate text-slate-600">Phân tích nhà cung cấp phụ tùng ERP</p>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">24/09/2026</p>
-                      </div>
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => fillPrompt(isVi ? "Khách hàng VIP nào giảm tần suất đặt hàng trong quý 3?" : "Which VIP customers experienced order frequency drop in Q3?")}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-1)",
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>📉 {isVi ? "Rủi ro sụt giảm đơn hàng" : "Order Cadence Dips"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "So sánh dữ liệu đơn hàng gần đây" : "Compare time-series order history"}</div>
+                  </button>
                 </div>
               </div>
+            )}
 
-              {/* Footer: Role Quota Indicator */}
-              <div className="p-3 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-500 flex items-center justify-between">
-                <span>Hạn mức: <strong className="text-slate-800">Không giới hạn</strong> (Exec)</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              </div>
-            </aside>
-          )}
-
-          {/* ========================================== */}
-          {/* COLUMN 2: MAIN CONVERSATION VIEWPORT (FLEX-1) */}
-          {/* ========================================== */}
-          <div className="flex-1 flex flex-col h-full bg-white relative overflow-hidden">
-
-            {/* CHAT MESSAGES SCROLL AREA */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-
-              {/* SYSTEM / DATA CONTEXT NOTICE */}
-              <div className="flex justify-center">
-                <div className="px-3.5 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs flex items-center gap-2">
-                  <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  <span>Phạm vi truy vấn: <strong>Hợp đồng CUAD</strong> và <strong>CRM AdventureWorks</strong> (RBAC: Unrestricted Executive)</span>
-                </div>
-              </div>
-
-              {/* EMPTY STATE CONTAINER */}
-              {showEmptyState && (
-                <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 my-auto">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600/10 to-indigo-600/10 border border-blue-200/50 flex items-center justify-center shadow-lg">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div className="max-w-md space-y-1.5">
-                    <h4 className="text-base font-bold text-slate-800">Bắt đầu cuộc trò chuyện với AI Copilot</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      Hỏi đáp tự nhiên trên dữ liệu kinh doanh CRM AdventureWorks và hệ thống hợp đồng pháp lý CUAD. Mọi câu trả lời đều có trích dẫn nguồn xác thực.
-                    </p>
-                  </div>
-                  {/* Suggested Quick Prompts */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg text-left text-xs pt-2">
-                    <button
-                      onClick={() => fillPrompt("Tìm các hợp đồng dịch vụ sắp hết hạn trong 30 ngày tới")}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-500 hover:bg-blue-50/50 transition-all text-slate-700"
-                    >
-                      <span className="font-semibold block text-slate-900">📄 Hợp đồng sắp hết hạn</span>
-                      <span className="text-[11px] text-slate-500">Quét các hợp đồng cần đàm phán lại</span>
-                    </button>
-                    <button
-                      onClick={() => fillPrompt("Khách hàng VIP nào giảm tần suất đặt hàng trong quý 3?")}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-500 hover:bg-blue-50/50 transition-all text-slate-700"
-                    >
-                      <span className="font-semibold block text-slate-900">📉 Rủi ro doanh số khách hàng</span>
-                      <span className="text-[11px] text-slate-500">So sánh dữ liệu đơn hàng gần đây</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* MESSAGES LIST */}
-              {messages.map((msg) => {
-                if (msg.sender === "user") {
-                  return (
-                    <div key={msg.id} className="flex justify-end">
-                      <div className="max-w-[80%] md:max-w-[70%] space-y-1">
-                        <div className="bg-blue-50 border border-blue-200 text-slate-900 rounded-2xl rounded-tr-sm p-4 text-sm shadow-xs">
-                          <p className="leading-relaxed font-medium">{msg.text}</p>
-                        </div>
-                        <div className="flex items-center justify-end gap-1.5 text-[11px] text-slate-400 px-1">
-                          <span>{msg.userLabel || "Executive"}</span> • <span>{msg.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
+            {/* Messages */}
+            {messages.map((msg) => {
+              if (msg.sender === "user") {
                 return (
-                  <div key={msg.id} className="flex justify-start items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm mt-1">
-                      AI
-                    </div>
-                    <div className="max-w-[85%] md:max-w-[80%] space-y-2">
-                      <div className="bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl rounded-tl-sm p-5 text-sm shadow-xs space-y-3">
-                        <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 flex items-center gap-1">
-                              <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                              {msg.verifiedBadge}
-                            </span>
-                            <span className="text-xs text-slate-400">Độ tin cậy: <strong>{msg.confidence}</strong></span>
-                          </div>
-
-                          {/* Interactive Badges for Evidence */}
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => setShowCitationDrawer(true)}
-                              className="px-2.5 py-1 text-xs font-medium rounded-full bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors flex items-center gap-1 cursor-pointer"
-                            >
-                              <svg className="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                              </svg>
-                              <span>{msg.citationCount} Trích dẫn nguồn (Mở Drawer)</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        <p className="leading-relaxed">{msg.introText}</p>
-
-                        {/* Risk Box Callout */}
-                        {msg.riskBox && (
-                          <div className="p-3.5 bg-rose-50/70 border-l-4 border-rose-500 rounded-r-xl space-y-1.5 text-xs text-rose-900">
-                            <div className="font-bold flex items-center gap-1.5 text-rose-800">
-                              <svg className="w-4 h-4 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              {msg.riskBox.title}
-                            </div>
-                            <p className="leading-relaxed font-sans">{msg.riskBox.text}</p>
-                          </div>
-                        )}
-
-                        {/* Recommended Action & Knowledge Graph Link */}
-                        <div className="pt-1 flex flex-wrap items-center justify-between gap-3 text-xs">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => onNavigate && onNavigate("m3_hybrid_copilot")}
-                              className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                              </svg>
-                              Xem liên kết đồ thị thực thể (Neo4j)
-                            </button>
-                            <button
-                              onClick={() => setShowCitationDrawer(true)}
-                              className="text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 bg-white hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              Soi chứng thực trang 16
-                            </button>
-                          </div>
-
-                          {/* Copilot Evaluation Controls */}
-                          <div className="flex items-center gap-1 text-slate-400">
-                            <button
-                              onClick={() => showToast("Đánh giá: Hữu ích 👍")}
-                              className="p-1 hover:text-slate-600 rounded"
-                              title="Hữu ích"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => showToast("Đã phản hồi ý kiến.")}
-                              className="p-1 hover:text-slate-600 rounded"
-                              title="Chưa chính xác"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76 1.34m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard?.writeText(msg.introText);
-                                showToast("Đã sao chép câu trả lời vào bộ nhớ tạm.");
-                              }}
-                              className="p-1 hover:text-slate-600 rounded"
-                              title="Sao chép câu trả lời"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
+                  <div key={msg.id} style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <div style={{ maxWidth: "75%", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                      <div style={{
+                        background: "var(--blue-soft)",
+                        border: "1px solid rgba(37,99,235,0.25)",
+                        borderRadius: "16px 16px 4px 16px",
+                        padding: "14px 18px",
+                        color: "var(--text-1)",
+                        fontSize: 13.5,
+                        lineHeight: 1.6,
+                        boxShadow: "var(--shadow-xs)"
+                      }}>
+                        {msg.text}
                       </div>
-
-                      <div className="text-[11px] text-slate-400 pl-1">
-                        GraphMind AI Copilot • {msg.latency || "1.42s latency (Hybrid Vector-Graph Fusion)"}
+                      <div style={{ fontSize: 11, color: "var(--text-4)", paddingRight: 4 }}>
+                        <span>{msg.userLabel}</span> • <span>{msg.time}</span>
                       </div>
                     </div>
                   </div>
                 );
-              })}
+              }
 
-              {/* THINKING / TYPING INDICATOR STATE */}
-              {isInferring && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                    AI
+              return (
+                <div key={msg.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #0F233D 0%, #2563EB 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#ffffff",
+                    flexShrink: 0,
+                    marginTop: 4
+                  }}>
+                    <Bot size={17} strokeWidth={2.2} />
                   </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-3 shadow-xs">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse delay-75"></span>
-                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse delay-150"></span>
+
+                  <div style={{ flex: 1, maxWidth: "85%", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "4px 16px 16px 16px",
+                      padding: "18px 22px",
+                      boxShadow: "var(--shadow-xs)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 14
+                    }}>
+                      {/* Badge row */}
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: "1px solid var(--border-soft)",
+                        paddingBottom: 10
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{
+                            padding: "2px 8px",
+                            borderRadius: "var(--r-xs)",
+                            background: "var(--blue-soft)",
+                            color: "var(--blue)",
+                            fontWeight: 700,
+                            fontSize: 11,
+                            border: "1px solid rgba(37,99,235,0.2)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4
+                          }}>
+                            <Sparkles size={11} />
+                            {msg.verifiedBadge}
+                          </span>
+                          <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                            {isVi ? "Độ tin cậy:" : "Confidence:"} <strong style={{ color: "var(--text-1)" }}>{msg.confidence}</strong>
+                          </span>
+                        </div>
+
+                        {msg.citationCount > 0 && (
+                          <button
+                            onClick={() => setShowCitationDrawer(true)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "3px 10px",
+                              borderRadius: 99,
+                              background: "var(--amber-soft)",
+                              border: "1px solid rgba(217,119,6,0.25)",
+                              color: "var(--amber)",
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            <Bookmark size={11} />
+                            <span>{msg.citationCount} {isVi ? "Trích dẫn nguồn" : "Citations"}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <p style={{ fontSize: 13.5, color: "var(--text-1)", lineHeight: 1.6, margin: 0 }}>
+                        {msg.introText}
+                      </p>
+
+                      {/* Risk Callout */}
+                      {msg.riskBox && (
+                        <div style={{
+                          background: "var(--red-soft)",
+                          borderLeft: "4px solid var(--red)",
+                          borderRadius: "0 var(--r-md) var(--r-md) 0",
+                          padding: "12px 16px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6
+                        }}>
+                          <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            color: "var(--red)"
+                          }}>
+                            <AlertCircle size={15} />
+                            <span>{msg.riskBox.title}</span>
+                          </div>
+                          <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6, margin: 0 }}>
+                            {msg.riskBox.text}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Action buttons */}
+                      <div style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        borderTop: "1px solid var(--border-soft)",
+                        paddingTop: 10
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button
+                            onClick={() => onNavigate?.("knowledge")}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "5px 10px",
+                              borderRadius: "var(--r-md)",
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              color: "var(--blue)",
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            <span>{isVi ? "Xem đồ thị Neo4j" : "View Neo4j Graph"}</span>
+                            <ArrowUpRight size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => setShowCitationDrawer(true)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "5px 10px",
+                              borderRadius: "var(--r-md)",
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              color: "var(--text-2)",
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            <FileText size={12} />
+                            <span>{isVi ? "Soi trích dẫn" : "Inspect Citation"}</span>
+                          </button>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <button
+                            onClick={() => showToast(isVi ? "Đánh giá: Hữu ích" : "Marked helpful")}
+                            title={isVi ? "Hữu ích" : "Helpful"}
+                            style={{ width: 28, height: 28, borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", cursor: "pointer" }}
+                          >
+                            <ThumbsUp size={13} />
+                          </button>
+                          <button
+                            onClick={() => showToast(isVi ? "Đã phản hồi ý kiến" : "Feedback noted")}
+                            title={isVi ? "Chưa đúng" : "Inaccurate"}
+                            style={{ width: 28, height: 28, borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", cursor: "pointer" }}
+                          >
+                            <ThumbsDown size={13} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard?.writeText(msg.introText);
+                              showToast(isVi ? "Đã sao chép câu trả lời" : "Copied to clipboard");
+                            }}
+                            title={isVi ? "Sao chép" : "Copy"}
+                            style={{ width: 28, height: 28, borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", cursor: "pointer" }}
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-xs text-slate-500 font-medium">
-                      Đang tra vấn đồ thị quan hệ Neo4j & trích xuất vector Qdrant...
-                    </span>
+
+                    <div style={{ fontSize: 11, color: "var(--text-4)", paddingLeft: 4 }}>
+                      GraphMind AI Copilot • {msg.latency || "1.42s latency"}
+                    </div>
                   </div>
                 </div>
-              )}
+              );
+            })}
 
-              <div ref={messagesEndRef} />
-            </div>
+            {isInferring && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)", width: "fit-content" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--blue)" }} className="pulse-dot" />
+                <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500 }}>
+                  {isVi ? "Đang tra vấn đồ thị quan hệ Neo4j & trích xuất vector Qdrant..." : "Querying Neo4j relations & extracting Qdrant vectors..."}
+                </span>
+              </div>
+            )}
 
-            {/* CHAT INPUT STICKY BOTTOM BAR */}
-            <div className="p-4 border-t border-slate-200 bg-white flex-shrink-0">
-              <form onSubmit={handleSend} className="space-y-2">
-                <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 bg-white transition-all shadow-sm">
-                  <textarea
-                    rows="2"
-                    value={queryInput}
-                    onChange={(e) => setQueryInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }}
-                    placeholder="Đặt câu hỏi về khách hàng, đơn hàng, điều khoản hợp đồng CUAD..."
-                    className="w-full text-xs text-slate-800 placeholder-slate-400 p-3 pr-24 rounded-xl resize-none focus:outline-none"
-                  />
-
-                  {/* Bottom Action Buttons in Input */}
-                  <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => showToast("Đính kèm tệp phân tích...")}
-                      className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                      title="Đính kèm tài liệu phân tích"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                      </svg>
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!queryInput.trim() || isInferring}
-                      className={`px-3.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5 transition-all ${
-                        !queryInput.trim() || isInferring
-                          ? "bg-blue-300 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      }`}
-                    >
-                      <span>Gửi</span>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Footer Hint */}
-                <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                  <span>Nhấn <strong>Enter</strong> để gửi, <strong>Shift + Enter</strong> để xuống dòng</span>
-                  <span className="flex items-center gap-1">
-                    <svg className="w-3 h-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    Không bịa đặt thông tin • Luôn neo vào cơ sở tri thức
-                  </span>
-                </div>
-              </form>
-            </div>
-
+            <div ref={messagesEndRef} />
           </div>
 
-          {/* ========================================== */}
-          {/* COLUMN 3: DRAWER-001 SOURCE & CITATION VIEWER (420px) */}
-          {/* ========================================== */}
-          {showCitationDrawer && (
-            <aside className="w-[420px] border-l border-slate-200 bg-white flex flex-col flex-shrink-0 transition-all duration-300 z-20 shadow-xl lg:shadow-none">
+          {/* Sticky input */}
+          <div style={{
+            padding: "16px 24px",
+            borderTop: "1px solid var(--border)",
+            background: "var(--surface)"
+          }}>
+            <form onSubmit={handleSend} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{
+                position: "relative",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-lg)",
+                padding: "10px 14px"
+              }}>
+                <textarea
+                  rows={2}
+                  value={queryInput}
+                  onChange={(e) => setQueryInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  placeholder={isVi ? "Đặt câu hỏi về khách hàng, đơn hàng, điều khoản hợp đồng CUAD..." : "Ask questions regarding contracts, customers, ERP orders..."}
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    resize: "none",
+                    fontSize: 13,
+                    color: "var(--text-1)",
+                    lineHeight: 1.5,
+                    paddingRight: 80
+                  }}
+                />
 
-              {/* Drawer Header */}
-              <div className="h-14 border-b border-slate-200 px-4 flex items-center justify-between bg-slate-50/70">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    DRAWER-001: Trích Dẫn & Nguồn Chứng Thực
-                  </h4>
+                <div style={{ position: "absolute", right: 10, bottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => showToast(isVi ? "Đính kèm tệp phân tích..." : "Attach analysis file...")}
+                    title={isVi ? "Đính kèm tài liệu" : "Attach document"}
+                    style={{ width: 30, height: 30, borderRadius: "var(--r-md)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", cursor: "pointer" }}
+                  >
+                    <Paperclip size={15} />
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={!queryInput.trim() || isInferring}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "var(--r-md)",
+                      background: !queryInput.trim() || isInferring ? "var(--surface-3)" : "var(--blue)",
+                      color: !queryInput.trim() || isInferring ? "var(--text-4)" : "#ffffff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      cursor: !queryInput.trim() || isInferring ? "not-allowed" : "pointer",
+                      transition: "all 0.15s ease"
+                    }}
+                  >
+                    <span>{isVi ? "Gửi" : "Send"}</span>
+                    <Send size={12} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowCitationDrawer(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
 
-              {/* Drawer Content: Highlighted Citations */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-
-                {/* Source Badge & Confidence */}
-                <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-indigo-900 text-xs">Tài liệu pháp lý gốc</span>
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white font-mono text-[10px] font-semibold">
-                      {activeCitation.match}
-                    </span>
-                  </div>
-                  <div className="text-indigo-950 font-medium text-xs font-mono">
-                    {activeCitation.docName}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-1 border-t border-indigo-100/60">
-                    <div>Vị trí: <strong className="text-slate-800">{activeCitation.location}</strong></div>
-                    <div>Thực thể: <strong className="text-slate-800">{activeCitation.entity}</strong></div>
-                  </div>
-                </div>
-
-                {/* Highlighted Excerpt 1 */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span className="font-semibold text-slate-700">{activeCitation.chunk1.title}</span>
-                    <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">
-                      Vector ID: {activeCitation.chunk1.id}
-                    </span>
-                  </div>
-                  {/* Yellow Highlight Snippet */}
-                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-slate-800 leading-relaxed font-serif text-[12px] shadow-xs">
-                    "...Trong mọi trường hợp, <mark className="bg-amber-200 text-amber-950 px-1 py-0.5 rounded font-sans font-semibold">Bên A sẽ không chịu trách nhiệm đối với bất kỳ thiệt hại ngẫu nhiên, gián tiếp phát sinh</mark> từ việc gián đoạn dịch vụ quá 48 giờ liên tục do trường hợp bất khả kháng..."
-                  </div>
-                </div>
-
-                {/* Highlighted Excerpt 2 */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-slate-500">
-                    <span className="font-semibold text-slate-700">{activeCitation.chunk2.title}</span>
-                    <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">
-                      {activeCitation.chunk2.id}
-                    </span>
-                  </div>
-                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-slate-800 leading-relaxed font-serif text-[12px] shadow-xs">
-                    "...Tổng mức bồi thường của Bên A cho toàn bộ các khiếu nại trong suốt thời hạn thỏa thuận <mark className="bg-amber-200 text-amber-950 px-1 py-0.5 rounded font-sans font-semibold">sẽ không vượt quá số tiền tương đương với 10% tổng phí dịch vụ</mark> được thanh toán trong tháng xảy ra sự kiện vi phạm..."
-                  </div>
-                </div>
-
-                {/* Metadata Summary Box */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-[11px] text-slate-600">
-                  <div className="font-semibold text-slate-700">Thông tin trích xuất Hybrid GraphRAG:</div>
-                  <ul className="list-disc list-inside space-y-0.5 text-slate-500 font-mono">
-                    <li>Neo4j Node: <code>{activeCitation.neo4jNode}</code></li>
-                    <li>Thuộc tính: <code>{activeCitation.neo4jProps}</code></li>
-                    <li>Nạp bởi: {activeCitation.agent}</li>
-                  </ul>
-                </div>
-
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-4)", padding: "0 4px" }}>
+                <span>{isVi ? "Nhấn Enter để gửi, Shift + Enter để xuống dòng" : "Press Enter to send, Shift + Enter for new line"}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <CheckCircle2 size={11} color="var(--green)" />
+                  {isVi ? "Không bịa đặt thông tin • Luôn neo vào cơ sở tri thức" : "Fact-grounded • Tied to verified knowledge"}
+                </span>
               </div>
-
-              {/* Drawer Footer CTA */}
-              <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2">
-                <button
-                  onClick={() => onNavigate && onNavigate("m2_knowledge_editor")}
-                  className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  Mở tài liệu gốc trong Knowledge Base
-                </button>
-                <button
-                  onClick={() => setShowCitationDrawer(false)}
-                  className="w-full py-1.5 text-center text-xs text-slate-500 hover:text-slate-800"
-                >
-                  Đóng ngăn trích dẫn
-                </button>
-              </div>
-
-            </aside>
-          )}
-
+            </form>
+          </div>
         </div>
+
+        {/* ── COLUMN 3: CITATION DRAWER (360px) ───────────────── */}
+        {showCitationDrawer && (
+          <aside style={{
+            width: 360,
+            background: "var(--surface)",
+            borderLeft: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+            flexShrink: 0
+          }}>
+            <div style={{
+              height: 56,
+              padding: "0 16px",
+              borderBottom: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "var(--surface-2)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--amber)" }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {isVi ? "Trích Dẫn & Nguồn Chứng Thực" : "Grounded Evidence Citations"}
+                </span>
+              </div>
+
+              <button
+                onClick={() => setShowCitationDrawer(false)}
+                style={{ width: 28, height: 28, borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", cursor: "pointer" }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Document metadata card */}
+              <div style={{
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-md)",
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--blue)", textTransform: "uppercase" }}>
+                    {isVi ? "Tài liệu pháp lý gốc" : "Source Document"}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--green)", background: "var(--green-soft)", padding: "2px 6px", borderRadius: 4 }}>
+                    {activeCitation.match}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--f-mono)" }}>
+                  {activeCitation.docName}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 6 }}>
+                  <div>{isVi ? "Vị trí:" : "Location:"} <strong style={{ color: "var(--text-1)" }}>{activeCitation.location}</strong></div>
+                  <div>{isVi ? "Thực thể:" : "Entity:"} <strong style={{ color: "var(--text-1)" }}>{activeCitation.entity}</strong></div>
+                </div>
+              </div>
+
+              {/* Excerpt 1 */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-3)" }}>
+                  <span style={{ fontWeight: 600 }}>{activeCitation.chunk1.title}</span>
+                  <span style={{ fontFamily: "var(--f-mono)" }}>{activeCitation.chunk1.id}</span>
+                </div>
+                <div style={{
+                  background: "var(--amber-soft)",
+                  border: "1px solid rgba(217,119,6,0.25)",
+                  borderRadius: "var(--r-md)",
+                  padding: "12px",
+                  fontSize: 12,
+                  color: "var(--text-1)",
+                  lineHeight: 1.6
+                }}>
+                  {activeCitation.chunk1.text}
+                </div>
+              </div>
+
+              {/* Excerpt 2 */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-3)" }}>
+                  <span style={{ fontWeight: 600 }}>{activeCitation.chunk2.title}</span>
+                  <span style={{ fontFamily: "var(--f-mono)" }}>{activeCitation.chunk2.id}</span>
+                </div>
+                <div style={{
+                  background: "var(--amber-soft)",
+                  border: "1px solid rgba(217,119,6,0.25)",
+                  borderRadius: "var(--r-md)",
+                  padding: "12px",
+                  fontSize: 12,
+                  color: "var(--text-1)",
+                  lineHeight: 1.6
+                }}>
+                  {activeCitation.chunk2.text}
+                </div>
+              </div>
+
+              {/* Lineage */}
+              <div style={{
+                background: "var(--surface-2)",
+                border: "1px solid var(--border-soft)",
+                borderRadius: "var(--r-md)",
+                padding: "12px",
+                fontSize: 11,
+                color: "var(--text-3)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 4
+              }}>
+                <div style={{ fontWeight: 700, color: "var(--text-2)" }}>{isVi ? "Nguồn gốc Hybrid GraphRAG:" : "Hybrid Lineage:"}</div>
+                <div>Neo4j Node: <code style={{ color: "var(--blue)" }}>{activeCitation.neo4jNode}</code></div>
+                <div>{isVi ? "Thuộc tính:" : "Properties:"} <code style={{ color: "var(--text-2)" }}>{activeCitation.neo4jProps}</code></div>
+                <div>{isVi ? "Nạp bởi:" : "Ingested by:"} {activeCitation.agent}</div>
+              </div>
+            </div>
+
+            <div style={{ padding: 16, borderTop: "1px solid var(--border-soft)", background: "var(--surface-2)" }}>
+              <button
+                onClick={() => onNavigate?.("knowledge")}
+                style={{
+                  width: "100%",
+                  padding: "8px 14px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--blue)",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  cursor: "pointer"
+                }}
+              >
+                <span>{isVi ? "Mở trong Knowledge Base" : "Open in Knowledge Base"}</span>
+                <ExternalLink size={13} />
+              </button>
+            </div>
+          </aside>
+        )}
 
       </div>
     </div>

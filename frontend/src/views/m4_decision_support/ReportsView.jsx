@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Icon from '../../components/ui/Icon';
 
 export default function ReportsView({ onNavigate, t, lang, role = "executive", currentUser }) {
   const isVi = lang === "vi";
@@ -466,7 +467,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             }}
           >
             <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#ecfdf5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>
-              <i className="fa-solid fa-check"></i>
+              <Icon name="fa-solid fa-check" size={15} />
             </div>
             <span style={{ fontSize: "13.5px", fontWeight: "600" }}>{toastMsg}</span>
           </div>
@@ -481,33 +482,33 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               <div>
                 <div className="rep-tag-strip" style={{ marginBottom: "10px" }}>
                   <span className="rep-pill-tag rep-pill-blue">
-                    <i className="fa-solid fa-chart-pie"></i>
+                    <Icon name="fa-solid fa-chart-pie" size={15} />
                     {isVi ? "Báo Cáo Tác Nghiệp Bán Hàng" : "Sales Operational Report"}
                   </span>
                   <span className="rep-pill-tag rep-pill-neutral">
-                    <i className="fa-solid fa-id-badge"></i>
+                    <Icon name="fa-solid fa-id-badge" size={15} />
                     {isVi
                       ? `Chuyên viên: ${currentUser?.name || "Chuyên viên Nghiệp vụ"} · Mã @${currentUser?.username || "ops"}`
                       : `Specialist: ${currentUser?.name || "Operations Specialist"} · ID @${currentUser?.username || "ops"}`}
                   </span>
                   {managerApproved ? (
                     <span className="rep-pill-tag rep-pill-green">
-                      <i className="fa-solid fa-circle-check"></i>
+                      <Icon name="fa-solid fa-circle-check" size={15} />
                       {isVi ? "Trưởng phòng Trần M. Anh ĐÃ DUYỆT" : "Dept Manager APPROVED"}
                     </span>
                   ) : reportSubmitted ? (
                     <span className="rep-pill-tag rep-pill-amber">
-                      <i className="fa-solid fa-hourglass-half"></i>
+                      <Icon name="fa-solid fa-hourglass-half" size={15} />
                       {isVi ? "Đang chờ Trưởng phòng duyệt" : "Pending Manager Sign-off"}
                     </span>
                   ) : hasGeneratedReport ? (
                     <span className="rep-pill-tag rep-pill-neutral" style={{ color: "#2563eb", background: "rgba(37, 99, 235, 0.06)", borderColor: "rgba(37, 99, 235, 0.2)" }}>
-                      <i className="fa-solid fa-pen-nib"></i>
+                      <Icon name="fa-solid fa-pen-nib" size={15} />
                       {isVi ? "Bản thảo ca đang cập nhật" : "Current Active Shift Draft"}
                     </span>
                   ) : (
                     <span className="rep-pill-tag rep-pill-neutral" style={{ color: "var(--text-4)", background: "var(--surface-2)" }}>
-                      <i className="fa-solid fa-clock"></i>
+                      <Icon name="fa-solid fa-clock" size={15} />
                       {isVi ? "Chưa khởi tạo báo cáo" : "No report initialized"}
                     </span>
                   )}
@@ -530,7 +531,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   className="rep-btn"
                   title={isVi ? "Quay về Bàn làm việc Khách hàng" : "Return to Operations Hub"}
                 >
-                  <i className="fa-solid fa-arrow-left"></i>
+                  <Icon name="fa-solid fa-arrow-left" size={15} />
                   <span>{isVi ? "Bàn Làm Việc" : "Operations Hub"}</span>
                 </button>
 
@@ -540,7 +541,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   className="rep-btn magic"
                   title={isVi ? "AI tự động thu thập nhật ký để soạn báo cáo" : "AI auto-compile shift report"}
                 >
-                  <i className={`fa-solid ${isGenerating ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles"}`}></i>
+                  <Icon name="" size={14} />
                   <span>{isGenerating ? (isVi ? "AI Đang Soạn..." : "Compiling...") : (isVi ? "AI Soạn Báo Cáo" : "AI Compile Report")}</span>
                 </button>
 
@@ -551,7 +552,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   style={{ opacity: !hasGeneratedReport ? 0.6 : 1 }}
                   title={isVi ? "Gửi báo cáo lên Trưởng phòng Trần M. Anh" : "Submit report to Dept Manager"}
                 >
-                  <i className="fa-solid fa-paper-plane"></i>
+                  <Icon name="fa-solid fa-paper-plane" size={15} />
                   <span>{isVi ? "Gửi Trưởng Phòng Duyệt" : "Submit to Manager"}</span>
                 </button>
               </div>
@@ -565,7 +566,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               <div className="rep-kpi-header">
                 <span className="rep-kpi-label">{isVi ? "Ca Cảnh Báo Đã Xử Lý" : "Cases Resolved"}</span>
                 <div className="rep-kpi-icon-wrap" style={{ background: "rgba(16, 185, 129, 0.1)", color: "#059669" }}>
-                  <i className="fa-solid fa-shield-halved"></i>
+                  <Icon name="fa-solid fa-shield-halved" size={15} />
                 </div>
               </div>
               <div>
@@ -579,7 +580,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "100%" : "0%", background: "linear-gradient(90deg, #10b981, #059669)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
-                  <i className="fa-solid fa-clock" style={{ fontSize: "11px", color: "var(--text-4)" }}></i>
+                  <Icon name="fa-solid fa-clock" size={15} style={{ fontSize: "11px", color: "var(--text-4)" }} />
                   <span>{hasGeneratedReport ? (isVi ? "Tốc độ xử lý TB: 12 phút / ca" : "Avg turnaround: 12m") : (isVi ? "Tốc độ xử lý TB: --" : "Avg turnaround: --")}</span>
                 </div>
               </div>
@@ -590,7 +591,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               <div className="rep-kpi-header">
                 <span className="rep-kpi-label">{isVi ? "Doanh Số Bảo Vệ (Tái Ký)" : "Protected Pipeline"}</span>
                 <div className="rep-kpi-icon-wrap" style={{ background: "rgba(37, 99, 235, 0.1)", color: "#2563eb" }}>
-                  <i className="fa-solid fa-hand-holding-dollar"></i>
+                  <Icon name="fa-solid fa-hand-holding-dollar" size={15} />
                 </div>
               </div>
               <div>
@@ -604,7 +605,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "88%" : "0%", background: "linear-gradient(90deg, #38bdf8, #2563eb)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
-                  <i className="fa-solid fa-building" style={{ fontSize: "11px", color: "var(--text-4)" }}></i>
+                  <Icon name="fa-solid fa-building" size={15} style={{ fontSize: "11px", color: "var(--text-4)" }} />
                   <span>{hasGeneratedReport ? "ABC Corp (1.2B) & Delta Trading (2.9B)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
                 </div>
               </div>
@@ -615,7 +616,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               <div className="rep-kpi-header">
                 <span className="rep-kpi-label">{isVi ? "Hồ Sơ & Báo Giá Đã Lập" : "Quotes & Dispatches"}</span>
                 <div className="rep-kpi-icon-wrap" style={{ background: "rgba(245, 158, 11, 0.1)", color: "#d97706" }}>
-                  <i className="fa-solid fa-file-signature"></i>
+                  <Icon name="fa-solid fa-file-signature" size={15} />
                 </div>
               </div>
               <div>
@@ -626,7 +627,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "75%" : "0%", background: "linear-gradient(90deg, #fbbf24, #d97706)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
-                  <i className="fa-solid fa-tags" style={{ fontSize: "11px", color: "var(--text-4)" }}></i>
+                  <Icon name="fa-solid fa-tags" size={15} style={{ fontSize: "11px", color: "var(--text-4)" }} />
                   <span>{hasGeneratedReport ? "1 Báo giá Cloud · 1 Phụ lục · 1 EDR" : (isVi ? "Chưa phát sinh chứng từ & báo giá" : "No dispatches")}</span>
                 </div>
               </div>
@@ -637,7 +638,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               <div className="rep-kpi-header">
                 <span className="rep-kpi-label">{isVi ? "Điểm Tuân Thủ SOP & KPI" : "SOP Compliance"}</span>
                 <div className="rep-kpi-icon-wrap" style={{ background: "rgba(6, 182, 212, 0.1)", color: "#0891b2" }}>
-                  <i className="fa-solid fa-award"></i>
+                  <Icon name="fa-solid fa-award" size={15} />
                 </div>
               </div>
               <div>
@@ -651,7 +652,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   <div className="rep-progress-fill" style={{ width: hasGeneratedReport ? "98.5%" : "0%", background: "linear-gradient(90deg, #2dd4bf, #059669)" }}></div>
                 </div>
                 <div className="rep-kpi-meta">
-                  <i className="fa-solid fa-medal" style={{ fontSize: "11px", color: "#0891b2" }}></i>
+                  <Icon name="fa-solid fa-medal" size={15} style={{ fontSize: "11px", color: "#0891b2" }} />
                   <span>{hasGeneratedReport ? (isVi ? "Top 5% năng suất khối Kinh doanh" : "Top 5% frontline productivity") : (isVi ? "Đang chờ dữ liệu đánh giá ca" : "Pending shift assessment")}</span>
                 </div>
               </div>
@@ -669,21 +670,21 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   onClick={() => setTimeRange("today")}
                   className={`rep-seg-btn ${timeRange === "today" ? "active" : ""}`}
                 >
-                  <i className="fa-solid fa-calendar-day mr-1"></i>
+                  <Icon name="fa-solid fa-calendar-day mr-1" size={15} />
                   {isVi ? "Hôm nay (20/09/2026)" : "Today (20 Sep 2026)"}
                 </button>
                 <button
                   onClick={() => setTimeRange("week")}
                   className={`rep-seg-btn ${timeRange === "week" ? "active" : ""}`}
                 >
-                  <i className="fa-solid fa-calendar-week mr-1"></i>
+                  <Icon name="fa-solid fa-calendar-week mr-1" size={15} />
                   {isVi ? "Tuần 38 (15 - 21/09)" : "Week 38 (15-21 Sep)"}
                 </button>
                 <button
                   onClick={() => setTimeRange("month")}
                   className={`rep-seg-btn ${timeRange === "month" ? "active" : ""}`}
                 >
-                  <i className="fa-solid fa-calendar mr-1"></i>
+                  <Icon name="fa-solid fa-calendar mr-1" size={15} />
                   {isVi ? "Tháng 09/2026" : "September 2026"}
                 </button>
               </div>
@@ -696,7 +697,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 style={{ padding: "6px 12px", fontSize: "12px" }}
                 title={isVi ? "Sao chép tóm tắt nội dung báo cáo ca" : "Copy shift summary"}
               >
-                <i className="fa-solid fa-copy"></i>
+                <Icon name="fa-solid fa-copy" size={15} />
                 <span>{isVi ? "Sao chép Tóm tắt" : "Copy Summary"}</span>
               </button>
 
@@ -705,7 +706,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 className="rep-btn"
                 style={{ padding: "6px 12px", fontSize: "12px" }}
               >
-                <i className="fa-solid fa-file-pdf" style={{ color: "#ef4444" }}></i>
+                <Icon name="fa-solid fa-file-pdf" size={15} style={{ color: "#ef4444" }} />
                 <span>{isVi ? "Xuất PDF" : "Export PDF"}</span>
               </button>
             </div>
@@ -716,7 +717,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(37, 99, 235, 0.08)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>
-                  <i className="fa-solid fa-list-check"></i>
+                  <Icon name="fa-solid fa-list-check" size={15} />
                 </div>
                 <div>
                   <h2 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
@@ -752,7 +753,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                       <td colSpan={6} style={{ textAlign: "center", padding: "48px 20px", color: "var(--text-4)" }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
                           <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)" }}>
-                            <i className="fa-solid fa-clipboard-list" style={{ fontSize: "20px" }}></i>
+                            <Icon name="fa-solid fa-clipboard-list" size={15} style={{ fontSize: "20px" }} />
                           </div>
                           <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-2)" }}>
                             {isVi ? "Chưa có nhật ký tác nghiệp nào trong ca này" : "No shift activity records logged yet"}
@@ -954,7 +955,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             <div className="rep-doc-dossier" style={{ textAlign: "center", padding: "48px 24px" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", maxWidth: "560px", margin: "0 auto" }}>
                 <div style={{ width: "54px", height: "54px", borderRadius: "14px", background: "rgba(37, 99, 235, 0.08)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>
-                  <i className="fa-solid fa-file-signature"></i>
+                  <Icon name="fa-solid fa-file-signature" size={15} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: "18px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0" }}>
@@ -972,7 +973,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   className="rep-btn magic"
                   style={{ marginTop: "8px" }}
                 >
-                  <i className={`fa-solid ${isGenerating ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles"}`}></i>
+                  <Icon name="" size={14} />
                   <span>{isGenerating ? (isVi ? "AI Đang Soạn..." : "Compiling...") : (isVi ? "AI Soạn Báo Cáo Ngay" : "Compile Report Now")}</span>
                 </button>
               </div>
@@ -984,7 +985,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
                 <div>
                   <div style={{ fontSize: "11.5px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <i className="fa-solid fa-building-circle-check"></i>
+                    <Icon name="fa-solid fa-building-circle-check" size={15} />
                     GRAPH MIND · KHỐI KINH DOANH & PHÁT TRIỂN DOANH NGHIỆP
                   </div>
                   <h2 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-1)", margin: "4px 0 2px 0", letterSpacing: "-0.01em" }}>
@@ -1005,7 +1006,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               {/* Section I */}
               <div>
                 <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                  <i className="fa-solid fa-circle-check"></i>
+                  <Icon name="fa-solid fa-circle-check" size={15} />
                   I. {isVi ? "TỔNG QUAN KẾT QUẢ CÔNG VIỆC TRONG CA" : "SHIFT PERFORMANCE SUMMARY"}
                 </div>
                 <div style={{ background: "var(--surface-2)", padding: "14px 18px", borderRadius: "10px", border: "1px solid var(--border-soft)", fontSize: "13.5px", lineHeight: "1.65", color: "var(--text-1)" }}>
@@ -1018,7 +1019,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               {/* Section II */}
               <div>
                 <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                  <i className="fa-solid fa-lightbulb"></i>
+                  <Icon name="fa-solid fa-lightbulb" size={15} />
                   II. {isVi ? "ĐỀ XUẤT & KIẾN NGHỊ GỬI TRƯỞNG PHÒNG TRẦN M. ANH" : "ESCALATIONS & RECOMMENDATIONS"}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1051,7 +1052,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               {/* Section III */}
               <div>
                 <div style={{ fontSize: "13px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                  <i className="fa-solid fa-calendar-check"></i>
+                  <Icon name="fa-solid fa-calendar-check" size={15} />
                   III. {isVi ? "KẾ HOẠCH TÁC NGHIỆP CA TIẾP THEO" : "UPCOMING SHIFT ACTION PLAN"}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "10px" }}>
@@ -1079,7 +1080,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                         {isVi ? "Trần M. Anh · Trưởng Phòng Quản Lý" : "Tran M. Anh · Department Head"}
                       </span>
                       <span className="rep-status-chip" style={{ background: managerApproved ? "rgba(16, 185, 129, 0.15)" : "rgba(37, 99, 235, 0.1)", color: managerApproved ? "#059669" : "#2563eb" }}>
-                        <i className={`fa-solid ${managerApproved ? "fa-certificate" : "fa-signature"}`}></i>
+                        <Icon name="" size={14} />
                         {managerApproved ? (isVi ? "ĐÃ PHÊ DUYỆT & KÝ SỐ" : "VERIFIED & SIGNED") : (isVi ? "SẴN SÀNG TIẾP NHẬN" : "READY FOR REVIEW")}
                       </span>
                     </div>
@@ -1104,7 +1105,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                     className="rep-btn primary-gradient"
                     style={{ padding: "10px 20px" }}
                   >
-                    <i className="fa-solid fa-signature"></i>
+                    <Icon name="fa-solid fa-signature" size={15} />
                     <span>{isVi ? "Trình Duyệt Ngay" : "Submit Now"}</span>
                   </button>
                 )}
@@ -1124,7 +1125,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface-container-high border border-primary/40 text-on-surface px-space-md py-space-sm rounded-DEFAULT shadow-2xl flex items-center gap-space-sm animate-bounce" style={{ backdropFilter: "blur(8px)" }}>
-          <i className="fa-solid fa-newspaper text-primary text-[18px]"></i>
+          <Icon name="fa-solid fa-newspaper text-primary text-[18px]" size={18} />
           <span className="font-body-sm text-body-sm font-medium">{toastMsg}</span>
         </div>
       )}
@@ -1325,19 +1326,19 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           </h3>
           <div className="flex flex-col gap-space-xs text-body-sm">
             <div className="flex items-start gap-space-xs">
-              <i className="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5"></i>
+              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
                 <b>{isVi ? "Ưu tiên 1:" : "Priority 1:"}</b> {isVi ? "Chỉ đạo Giám đốc Kinh doanh tiếp xúc trực tiếp Giám đốc Mua hàng Trần M. Anh (ABC Corp) trong vòng 7 ngày kèm đề xuất gia hạn CT-2026-18 với chiết khấu 10%." : "Direct Sales VP to schedule in-person renewal review with Procurement Director Tran M. Anh (ABC Corp) within 7 days offering a 10% retention package."}
               </span>
             </div>
             <div className="flex items-start gap-space-xs">
-              <i className="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5"></i>
+              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
                 <b>{isVi ? "Ưu tiên 2:" : "Priority 2:"}</b> {isVi ? "Kích hoạt đối soát công nợ 5 khách hàng có khoản chậm trả trên 60 ngày theo quy trình SOP-04 của Phòng Tài chính." : "Trigger accounts receivable reconciliation for top 5 delinquent customer accounts per SOP-04."}
               </span>
             </div>
             <div className="flex items-start gap-space-xs">
-              <i className="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5"></i>
+              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
                 <b>{isVi ? "Ưu tiên 3:" : "Priority 3:"}</b> {isVi ? "Hoàn tất xác thực con người (HITL) cho 12 tài liệu quy trình thiếu phòng ban chủ quản trong tuần này." : "Complete human-in-the-loop verification for 12 pending SOP documents lacking department ownership."}
               </span>

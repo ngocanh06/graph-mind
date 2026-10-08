@@ -1,29 +1,50 @@
 /* ============================================================
-   AEGIS EKMP — DESIGN TOKENS & BASE THEMES
-   Concept: Enterprise Knowledge Observatory
-   Primary Theme: Light Mode (Calm Intelligence, Technical Precision)
-   Secondary Theme: Dark Mode (Focused, Controlled Graphite)
+   GraphMind EKMP — Master Design System
+   Style: Soft UI Evolution (UI/UX Pro Max · enterprise knowledge tool)
+   Typography: Plus Jakarta Sans / JetBrains Mono
+   Color: Deep slate-navy + electric cyan + emerald (enterprise trust)
+   Motion: Standard 200-300ms, reduced-motion safe
    ============================================================ */
 
 :root {
-  /* Common typography */
-  --f-display: 'Manrope', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --f-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --f-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  /* ── Typography ────────────────────────────────────────── */
+  --f-display: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --f-body: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --f-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', monospace;
 
-  --rail-w: 74px;
-  --rail-w-open: 256px;
+  /* ── Layout ────────────────────────────────────────────── */
+  --rail-w: 60px;
+  --rail-w-open: 240px;
   --topbar-h: 62px;
+
+  /* ── Radius ────────────────────────────────────────────── */
   --r-xs: 3px;
   --r-sm: 5px;
   --r-md: 8px;
   --r-lg: 12px;
   --r-xl: 16px;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.1);
+  --r-2xl: 20px;
+
+  /* ── Shadows (Soft UI Evolution — improved, not neumorphic) */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 24px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 40px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.06);
+  --shadow-focus: 0 0 0 3px rgba(37,99,235,0.18);
+  --shadow-focus-danger: 0 0 0 3px rgba(220,38,38,0.18);
+
+  /* ── Semantic Backgrounds & Surfaces Aliases ─────────── */
+  --bg-app: var(--base);
+  --bg-workspace: var(--base);
+  --bg-card: var(--surface);
+  --bg-input: var(--surface-2);
+  --bg-hover: var(--surface-hover);
+
+  /* ── Motion (Standard tier from UI/UX Pro Max) ──────────── */
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html, body {
@@ -36,12 +57,12 @@ html, body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--f-display);
-  letter-spacing: normal;
+  letter-spacing: -0.01em;
 }
 
 /* ============================================================
    LIGHT MODE (PRIMARY & DEFAULT)
-   Warm white, refined slate, deep intelligence navy & electric cyan
+   Clean white surfaces, precise slate text, navy trust anchors
    ============================================================ */
 :root, [data-theme="light"] {
   --void: #E8ECF2;
@@ -2950,4 +2971,122 @@ select:focus {
   background-size: 200% 100%;
   animation: shimmerBadge 3s infinite linear;
 }
+
+/* ============================================================
+   UI/UX PRO MAX — REUSABLE ENTERPRISE COMPONENT SYSTEM
+   ============================================================ */
+
+.btn-ui:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.btn-ui.btn-primary:hover:not(:disabled) {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+}
+
+.btn-ui.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-focus);
+}
+
+.btn-ui.btn-outline:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.btn-ui.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.btn-ui.btn-danger:hover:not(:disabled) {
+  background: #B91C1C;
+  border-color: #B91C1C;
+}
+
+.input-ui:focus {
+  border-color: var(--blue, #2563EB) !important;
+  box-shadow: var(--shadow-focus) !important;
+}
+
+.input-ui.input-error:focus {
+  border-color: var(--red, #DC2626) !important;
+  box-shadow: var(--shadow-focus-danger) !important;
+}
+
+.select-ui:focus {
+  border-color: var(--blue, #2563EB) !important;
+  box-shadow: var(--shadow-focus) !important;
+}
+
+.card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+.stat-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--blue);
+}
+
+.table-row-ui:hover {
+  background: var(--surface-hover);
+}
+
+.table-row-clickable {
+  cursor: pointer;
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes drawerSlideRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerSlideLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 

@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from "react";
+import Icon from '../../components/ui/Icon';
+import GraphPanel from "./GraphPanel";
+import VectorSearchPanel from "./VectorSearchPanel";
+import KnowledgeExplorerView from "./KnowledgeExplorerView";
 
 export default function SearchView({ onNavigate, onSelectEntity, t, lang, role = "standard", currentUser }) {
   const isVi = lang === "vi";
@@ -452,7 +456,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
           fontSize: "13px",
           fontWeight: "600"
         }}>
-          <i className="fa-solid fa-bell" style={{ color: "var(--cyan)", fontSize: "16px" }}></i>
+          <Icon name="fa-solid fa-bell" size={15} style={{ color: "var(--cyan)", fontSize: "16px" }} />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -690,8 +694,77 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     boxShadow: activeTab === "search" ? "var(--shadow-sm)" : "none"
                   }}
                 >
-                  <i className="fa-solid fa-magnifying-glass"></i>
+                  <Icon name="fa-solid fa-magnifying-glass" size={15} />
                   <span>{currentPersona.tabSearchLabel}</span>
+                </button>
+
+                {/* Tab Knowledge Explorer (Hợp nhất Qdrant + Neo4j) */}
+                <button
+                  onClick={() => setActiveTab("explorer")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "7px 16px",
+                    borderRadius: "6px",
+                    fontSize: "12.5px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                    border: "none",
+                    transition: "all 0.15s ease",
+                    background: activeTab === "explorer" ? "var(--surface)" : "transparent",
+                    color: activeTab === "explorer" ? "#0284c7" : "var(--text-3)",
+                    boxShadow: activeTab === "explorer" ? "var(--shadow-sm)" : "none"
+                  }}
+                >
+                  <span>🌐</span>
+                  <span>{isVi ? "Knowledge Explorer" : "Knowledge Explorer"}</span>
+                </button>
+
+                {/* Tab Neo4j Live Knowledge Graph */}
+                <button
+                  onClick={() => setActiveTab("neo4j")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "7px 16px",
+                    borderRadius: "6px",
+                    fontSize: "12.5px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                    border: "none",
+                    transition: "all 0.15s ease",
+                    background: activeTab === "neo4j" ? "var(--surface)" : "transparent",
+                    color: activeTab === "neo4j" ? "#0284c7" : "var(--text-3)",
+                    boxShadow: activeTab === "neo4j" ? "var(--shadow-sm)" : "none"
+                  }}
+                >
+                  <span>🕸️</span>
+                  <span>{isVi ? "Neo4j Graph (52k)" : "Neo4j Graph (52k)"}</span>
+                </button>
+
+                {/* Tab Qdrant Live Vector Search */}
+                <button
+                  onClick={() => setActiveTab("qdrant")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "7px 16px",
+                    borderRadius: "6px",
+                    fontSize: "12.5px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                    border: "none",
+                    transition: "all 0.15s ease",
+                    background: activeTab === "qdrant" ? "var(--surface)" : "transparent",
+                    color: activeTab === "qdrant" ? "#7c3aed" : "var(--text-3)",
+                    boxShadow: activeTab === "qdrant" ? "var(--shadow-sm)" : "none"
+                  }}
+                >
+                  <span>🔮</span>
+                  <span>{isVi ? "Qdrant Vector (40k)" : "Qdrant Vector (40k)"}</span>
                 </button>
 
                 {/* Tab Ca việc (Default cho Sales Specialist) */}
@@ -713,7 +786,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     boxShadow: activeTab === "tasks" ? "var(--shadow-sm)" : "none"
                   }}
                 >
-                  <i className="fa-solid fa-list-check"></i>
+                  <Icon name="fa-solid fa-list-check" size={15} />
                   <span>{currentPersona.tabTasksLabel}</span>
                   {pendingCount > 0 && (
                     <span style={{
@@ -818,9 +891,19 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       })()}
 
       {/* ============================================================ */}
-      {/* 2. NỘI DUNG CHÍNH: TAB CA VIỆC ĐƯỢC GIAO HOẶC TAB TÌM KIẾM  */}
+      {/* 2. NỘI DUNG CHÍNH: CÁC TAB TÁC NGHIỆP, EXPLORER, GRAPH, VECTOR */}
       {/* ============================================================ */}
-      {activeTab === "tasks" ? (
+      {activeTab === "explorer" ? (
+        <KnowledgeExplorerView lang={lang} />
+      ) : activeTab === "neo4j" ? (
+        <div style={{ background: "var(--surface, #fff)", padding: 18, borderRadius: 14, border: "1.5px solid var(--border-soft, #e2e8f0)", minHeight: 650 }}>
+          <GraphPanel lang={lang} onSelectNode={onSelectEntity} />
+        </div>
+      ) : activeTab === "qdrant" ? (
+        <div style={{ background: "var(--surface, #fff)", padding: 18, borderRadius: 14, border: "1.5px solid var(--border-soft, #e2e8f0)", minHeight: 650 }}>
+          <VectorSearchPanel lang={lang} onExploreRelated={() => setActiveTab("explorer")} />
+        </div>
+      ) : activeTab === "tasks" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* Header danh sách ca việc */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px" }}>
@@ -852,7 +935,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               onClick={() => showToast(isVi ? "Đã đồng bộ dữ liệu tác nghiệp mới nhất từ CRM & ERP!" : "Synced operational queue with CRM & ERP")}
               className="btn sm"
             >
-              <i className="fa-solid fa-rotate" style={{ marginRight: "6px" }}></i>
+              <Icon name="fa-solid fa-rotate" size={15} style={{ marginRight: "6px" }} />
               {isVi ? "Đồng bộ mới" : "Sync Queue"}
             </button>
           </div>
@@ -884,7 +967,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                   justifyContent: "center",
                   fontSize: "24px"
                 }}>
-                  <i className="fa-solid fa-clipboard-list"></i>
+                  <Icon name="fa-solid fa-clipboard-list" size={15} />
                 </div>
                 <div style={{ maxWidth: "480px" }}>
                   <h4 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0" }}>
@@ -943,7 +1026,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
 
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "12.5px", color: "var(--text-3)" }}>
                       <span>
-                        <i className="fa-solid fa-clock" style={{ marginRight: "6px", color: "var(--text-4)" }}></i>
+                        <Icon name="fa-solid fa-clock" size={15} style={{ marginRight: "6px", color: "var(--text-4)" }} />
                         {isVi ? "Hạn chót:" : "Due:"} <b style={{ color: "var(--text-2)" }}>{task.dueDate}</b>
                       </span>
                       {isResolved && (
@@ -1019,7 +1102,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     fontSize: "13px",
                     color: "var(--text-1)"
                   }}>
-                    <i className="fa-solid fa-wand-magic-sparkles" style={{ color: "var(--cyan)", fontSize: "14px" }}></i>
+                    <Icon name="fa-solid fa-wand-magic-sparkles" size={15} style={{ color: "var(--cyan)", fontSize: "14px" }} />
                     <span>
                       <b style={{ color: "var(--cyan)" }}>{isVi ? "Hành động đề xuất từ AI:" : "AI Recommended Action:"}</b> {task.suggestedAction}
                     </span>
@@ -1042,7 +1125,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         className="btn primary sm"
                         style={{ padding: "7px 14px", fontSize: "12.5px", fontWeight: "600" }}
                       >
-                        <i className="fa-solid fa-paper-plane" style={{ marginRight: "6px" }}></i>
+                        <Icon name="fa-solid fa-paper-plane" size={15} style={{ marginRight: "6px" }} />
                         {isVi ? "Soạn Thư & Đề Xuất Tái Ký" : "Draft Outreach Email"}
                       </button>
 
@@ -1055,7 +1138,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         className="btn sm"
                         style={{ padding: "7px 14px", fontSize: "12.5px" }}
                       >
-                        <i className="fa-solid fa-brain" style={{ marginRight: "6px", color: "var(--cyan)" }}></i>
+                        <Icon name="fa-solid fa-brain" size={15} style={{ marginRight: "6px", color: "var(--cyan)" }} />
                         {isVi ? "Hỏi Copilot Ca Này" : "Ask Copilot"}
                       </button>
 
@@ -1068,7 +1151,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         className="btn sm"
                         style={{ padding: "7px 14px", fontSize: "12.5px" }}
                       >
-                        <i className="fa-solid fa-file-lines" style={{ marginRight: "6px", color: "var(--amber)" }}></i>
+                        <Icon name="fa-solid fa-file-lines" size={15} style={{ marginRight: "6px", color: "var(--amber)" }} />
                         {isVi ? "Xem Hợp Đồng PDF" : "View PDF"}
                       </button>
                     </div>
@@ -1093,7 +1176,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             transition: "all 0.15s ease"
                           }}
                         >
-                          <i className="fa-solid fa-check"></i>
+                          <Icon name="fa-solid fa-check" size={15} />
                           <span>{isVi ? "Đánh Dấu Đã Xử Lý" : "Mark Resolved"}</span>
                         </button>
                       ) : (
@@ -1231,17 +1314,14 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               
               {/* BIG SEARCH INPUT */}
               <div style={{ position: "relative", width: "100%", maxWidth: "860px", margin: "0 auto" }}>
-                <i
-                  className="fa-solid fa-magnifying-glass"
-                  style={{
+                <Icon name="fa-solid fa-magnifying-glass" size={15} style={{
                     position: "absolute",
                     left: "18px",
                     top: "50%",
                     transform: "translateY(-50%)",
                     color: "var(--cyan)",
                     fontSize: "18px"
-                  }}
-                ></i>
+                  }} />
 
                 <input
                   type="text"
@@ -1293,7 +1373,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                       }}
                       title={isVi ? "Xóa tìm kiếm" : "Clear"}
                     >
-                      <i className="fa-solid fa-xmark"></i>
+                      <Icon name="fa-solid fa-xmark" size={15} />
                     </button>
                   )}
                   <span style={{
@@ -1318,7 +1398,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     }}
                   >
                     {isSearching ? (
-                      <i className="fa-solid fa-spinner fa-spin"></i>
+                      <Icon name="fa-solid fa-spinner fa-spin" size={15} />
                     ) : (
                       isVi ? "Tìm kiếm" : "Search"
                     )}
@@ -1338,7 +1418,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               }}>
                 <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
                   <span style={{ color: "var(--text-3)", fontWeight: "750", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <i className="fa-solid fa-sliders" style={{ color: "var(--cyan)" }}></i>
+                    <Icon name="fa-solid fa-sliders" size={15} style={{ color: "var(--cyan)" }} />
                     {isVi ? "Bộ lọc đa chiều:" : "Multi-facet Filters:"}
                   </span>
 
@@ -1479,7 +1559,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         gap: "5px"
                       }}
                     >
-                      <i className="fa-solid fa-table-cells-large"></i>
+                      <Icon name="fa-solid fa-table-cells-large" size={15} />
                       <span>{isVi ? "Nhóm 4 mục" : "Sections"}</span>
                     </button>
                     <button
@@ -1499,7 +1579,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         gap: "5px"
                       }}
                     >
-                      <i className="fa-solid fa-table-list"></i>
+                      <Icon name="fa-solid fa-table-list" size={15} />
                       <span>{isVi ? "Bảng dữ liệu" : "Table"}</span>
                     </button>
                   </div>
@@ -1542,7 +1622,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         transition: "all 0.15s ease"
                       }}
                     >
-                      <i className={`fa-solid ${cat.icon}`} style={{ color: cat.color || "inherit" }}></i>
+                      <Icon name="" size={14} />
                       <span>{cat.label}</span>
                       <span style={{
                         fontSize: "10.5px",
@@ -1614,7 +1694,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     fontSize: "22px",
                     color: "var(--text-3)"
                   }}>
-                    <i className="fa-solid fa-magnifying-glass"></i>
+                    <Icon name="fa-solid fa-magnifying-glass" size={15} />
                   </div>
                   <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
                     {isVi ? "Không tìm thấy kết quả phù hợp — Hãy thử từ khóa khác" : "No Matching Results Found"}
@@ -1636,7 +1716,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     className="btn sm"
                     style={{ marginTop: "8px" }}
                   >
-                    <i className="fa-solid fa-rotate-left" style={{ marginRight: "6px" }}></i>
+                    <Icon name="fa-solid fa-rotate-left" size={15} style={{ marginRight: "6px" }} />
                     {isVi ? "Xóa bộ lọc & Xem toàn bộ" : "Reset & Show All"}
                   </button>
                 </div>
@@ -1708,7 +1788,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 style={{ padding: "4px 8px", fontSize: "11.5px" }}
                                 title={isVi ? "Xem trên đồ thị" : "View on Graph"}
                               >
-                                <i className="fa-solid fa-circle-nodes" style={{ color: "var(--cyan)" }}></i>
+                                <Icon name="fa-solid fa-circle-nodes" size={15} style={{ color: "var(--cyan)" }} />
                               </button>
                               <button
                                 onClick={() => {
@@ -1719,7 +1799,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 style={{ padding: "4px 8px", fontSize: "11.5px" }}
                                 title={isVi ? "Xem trước tài liệu" : "Preview Document"}
                               >
-                                <i className="fa-solid fa-file-lines"></i>
+                                <Icon name="fa-solid fa-file-lines" size={15} />
                               </button>
                               <button
                                 onClick={() => {
@@ -1730,7 +1810,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 style={{ padding: "4px 8px", fontSize: "11.5px" }}
                                 title={isVi ? "Hỏi AI Copilot" : "Ask Copilot"}
                               >
-                                <i className="fa-solid fa-brain"></i>
+                                <Icon name="fa-solid fa-brain" size={15} />
                               </button>
                             </div>
                           </td>
@@ -2011,7 +2091,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 flexShrink: 0
                               }}
                             >
-                              <i className="fa-solid fa-circle-nodes" style={{ color: "var(--cyan)" }}></i>
+                              <Icon name="fa-solid fa-circle-nodes" size={15} style={{ color: "var(--cyan)" }} />
                               <span>{isVi ? "Đồ thị" : "Graph"}</span>
                             </button>
                           </div>
@@ -2185,7 +2265,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 className="btn sm"
                                 style={{ padding: "6px 12px", fontSize: "12px" }}
                               >
-                                <i className="fa-solid fa-file-lines" style={{ marginRight: "6px", color: "var(--amber)" }}></i>
+                                <Icon name="fa-solid fa-file-lines" size={15} style={{ marginRight: "6px", color: "var(--amber)" }} />
                                 {isVi ? "Xem tài liệu" : "Preview"}
                               </button>
                             </div>
@@ -2232,7 +2312,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)", paddingBottom: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <i className="fa-solid fa-paper-plane" style={{ color: "var(--cyan)", fontSize: "16px" }}></i>
+                <Icon name="fa-solid fa-paper-plane" size={15} style={{ color: "var(--cyan)", fontSize: "16px" }} />
                 <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
                   {isVi ? "Soạn Thảo Đề Xuất Tác Nghiệp (AI Assisted Draft)" : "Draft Operational Proposal"}
                 </h3>
@@ -2242,7 +2322,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                 onClick={() => setSelectedTaskAction(null)}
                 style={{ background: "transparent", border: "none", color: "var(--text-3)", fontSize: "18px", cursor: "pointer" }}
               >
-                <i className="fa-solid fa-xmark"></i>
+                <Icon name="fa-solid fa-xmark" size={15} />
               </button>
             </div>
 
@@ -2307,7 +2387,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                 }}
                 className="btn sm"
               >
-                <i className={`fa-solid ${copiedToast ? "fa-check" : "fa-copy"}`} style={{ marginRight: "6px", color: copiedToast ? "#059669" : "inherit" }}></i>
+                <Icon name="" size={14} />
                 {copiedToast ? (isVi ? "Đã sao chép!" : "Copied!") : (isVi ? "Sao chép nội dung" : "Copy Content")}
               </button>
 
@@ -2327,7 +2407,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                   onClick={() => handleMarkTaskCompleted(selectedTaskAction.id)}
                   className="btn primary sm"
                 >
-                  <i className={`fa-solid ${isSending ? "fa-spinner fa-spin" : "fa-paper-plane"}`} style={{ marginRight: "6px" }}></i>
+                  <Icon name="" size={14} />
                   {isSending
                     ? (isVi ? "Đang gửi qua Cổng..." : "Dispatching...")
                     : (isVi ? "Gửi & Ký Số Kiểm Toán" : "Send & Audit Sign")}
@@ -2379,7 +2459,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                   justifyContent: "center",
                   fontSize: "20px"
                 }}>
-                  <i className="fa-solid fa-stamp"></i>
+                  <Icon name="fa-solid fa-stamp" size={15} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
@@ -2403,7 +2483,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                 color: "var(--green)",
                 border: "1px solid rgba(5, 150, 105, 0.25)"
               }}>
-                <i className="fa-solid fa-circle-check"></i>
+                <Icon name="fa-solid fa-circle-check" size={15} />
                 DISPATCHED
               </span>
             </div>
@@ -2473,7 +2553,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               color: "var(--text-2)",
               lineHeight: "1.5"
             }}>
-              <i className="fa-solid fa-circle-info" style={{ color: "var(--primary)", marginRight: "6px" }}></i>
+              <Icon name="fa-solid fa-circle-info" size={15} style={{ color: "var(--primary)", marginRight: "6px" }} />
               {isVi
                 ? "Dữ liệu đã tự động cập nhật vào Nhật ký Kiểm toán (Audit Trail) và đồng bộ quan hệ thực thể vào Đồ thị Tri thức. Bạn có thể chọn chuyển sang xem Đồ thị hoặc Nhật ký để đối soát."
                 : "Transaction recorded into Audit Trail and synced to Knowledge Graph. Select below to inspect graph relations or verify audit logs."}
@@ -2495,7 +2575,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                 className="btn sm"
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <i className="fa-solid fa-briefcase"></i>
+                <Icon name="fa-solid fa-briefcase" size={15} />
                 <span>{isVi ? "Ở lại Bàn làm việc" : "Stay in Workspace"}</span>
               </button>
 
@@ -2508,7 +2588,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                 className="btn sm"
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <i className="fa-solid fa-circle-nodes" style={{ color: "var(--cyan)" }}></i>
+                <Icon name="fa-solid fa-circle-nodes" size={15} style={{ color: "var(--cyan)" }} />
                 <span>{isVi ? "Xem trên Đồ thị Tri thức" : "View on Knowledge Graph"}</span>
               </button>
 
@@ -2521,7 +2601,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                 className="btn primary sm"
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <i className="fa-solid fa-clipboard-list"></i>
+                <Icon name="fa-solid fa-clipboard-list" size={15} />
                 <span>{isVi ? "Xem trong Nhật ký Kiểm toán" : "View in Audit Trail"}</span>
               </button>
             </div>

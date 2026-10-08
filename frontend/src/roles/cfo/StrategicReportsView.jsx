@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Icon from '../../components/ui/Icon';
 
 export default function ReportsView({ onNavigate, t, lang }) {
   const isVi = lang === "vi";
@@ -36,7 +37,7 @@ export default function ReportsView({ onNavigate, t, lang }) {
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface-container-high border border-primary/40 text-on-surface px-space-md py-space-sm rounded-DEFAULT shadow-2xl flex items-center gap-space-sm animate-bounce">
-          <i className="fa-solid fa-newspaper text-primary text-[18px]"></i>
+          <Icon name="fa-solid fa-newspaper text-primary text-[18px]" size={16} />
           <span className="font-body-sm text-body-sm font-medium">{toastMsg}</span>
         </div>
       )}
@@ -237,19 +238,19 @@ export default function ReportsView({ onNavigate, t, lang }) {
           </h3>
           <div className="flex flex-col gap-space-xs text-body-sm">
             <div className="flex items-start gap-space-xs">
-              <i className="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5"></i>
+              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
                 <b>{isVi ? "Ưu tiên 1:" : "Priority 1:"}</b> {isVi ? "Chỉ đạo Giám đốc Kinh doanh tiếp xúc trực tiếp Giám đốc Mua hàng Trần M. Anh (ABC Corp) trong vòng 7 ngày kèm đề xuất gia hạn CT-2026-18 với chiết khấu 10%." : "Direct Sales VP to schedule in-person renewal review with Procurement Director Tran M. Anh (ABC Corp) within 7 days offering a 10% retention package."}
               </span>
             </div>
             <div className="flex items-start gap-space-xs">
-              <i className="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5"></i>
+              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
                 <b>{isVi ? "Ưu tiên 2:" : "Priority 2:"}</b> {isVi ? "Kích hoạt đối soát công nợ 5 khách hàng có khoản chậm trả trên 60 ngày theo quy trình SOP-04 của Phòng Tài chính." : "Trigger accounts receivable reconciliation for top 5 delinquent customer accounts per SOP-04."}
               </span>
             </div>
             <div className="flex items-start gap-space-xs">
-              <i className="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5"></i>
+              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
                 <b>{isVi ? "Ưu tiên 3:" : "Priority 3:"}</b> {isVi ? "Hoàn tất xác thực con người (HITL) cho 12 tài liệu quy trình thiếu phòng ban chủ quản trong tuần này." : "Complete human-in-the-loop verification for 12 pending SOP documents lacking department ownership."}
               </span>

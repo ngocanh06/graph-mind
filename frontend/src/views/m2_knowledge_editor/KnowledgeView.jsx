@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import Icon from '../../components/ui/Icon';
+import GraphPanel from "../m5_multifacet_search/GraphPanel";
 
 export default function KnowledgeView({
   entities,
@@ -202,7 +204,7 @@ export default function KnowledgeView({
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 bg-surface-container-high border border-primary/40 text-on-surface text-xs font-medium rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
-          <i className="fa-solid fa-circle-check text-primary text-[16px]"></i>
+          <Icon name="fa-solid fa-circle-check text-primary text-[16px]" size={16} />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -232,28 +234,28 @@ export default function KnowledgeView({
             onClick={() => setIsAddModalOpen(true)}
             className="px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow hover:bg-blue-700 transition-all flex items-center gap-1.5"
           >
-            <i className="fa-solid fa-plus text-[14px]"></i>
+            <Icon name="fa-solid fa-plus text-[14px]" size={14} />
             <span>{isVi ? "Thực thể mới" : "New Entity"}</span>
           </button>
           <button
             onClick={() => showToast(isVi ? "Kéo thả giữa 2 node trên canvas để tạo quan hệ mới" : "Drag between 2 nodes on canvas to create relation")}
             className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5"
           >
-            <i className="fa-solid fa-link text-[14px]"></i>
+            <Icon name="fa-solid fa-link text-[14px]" size={14} />
             <span>{isVi ? "Thêm quan hệ" : "Add Relation"}</span>
           </button>
           <button
             onClick={() => showToast(isVi ? "Đã hoàn tác thao tác gần nhất" : "Undone last action")}
             className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5"
           >
-            <i className="fa-solid fa-rotate-left text-[14px]"></i>
+            <Icon name="fa-solid fa-rotate-left text-[14px]" size={14} />
             <span>{isVi ? "Hoàn tác" : "Undo"}</span>
           </button>
           <button
             onClick={() => showToast(isVi ? "Đã lưu và đồng bộ toàn bộ đồ thị vào Neo4j + Qdrant!" : "Committed all graph changes to Neo4j + Qdrant!")}
             className="px-3.5 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-semibold shadow hover:bg-purple-700 transition-all flex items-center gap-1.5"
           >
-            <i className="fa-solid fa-rotate text-[14px]"></i>
+            <Icon name="fa-solid fa-rotate text-[14px]" size={14} />
             <span>{isVi ? "Lưu Neo4j + Qdrant" : "Commit to Neo4j"}</span>
           </button>
         </div>
@@ -294,7 +296,7 @@ export default function KnowledgeView({
                 : "bg-surface-container-low text-on-surface hover:bg-surface-container"
             }`}
           >
-            <i className="fa-solid fa-circle-nodes text-[14px]"></i>
+            <Icon name="fa-solid fa-circle-nodes text-[14px]" size={14} />
             <span>{isVi ? "Graph Canvas" : "Canvas"}</span>
           </button>
 
@@ -306,11 +308,32 @@ export default function KnowledgeView({
                 : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
             }`}
           >
-            <i className="fa-solid fa-list-check text-[14px]"></i>
-            <span>{isVi ? "Hàng chờ duyệt NER (114 mục)" : "Review Queue (114)"}</span>
+            <Icon name="fa-solid fa-list-check text-[14px]" size={14} />
+            <span>{isVi ? "Hàng chờ duyệt NER" : "Review Queue"}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("neo4j_live")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              activeTab === "neo4j_live"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100"
+            }`}
+          >
+            <span>🕸️</span>
+            <span>{isVi ? "Neo4j Live (52.120 Nodes)" : "Neo4j Live (52k Nodes)"}</span>
           </button>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 0: LIVE REAL NEO4J GRAPH PANEL */}
+      {/* ========================================================================= */}
+      {activeTab === "neo4j_live" && (
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5 shadow-xs min-h-[650px]">
+          <GraphPanel lang={lang} onSelectNode={onSelectEntity} />
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: INTERACTIVE GRAPH CANVAS (SCREEN-016) */}
@@ -321,7 +344,7 @@ export default function KnowledgeView({
           <div className="lg:col-span-8 bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5 shadow-xs relative min-h-[600px] overflow-hidden flex flex-col justify-between">
             {/* Floating Top-Left Subgraph Context */}
             <div className="absolute top-4 left-4 z-10 bg-surface-container-lowest/90 backdrop-blur px-3 py-1.5 rounded-xl border border-outline-variant/40 shadow-xs flex items-center gap-2 text-xs text-on-surface">
-              <i className="fa-solid fa-circle-nodes text-primary text-[15px]"></i>
+              <Icon name="fa-solid fa-circle-nodes text-primary text-[15px]" size={15} />
               <span>{isVi ? "Đồ thị con: " : "Subgraph: "}<strong>Hợp đồng Alpha Corp CUAD_042</strong></span>
             </div>
 
@@ -332,7 +355,7 @@ export default function KnowledgeView({
                 className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface"
                 title="Thu nhỏ"
               >
-                <i className="fa-solid fa-minus text-[13px]"></i>
+                <Icon name="fa-solid fa-minus text-[13px]" size={15} />
               </button>
               <span className="px-2 font-bold font-mono">{zoomLevel}%</span>
               <button
@@ -340,14 +363,14 @@ export default function KnowledgeView({
                 className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface"
                 title="Phóng to"
               >
-                <i className="fa-solid fa-plus text-[13px]"></i>
+                <Icon name="fa-solid fa-plus text-[13px]" size={15} />
               </button>
               <button
                 onClick={() => setZoomLevel(100)}
                 className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface"
                 title="Căn giữa"
               >
-                <i className="fa-solid fa-compress text-[13px]"></i>
+                <Icon name="fa-solid fa-compress text-[13px]" size={15} />
               </button>
             </div>
 
@@ -665,7 +688,7 @@ export default function KnowledgeView({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <i className="fa-solid fa-sliders text-error text-[18px]"></i>
+                  <Icon name="fa-solid fa-sliders text-error text-[18px]" size={18} />
                   <h3 className="text-base font-bold text-on-surface">
                     {isVi ? "Thuộc tính Thực thể" : "Entity Properties"}
                   </h3>
@@ -756,7 +779,7 @@ export default function KnowledgeView({
                 onClick={handleSaveAttributeChanges}
                 className="w-full py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
               >
-                <i className="fa-solid fa-circle-check text-[15px]"></i>
+                <Icon name="fa-solid fa-circle-check text-[15px]" size={15} />
                 <span>{isVi ? "Lưu thay đổi thuộc tính" : "Save Attribute Changes"}</span>
               </button>
 
@@ -764,7 +787,7 @@ export default function KnowledgeView({
                 onClick={handleDeleteEntity}
                 className="w-full py-2 rounded-xl bg-surface-container-low text-error hover:bg-error-container hover:text-on-error-container text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
               >
-                <i className="fa-solid fa-trash-can text-[14px]"></i>
+                <Icon name="fa-solid fa-trash-can text-[14px]" size={14} />
                 <span>{isVi ? "Xóa Thực thể khỏi Graph" : "Delete Entity from Graph"}</span>
               </button>
 
@@ -774,7 +797,7 @@ export default function KnowledgeView({
                 }}
                 className="w-full py-1.5 rounded-xl text-primary hover:bg-primary-fixed/30 text-xs font-semibold transition-colors flex items-center justify-center gap-1"
               >
-                <i className="fa-solid fa-robot text-[13px]"></i>
+                <Icon name="fa-solid fa-robot text-[13px]" size={15} />
                 <span>{isVi ? "Hỏi Copilot về thực thể này" : "Ask Copilot about this node"}</span>
               </button>
             </div>
@@ -810,14 +833,14 @@ export default function KnowledgeView({
                 onClick={handleBatchApprove}
                 className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow hover:bg-emerald-700 transition-all flex items-center gap-1.5"
               >
-                <i className="fa-solid fa-check-double text-[15px]"></i>
+                <Icon name="fa-solid fa-check-double text-[15px]" size={15} />
                 <span>{isVi ? "Duyệt hàng loạt (Approve)" : "Batch Approve"}</span>
               </button>
               <button
                 onClick={handleBatchReject}
                 className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow hover:bg-rose-700 transition-all flex items-center gap-1.5"
               >
-                <i className="fa-solid fa-ban text-[15px]"></i>
+                <Icon name="fa-solid fa-ban text-[15px]" size={15} />
                 <span>{isVi ? "Từ chối hàng loạt (Reject)" : "Batch Reject"}</span>
               </button>
             </div>
@@ -899,11 +922,11 @@ export default function KnowledgeView({
                         <div className="flex items-center justify-end gap-1.5">
                           {item.status === "approved" ? (
                             <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
-                              <i className="fa-solid fa-check"></i> {isVi ? "Đã duyệt" : "Approved"}
+                              <Icon name="fa-solid fa-check" size={15} /> {isVi ? "Đã duyệt" : "Approved"}
                             </span>
                           ) : item.status === "rejected" ? (
                             <span className="text-rose-700 font-bold text-[11px] flex items-center gap-1">
-                              <i className="fa-solid fa-xmark"></i> {isVi ? "Đã từ chối" : "Rejected"}
+                              <Icon name="fa-solid fa-xmark" size={15} /> {isVi ? "Đã từ chối" : "Rejected"}
                             </span>
                           ) : (
                             <>
@@ -912,21 +935,21 @@ export default function KnowledgeView({
                                 className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-700 transition-colors"
                                 title={isVi ? "Chấp thuận" : "Approve"}
                               >
-                                <i className="fa-solid fa-check text-[15px]"></i>
+                                <Icon name="fa-solid fa-check text-[15px]" size={15} />
                               </button>
                               <button
                                 onClick={() => showToast(isVi ? `Đang mở trình sửa quan hệ cho ${item.source}` : `Editing ${item.source}`)}
                                 className="p-1.5 rounded-lg hover:bg-surface-container text-primary transition-colors"
                                 title={isVi ? "Chỉnh sửa" : "Edit"}
                               >
-                                <i className="fa-solid fa-pen-to-square text-[15px]"></i>
+                                <Icon name="fa-solid fa-pen-to-square text-[15px]" size={15} />
                               </button>
                               <button
                                 onClick={() => handleRowAction(item.id, "rejected")}
                                 className="p-1.5 rounded-lg hover:bg-rose-100 text-rose-700 transition-colors"
                                 title={isVi ? "Từ chối" : "Reject"}
                               >
-                                <i className="fa-solid fa-xmark text-[15px]"></i>
+                                <Icon name="fa-solid fa-xmark text-[15px]" size={15} />
                               </button>
                             </>
                           )}
@@ -966,7 +989,7 @@ export default function KnowledgeView({
                 onClick={() => setIsAddModalOpen(false)}
                 className="p-1 rounded-lg hover:bg-surface-container text-on-surface"
               >
-                <i className="fa-solid fa-xmark text-[16px]"></i>
+                <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
               </button>
             </div>
 

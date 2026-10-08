@@ -55,13 +55,18 @@ class Settings(BaseSettings):
     # Neo4j
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "graphmind_secret"
+    NEO4J_PASSWORD: str = "password123"
 
     # Qdrant
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
-    QDRANT_COLLECTION_NAME: str = "enterprise_knowledge"
+    QDRANT_COLLECTION_NAME: str = "cuad_contracts"
+
+    # Self-Hosted LLM Inference (Ollama)
+    INFERENCE_ENGINE_URL: str = "http://localhost:11434"
+    MODEL_NAME: str = "qwen2.5-7b"
 
 
 # Singleton instance — import và dùng ở mọi nơi
 settings = Settings()
+

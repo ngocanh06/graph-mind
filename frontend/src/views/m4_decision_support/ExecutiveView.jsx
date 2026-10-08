@@ -1,4 +1,9 @@
 import React, { useState } from "react";
+import {
+  Calendar, Building2, TrendingUp, Users, FileText, DollarSign,
+  Activity, AlertTriangle, ArrowUpRight, Sparkles, RefreshCw,
+  ShieldCheck, BarChart3, ChevronRight, CheckCircle2
+} from "lucide-react";
 
 export default function ExecutiveView({
   entities = {},
@@ -12,49 +17,177 @@ export default function ExecutiveView({
   const isVi = lang === "vi";
   const [period, setPeriod] = useState("30D");
   const [dept, setDept] = useState("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
 
   const topCustomers = [
-    { name: "Tập đoàn Viễn thông Alpha", id: "CUST-8491", revenue: "1,280,000,000 đ", dept: "Bán lẻ & Dự án", deptClass: "text-blue-600 bg-blue-50" },
-    { name: "Công ty Cơ khí Đông Nam",   id: "CUST-3912", revenue: "950,000,000 đ",   dept: "Phân phối",       deptClass: "text-emerald-600 bg-emerald-50" },
-    { name: "Logistics Toàn Cầu Tech",   id: "CUST-1044", revenue: "740,000,000 đ",   dept: "Dịch vụ",         deptClass: "text-purple-600 bg-purple-50" },
+    {
+      name: "Tập đoàn Viễn thông Alpha",
+      id: "CUST-8491",
+      revenue: "1,280,000,000 đ",
+      dept: isVi ? "Bán lẻ & Dự án" : "Retail & Projects",
+      deptColor: "var(--blue)",
+      deptBg: "rgba(37, 99, 235, 0.08)"
+    },
+    {
+      name: "Công ty Cơ khí Đông Nam",
+      id: "CUST-3912",
+      revenue: "950,000,000 đ",
+      dept: isVi ? "Phân phối" : "Distribution",
+      deptColor: "var(--green)",
+      deptBg: "rgba(5, 150, 105, 0.08)"
+    },
+    {
+      name: "Logistics Toàn Cầu Tech",
+      id: "CUST-1044",
+      revenue: "740,000,000 đ",
+      dept: isVi ? "Dịch vụ" : "Services",
+      deptColor: "#8b5cf6",
+      deptBg: "rgba(139, 92, 246, 0.08)"
+    },
   ];
 
   const complianceBars = [
-    { label: "Điều khoản Giới hạn Trách nhiệm (Liability Cap)", pct: 92.4, color: "bg-emerald-500", note: "92.4% Đạt chuẩn", noteClass: "text-emerald-600" },
-    { label: "Điều khoản Bảo mật & Thời hạn NDA",               pct: 98.1, color: "bg-emerald-500", note: "98.1% Đạt chuẩn", noteClass: "text-emerald-600" },
-    { label: "Điều khoản Bồi thường thiệt hại (Indemnification)", pct: 81.5, color: "bg-amber-400",  note: "81.5% (Cần rà soát 7 hợp đồng)", noteClass: "text-amber-600" },
+    {
+      label: isVi ? "Điều khoản Giới hạn Trách nhiệm (Liability Cap)" : "Liability Cap Clause",
+      pct: 92.4,
+      color: "var(--green)",
+      note: isVi ? "92.4% Đạt chuẩn" : "92.4% Compliant",
+      noteColor: "var(--green)"
+    },
+    {
+      label: isVi ? "Điều khoản Bảo mật & Thời hạn NDA" : "Confidentiality & NDA Duration",
+      pct: 98.1,
+      color: "var(--green)",
+      note: isVi ? "98.1% Đạt chuẩn" : "98.1% Compliant",
+      noteColor: "var(--green)"
+    },
+    {
+      label: isVi ? "Điều khoản Bồi thường thiệt hại (Indemnification)" : "Indemnification Clauses",
+      pct: 81.5,
+      color: "var(--amber)",
+      note: isVi ? "81.5% (Cần rà soát 7 hợp đồng)" : "81.5% (7 contracts need review)",
+      noteColor: "var(--amber)"
+    },
+  ];
+
+  const quickKpis = [
+    {
+      label: isVi ? "Tổng doanh thu ghi nhận" : "Total Revenue YTD",
+      value: "4.829 tỷ VNĐ",
+      sub: "+14.2% MoM",
+      isPos: true,
+      icon: DollarSign,
+      color: "var(--blue)",
+      bg: "var(--blue-soft)"
+    },
+    {
+      label: isVi ? "Hợp đồng pháp lý CUAD" : "CUAD Ingested Contracts",
+      value: "142 tệp",
+      sub: isVi ? "100% vector hóa" : "100% vectorized",
+      isPos: true,
+      icon: FileText,
+      color: "#8b5cf6",
+      bg: "rgba(139, 92, 246, 0.08)"
+    },
+    {
+      label: isVi ? "Điểm an toàn pháp lý" : "Legal Safety Score",
+      value: "91.8 / 100",
+      sub: isVi ? "Xếp hạng A- (Thấp)" : "Grade A- (Low risk)",
+      isPos: true,
+      icon: ShieldCheck,
+      color: "var(--green)",
+      bg: "var(--green-soft)"
+    },
+    {
+      label: isVi ? "Cảnh báo rủi ro tồn đọng" : "Active Risk Alerts",
+      value: "3 cảnh báo",
+      sub: isVi ? "1 mức độ cao" : "1 critical priority",
+      isPos: false,
+      icon: AlertTriangle,
+      color: "var(--amber)",
+      bg: "var(--amber-soft)"
+    }
   ];
 
   return (
-    <div className="bg-slate-50 min-h-full">
-      <div className="max-w-[1440px] mx-auto px-8 py-6 space-y-6">
+    <div style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" }}>
 
-        {/* ── TITLE BAR + FILTERS ─────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        {/* ── HEADER & TOOLBAR ─────────────────────────────────── */}
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "16px",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--r-lg)",
+          padding: "20px 24px",
+          boxShadow: "var(--shadow-xs)"
+        }}>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 leading-tight">
-              {isVi
-                ? "Bảng điều khiển điều hành (Executive Decision Dashboard)"
-                : "Executive Decision Dashboard"}
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 6,
+                background: "linear-gradient(135deg, #0F233D 0%, #1E3A5F 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#22d3ee"
+              }}>
+                <BarChart3 size={16} strokeWidth={2.2} />
+              </div>
+              <h2 style={{
+                fontSize: 22,
+                fontWeight: 800,
+                color: "var(--text-1)",
+                letterSpacing: "-0.02em",
+                margin: 0,
+                fontFamily: "var(--f-display)"
+              }}>
+                {isVi ? "Bảng điều khiển điều hành (Executive Decision Dashboard)" : "Executive Decision Dashboard"}
+              </h2>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0, paddingLeft: 38 }}>
               {isVi
                 ? "Dữ liệu hợp nhất từ AdventureWorks ERP và cơ sở tri thức hợp đồng pháp lý CUAD"
                 : "Unified data from AdventureWorks ERP and CUAD legal contract knowledge base"}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {/* Period */}
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs shadow-sm">
-              <span className="text-slate-400">📅</span>
-              <span className="text-slate-500 whitespace-nowrap">
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+            {/* Period select */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md)",
+              padding: "6px 12px",
+              fontSize: 12.5,
+              color: "var(--text-2)"
+            }}>
+              <Calendar size={14} color="var(--text-3)" />
+              <span style={{ color: "var(--text-3)", fontWeight: 500 }}>
                 {isVi ? "Kỳ báo cáo:" : "Period:"}
               </span>
               <select
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontWeight: 600,
+                  color: "var(--text-1)",
+                  outline: "none",
+                  cursor: "pointer",
+                  fontSize: 12.5
+                }}
               >
                 <option value="30D">{isVi ? "30 ngày qua (Tháng 10/2024)" : "Last 30 days (Oct 2024)"}</option>
                 <option value="Q3">{isVi ? "Quý 3/2024" : "Q3 2024"}</option>
@@ -62,16 +195,34 @@ export default function ExecutiveView({
               </select>
             </div>
 
-            {/* Dept */}
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs shadow-sm">
-              <span className="text-slate-400">🏢</span>
-              <span className="text-slate-500 whitespace-nowrap">
+            {/* Dept select */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md)",
+              padding: "6px 12px",
+              fontSize: 12.5,
+              color: "var(--text-2)"
+            }}>
+              <Building2 size={14} color="var(--text-3)" />
+              <span style={{ color: "var(--text-3)", fontWeight: 500 }}>
                 {isVi ? "Phòng ban:" : "Dept:"}
               </span>
               <select
                 value={dept}
                 onChange={(e) => setDept(e.target.value)}
-                className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontWeight: 600,
+                  color: "var(--text-1)",
+                  outline: "none",
+                  cursor: "pointer",
+                  fontSize: 12.5
+                }}
               >
                 <option value="all">{isVi ? "Toàn doanh nghiệp (Tất cả PB)" : "All Departments"}</option>
                 <option value="sales">{isVi ? "Kinh doanh & Bán hàng (Sales)" : "Sales"}</option>
@@ -82,136 +233,310 @@ export default function ExecutiveView({
 
             {/* Refresh */}
             <button
+              onClick={handleRefresh}
               title={isVi ? "Làm mới số liệu" : "Refresh metrics"}
-              className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm"
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "var(--r-md)",
+                border: "1px solid var(--border)",
+                background: "var(--surface-2)",
+                color: "var(--text-2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-hover)"; e.currentTarget.style.color = "var(--cyan)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.color = "var(--text-2)"; }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-              </svg>
+              <RefreshCw size={14} className={isRefreshing ? "spin-icon" : ""} />
             </button>
           </div>
         </div>
 
-        {/* ── 2×2 CHART GRID ──────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ── KPI QUICK-STATS STRIP ───────────────────────────── */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: "16px"
+        }}>
+          {quickKpis.map((kpi, idx) => {
+            const Icon = kpi.icon;
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r-lg)",
+                  padding: "16px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  boxShadow: "var(--shadow-xs)",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-xs)";
+                }}
+              >
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: kpi.bg,
+                  color: kpi.color,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}>
+                  <Icon size={20} strokeWidth={2.2} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    {kpi.label}
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-1)", marginTop: 2, fontFamily: "var(--f-display)" }}>
+                    {kpi.value}
+                  </div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: kpi.isPos ? "var(--green)" : "var(--amber)", marginTop: 2 }}>
+                    {kpi.sub}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── 2×2 CHART GRID ──────────────────────────────────── */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))",
+          gap: "20px"
+        }}>
 
           {/* 1. DOANH THU & XU HƯỚNG */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block shrink-0"></span>
-                <h3 className="text-sm font-bold text-slate-900">
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-lg)",
+            padding: "22px",
+            boxShadow: "var(--shadow-xs)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--blue)" }}></span>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
                   {isVi ? "Doanh thu & Xu hướng giao dịch" : "Revenue & Transaction Trend"}
                 </h3>
               </div>
               <button
                 onClick={() => onNavigate?.("copilot")}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[11px] font-semibold transition-colors whitespace-nowrap"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "5px 10px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--blue-soft)",
+                  border: "1px solid rgba(37,99,235,0.2)",
+                  color: "var(--blue)",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
               >
-                ✨ {isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}
+                <Sparkles size={12} />
+                <span>{isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}</span>
               </button>
             </div>
 
-            <div className="flex items-baseline gap-3 mb-4">
-              <span className="text-2xl font-bold text-slate-900">4,829,000,000 VNĐ</span>
-              <span className="text-xs font-semibold text-emerald-600 flex items-center gap-0.5">
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+              <span style={{ fontSize: 26, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>
+                4,829,000,000 VNĐ
+              </span>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--green)", display: "flex", alignItems: "center", gap: 3 }}>
                 ↗ +14.2% {isVi ? "so với tháng trước" : "vs last month"}
               </span>
             </div>
 
-            {/* Line chart */}
-            <div className="flex-1 bg-slate-50 rounded-lg border border-slate-100 p-3 flex flex-col">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono mb-1">
+            {/* Line chart container */}
+            <div style={{
+              flex: 1,
+              background: "var(--surface-2)",
+              borderRadius: "var(--r-md)",
+              border: "1px solid var(--border-soft)",
+              padding: "16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              minHeight: 140
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>
                 <span>5.5B</span><span>4.0B</span><span>2.5B</span><span>1.0B</span>
               </div>
-              <div className="flex-1 relative min-h-[100px]">
-                <svg className="w-full h-full" viewBox="0 0 500 100" preserveAspectRatio="none">
+              <div style={{ flex: 1, position: "relative", minHeight: 90 }}>
+                <svg width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none">
                   <defs>
-                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563EB" stopOpacity="0.2" />
-                      <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+                    <linearGradient id="revGradTokens" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
                   <path
                     d="M0,85 C60,80 100,70 150,75 S250,40 300,35 S400,48 450,40 L500,15"
-                    fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round"
+                    fill="none"
+                    stroke="#2563EB"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
                   />
                   <path
                     d="M0,85 C60,80 100,70 150,75 S250,40 300,35 S400,48 450,40 L500,15 L500,100 L0,100 Z"
-                    fill="url(#revGrad)"
+                    fill="url(#revGradTokens)"
                   />
+                  <circle cx="500" cy="15" r="4.5" fill="#2563EB" stroke="var(--surface)" strokeWidth="2" />
                 </svg>
               </div>
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1 pt-1 border-t border-slate-200">
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 10,
+                color: "var(--text-4)",
+                fontFamily: "var(--f-mono)",
+                borderTop: "1px solid var(--border-soft)",
+                paddingTop: 6
+              }}>
                 <span>{isVi ? "Tuần 1" : "Wk 1"}</span>
                 <span>{isVi ? "Tuần 2" : "Wk 2"}</span>
                 <span>{isVi ? "Tuần 3" : "Wk 3"}</span>
                 <span>{isVi ? "Tuần 4" : "Wk 4"}</span>
-                <span>{isVi ? "Hiện tại" : "Now"}</span>
+                <span style={{ color: "var(--blue)", fontWeight: 700 }}>{isVi ? "Hiện tại" : "Now"}</span>
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-500 mt-3 flex items-center justify-between">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", paddingTop: 4 }}>
               <span>
                 {isVi ? "Nguồn dữ liệu:" : "Source:"}{" "}
-                <strong className="text-slate-700">AdventureWorks Sales.OrderHeader</strong>
+                <strong style={{ color: "var(--text-2)" }}>AdventureWorks Sales.OrderHeader</strong>
               </span>
               <button
                 onClick={() => onNavigate?.("reports")}
-                className="text-blue-600 hover:underline cursor-pointer font-medium"
+                style={{
+                  color: "var(--blue)",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  cursor: "pointer"
+                }}
               >
-                {isVi ? "Chi tiết báo cáo →" : "Full report →"}
+                <span>{isVi ? "Chi tiết báo cáo" : "Full report"}</span>
+                <ChevronRight size={13} />
               </button>
             </div>
           </div>
 
           {/* 2. TOP KHÁCH HÀNG */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block shrink-0"></span>
-                <h3 className="text-sm font-bold text-slate-900">
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-lg)",
+            padding: "22px",
+            boxShadow: "var(--shadow-xs)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)" }}></span>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
                   {isVi ? "Top Khách hàng Giá trị cao (AdventureWorks)" : "Top High-Value Customers (AdventureWorks)"}
                 </h3>
               </div>
               <button
                 onClick={() => onNavigate?.("copilot")}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[11px] font-semibold transition-colors whitespace-nowrap"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "5px 10px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--blue-soft)",
+                  border: "1px solid rgba(37,99,235,0.2)",
+                  color: "var(--blue)",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
               >
-                ✨ {isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}
+                <Sparkles size={12} />
+                <span>{isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}</span>
               </button>
             </div>
 
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div style={{ flex: 1, overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, textAlign: "left" }}>
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-400 text-[11px] font-semibold">
-                    <th className="pb-2">{isVi ? "Khách hàng" : "Customer"}</th>
-                    <th className="pb-2">{isVi ? "Doanh thu đóng góp" : "Revenue"}</th>
-                    <th className="pb-2">{isVi ? "Phòng ban" : "Dept"}</th>
-                    <th className="pb-2 text-right">{isVi ? "Thao tác" : "Action"}</th>
+                  <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--text-3)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    <th style={{ paddingBottom: 10, fontWeight: 600 }}>{isVi ? "Khách hàng" : "Customer"}</th>
+                    <th style={{ paddingBottom: 10, fontWeight: 600 }}>{isVi ? "Doanh thu đóng góp" : "Revenue"}</th>
+                    <th style={{ paddingBottom: 10, fontWeight: 600 }}>{isVi ? "Phòng ban" : "Dept"}</th>
+                    <th style={{ paddingBottom: 10, textAlign: "right", fontWeight: 600 }}>{isVi ? "Thao tác" : "Action"}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {topCustomers.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/60">
-                      <td className="py-2.5 font-semibold text-slate-800">
-                        <div>{c.name}</div>
-                        <span className="text-[10px] text-slate-400 font-mono">{c.id}</span>
+                    <tr key={c.id} style={{ borderBottom: "1px solid var(--border-soft)", transition: "background 0.1s ease" }}>
+                      <td style={{ padding: "10px 0" }}>
+                        <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.name}</div>
+                        <span style={{ fontSize: 10.5, color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>{c.id}</span>
                       </td>
-                      <td className="py-2.5 font-mono font-semibold text-slate-900">{c.revenue}</td>
-                      <td className="py-2.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${c.deptClass}`}>
+                      <td style={{ padding: "10px 0", fontFamily: "var(--f-mono)", fontWeight: 700, color: "var(--text-1)" }}>
+                        {c.revenue}
+                      </td>
+                      <td style={{ padding: "10px 0" }}>
+                        <span style={{
+                          display: "inline-block",
+                          padding: "2px 8px",
+                          borderRadius: "var(--r-xs)",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          background: c.deptBg,
+                          color: c.deptColor
+                        }}>
                           {c.dept}
                         </span>
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td style={{ padding: "10px 0", textAlign: "right" }}>
                         <button
                           onClick={() => onNavigate?.("knowledge")}
-                          className="text-blue-600 hover:text-blue-800 text-[11px] font-semibold"
+                          style={{
+                            color: "var(--blue)",
+                            fontWeight: 600,
+                            fontSize: 11.5,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3
+                          }}
                         >
-                          {isVi ? "Xem đồ thị →" : "View graph →"}
+                          <span>{isVi ? "Xem đồ thị" : "View graph"}</span>
+                          <ArrowUpRight size={12} />
                         </button>
                       </td>
                     </tr>
@@ -220,128 +545,227 @@ export default function ExecutiveView({
               </table>
             </div>
 
-            <div className="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-              <span>{isVi ? "Top 3 / 84 đối tác giao dịch thường xuyên" : "Top 3 of 84 frequent transaction partners"}</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
+              <span>{isVi ? "Top 3 / 84 đối tác giao dịch thường xuyên" : "Top 3 of 84 frequent partners"}</span>
               <button
                 onClick={() => onNavigate?.("knowledge")}
-                className="text-blue-600 font-medium hover:underline cursor-pointer"
+                style={{
+                  color: "var(--blue)",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  cursor: "pointer"
+                }}
               >
-                {isVi ? "Mở bảng đầy đủ (SCREEN-020)" : "Open full table →"}
+                <span>{isVi ? "Mở danh sách đầy đủ" : "Open full table"}</span>
+                <ChevronRight size={13} />
               </button>
             </div>
           </div>
 
           {/* 3. PHÂN BỐ HỢP ĐỒNG CUAD */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block shrink-0"></span>
-                <h3 className="text-sm font-bold text-slate-900">
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-lg)",
+            padding: "22px",
+            boxShadow: "var(--shadow-xs)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }}></span>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
                   {isVi ? "Phân bố Danh mục Hợp đồng (CUAD Ingestion)" : "Contract Category Distribution (CUAD)"}
                 </h3>
               </div>
               <button
                 onClick={() => onNavigate?.("copilot")}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[11px] font-semibold transition-colors whitespace-nowrap"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "5px 10px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--blue-soft)",
+                  border: "1px solid rgba(37,99,235,0.2)",
+                  color: "var(--blue)",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
               >
-                ✨ {isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}
+                <Sparkles size={12} />
+                <span>{isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}</span>
               </button>
             </div>
 
-            <div className="flex-1 grid grid-cols-2 gap-4 items-center py-2">
-              {/* Donut */}
-              <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
-                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#e2e8f0" strokeWidth="4.5" />
+            <div style={{
+              flex: 1,
+              display: "grid",
+              gridTemplateColumns: "140px 1fr",
+              gap: 20,
+              alignItems: "center",
+              padding: "10px 0"
+            }}>
+              {/* Donut chart */}
+              <div style={{ position: "relative", width: 130, height: 130, margin: "0 auto" }}>
+                <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="var(--surface-3)" strokeWidth="4.5" />
                   <circle cx="18" cy="18" r="14" fill="none" stroke="#2563EB" strokeWidth="4.5"
                     strokeDasharray="45 100" />
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#7C3AED" strokeWidth="4.5"
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="#8B5CF6" strokeWidth="4.5"
                     strokeDasharray="30 100" strokeDashoffset="-45" />
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#16A34A" strokeWidth="4.5"
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="#059669" strokeWidth="4.5"
                     strokeDasharray="25 100" strokeDashoffset="-75" />
                 </svg>
-                <div className="absolute text-center">
-                  <span className="text-xl font-bold text-slate-900">142</span>
-                  <span className="block text-[9px] text-slate-400 uppercase tracking-wide">
+                <div style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  pointerEvents: "none"
+                }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>142</span>
+                  <span style={{ fontSize: 9.5, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
                     {isVi ? "Hợp đồng" : "Contracts"}
                   </span>
                 </div>
               </div>
 
               {/* Legend */}
-              <div className="space-y-2.5 text-xs">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
                 {[
-                  { color: "bg-blue-600",   label: isVi ? "Hợp đồng Dịch vụ (Service)" : "Service Contracts",      pct: "45% (64)" },
-                  { color: "bg-purple-600", label: isVi ? "NDA & Bảo mật thông tin"   : "NDA & Confidentiality",   pct: "30% (43)" },
-                  { color: "bg-emerald-600",label: isVi ? "Cung ứng hàng hóa (Supply)" : "Supply Agreements",       pct: "25% (35)" },
+                  { color: "#2563EB", label: isVi ? "Hợp đồng Dịch vụ (Service)" : "Service Contracts", pct: "45% (64)" },
+                  { color: "#8B5CF6", label: isVi ? "NDA & Bảo mật thông tin" : "NDA & Confidentiality", pct: "30% (43)" },
+                  { color: "#059669", label: isVi ? "Cung ứng hàng hóa (Supply)" : "Supply Agreements", pct: "25% (35)" },
                 ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-slate-600">
-                      <span className={`w-2.5 h-2.5 rounded shrink-0 inline-block ${item.color}`}></span>
+                  <div key={item.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-2)" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }}></span>
                       {item.label}
                     </span>
-                    <strong className="text-slate-800 shrink-0">{item.pct}</strong>
+                    <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)", fontSize: 11.5 }}>{item.pct}</strong>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-              <span>{isVi ? "Trích xuất tự động qua Entity Extractor v1.2" : "Auto-extracted via Entity Extractor v1.2"}</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
+              <span>{isVi ? "Trích xuất tự động qua Entity Extractor v1.2" : "Auto-extracted via Entity Extractor"}</span>
               <button
                 onClick={() => onNavigate?.("knowledge")}
-                className="text-blue-600 hover:underline cursor-pointer"
+                style={{
+                  color: "var(--blue)",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  cursor: "pointer"
+                }}
               >
-                {isVi ? "Mở Knowledge Base (SCREEN-015)" : "Open Knowledge Base →"}
+                <span>{isVi ? "Mở Knowledge Base" : "Open Knowledge Base"}</span>
+                <ChevronRight size={13} />
               </button>
             </div>
           </div>
 
           {/* 4. TỶ LỆ TUÂN THỦ PHÁP LÝ */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block shrink-0"></span>
-                <h3 className="text-sm font-bold text-slate-900">
-                  {isVi ? "Tỷ lệ Tuân thủ & An toàn Pháp lý (CUAD Clauses)" : "Legal Compliance & Safety Rate (CUAD Clauses)"}
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-lg)",
+            padding: "22px",
+            boxShadow: "var(--shadow-xs)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)" }}></span>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
+                  {isVi ? "Tỷ lệ Tuân thủ & An toàn Pháp lý (CUAD Clauses)" : "Legal Compliance & Safety Rate"}
                 </h3>
               </div>
               <button
                 onClick={() => onNavigate?.("copilot")}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[11px] font-semibold transition-colors whitespace-nowrap"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "5px 10px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--blue-soft)",
+                  border: "1px solid rgba(37,99,235,0.2)",
+                  color: "var(--blue)",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
               >
-                ✨ {isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}
+                <Sparkles size={12} />
+                <span>{isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}</span>
               </button>
             </div>
 
-            <div className="flex-1 space-y-4 my-1">
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14, justifyContent: "center" }}>
               {complianceBars.map((bar) => (
                 <div key={bar.label}>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-medium text-slate-700">{bar.label}</span>
-                    <strong className={bar.noteClass}>{bar.note}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
+                    <span style={{ fontWeight: 600, color: "var(--text-2)" }}>{bar.label}</span>
+                    <strong style={{ color: bar.noteColor, fontSize: 11.5 }}>{bar.note}</strong>
                   </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div style={{
+                    width: "100%",
+                    height: 8,
+                    background: "var(--surface-3)",
+                    borderRadius: 99,
+                    overflow: "hidden"
+                  }}>
                     <div
-                      className={`h-full rounded-full ${bar.color} transition-all`}
-                      style={{ width: `${bar.pct}%` }}
+                      style={{
+                        width: `${bar.pct}%`,
+                        height: "100%",
+                        background: bar.color,
+                        borderRadius: 99,
+                        transition: "width 0.4s ease"
+                      }}
                     />
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-500 flex items-center gap-1">
-                <span className="text-emerald-600">✔</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <CheckCircle2 size={14} color="var(--green)" />
                 {isVi ? "Độ rủi ro pháp lý toàn danh mục:" : "Portfolio legal risk:"}{" "}
-                <strong className="text-slate-800 ml-0.5">{isVi ? "THẤP (A-)" : "LOW (A-)"}</strong>
+                <strong style={{ color: "var(--text-1)" }}>{isVi ? "THẤP (A-)" : "LOW (A-)"}</strong>
               </span>
               <button
                 onClick={() => onNavigate?.("risk")}
-                className="text-blue-600 font-semibold hover:underline cursor-pointer"
+                style={{
+                  color: "var(--blue)",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  cursor: "pointer"
+                }}
               >
-                {isVi ? "Xem cảnh báo rủi ro →" : "View risk alerts →"}
+                <span>{isVi ? "Xem cảnh báo rủi ro" : "View risk alerts"}</span>
+                <ChevronRight size={13} />
               </button>
             </div>
           </div>

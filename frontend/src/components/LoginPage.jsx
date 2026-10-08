@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Icon from './ui/Icon';
 import { ENTERPRISE_ROLES, authenticateByEmail } from "../data/roles";
 import { loginApi } from "../services/api";
 
@@ -161,7 +162,7 @@ export default function LoginPage({
             fontWeight: "700",
             marginBottom: "20px"
           }}>
-            <i className="fa-solid fa-shield-halved"></i>
+            <Icon name="fa-solid fa-shield-halved" size={15} />
             <span>{isVi ? "CỔNG ĐĂNG NHẬP DOANH NGHIỆP BẢO MẬT" : "SECURE ENTERPRISE ACCESS PORTAL"}</span>
           </div>
 
@@ -201,7 +202,7 @@ export default function LoginPage({
           }}>
             <div style={{ borderLeft: "2.5px solid #00e5ff", paddingLeft: "12px" }}>
               <div style={{ fontSize: "12.5px", fontWeight: "700", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                <i className="fa-solid fa-user-shield" style={{ color: "#00e5ff", fontSize: "11px" }}></i>
+                <Icon name="fa-solid fa-user-shield" size={15} style={{ color: "#00e5ff", fontSize: "11px" }} />
                 <span>{isVi ? "Kiểm Soát Phân Tầng" : "Granular RBAC / ABAC"}</span>
               </div>
               <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px", lineHeight: "1.4" }}>
@@ -211,7 +212,7 @@ export default function LoginPage({
 
             <div style={{ borderLeft: "2.5px solid #3fcb8e", paddingLeft: "12px" }}>
               <div style={{ fontSize: "12.5px", fontWeight: "700", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                <i className="fa-solid fa-shield-halved" style={{ color: "#3fcb8e", fontSize: "11px" }}></i>
+                <Icon name="fa-solid fa-shield-halved" size={15} style={{ color: "#3fcb8e", fontSize: "11px" }} />
                 <span>{isVi ? "Chuẩn Doanh Nghiệp" : "Enterprise Security"}</span>
               </div>
               <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px", lineHeight: "1.4" }}>
@@ -221,7 +222,7 @@ export default function LoginPage({
 
             <div style={{ borderLeft: "2.5px solid #e3a947", paddingLeft: "12px" }}>
               <div style={{ fontSize: "12.5px", fontWeight: "700", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                <i className="fa-solid fa-key" style={{ color: "#e3a947", fontSize: "11px" }}></i>
+                <Icon name="fa-solid fa-key" size={15} style={{ color: "#e3a947", fontSize: "11px" }} />
                 <span>{isVi ? "Đăng Nhập Một Lần" : "Enterprise SSO"}</span>
               </div>
               <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px", lineHeight: "1.4" }}>
@@ -231,7 +232,7 @@ export default function LoginPage({
 
             <div style={{ borderLeft: "2.5px solid #a78bfa", paddingLeft: "12px" }}>
               <div style={{ fontSize: "12.5px", fontWeight: "700", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                <i className="fa-solid fa-server" style={{ color: "#a78bfa", fontSize: "11px" }}></i>
+                <Icon name="fa-solid fa-server" size={15} style={{ color: "#a78bfa", fontSize: "11px" }} />
                 <span>{isVi ? "Hạ Tầng Riêng Tư" : "Private Deployment"}</span>
               </div>
               <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px", lineHeight: "1.4" }}>
@@ -294,7 +295,7 @@ export default function LoginPage({
                 e.currentTarget.style.color = "#475569";
               }}
             >
-              <i className="fa-solid fa-arrow-left" style={{ marginRight: "6px" }}></i>
+              <Icon name="fa-solid fa-arrow-left" size={15} style={{ marginRight: "6px" }} />
               {isVi ? "Trang Chủ" : "Landing"}
             </button>
           </div>
@@ -354,7 +355,7 @@ export default function LoginPage({
               alignItems: "center",
               gap: "8px"
             }}>
-              <i className="fa-solid fa-circle-exclamation" style={{ fontSize: "14px" }}></i>
+              <Icon name="fa-solid fa-circle-exclamation" size={15} style={{ fontSize: "14px" }} />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -374,7 +375,7 @@ export default function LoginPage({
               alignItems: "center",
               gap: "8px"
             }}>
-              <i className="fa-solid fa-circle-check" style={{ fontSize: "14px" }}></i>
+              <Icon name="fa-solid fa-circle-check" size={15} style={{ fontSize: "14px" }} />
               <span>{successMessage}</span>
             </div>
           )}
@@ -384,7 +385,7 @@ export default function LoginPage({
             {/* Trường Tên đăng nhập / Email */}
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: "6px" }}>
-                <i className="fa-solid fa-user" style={{ marginRight: "6px", color: "#0284c7" }}></i>
+                <Icon name="fa-solid fa-user" size={15} style={{ marginRight: "6px", color: "#0284c7" }} />
                 {isVi ? "Tên Đăng Nhập / Email" : "Username or Email"}
               </label>
               <input
@@ -412,7 +413,7 @@ export default function LoginPage({
             {/* Trường Mật khẩu */}
             <div style={{ marginBottom: "18px" }}>
               <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: "6px" }}>
-                <i className="fa-solid fa-lock" style={{ marginRight: "6px", color: "#0284c7" }}></i>
+                <Icon name="fa-solid fa-lock" size={15} style={{ marginRight: "6px", color: "#0284c7" }} />
                 {isVi ? "Mật khẩu bảo mật" : "Password"}
               </label>
               <input
@@ -485,13 +486,13 @@ export default function LoginPage({
             >
               {isAuthenticating ? (
                 <>
-                  <i className="fa-solid fa-spinner fa-spin"></i>
+                  <Icon name="fa-solid fa-spinner fa-spin" size={15} />
                   <span>{isVi ? "Đang xác thực bảo mật..." : "Authenticating..."}</span>
                 </>
               ) : (
                 <>
                   <span>{isVi ? "Đăng Nhập An Toàn" : "Sign In to Platform"}</span>
-                  <i className="fa-solid fa-arrow-right"></i>
+                  <Icon name="fa-solid fa-arrow-right" size={15} />
                 </>
               )}
             </button>
@@ -519,7 +520,7 @@ export default function LoginPage({
               onMouseEnter={(e) => e.currentTarget.style.borderColor = "#94a3b8"}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = "#cbd5e1"}
             >
-              <i className="fa-brands fa-microsoft" style={{ color: "#00a4ef", fontSize: "13px" }}></i>
+              <Icon name="fa-brands fa-microsoft" size={15} style={{ color: "#00a4ef", fontSize: "13px" }} />
               <span>{isVi ? "Đăng nhập với Microsoft Entra ID / SSO" : "Sign in with Microsoft Entra ID / SSO"}</span>
             </button>
           </form>
@@ -545,17 +546,17 @@ export default function LoginPage({
               color: "#64748b"
             }}>
               <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <i className="fa-solid fa-lock" style={{ color: "#10b981", fontSize: "10px" }}></i>
+                <Icon name="fa-solid fa-lock" size={15} style={{ color: "#10b981", fontSize: "10px" }} />
                 TLS 1.3 · 256-Bit
               </span>
               <span>•</span>
               <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <i className="fa-solid fa-shield-check" style={{ color: "#0284c7", fontSize: "10px" }}></i>
+                <Icon name="fa-solid fa-shield-check" size={15} style={{ color: "#0284c7", fontSize: "10px" }} />
                 SOC2 Type II
               </span>
               <span>•</span>
               <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <i className="fa-solid fa-certificate" style={{ color: "#8b5cf6", fontSize: "10px" }}></i>
+                <Icon name="fa-solid fa-certificate" size={15} style={{ color: "#8b5cf6", fontSize: "10px" }} />
                 ISO/IEC 27001
               </span>
             </div>

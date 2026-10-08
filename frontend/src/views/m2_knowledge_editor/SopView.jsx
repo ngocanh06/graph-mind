@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Icon from '../../components/ui/Icon';
 
 export default function SopView({ onNavigate, t, lang = "vi", initialMode = "list", role, currentUser }) {
   const isVi = lang === "vi";
@@ -230,7 +231,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 bg-surface-container-high border border-primary/40 text-on-surface text-xs font-medium rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
-          <i className="fa-solid fa-circle-check text-primary text-[16px]"></i>
+          <Icon name="fa-solid fa-circle-check text-primary text-[16px]" size={16} />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -266,7 +267,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                 onClick={handleNewSop}
                 className="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow hover:bg-blue-700 transition-all flex items-center gap-2"
               >
-                <i className="fa-solid fa-file-circle-plus text-[16px]"></i>
+                <Icon name="fa-solid fa-file-circle-plus text-[16px]" size={16} />
                 <span>{isVi ? "+ Tạo mới SOP (SCREEN-017a)" : "+ Compose SOP"}</span>
               </button>
             </div>
@@ -275,7 +276,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
           {/* Filter & Search SOP Bar */}
           <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full sm:w-96">
-              <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-on-surface-variant text-[14px]"></i>
+              <Icon name="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-on-surface-variant text-[14px]" size={14} />
               <input
                 type="text"
                 value={searchQuery}
@@ -317,7 +318,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                 className="p-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 transition-colors"
                 title={isVi ? "Xóa bộ lọc" : "Clear filters"}
               >
-                <i className="fa-solid fa-filter-circle-xmark text-[15px]"></i>
+                <Icon name="fa-solid fa-filter-circle-xmark text-[15px]" size={15} />
               </button>
             </div>
           </div>
@@ -349,15 +350,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                               ? "bg-purple-50 text-secondary border-purple-200"
                               : "bg-rose-50 text-error border-rose-200"
                           }`}>
-                            <i className={`fa-solid ${
-                              item.dept === "Pháp chế"
-                                ? "fa-shield-halved"
-                                : item.dept === "Công nghệ / IT"
-                                ? "fa-terminal"
-                                : item.dept === "R&D"
-                                ? "fa-rotate"
-                                : "fa-triangle-exclamation"
-                            } text-[16px]`}></i>
+                            <Icon name="" size={14} />
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">
@@ -405,7 +398,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                             className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant"
                             title={isVi ? "Nhân bản" : "Duplicate"}
                           >
-                            <i className="fa-regular fa-copy text-[14px]"></i>
+                            <Icon name="fa-regular fa-copy text-[14px]" size={14} />
                           </button>
                           {item.status === "draft" && (
                             <button
@@ -413,7 +406,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                               className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors"
                               title={isVi ? "Xóa" : "Delete"}
                             >
-                              <i className="fa-solid fa-trash-can text-[14px]"></i>
+                              <Icon name="fa-solid fa-trash-can text-[14px]" size={14} />
                             </button>
                           )}
                         </div>
@@ -431,7 +424,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                 <strong className="text-on-surface">{filteredList.length}</strong> / {sopList.length} {isVi ? "quy trình chuẩn SOP" : "SOP procedures"}
               </span>
               <span className="text-primary font-semibold flex items-center gap-1.5">
-                <i className="fa-solid fa-circle-check text-emerald-600"></i>
+                <Icon name="fa-solid fa-circle-check text-emerald-600" size={15} />
                 {isVi ? "Tất cả SOP đã xuất bản được nhúng vào Hybrid GraphRAG làm Ground-Truth" : "All published SOPs are grounded into Hybrid GraphRAG"}
               </span>
             </div>
@@ -448,12 +441,12 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
               onClick={() => setMode("list")}
               className="hover:text-primary transition-colors flex items-center gap-1 font-semibold"
             >
-              <i className="fa-solid fa-arrow-left text-[11px]"></i>
+              <Icon name="fa-solid fa-arrow-left text-[11px]" size={15} />
               <span>{isVi ? "SOP Nội bộ (SCREEN-017)" : "Back to SOP List"}</span>
             </button>
-            <i className="fa-solid fa-chevron-right text-[10px] text-outline"></i>
+            <Icon name="fa-solid fa-chevron-right text-[10px] text-outline" size={15} />
             <span>{composerData.dept}</span>
-            <i className="fa-solid fa-chevron-right text-[10px] text-outline"></i>
+            <Icon name="fa-solid fa-chevron-right text-[10px] text-outline" size={15} />
             <span className="text-primary font-bold">{composerData.title}</span>
           </nav>
 
@@ -533,28 +526,28 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
 
                 {/* Lists */}
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface" title="Bullet List">
-                  <i className="fa-solid fa-list-ul text-[14px]"></i>
+                  <Icon name="fa-solid fa-list-ul text-[14px]" size={14} />
                 </button>
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface" title="Numbered List">
-                  <i className="fa-solid fa-list-ol text-[14px]"></i>
+                  <Icon name="fa-solid fa-list-ol text-[14px]" size={14} />
                 </button>
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface" title="Checklist">
-                  <i className="fa-solid fa-list-check text-[14px]"></i>
+                  <Icon name="fa-solid fa-list-check text-[14px]" size={14} />
                 </button>
                 <span className="inline-block w-px h-5 bg-outline-variant mx-1"></span>
 
                 {/* Inserts */}
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface" title="Bảng biểu">
-                  <i className="fa-solid fa-table text-[14px]"></i>
+                  <Icon name="fa-solid fa-table text-[14px]" size={14} />
                 </button>
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface" title="Trích dẫn">
-                  <i className="fa-solid fa-quote-left text-[14px]"></i>
+                  <Icon name="fa-solid fa-quote-left text-[14px]" size={14} />
                 </button>
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface" title="Liên kết">
-                  <i className="fa-solid fa-link text-[14px]"></i>
+                  <Icon name="fa-solid fa-link text-[14px]" size={14} />
                 </button>
                 <button className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface" title="Đính kèm tài liệu tham chiếu">
-                  <i className="fa-solid fa-paperclip text-[14px]"></i>
+                  <Icon name="fa-solid fa-paperclip text-[14px]" size={14} />
                 </button>
               </div>
 
@@ -563,7 +556,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                 onClick={handleAiCoWriter}
                 className="px-3 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold shadow hover:bg-purple-700 transition-all flex items-center gap-1.5"
               >
-                <i className="fa-solid fa-wand-magic-sparkles text-[13px]"></i>
+                <Icon name="fa-solid fa-wand-magic-sparkles text-[13px]" size={15} />
                 <span>{isVi ? "AI Co-writer: Viết tiếp SOP" : "AI Co-writer: Continue"}</span>
               </button>
             </div>
@@ -593,7 +586,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                     onClick={handleAiCoWriter}
                     className="text-xs text-purple-600 font-bold hover:underline flex items-center gap-1"
                   >
-                    <i className="fa-solid fa-plus text-[11px]"></i> {isVi ? "Thêm bước" : "Add Step"}
+                    <Icon name="fa-solid fa-plus text-[11px]" size={15} /> {isVi ? "Thêm bước" : "Add Step"}
                   </button>
                 </div>
 
@@ -668,7 +661,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                   onClick={handlePublishSop}
                   className="px-6 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow hover:bg-blue-700 transition-all flex items-center gap-2"
                 >
-                  <i className="fa-solid fa-cloud-arrow-up text-[15px]"></i>
+                  <Icon name="fa-solid fa-cloud-arrow-up text-[15px]" size={15} />
                   <span>{isVi ? "Xuất bản SOP cho phòng ban (Publish)" : "Publish SOP"}</span>
                 </button>
               </div>
@@ -694,7 +687,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                 onClick={() => setActivePreviewSop(null)}
                 className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface"
               >
-                <i className="fa-solid fa-xmark text-[16px]"></i>
+                <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
               </button>
             </div>
 
@@ -717,7 +710,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
 
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900">
                 <strong className="block font-bold mb-1">
-                  <i className="fa-solid fa-brain mr-1"></i>
+                  <Icon name="fa-solid fa-brain mr-1" size={15} />
                   {isVi ? "Tích hợp GraphRAG Ground-Truth:" : "GraphRAG Ground-Truth Ingestion:"}
                 </strong>
                 <p>

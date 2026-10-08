@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Icon from '../../components/ui/Icon';
 
 export default function ExecutiveView({
   entities = {},
@@ -66,7 +67,7 @@ export default function ExecutiveView({
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface-container-high border border-primary/40 text-on-surface px-space-md py-space-sm rounded-DEFAULT shadow-2xl flex items-center gap-space-sm animate-bounce">
-          <i className="fa-solid fa-circle-check text-primary text-[18px]"></i>
+          <Icon name="fa-solid fa-circle-check text-primary text-[18px]" size={16} />
           <span className="font-body-sm text-body-sm font-medium">{toastMsg}</span>
         </div>
       )}
@@ -115,7 +116,7 @@ export default function ExecutiveView({
 
           <div className="flex flex-col">
             <div className="flex items-center gap-space-xs">
-              <i className="fa-solid fa-triangle-exclamation text-[14px] text-error"></i>
+              <Icon name="fa-solid fa-triangle-exclamation text-[14px] text-error" size={16} />
               <span className="font-label-caps text-label-caps text-error uppercase tracking-wider">
                 {isVi ? "RỦI RO TIỀM ẨN" : "AT-RISK EXPOSURE"}
               </span>
@@ -169,7 +170,7 @@ export default function ExecutiveView({
                   : "text-on-surface-variant hover:text-on-surface"
               }`}
             >
-              <i className="fa-solid fa-chart-line text-[13px]"></i>
+              <Icon name="fa-solid fa-chart-line text-[13px]" size={16} />
               <span className="font-label-caps text-label-caps">PULSE</span>
             </button>
             <button
@@ -180,7 +181,7 @@ export default function ExecutiveView({
                   : "text-on-surface-variant hover:text-on-surface"
               }`}
             >
-              <i className="fa-solid fa-table-cells-large text-[13px]"></i>
+              <Icon name="fa-solid fa-table-cells-large text-[13px]" size={16} />
               <span className="font-label-caps text-label-caps">MATRIX</span>
             </button>
           </div>
@@ -196,7 +197,7 @@ export default function ExecutiveView({
           <div className="bg-surface-container-low p-space-md rounded-lg shadow-sm border border-outline-variant/30 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-space-sm">
               <div className="flex items-center gap-space-xs">
-                <i className="fa-solid fa-diagram-project text-primary text-[18px]"></i>
+                <Icon name="fa-solid fa-diagram-project text-primary text-[18px]" size={16} />
                 <span className="font-title-sm text-title-sm font-semibold text-on-surface">
                   {isVi ? "Đài Quan sát Quang học — Dòng chảy Tri thức Thực thời" : "Knowledge Pulse Observatory — Real-time Neural Stream"}
                 </span>
@@ -352,7 +353,7 @@ export default function ExecutiveView({
               {/* Active Hub Details Card */}
               <div className="w-full mt-space-xs p-space-sm bg-surface-container-high/60 rounded-DEFAULT flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm border border-outline-variant/20">
                 <div className="flex items-center gap-space-sm">
-                  <i className="fa-solid fa-chart-simple text-primary text-[20px]"></i>
+                  <Icon name="fa-solid fa-chart-simple text-primary text-[20px]" size={16} />
                   <div>
                     <div className="font-title-sm text-title-sm font-bold text-on-surface">
                       {hubDetails[selectedHub].title} · <span className="text-primary font-mono">{hubDetails[selectedHub].stat}</span>
@@ -415,7 +416,7 @@ export default function ExecutiveView({
             <div className="lg:col-span-7 flex flex-col gap-space-sm bg-surface-container-low p-space-md rounded-lg shadow-sm border border-outline-variant/30">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs pb-space-xs border-b border-outline-variant/20">
                 <div className="flex items-center gap-space-xs">
-                  <i className="fa-solid fa-brain text-primary text-[18px]"></i>
+                  <Icon name="fa-solid fa-brain text-primary text-[18px]" size={16} />
                   <h3 className="font-title-sm text-title-sm font-bold text-on-surface">
                     {isVi ? "Dòng Tín hiệu AI Suy luận Nguyên nhân (WHAT → WHY → ACTION)" : "AI Priority Reasoning Signals (WHAT → WHY → ACTION)"}
                   </h3>
@@ -538,7 +539,7 @@ export default function ExecutiveView({
             <div className="lg:col-span-5 flex flex-col gap-space-sm bg-surface-container-low p-space-md rounded-lg shadow-sm border border-outline-variant/30">
               <div className="flex items-center justify-between pb-space-xs border-b border-outline-variant/20">
                 <div className="flex items-center gap-space-xs">
-                  <i className="fa-solid fa-building-columns text-error text-[18px]"></i>
+                  <Icon name="fa-solid fa-building-columns text-error text-[18px]" size={16} />
                   <h3 className="font-title-sm text-title-sm font-bold text-on-surface">
                     {isVi ? "Danh mục Thực thể Giám sát Trọng yếu" : "Key Monitored Entity Exposure"}
                   </h3>
@@ -605,7 +606,7 @@ export default function ExecutiveView({
                           {ent.contact}
                         </span>
                         <div className="flex items-center gap-space-2xs">
-                          <i className={`fa-solid ${ent.verified ? "fa-circle-check text-tertiary" : "fa-circle-question text-outline"} text-[13px]`}></i>
+                          <Icon name="" size={14} />
                           <span className="font-label-caps text-label-caps">{ent.status}</span>
                         </div>
                       </div>
@@ -643,7 +644,7 @@ export default function ExecutiveView({
         <div className="flex flex-col gap-space-md bg-surface-container-low p-space-md rounded-lg shadow-sm border border-outline-variant/30">
           <div className="flex items-center justify-between pb-space-xs border-b border-outline-variant/20">
             <div className="flex items-center gap-space-xs">
-              <i className="fa-solid fa-border-all text-primary text-[20px]"></i>
+              <Icon name="fa-solid fa-border-all text-primary text-[20px]" size={16} />
               <h3 className="font-title-sm text-title-sm font-bold text-on-surface">
                 {isVi ? "Ma trận Tri thức & Mức độ Phơi nhiễm Rủi ro theo Phòng ban" : "Cross-Department Knowledge Coverage & Risk Exposure Matrix"}
               </h3>
