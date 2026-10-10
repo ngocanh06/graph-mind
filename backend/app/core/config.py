@@ -64,7 +64,7 @@ class Settings(BaseSettings):
 
     # Self-Hosted LLM Inference (Ollama)
     INFERENCE_ENGINE_URL: str = "http://localhost:11434"
-    MODEL_NAME: str = "qwen2.5-7b"
+    MODEL_NAME: str = "qwen2.5-7b-graphmind"
 
 
 # Singleton instance — import và dùng ở mọi nơi

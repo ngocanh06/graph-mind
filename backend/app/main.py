@@ -55,8 +55,12 @@ except ImportError:
 
 try:
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
+    from app.modules.m3_hybrid_copilot.query_engine.context_fusion import reciprocal_rank_fusion
+    from app.modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
 except ImportError:
     from modules.m3_hybrid_copilot.inference.client import llm_client
+    from modules.m3_hybrid_copilot.query_engine.context_fusion import reciprocal_rank_fusion
+    from modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
 
 
 @asynccontextmanager
@@ -520,46 +524,45 @@ def knowledge_explorer_search(
 async def copilot_reasoning(req: CopilotQueryRequest):
     is_vi = req.lang == "vi"
     
-    # 1. Try live Qdrant search for query evidence
-    evidence_hits = qdrant_client.vector_search(query=req.query, limit=4)
+    # 1. Vector Retrieval: Qdrant Cosine search
+    vector_hits = qdrant_client.vector_search(query=req.query, limit=5)
+
+    # 2. Graph Retrieval: Text-to-Cypher on Neo4j
+    graph_hits = execute_text_to_cypher(req.query)
+    if not graph_hits:
+        clean_query = req.query.strip()
+        words = [w for w in clean_query.split() if len(w) >= 3]
+        for term in [clean_query] + words[:2]:
+            matches = neo4j_client.search_nodes(query=term, limit=4)
+            if matches:
+                graph_hits.extend(matches)
+                break
+
+    # 3. Fusion Ranking: Reciprocal Rank Fusion (RRF k=60)
+    fused_results = reciprocal_rank_fusion(vector_hits, graph_hits, k=60, top_n=6)
+    
     evidence_chips = []
-    for hit in evidence_hits:
-        c_name = hit.get("contract_name", "Document")
+    for item in fused_results:
         evidence_chips.append({
-            "id": hit.get("id"),
-            "label": f"{c_name[:24]}... (chunk #{hit.get('chunk_id')})",
-            "source": f"Qdrant Cosine: {hit.get('score')}"
+            "id": item["id"],
+            "label": item["label"][:36],
+            "source": f"RRF ({item['rrf_score']:.4f}) · {item['sources'][0][:28]}"
         })
 
     if not evidence_chips:
         evidence_chips = [
             {"id": "cuad-1", "label": "WPP PLC Service Agreement", "source": "Qdrant Vector DB"},
-            {"id": "cuad-2", "label": "Aspirity Holdings Agreement", "source": "Qdrant Vector DB"},
-            {"id": "neo-ord", "label": "SalesOrder #43659", "source": "Neo4j Graph DB"},
-            {"id": "neo-prod", "label": "Product Mountain Bikes", "source": "Neo4j Graph DB"}
+            {"id": "neo-ord", "label": "SalesOrder #43659", "source": "Neo4j Graph DB"}
         ]
 
-    # 2. Try live Neo4j entity search
-    graph_entities = []
-    clean_query = req.query.strip()
-    words = [w for w in clean_query.split() if len(w) >= 3]
-    search_terms = [clean_query] + words[:3]
-    seen_ids = set()
-    for term in search_terms:
-        matches = neo4j_client.search_nodes(query=term, limit=5)
-        for m in matches:
-            mid = m.get("_id")
-            if mid and mid not in seen_ids:
-                seen_ids.add(mid)
-                graph_entities.append(m)
-        if len(graph_entities) >= 10:
-            break
+    # 4. Context Synthesis for fine-tuned LLM
+    fused_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"]
+    fused_entities = [it["raw"] for it in fused_results if it["type"] == "graph"]
 
-    # 3. Call fine-tuned Qwen2.5-7B via Ollama
     gen_result = await llm_client.generate_rag_answer(
         query=req.query,
-        evidence_chunks=evidence_hits,
-        graph_entities=graph_entities,
+        evidence_chunks=fused_chunks or vector_hits,
+        graph_entities=fused_entities or graph_hits,
         lang=req.lang or "vi"
     )
 
@@ -578,7 +581,7 @@ async def copilot_reasoning(req: CopilotQueryRequest):
             "The system automatically associates contractual clauses in Qdrant with entity networks in Neo4j for high-confidence provenance and traceability."
         ),
         "evidenceChips": evidence_chips,
-        "confidenceScore": 96 if evidence_hits else 88,
+        "confidenceScore": 96 if fused_results else 88,
         "latency": f"{latency}s",
         "recommendedAction": (
             "Mở tab 'Knowledge Explorer' để xem toàn bộ đồ thị thực thể và các đoạn trích hợp đồng chi tiết."

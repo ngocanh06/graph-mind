@@ -22,3 +22,24 @@ venv/
 *.log
 mcp_config.json
 .agents/
+
+# Large LLM model files (keep local only)
+*.gguf
+*.bin
+*.safetensors
+Modelfile
+
+# Research raw/processed data (too large, not needed for running)
+research/data/raw/
+research/data/processed/
+research/data/synthetic_linking/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Frontend build artifacts
+frontend/dist/
+frontend/node_modules/
+
+# Root package-lock (empty/unused)
+/package-lock.json
