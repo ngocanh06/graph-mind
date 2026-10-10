@@ -99,8 +99,8 @@ export default function LandingPage({
                 height: "36px",
                 borderRadius: "10px",
                 objectFit: "contain",
-                boxShadow: "0 0 16px rgba(0,229,255,0.4)",
-                filter: "drop-shadow(0 0 6px rgba(0,229,255,0.3))",
+                boxShadow: "0 4px 14px rgba(44, 131, 115, 0.4), 0 0 1px rgba(255, 255, 255, 0.3)",
+                filter: "drop-shadow(0 2px 6px rgba(19, 62, 112, 0.3))",
                 display: "block"
               }}
             />
@@ -108,7 +108,7 @@ export default function LandingPage({
               <div style={{ fontSize: "16px", fontWeight: "800", letterSpacing: "-0.01em", color: "#ffffff", lineHeight: "1.15" }}>
                 GRAPH MIND
               </div>
-              <div style={{ fontSize: "9px", letterSpacing: "0.08em", color: "#00e5ff", textTransform: "uppercase", fontWeight: "700", marginTop: "3px" }}>
+              <div style={{ fontSize: "9px", letterSpacing: "0.08em", color: "#2dd4bf", textTransform: "uppercase", fontWeight: "700", marginTop: "3px" }}>
                 KNOWLEDGE OBSERVATORY
               </div>
             </div>
@@ -1153,7 +1153,7 @@ export default function LandingPage({
                   height: "30px",
                   borderRadius: "7px",
                   objectFit: "contain",
-                  boxShadow: "0 0 14px rgba(0, 229, 255, 0.45)",
+                  boxShadow: "0 2px 10px rgba(44, 131, 115, 0.35)",
                   flexShrink: 0
                 }}
               />

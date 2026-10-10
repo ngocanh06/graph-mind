@@ -984,8 +984,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
                 <div>
-                  <div style={{ fontSize: "11.5px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Icon name="fa-solid fa-building-circle-check" size={15} />
+                  <div style={{ fontSize: "11.5px", fontWeight: "800", color: "#133e70", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <img src="/logo-icon.svg" alt="GraphMind Logo" style={{ width: 18, height: 18, borderRadius: 4, objectFit: "contain" }} />
                     GRAPH MIND · KHỐI KINH DOANH & PHÁT TRIỂN DOANH NGHIỆP
                   </div>
                   <h2 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-1)", margin: "4px 0 2px 0", letterSpacing: "-0.01em" }}>

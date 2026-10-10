@@ -133,15 +133,15 @@ export default function LoginPage({
               height: "40px",
               borderRadius: "10px",
               objectFit: "contain",
-              boxShadow: "0 0 20px rgba(0,229,255,0.45)",
-              filter: "drop-shadow(0 0 6px rgba(0,229,255,0.3))"
+              boxShadow: "0 4px 16px rgba(44, 131, 115, 0.4), 0 0 1px rgba(255, 255, 255, 0.3)",
+              filter: "drop-shadow(0 2px 8px rgba(19, 62, 112, 0.3))"
             }}
           />
           <div>
             <div style={{ fontSize: "17px", fontWeight: "800", color: "#ffffff", letterSpacing: "-0.01em" }}>
               GRAPH MIND
             </div>
-            <div style={{ fontSize: "9px", letterSpacing: "0.12em", color: "#00e5ff", textTransform: "uppercase", fontWeight: "700" }}>
+            <div style={{ fontSize: "9px", letterSpacing: "0.12em", color: "#2dd4bf", textTransform: "uppercase", fontWeight: "700" }}>
               ENTERPRISE DECISION PLATFORM
             </div>
           </div>

@@ -94,15 +94,18 @@ export default function NavRail({
             title={isVi ? "Về trang chủ" : "Back to landing"}
           >
             {/* Brand mark */}
-            <div style={{
-              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-              background: "linear-gradient(135deg, #0F233D 0%, #1E3A5F 100%)",
-              border: "1px solid rgba(8,145,178,0.5)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 2px 6px rgba(8,145,178,0.2)",
-            }}>
-              <Activity size={15} color="#22d3ee" strokeWidth={2} />
-            </div>
+            <img
+              src="/logo-icon.svg"
+              alt="GraphMind Logo"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                flexShrink: 0,
+                objectFit: "contain",
+                boxShadow: "0 2px 8px rgba(19, 62, 112, 0.18)",
+              }}
+            />
             <div style={{ minWidth: 0, overflow: "hidden" }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em", fontFamily: "var(--f-display)", whiteSpace: "nowrap" }}>
                 GraphMind
@@ -118,16 +121,27 @@ export default function NavRail({
           <div
             onClick={onOpenLanding}
             style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: "linear-gradient(135deg, #0F233D 0%, #1E3A5F 100%)",
-              border: "1px solid rgba(8,145,178,0.4)",
-              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(8,145,178,0.2)",
             }}
             title="GraphMind"
           >
-            <Activity size={15} color="#22d3ee" strokeWidth={2} />
+            <img
+              src="/logo-icon.svg"
+              alt="GraphMind Logo"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                objectFit: "contain",
+                boxShadow: "0 2px 8px rgba(19, 62, 112, 0.18)",
+              }}
+            />
           </div>
         )}
 
