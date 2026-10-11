@@ -4,6 +4,7 @@ Connects to Neo4j using bolt protocol, queries live real data.
 """
 
 import os
+import re
 from typing import Any, Dict, List, Optional
 
 try:
@@ -97,7 +98,8 @@ class Neo4jClient:
             query = "MATCH (n) RETURN n, labels(n) as labels LIMIT $limit"
             params: Dict[str, Any] = {"limit": limit}
             if label:
-                query = f"MATCH (n:`{label}`) RETURN n, labels(n) as labels LIMIT $limit"
+                clean_label = re.sub(r"[^a-zA-Z0-9_]", "", label)
+                query = f"MATCH (n:`{clean_label}`) RETURN n, labels(n) as labels LIMIT $limit" if clean_label else query
 
             with self._driver.session() as session:
                 result = session.run(query, parameters=params)
@@ -126,7 +128,8 @@ class Neo4jClient:
         if not self._connected and not self.connect():
             return []
         try:
-            rel_clause = f"[r:`{rel_type}`]" if rel_type else "[r]"
+            clean_rel = re.sub(r"[^a-zA-Z0-9_]", "", rel_type) if rel_type else ""
+            rel_clause = f"[r:`{clean_rel}`]" if clean_rel else "[r]"
             cypher = f"""
                 MATCH (a)-{rel_clause}->(b)
                 RETURN 
