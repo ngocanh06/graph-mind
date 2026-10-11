@@ -43,15 +43,82 @@ export async function verifyEntityApi(entityId, verified, auditor = "Dieu Hoang 
   return null;
 }
 
-export async function queryCopilot(query, lang = "en") {
+export function getAuthHeaders(currentUser = null) {
+  const headers = { "Content-Type": "application/json" };
+  const token = localStorage.getItem("aegis_token");
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (currentUser) {
+    if (currentUser.email) headers["X-User-Email"] = currentUser.email;
+    if (currentUser.username) headers["X-User-Name"] = currentUser.username;
+    if (currentUser.id) headers["X-User-Id"] = currentUser.id;
+  }
+  return headers;
+}
+
+export async function fetchCopilotSessions(currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/copilot/sessions`, {
+      headers: getAuthHeaders(currentUser)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Copilot] fetchCopilotSessions failed:", e);
+  }
+  return null;
+}
+
+export async function createCopilotSession(title = "Cuộc hội thoại mới", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/copilot/sessions`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({ title })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Copilot] createCopilotSession failed:", e);
+  }
+  return null;
+}
+
+export async function fetchCopilotSessionDetail(sessionId, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/copilot/sessions/${encodeURIComponent(sessionId)}`, {
+      headers: getAuthHeaders(currentUser)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Copilot] fetchCopilotSessionDetail failed:", e);
+  }
+  return null;
+}
+
+export async function deleteCopilotSession(sessionId, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/copilot/sessions/${encodeURIComponent(sessionId)}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(currentUser)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Copilot] deleteCopilotSession failed:", e);
+  }
+  return null;
+}
+
+export async function queryCopilot(query, lang = "vi", sessionId = null, currentUser = null) {
   try {
     const res = await fetch(`${API_BASE}/copilot/ask`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, lang })
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({ query, lang, session_id: sessionId })
     });
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[Copilot] queryCopilot failed:", e);
+  }
   return null;
 }
 

@@ -50,8 +50,10 @@ except ImportError:
 
 try:
     from app.api.v1.auth import router as auth_router
+    from app.api.v1.copilot import router as copilot_router
 except ImportError:
     from api.v1.auth import router as auth_router
+    from api.v1.copilot import router as copilot_router
 
 try:
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
@@ -68,10 +70,10 @@ async def lifespan(app: FastAPI):
     """Startup: verify connections to PostgreSQL, Neo4j, Qdrant, and Ollama LLM."""
     # 1. PostgreSQL
     try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
-        logger.info("[OK] PostgreSQL connected successfully")
-        print("[OK] PostgreSQL connected successfully")
+        from app.db.postgres.database import create_all_tables
+        await create_all_tables()
+        logger.info("[OK] PostgreSQL connected & tables verified")
+        print("[OK] PostgreSQL connected & tables verified")
     except Exception as e:
         logger.warning(f"[WARN] PostgreSQL not available: {e}")
         print(f"[WARN] PostgreSQL not available: {e}")
@@ -134,6 +136,10 @@ app.add_middleware(
 # Authentication routers (/api/v1/auth and /api/auth)
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+
+# Copilot routers (/api/copilot and /api/v1/copilot)
+app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])
+app.include_router(copilot_router, prefix="/api/v1/copilot", tags=["copilot"])
 
 
 # --- Pydantic Schemas ---
@@ -517,86 +523,9 @@ def knowledge_explorer_search(
 
 
 # ============================================================================
-# COPILOT REASONING (WITH REAL EVIDENCE LOOKUP)
+# COPILOT REASONING ROUTER (Handled in app.api.v1.copilot with PostgreSQL persistence)
 # ============================================================================
 
-@app.post("/api/copilot/ask")
-async def copilot_reasoning(req: CopilotQueryRequest):
-    is_vi = req.lang == "vi"
-    
-    # 1. Vector Retrieval: Qdrant Cosine search
-    vector_hits = qdrant_client.vector_search(query=req.query, limit=5)
-
-    # 2. Graph Retrieval: Text-to-Cypher on Neo4j
-    graph_hits = execute_text_to_cypher(req.query)
-    if not graph_hits:
-        clean_query = req.query.strip()
-        words = [w for w in clean_query.split() if len(w) >= 3]
-        for term in [clean_query] + words[:2]:
-            matches = neo4j_client.search_nodes(query=term, limit=4)
-            if matches:
-                graph_hits.extend(matches)
-                break
-
-    # 3. Fusion Ranking: Reciprocal Rank Fusion (RRF k=60)
-    fused_results = reciprocal_rank_fusion(vector_hits, graph_hits, k=60, top_n=6)
-    
-    evidence_chips = []
-    for item in fused_results:
-        evidence_chips.append({
-            "id": item["id"],
-            "label": item["label"][:36],
-            "source": f"RRF ({item['rrf_score']:.4f}) · {item['sources'][0][:28]}"
-        })
-
-    if not evidence_chips:
-        evidence_chips = [
-            {"id": "cuad-1", "label": "WPP PLC Service Agreement", "source": "Qdrant Vector DB"},
-            {"id": "neo-ord", "label": "SalesOrder #43659", "source": "Neo4j Graph DB"}
-        ]
-
-    # 4. Context Synthesis for fine-tuned LLM
-    fused_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"]
-    fused_entities = [it["raw"] for it in fused_results if it["type"] == "graph"]
-
-    gen_result = await llm_client.generate_rag_answer(
-        query=req.query,
-        evidence_chunks=fused_chunks or vector_hits,
-        graph_entities=fused_entities or graph_hits,
-        lang=req.lang or "vi"
-    )
-
-    answer_text = gen_result.get("answer") or ""
-    latency = gen_result.get("latency", 1.2)
-    model_display = gen_result.get("model", f"{llm_client.model} (Ollama Local)")
-
-    response_data = {
-        "query": req.query,
-        "answer": answer_text,
-        "model": model_display,
-        "insight": answer_text,
-        "whyItMatters": (
-            "Hệ thống tự động liên kết tài liệu thỏa thuận hợp đồng trong Qdrant với mạng lưới thực thể quan hệ trong Neo4j để đảm bảo độ tin cậy và truy vết chính xác."
-            if is_vi else
-            "The system automatically associates contractual clauses in Qdrant with entity networks in Neo4j for high-confidence provenance and traceability."
-        ),
-        "evidenceChips": evidence_chips,
-        "confidenceScore": 96 if fused_results else 88,
-        "latency": f"{latency}s",
-        "recommendedAction": (
-            "Mở tab 'Knowledge Explorer' để xem toàn bộ đồ thị thực thể và các đoạn trích hợp đồng chi tiết."
-            if is_vi else
-            "Open the 'Knowledge Explorer' tab to view full entity graph and detailed contract excerpts."
-        )
-    }
-    return {
-        "success": True,
-        "answer": answer_text,
-        "text": answer_text,
-        "model": model_display,
-        "latency": latency,
-        "data": response_data
-    }
 
 
 # ============================================================================

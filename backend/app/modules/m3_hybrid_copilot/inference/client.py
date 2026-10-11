@@ -101,7 +101,7 @@ class OllamaClient:
         # 4. Gửi request sang Ollama
         start_time = time.time()
         try:
-            async with httpx.AsyncClient(timeout=90.0) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=3.0)) as client:
                 res = await client.post(
                     f"{self.base_url}/api/chat",
                     json={

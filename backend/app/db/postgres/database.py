@@ -57,7 +57,7 @@ async def get_db() -> AsyncSession:
 async def create_all_tables():
     """Tạo tất cả tables từ ORM models. Chỉ dùng trong dev/test."""
     # Import models để Base.metadata nhận diện được
-    from app.db.postgres.models import user  # noqa: F401
+    from app.db.postgres.models import user, copilot_session  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
