@@ -15,8 +15,8 @@ export default function KnowledgeView({
 }) {
   const isVi = lang === "vi";
 
-  // Sub-tab navigation: "canvas" | "queue"
-  const [activeTab, setActiveTab] = useState("canvas");
+  // Sub-tab navigation: "neo4j_live" | "canvas" | "queue"
+  const [activeTab, setActiveTab] = useState("neo4j_live");
 
   // Filter chips selection
   const [selectedEntityFilter, setSelectedEntityFilter] = useState("ALL");

@@ -172,6 +172,107 @@ class Neo4jClient:
             print(f"[Neo4j] get_all_relationships error: {e}")
             return []
 
+    def get_connected_nodes(self, limit: int = 60, label: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch nodes from Neo4j, prioritizing connected hierarchy so products link to subcategories."""
+        if not self._connected and not self.connect():
+            return []
+        try:
+            if label and label != "ALL":
+                return self.get_all_nodes(limit=limit, label=label)
+            
+            # Hierarchical traversal: Category -> SubCategory -> Product (plus other entities)
+            cypher = """
+                MATCH (c:Category)<-[:PART_OF]-(s:SubCategory)
+                OPTIONAL MATCH (s)<-[:BELONGS_TO]-(p:Product)
+                WITH c, s, collect(p)[0..2] as prods
+                UNWIND ([c, s] + prods) as n
+                WITH DISTINCT n
+                RETURN n, labels(n) as labels
+                LIMIT $limit
+            """
+            with self._driver.session() as session:
+                result = session.run(cypher, limit=limit)
+                nodes = []
+                for record in result:
+                    raw_props = dict(record["n"])
+                    props = {k: _clean_val(v) for k, v in raw_props.items()}
+                    labels = record["labels"] or []
+                    elem_id = record["n"].element_id
+                    display_name = _extract_display_name(props, labels, elem_id)
+                    nodes.append({
+                        "_id": elem_id,
+                        "_labels": labels,
+                        "name": display_name,
+                        **props
+                    })
+                # If less than limit, fill up with other connected nodes
+                if len(nodes) < limit:
+                    extra = self.get_all_nodes(limit=limit)
+                    seen = {n["_id"] for n in nodes}
+                    for en in extra:
+                        if en["_id"] not in seen and len(nodes) < limit:
+                            nodes.append(en)
+                            seen.add(en["_id"])
+                return nodes
+        except Exception as e:
+            print(f"[Neo4j] get_connected_nodes error: {e}")
+            return self.get_all_nodes(limit=limit, label=label)
+
+    def get_relationships_for_nodes(self, node_ids: List[str], limit: int = 300) -> List[Dict[str, Any]]:
+        """Fetch relationships between the provided node IDs."""
+        if not self._connected and not self.connect() or not node_ids:
+            return []
+        try:
+            cypher = """
+                MATCH (a)-[r]->(b)
+                WHERE elementId(a) IN $node_ids AND elementId(b) IN $node_ids
+                RETURN 
+                    properties(a) AS a_props, labels(a) AS a_labels, elementId(a) AS a_id,
+                    type(r) AS rel_type, properties(r) AS rel_props,
+                    properties(b) AS b_props, labels(b) AS b_labels, elementId(b) AS b_id
+                LIMIT $limit
+            """
+            with self._driver.session() as session:
+                result = session.run(cypher, node_ids=node_ids, limit=limit)
+                rels = []
+                for record in result:
+                    a_props = {k: _clean_val(v) for k, v in dict(record["a_props"] or {}).items()}
+                    a_labels = record["a_labels"] or []
+                    a_id = record["a_id"]
+                    a_name = _extract_display_name(a_props, a_labels, a_id)
+
+                    b_props = {k: _clean_val(v) for k, v in dict(record["b_props"] or {}).items()}
+                    b_labels = record["b_labels"] or []
+                    b_id = record["b_id"]
+                    b_name = _extract_display_name(b_props, b_labels, b_id)
+
+                    r_props = {k: _clean_val(v) for k, v in dict(record["rel_props"] or {}).items()}
+
+                    rels.append({
+                        "source": {
+                            "id": a_id,
+                            "name": a_name,
+                            "labels": a_labels,
+                            "properties": a_props
+                        },
+                        "rel_type": record["rel_type"],
+                        "rel_props": r_props,
+                        "target": {
+                            "id": b_id,
+                            "name": b_name,
+                            "labels": b_labels,
+                            "properties": b_props
+                        }
+                    })
+                # If few relationships found between the exact set, supplement with general rels
+                if len(rels) < 10:
+                    general_rels = self.get_all_relationships(limit=limit)
+                    return general_rels
+                return rels
+        except Exception as e:
+            print(f"[Neo4j] get_relationships_for_nodes error: {e}")
+            return self.get_all_relationships(limit=limit)
+
     def get_node_by_id(self, node_id: str) -> Optional[Dict[str, Any]]:
         """Fetch single node and its immediate neighbors."""
         if not self._connected and not self.connect():

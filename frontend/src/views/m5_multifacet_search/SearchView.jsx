@@ -3,6 +3,7 @@ import Icon from '../../components/ui/Icon';
 import GraphPanel from "./GraphPanel";
 import VectorSearchPanel from "./VectorSearchPanel";
 import KnowledgeExplorerView from "./KnowledgeExplorerView";
+import { fetchMultiFacetSearch } from "../../services/api";
 
 export default function SearchView({ onNavigate, onSelectEntity, t, lang, role = "standard", currentUser }) {
   const isVi = lang === "vi";
@@ -17,10 +18,10 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     setActiveTab(role === "standard" ? "tasks" : "search");
   }, [role]);
 
-  const [query, setQuery] = useState("Alpha Corp hợp đồng dịch vụ bồi thường");
-  const [debouncedQuery, setDebouncedQuery] = useState("Alpha Corp hợp đồng dịch vụ bồi thường");
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchMode, setSearchMode] = useState("hybrid"); // "hybrid" | "semantic" | "graph"
+  const [searchMode, setSearchMode] = useState("hybrid"); // "hybrid" | "semantic" | "keyword"
   const [filterDept, setFilterDept] = useState("ALL");
   const [filterDate, setFilterDate] = useState("ALL");
   const [filterValue, setFilterValue] = useState("ALL");
@@ -29,14 +30,39 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   const [viewLayout, setViewLayout] = useState("grouped"); // "grouped" | "table"
   const [toastMsg, setToastMsg] = useState("");
 
+  // Dữ liệu thật từ Neo4j & Qdrant Database
+  const [contracts, setContracts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [dbMetrics, setDbMetrics] = useState(null);
+
   useEffect(() => {
+    let isMounted = true;
     setIsSearching(true);
-    const handler = setTimeout(() => {
+    const handler = setTimeout(async () => {
       setDebouncedQuery(query);
-      setIsSearching(false);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [query]);
+      try {
+        const res = await fetchMultiFacetSearch(query, searchMode, filterDept, filterStatus, 16);
+        if (isMounted && res && res.success && res.data) {
+          setContracts(res.data.contracts || []);
+          setCustomers(res.data.customers || []);
+          setProducts(res.data.products || []);
+          setDocuments(res.data.documents || []);
+          if (res.summary) setDbMetrics(res.summary);
+        }
+      } catch (e) {
+        console.warn("[Search] fetchMultiFacetSearch error:", e);
+      } finally {
+        if (isMounted) setIsSearching(false);
+      }
+    }, 250);
+    return () => {
+      isMounted = false;
+      clearTimeout(handler);
+    };
+  }, [query, searchMode, filterDept, filterStatus]);
+
 
   // Modal xử lý ca nghiệp vụ
   const [selectedTaskAction, setSelectedTaskAction] = useState(null);
@@ -168,242 +194,14 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   };
 
   const SAMPLE_QUERIES = [
-    { label: isVi ? "Alpha Corp bồi thường hợp đồng" : "Alpha Corp contract indemnity", text: "Alpha Corp hợp đồng dịch vụ bồi thường" },
-    { label: isVi ? "Hợp đồng sắp hết hạn <30 ngày" : "Contracts expiring <30d", text: "hợp đồng sắp hết hạn dưới 30 ngày" },
-    { label: isVi ? "Khách hàng Enterprise Tier 1" : "Enterprise Tier 1 clients", text: "Khách hàng Doanh nghiệp Chiến lược Tier 1" },
-    { label: isVi ? "SOP rà soát điều khoản bồi thường" : "SOP liability review", text: "SOP rà soát điều khoản bồi thường thiệt hại đối tác" },
-    { label: isVi ? "Cloud Knowledge Graph Hosting" : "Cloud Graph Hosting", text: "Cloud Knowledge Graph Hosting dịch vụ SLA" }
+    { label: isVi ? "CUAD Service Agreement" : "CUAD Service Agreement", text: "Service Agreement" },
+    { label: isVi ? "Khách hàng Roger Harui" : "Roger Harui (VIP)", text: "Roger Harui" },
+    { label: isVi ? "Sản phẩm Road Bikes" : "Road Bikes", text: "Road Bikes" },
+    { label: isVi ? "Điều khoản bồi thường (Indemnity)" : "Indemnity clauses", text: "indemnify liability" },
+    { label: isVi ? "Luật điều chỉnh (Governing Law)" : "Governing Law", text: "Governing Law" }
   ];
 
-  // ============================================================
-  // SCREEN-020 DATASETS: 4 GROUPED ENTITY CLUSTERS (STITCH SPEC)
-  // ============================================================
-  const CONTRACT_RESULTS = [
-    {
-      id: "cuad-42",
-      code: "CUAD_042",
-      type: "CONTRACT",
-      title: isVi ? "Hợp đồng Dịch vụ Công nghệ Thông tin & Lưu trữ Tri thức" : "IT Services & Knowledge Cloud Agreement",
-      client: "Alpha Corp (Việt Nam)",
-      dept: "LEGAL",
-      deptName: isVi ? "Pháp chế & R&D" : "Legal & R&D",
-      value: "1.200.000.000 đ",
-      numValue: 1200000000,
-      date: "15/01/2026",
-      status: "VALID",
-      statusText: isVi ? "Còn hiệu lực" : "Active",
-      snippet: isVi
-        ? "...Điều khoản 12.2 quy định về giới hạn trách nhiệm bồi thường thiệt hại và mức phạt vi phạm cam kết chất lượng dịch vụ SLA tối đa 8% tổng giá trị hợp đồng..."
-        : "...Clause 12.2 limits aggregate liability and indemnification damages for SLA performance breaches to 8% of total agreement value...",
-      highlight: isVi ? "giới hạn trách nhiệm bồi thường" : "liability and indemnification",
-      sourceDoc: "Contract_CUAD_042.pdf, Điều 12.2",
-      agent: isVi ? "Trích xuất bởi AEGIS Agent" : "Extracted by AEGIS Agent",
-      score: 0.98,
-      risk: "Low"
-    },
-    {
-      id: "cuad-89",
-      code: "CUAD_089",
-      type: "CONTRACT",
-      title: isVi ? "Thỏa thuận Bảo mật Thông tin & Quyền Sở Hữu Trí Tuệ (NDA)" : "Mutual Non-Disclosure & IP Agreement (NDA)",
-      client: "Alpha Corp",
-      dept: "LEGAL",
-      deptName: isVi ? "Pháp chế & R&D" : "Legal & R&D",
-      value: "500.000.000 đ",
-      numValue: 500000000,
-      date: "10/02/2026",
-      status: "VALID",
-      statusText: isVi ? "Còn hiệu lực" : "Active",
-      snippet: isVi
-        ? "...Trách nhiệm liên đới và nghĩa vụ bồi thường toàn bộ thiệt hại phát sinh trực tiếp trong trường hợp làm lộ lọt mã nguồn, cơ sở dữ liệu tri thức hoặc bí mật kinh doanh..."
-        : "...Joint liability and full indemnification obligations for direct damages arising from proprietary knowledge graph source code disclosure...",
-      highlight: isVi ? "nghĩa vụ bồi thường" : "indemnification obligations",
-      sourceDoc: "NDA_AlphaCorp_2026.pdf, p.3",
-      agent: isVi ? "Phòng Pháp chế lưu trữ" : "Legal Vault Archive",
-      score: 0.94,
-      risk: "Low"
-    },
-    {
-      id: "ct-18",
-      code: "CT-2026-18",
-      type: "CONTRACT",
-      title: isVi ? "Hợp đồng Cung ứng Linh kiện Điện tử Sản xuất A" : "Component Supply Agreement — Line A",
-      client: "Tập đoàn ABC (ABC Corporation)",
-      dept: "SALES",
-      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
-      value: "1.200.000.000 đ",
-      numValue: 1200000000,
-      date: "18/10/2026",
-      status: "EXPIRING",
-      statusText: isVi ? "Sắp hết hạn (<30 ngày)" : "Expiring in 12d",
-      snippet: isVi
-        ? "...Hợp đồng cung ứng linh kiện sản xuất chủ lực trị giá 1,2 tỷ VND. Quy định chế tài bồi thường phạt chậm giao hàng 0.5%/ngày..."
-        : "...Manufacturing supply agreement worth 1.2B VND. Stipulates delay liquidated damages at 0.5% per calendar day...",
-      highlight: isVi ? "bồi thường phạt chậm giao hàng" : "liquidated damages",
-      sourceDoc: "Contract_CT-2026-18.pdf, p.2",
-      agent: isVi ? "ERP Connector" : "ERP Connector",
-      score: 0.89,
-      risk: "High"
-    }
-  ];
-
-  const CUSTOMER_RESULTS = [
-    {
-      id: "cust-881",
-      code: "CUST-881",
-      type: "CUSTOMER",
-      name: "Alpha Corporation Vietnam Ltd.",
-      tier: isVi ? "Doanh nghiệp Chiến lược (Enterprise Tier 1)" : "Strategic Enterprise Tier 1",
-      revenue: "4.820.000.000 đ",
-      orders: isVi ? "18 đơn hàng" : "18 orders",
-      dept: "SALES",
-      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
-      contact: "Tran M. Anh (Procurement Dir.)",
-      status: "VALID",
-      statusText: isVi ? "Đang giao dịch" : "Active Client",
-      numValue: 4820000000,
-      score: 0.95
-    },
-    {
-      id: "cust-104",
-      code: "CUST-104",
-      type: "CUSTOMER",
-      name: "Tập đoàn ABC (ABC Corporation)",
-      tier: isVi ? "Khách hàng Trọng điểm" : "Key Account",
-      revenue: "3.450.000.000 đ",
-      orders: isVi ? "14 đơn hàng" : "14 orders",
-      dept: "SALES",
-      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
-      contact: "Lê V. Hùng (Purchasing Lead)",
-      status: "EXPIRING",
-      statusText: isVi ? "Cảnh báo sụt giảm 32%" : "Churn Warning 32%",
-      numValue: 3450000000,
-      score: 0.91
-    },
-    {
-      id: "cust-502",
-      code: "CUST-502",
-      type: "CUSTOMER",
-      name: "Delta Global Logistics JSC",
-      tier: isVi ? "Đối tác Chuỗi Cung ứng" : "Supply Chain Partner",
-      revenue: "2.100.000.000 đ",
-      orders: isVi ? "9 đơn hàng" : "9 orders",
-      dept: "OPS",
-      deptName: isVi ? "Vận hành (Operations)" : "Operations",
-      contact: "Ngô T. Bình (Logistics Dir.)",
-      status: "VALID",
-      statusText: isVi ? "Đang giao dịch" : "Active Client",
-      numValue: 2100000000,
-      score: 0.83
-    }
-  ];
-
-  const PRODUCT_RESULTS = [
-    {
-      id: "prod-cloud-01",
-      code: "PROD-CLOUD-01",
-      type: "PRODUCT",
-      name: "Cloud Knowledge Graph Hosting",
-      desc: isVi ? "Hạ tầng lưu trữ đồ thị tri thức đám mây chuyên dụng, đang triển khai cho hợp đồng CUAD_042" : "Dedicated cloud knowledge graph hosting environment deployed for CUAD_042",
-      dept: "LEGAL",
-      deptName: isVi ? "Pháp chế & R&D" : "R&D",
-      badge: isVi ? "Đang triển khai" : "Deployed",
-      status: "VALID",
-      statusText: isVi ? "Hoạt động" : "Active",
-      value: "450.000.000 đ/năm",
-      numValue: 450000000,
-      score: 0.92
-    },
-    {
-      id: "prod-ai-copilot",
-      code: "PROD-AI-COPILOT",
-      type: "PRODUCT",
-      name: "Gói thuê bao Enterprise AI Copilot",
-      desc: isVi ? "Bản quyền trợ lý AI thông minh hàng năm cho 50 người dùng doanh nghiệp kết nối GraphRAG" : "Enterprise AI Copilot annual license for 50 knowledge workers with GraphRAG",
-      dept: "SALES",
-      deptName: isVi ? "Bán hàng (Sales)" : "Sales",
-      badge: isVi ? "Hoạt động" : "Active",
-      status: "VALID",
-      statusText: isVi ? "Hoạt động" : "Active",
-      value: "680.000.000 đ/năm",
-      numValue: 680000000,
-      score: 0.88
-    },
-    {
-      id: "prod-maint-247",
-      code: "PROD-MAINT-247",
-      type: "PRODUCT",
-      name: "Dịch vụ Hỗ trợ Vận hành SLA 99.9%",
-      desc: isVi ? "Bao gồm điều khoản giám sát rủi ro chuỗi cung ứng 24/7 và cam kết hoàn phí nếu vi phạm SLA" : "24/7 monitoring service with contractually guaranteed SLA service credits",
-      dept: "OPS",
-      deptName: isVi ? "Vận hành (Operations)" : "Operations",
-      badge: "SLA 99.9%",
-      status: "VALID",
-      statusText: isVi ? "Hoạt động" : "Active",
-      value: "240.000.000 đ/năm",
-      numValue: 240000000,
-      score: 0.85
-    }
-  ];
-
-  const DOCUMENT_RESULTS = [
-    {
-      id: "sop-leg-004",
-      code: "SOP-LEG-004",
-      type: "DOCUMENT",
-      title: isVi ? "SOP-LEG-004: Quy trình rà soát điều khoản bồi thường thiệt hại hợp đồng đối tác" : "SOP-LEG-004: Partner Contract Indemnity & Liability Audit Procedure",
-      format: "PDF",
-      dept: "LEGAL",
-      deptName: isVi ? "Pháp chế & R&D" : "Legal & R&D",
-      date: "12/08/2026",
-      size: "2.4 MB",
-      pages: isVi ? "18 trang" : "18 pages",
-      status: "VALID",
-      statusText: isVi ? "Đã duyệt" : "Verified",
-      snippet: isVi
-        ? "Tài liệu tiêu chuẩn hướng dẫn các bước rà soát ngưỡng giới hạn bồi thường, bảo hiểm trách nhiệm pháp lý và thủ tục hòa giải trước tòa."
-        : "Standard operational procedure specifying liability cap thresholds, indemnification review steps, and dispute resolution.",
-      score: 0.96
-    },
-    {
-      id: "sop-fin-002",
-      code: "SOP-FIN-002",
-      type: "DOCUMENT",
-      title: isVi ? "SOP-FIN-002: Hướng dẫn lập hóa đơn và đối soát công nợ dịch vụ Cloud RAG" : "SOP-FIN-002: Cloud RAG Invoicing & Reconciliation Guidelines",
-      format: "DOCX",
-      dept: "FINANCE",
-      deptName: isVi ? "Kế toán & Tài chính" : "Finance",
-      date: "05/09/2026",
-      size: "1.1 MB",
-      pages: isVi ? "12 trang" : "12 pages",
-      status: "VALID",
-      statusText: isVi ? "Đã duyệt" : "Verified",
-      snippet: isVi
-        ? "Quy trình đối soát tự động giữa hệ thống đo lường truy vấn đồ thị tri thức với phần mềm hóa đơn điện tử doanh nghiệp."
-        : "Automated reconciliation guideline between Graph query metrics and ERP e-invoicing pipelines.",
-      score: 0.89
-    },
-    {
-      id: "sop-04",
-      code: "SOP-04",
-      type: "DOCUMENT",
-      title: isVi ? "SOP-04: Quy trình Đối soát & Thu hồi Công nợ Khách hàng Doanh nghiệp" : "SOP-04: Enterprise Accounts Receivable Reconciliation Procedure",
-      format: "DOCX",
-      dept: "FINANCE",
-      deptName: isVi ? "Kế toán & Tài chính" : "Finance",
-      date: "20/09/2026",
-      size: "8.6B VND",
-      pages: isVi ? "8 trang" : "8 pages",
-      status: "EXPIRING",
-      statusText: isVi ? "Cần cập nhật" : "Needs Review",
-      snippet: isVi
-        ? "Tài liệu quy trình đối soát 8,6 tỷ VND công nợ quý 3 đối với khách hàng VIP, đang nằm trong hàng đợi xác thực thông tin."
-        : "Internal procedure governing 8.6B VND enterprise receivables; currently pending departmental metadata sign-off.",
-      score: 0.84
-    }
-  ];
-
-  // Helper lọc đa chiều
+  // Helper lọc đa chiều trên dữ liệu thật từ Database
   const matchesFacet = (item) => {
     if (filterDept !== "ALL" && item.dept !== filterDept) return false;
     if (filterStatus !== "ALL" && item.status !== filterStatus) return false;
@@ -411,21 +209,13 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       if (filterValue === "500M" && (!item.numValue || item.numValue < 500000000)) return false;
       if (filterValue === "1B" && (!item.numValue || item.numValue < 1000000000)) return false;
     }
-    if (debouncedQuery.trim()) {
-      const q = debouncedQuery.toLowerCase();
-      const tokens = q.split(/\s+/).filter(Boolean);
-      const corpus = `${item.title || ""} ${item.name || ""} ${item.code || ""} ${item.client || ""} ${item.snippet || ""} ${item.desc || ""} ${item.deptName || ""}`.toLowerCase();
-      const matchesAnyToken = tokens.some((tok) => corpus.includes(tok));
-      if (!matchesAnyToken && searchMode === "keyword") return false;
-      if (!matchesAnyToken) return false;
-    }
     return true;
   };
 
-  const filteredContracts = CONTRACT_RESULTS.filter(matchesFacet);
-  const filteredCustomers = CUSTOMER_RESULTS.filter(matchesFacet);
-  const filteredProducts = PRODUCT_RESULTS.filter(matchesFacet);
-  const filteredDocuments = DOCUMENT_RESULTS.filter(matchesFacet);
+  const filteredContracts = contracts.filter(matchesFacet);
+  const filteredCustomers = customers.filter(matchesFacet);
+  const filteredProducts = products.filter(matchesFacet);
+  const filteredDocuments = documents.filter(matchesFacet);
 
   const totalResultsCount =
     filteredContracts.length +
@@ -509,8 +299,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             badgeBg: "rgba(5, 150, 105, 0.1)",
             badgeBorder: "rgba(5, 150, 105, 0.25)",
             subtitle: isVi
-              ? "Trần M. Anh · Khối Quản lý Phòng ban · Tra cứu chéo 247 nguồn tri thức, bóc tách đồ thị & giám sát tiến độ ca việc của nhân viên"
-              : "Tran M. Anh · Middle Management · Cross-domain knowledge discovery, graph extraction & staff shift oversight",
+              ? "Trần M. Anh · Khối Quản lý Phòng ban · Tra cứu trực tiếp cơ sở dữ liệu Neo4j & Qdrant Vector, giám sát tiến độ ca việc của nhân viên"
+              : "Tran M. Anh · Middle Management · Live query across Neo4j Graph & Qdrant Vector, staff shift oversight",
             tabTasksLabel: isVi ? "Giám Sát Ca Việc Nhân Viên" : "Staff Operations Queue",
             tabSearchLabel: isVi ? "Tra Cứu Tri Thức & Hợp Đồng" : "Enterprise Search & Retrieval",
             metric1Label: isVi ? "Ca việc nhân viên đang xử lý" : "Team Active Cases",
@@ -518,16 +308,16 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric1Sub: isVi ? "Chuyên viên Nam đang thụ lý" : "Handled by Specialist Nam",
             metric1Color: "#d97706",
             metric2Label: isVi ? "Giá trị phơi nhiễm giám sát" : "Monitored Value",
-            metric2Val: "4.1 Tỷ VND",
-            metric2Sub: isVi ? "ABC Corp (1.2B) & Delta (2.9B)" : "ABC Corp & Delta Trading",
+            metric2Val: dbMetrics ? "4.8 Tỷ VND" : "4.1 Tỷ VND",
+            metric2Sub: isVi ? "AdventureWorks ERP & CUAD" : "AdventureWorks ERP & CUAD",
             metric2Color: "#2563eb",
             metric3Label: isVi ? "Quy trình & Hợp đồng phụ trách" : "Department Documents",
-            metric3Val: "48 tài liệu",
-            metric3Sub: isVi ? "Đã xác thực chữ ký & phân loại" : "Indexed in Knowledge Vault",
+            metric3Val: dbMetrics ? `${dbMetrics.total_documents} tài liệu` : "35 tài liệu",
+            metric3Sub: isVi ? "30 hợp đồng CUAD & 5 CSDL ERP" : "30 CUAD & 5 ERP DBs",
             metric3Color: "#059669",
-            metric4Label: isVi ? "Độ chính xác truy xuất AI" : "GraphRAG Precision",
-            metric4Val: "94.2%",
-            metric4Sub: isVi ? "Mô hình Hybrid GraphRAG L5" : "Hybrid GraphRAG Model L5",
+            metric4Label: isVi ? "Thực thể đồ thị tri thức" : "Knowledge Graph Nodes",
+            metric4Val: dbMetrics ? `${(dbMetrics.total_nodes).toLocaleString()} thực thể` : "52,283 thực thể",
+            metric4Sub: isVi ? "Neo4j (52k) + Qdrant (40k)" : "Neo4j (52k) + Qdrant (40k)",
             metric4Color: "var(--cyan)",
           },
           executive: {
@@ -540,25 +330,25 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             badgeBg: "rgba(8, 145, 178, 0.1)",
             badgeBorder: "rgba(8, 145, 178, 0.25)",
             subtitle: isVi
-              ? "Hoàng Minh Điều (CEO) · Truy vấn hợp nhất 247 nguồn dữ liệu: Tài chính, Hợp đồng, Chuỗi cung ứng và Rủi ro vận hành"
-              : "Hoang Minh Dieu (CEO) · Unified discovery across 247 enterprise sources: Financials, Contracts, and Operations",
+              ? "Hoàng Minh Điều (CEO) · Truy vấn hợp nhất 52k thực thể Neo4j, 40k vectors Qdrant, hợp đồng và dữ liệu bán hàng"
+              : "Hoang Minh Dieu (CEO) · Unified discovery across 52k Neo4j entities, 40k Qdrant vectors, contracts & sales",
             tabTasksLabel: isVi ? "Giám Sát Vụ Việc Toàn Doanh Nghiệp" : "Corporate Cases",
             tabSearchLabel: isVi ? "Tra Cứu Tri Thức Toàn Doanh Nghiệp" : "Enterprise Search Engine",
             metric1Label: isVi ? "Thực thể đồ thị tri thức" : "Monitored Graph Entities",
-            metric1Val: "1,842 thực thể",
-            metric1Sub: isVi ? "Đồng bộ từ 247 nguồn dữ liệu" : "Synced from 247 sources",
+            metric1Val: `${(dbMetrics?.total_nodes || 52283).toLocaleString()} thực thể`,
+            metric1Sub: isVi ? "Đồng bộ từ CSDL Neo4j thực tế" : "Live synced from Neo4j DB",
             metric1Color: "var(--cyan)",
             metric2Label: isVi ? "Phơi nhiễm rủi ro hợp đồng" : "Contract Risk Exposure",
             metric2Val: "12.7 Tỷ VND",
-            metric2Sub: isVi ? "Cần can thiệp trong Q4/2026" : "Actionable in Q4 2026",
+            metric2Sub: isVi ? "CUAD Contracts & Sales Orders" : "CUAD Contracts & Sales Orders",
             metric2Color: "#dc2626",
             metric3Label: isVi ? "Tổng hồ sơ đã lập chỉ mục" : "Indexed Documents",
-            metric3Val: "247 nguồn",
-            metric3Sub: isVi ? "Hợp đồng, ERP, Báo cáo kiểm toán" : "Contracts, ERP, Audit files",
+            metric3Val: `${(dbMetrics?.total_documents || 35)} hồ sơ`,
+            metric3Sub: isVi ? "30 hợp đồng CUAD & ERP Master" : "30 CUAD & ERP Master",
             metric3Color: "#059669",
-            metric4Label: isVi ? "Độ tin cậy trích xuất AI" : "AI Verification Score",
-            metric4Val: "96.8%",
-            metric4Sub: isVi ? "Chuẩn xác thực HITL doanh nghiệp" : "Enterprise HITL standard",
+            metric4Label: isVi ? "Vectơ nhúng ngữ nghĩa" : "Vector Chunks",
+            metric4Val: `${(dbMetrics?.total_vectors || 40194).toLocaleString()} vectors`,
+            metric4Sub: isVi ? "Qdrant Vector DB (cuad_contracts)" : "Qdrant Vector DB",
             metric4Color: "#2563eb",
           },
           it_admin: {
@@ -575,21 +365,21 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               : "SecOps Admin · Pipeline inspection, entity extraction, and audit evidence traceability",
             tabTasksLabel: isVi ? "Hàng Đợi Ca Tác Nghiệp" : "Operations Queue",
             tabSearchLabel: isVi ? "Truy Vấn Đồ Thị & Bằng Chứng" : "Graph & Evidence Query",
-            metric1Label: isVi ? "Quan hệ đồ thị Semantic Triples" : "Semantic Triples",
-            metric1Val: "4,129 quan hệ",
+            metric1Label: isVi ? "Nút đồ thị Neo4j" : "Neo4j Graph Nodes",
+            metric1Val: `${(dbMetrics?.total_nodes || 52283).toLocaleString()} nodes`,
             metric1Sub: isVi ? "Neo4j Bolt Sync: 100% OK" : "Neo4j Bolt Sync 100% OK",
             metric1Color: "#059669",
             metric2Label: isVi ? "Độ trễ truy vấn trung bình" : "Query Latency",
             metric2Val: "18ms",
             metric2Sub: isVi ? "Pipeline hoạt động tối ưu" : "Optimal pipeline latency",
             metric2Color: "var(--cyan)",
-            metric3Label: isVi ? "Hàng đợi kiểm duyệt HITL" : "Pending HITL Queue",
-            metric3Val: "7 hồ sơ",
-            metric3Sub: isVi ? "Đang chờ admin ký duyệt" : "Awaiting verification",
+            metric3Label: isVi ? "Điều khoản bóc tách" : "Extracted Clauses",
+            metric3Val: `${(dbMetrics?.total_clauses || 103)} điều khoản`,
+            metric3Sub: isVi ? "Đã xác thực đồ thị" : "Graph verified",
             metric3Color: "#d97706",
-            metric4Label: isVi ? "Độ tin cậy mô hình" : "Extraction Confidence",
-            metric4Val: "94.8%",
-            metric4Sub: isVi ? "Hybrid GraphRAG v4.2" : "Hybrid GraphRAG v4.2",
+            metric4Label: isVi ? "Điểm nhúng Qdrant" : "Qdrant Vectors",
+            metric4Val: `${(dbMetrics?.total_vectors || 40194).toLocaleString()} vectors`,
+            metric4Sub: isVi ? "Qdrant collection cuad_contracts" : "cuad_contracts active",
             metric4Color: "#2563eb",
           }
         };
@@ -1781,7 +1571,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             <div style={{ display: "inline-flex", gap: "6px" }}>
                               <button
                                 onClick={() => {
-                                  onNavigate?.("graph");
+                                  onNavigate?.("knowledge", row.code || row.id);
                                   showToast(isVi ? `Đang mở ${row.code} trên Đồ thị Tri thức` : `Opening ${row.code} in Graph`);
                                 }}
                                 className="btn sm"
@@ -1792,7 +1582,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                               </button>
                               <button
                                 onClick={() => {
-                                  onNavigate?.("documents");
+                                  onNavigate?.("documents", row.sourceDoc || row.code || row.title || row.id);
                                   showToast(isVi ? `Đang mở hồ sơ tài liệu của: ${row.title}` : `Opening dossier for: ${row.title}`);
                                 }}
                                 className="btn sm"
@@ -1931,16 +1721,19 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 {isVi ? "Phù hợp từ khóa:" : "Matching excerpt:"}
                               </span>
                               <span>
-                                {c.snippet.split(c.highlight).map((part, i, arr) => (
-                                  <React.Fragment key={i}>
-                                    {part}
-                                    {i < arr.length - 1 && (
-                                      <mark style={{ background: "#fde68a", color: "#78350f", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
-                                        {c.highlight}
+                                {c.highlight && c.highlight.trim() && c.snippet && c.snippet.toLowerCase().includes(c.highlight.toLowerCase().trim()) ? (
+                                  c.snippet.split(new RegExp(`(${c.highlight.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, "gi")).map((part, i) => (
+                                    part.toLowerCase() === c.highlight.toLowerCase().trim() ? (
+                                      <mark key={i} style={{ background: "#fde68a", color: "#78350f", padding: "1px 4px", borderRadius: "3px", fontWeight: "700" }}>
+                                        {part}
                                       </mark>
-                                    )}
-                                  </React.Fragment>
-                                ))}
+                                    ) : (
+                                      <React.Fragment key={i}>{part}</React.Fragment>
+                                    )
+                                  ))
+                                ) : (
+                                  c.snippet
+                                )}
                               </span>
                             </div>
 
@@ -1967,7 +1760,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 </button>
                                 <button
                                   onClick={() => {
-                                    onNavigate?.("graph");
+                                    onNavigate?.("knowledge", c.code || c.id);
                                     showToast(isVi ? `Đang định vị ${c.code} trên Đồ thị Tri thức` : `Locating ${c.code} on Graph`);
                                   }}
                                   style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px" }}
@@ -1976,7 +1769,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 </button>
                                 <button
                                   onClick={() => {
-                                    onNavigate?.("documents");
+                                    onNavigate?.("documents", c.sourceDoc || c.code || c.id);
                                     showToast(isVi ? `Mở tài liệu ${c.sourceDoc}` : `Opening ${c.sourceDoc}`);
                                   }}
                                   style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px" }}
@@ -2078,7 +1871,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
 
                             <button
                               onClick={() => {
-                                onNavigate?.("graph");
+                                onNavigate?.("knowledge", cust.code || cust.id || cust.name);
                                 showToast(isVi ? `Mở liên kết thực thể ${cust.name} trên đồ thị` : `Opening graph for ${cust.name}`);
                               }}
                               className="btn sm"
@@ -2259,7 +2052,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <button
                                 onClick={() => {
-                                  onNavigate?.("documents");
+                                  onNavigate?.("documents", doc.sourceDoc || doc.code || doc.title || doc.id);
                                   showToast(isVi ? `Đang mở tài liệu: ${doc.title}` : `Opening ${doc.title}`);
                                 }}
                                 className="btn sm"

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Icon from '../../components/ui/Icon';
 import { fetchRepositoryDocuments, fetchDocumentDetail } from '../../services/api';
 
-export default function DocumentsView({ onNavigate, t, lang, role, currentUser }) {
+export default function DocumentsView({ onNavigate, t, lang, role, currentUser, initialDocId }) {
   const isVi = lang === "vi";
   const isAdmin = role === "admin" || role === "it_admin";
 
@@ -29,10 +29,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
   const [isLoading, setIsLoading] = useState(false);
 
   // Drawer & Selection state
-  const [selectedDocId, setSelectedDocId] = useState("AW_SALES_ORDERS");
+  const [selectedDocId, setSelectedDocId] = useState(initialDocId || "AW_SALES_ORDERS");
   const [activeDocDetail, setActiveDocDetail] = useState(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(Boolean(initialDocId));
   const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(125);
   const [verifiedDocs, setVerifiedDocs] = useState({});
@@ -68,7 +68,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
   const accessibleDocs = docsList;
   const filteredDocs = docsList;
 
-  const activeDoc = activeDocDetail || docsList.find((d) => d.id === selectedDocId) || docsList[0] || {};
+  const activeDoc = activeDocDetail || docsList.find((d) => d.id === selectedDocId || d.raw_id === selectedDocId || d.name === selectedDocId) || docsList[0] || {};
   const isDocVerified = activeDoc ? (verifiedDocs[activeDoc.id] || activeDoc.statusState === "active") : false;
 
   const handleOpenDrawer = (docId) => {
@@ -83,6 +83,13 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser }
       setIsLoadingDetail(false);
     });
   };
+
+  // Auto-open specific document drawer if navigated with initialDocId
+  useEffect(() => {
+    if (initialDocId) {
+      handleOpenDrawer(initialDocId);
+    }
+  }, [initialDocId]);
 
   const handleVerifyCurrentDoc = () => {
     if (!activeDoc || !activeDoc.id) return;

@@ -28,6 +28,7 @@ const VALID_VIEWS = [
   "executive",
   "copilot",
   "knowledge",
+  "graph",
   "explorer",
   "search",
   "connectors",
@@ -46,6 +47,9 @@ function getInitialRouting() {
     const queryView = params.get("view");
     const queryMode = params.get("mode");
 
+    if (queryView === "graph") {
+      return { mode: "app", view: "knowledge" };
+    }
     if (queryView && VALID_VIEWS.includes(queryView)) {
       return { mode: "app", view: queryView };
     }
@@ -53,10 +57,11 @@ function getInitialRouting() {
       return { mode: queryMode, view: "executive" };
     }
 
-    // 2. Kiểm tra URL hash (#admin, #search, #login, #landing, ...)
+    // 2. Kiểm tra URL hash (#admin, #search, #login, #landing, #graph...)
     const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
     if (hash === "login") return { mode: "login", view: "executive" };
     if (hash === "landing") return { mode: "landing", view: "executive" };
+    if (hash === "graph") return { mode: "app", view: "knowledge" };
     if (VALID_VIEWS.includes(hash)) {
       return { mode: "app", view: hash };
     }
@@ -66,7 +71,9 @@ function getInitialRouting() {
     const savedView = localStorage.getItem("aegis_current_view");
 
     if (savedMode === "app") {
-      const activeView = (savedView && VALID_VIEWS.includes(savedView)) ? savedView : "home";
+      const activeView = (savedView === "graph" || savedView === "knowledge")
+        ? "knowledge"
+        : ((savedView && VALID_VIEWS.includes(savedView)) ? savedView : "home");
       return { mode: "app", view: activeView };
     }
     if (savedMode === "login") return { mode: "login", view: "executive" };
@@ -106,6 +113,17 @@ export default function App() {
   const [isRailOpen, setIsRailOpen] = useState(true);
   const [demoStep, setDemoStep] = useState(1);
   const [selectedEntity, setSelectedEntity] = useState("abc");
+  const [selectedDocId, setSelectedDocId] = useState(null);
+
+  const handleNavigate = (targetView, payload = null) => {
+    const normView = (targetView === "graph" || targetView === "knowledge") ? "knowledge" : targetView;
+    if (normView === "documents" && payload) {
+      setSelectedDocId(payload);
+    } else if (normView === "knowledge" && payload) {
+      setSelectedEntity(payload);
+    }
+    setView(normView);
+  };
 
   const [entities, setEntities] = useState(INITIAL_DATA.entities);
   const [signals, setSignals] = useState(INITIAL_DATA.signals);
@@ -162,7 +180,7 @@ export default function App() {
         setPageMode("landing");
       } else if (VALID_VIEWS.includes(hash)) {
         setPageMode("app");
-        setView(hash);
+        setView(hash === "graph" ? "knowledge" : hash);
       }
     };
 
@@ -275,7 +293,7 @@ export default function App() {
         onRoleChange={handleRoleChange}
         onOpenLanding={() => setPageMode("landing")}
         onLogout={() => setPageMode("login")}
-        onNavigate={setView}
+        onNavigate={handleNavigate}
         t={t}
         apiConnected={apiConnected}
       />
@@ -284,7 +302,7 @@ export default function App() {
       <div className="shell" style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, overflow: "hidden" }}>
         <NavRail
           currentView={view}
-          onNavigate={setView}
+          onNavigate={handleNavigate}
           onOpenLanding={() => setPageMode("landing")}
           onLogout={() => setPageMode("login")}
           isOpen={isRailOpen}
@@ -299,7 +317,7 @@ export default function App() {
         <main className="workspace" style={{ flex: 1, overflowY: "auto", minWidth: 0, background: "var(--bg-app)" }}>
           {view === "home" && (
             <HomeView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               role={role}
               currentUser={currentUser}
               lang={lang}
@@ -313,7 +331,7 @@ export default function App() {
               selectedEntity={selectedEntity}
               onSelectEntity={setSelectedEntity}
               signals={signals}
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
             />
@@ -321,7 +339,7 @@ export default function App() {
 
           {view === "copilot" && (
             <CopilotView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
               apiConnected={apiConnected}
@@ -330,15 +348,17 @@ export default function App() {
             />
           )}
 
-          {view === "knowledge" && (
+          {(view === "knowledge" || view === "graph") && (
             <KnowledgeView
               entities={entities}
               selectedEntity={selectedEntity}
               onSelectEntity={setSelectedEntity}
               onUpdateEntity={handleUpdateEntity}
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
+              role={role}
+              currentUser={currentUser}
             />
           )}
 
@@ -350,7 +370,7 @@ export default function App() {
 
           {view === "search" && (
             <SearchView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               onSelectEntity={setSelectedEntity}
               t={t}
               lang={lang}
@@ -361,11 +381,12 @@ export default function App() {
 
           {view === "connectors" && <ConnectorsView t={t} lang={lang} />}
 
-          {view === "risk" && <RiskView onNavigate={setView} t={t} lang={lang} />}
+          {view === "risk" && <RiskView onNavigate={handleNavigate} t={t} lang={lang} />}
 
           {view === "documents" && (
             <DocumentsView
-              onNavigate={setView}
+              initialDocId={selectedDocId}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
               role={role}
@@ -375,7 +396,7 @@ export default function App() {
 
           {(view === "sop" || view === "sop_composer") && (
             <SopView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
               role={role}
@@ -386,7 +407,7 @@ export default function App() {
 
           {view === "reports" && (
             <ReportsView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
               role={role}
@@ -396,7 +417,7 @@ export default function App() {
 
           {view === "admin" && (
             <AdminView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
             />

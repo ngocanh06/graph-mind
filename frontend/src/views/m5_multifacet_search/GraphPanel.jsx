@@ -4,17 +4,22 @@
  * Interactive SVG canvas: Zoom, Pan, Drag, Node & Relationship Selection, Label Filters, Search, Cypher Console.
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from "d3-force";
 import { fetchNeo4jStatus, fetchNeo4jGraph, fetchNeo4jNode, runCypherQuery, searchNeo4jNodes } from "../../services/api";
 
 // Color map for real Neo4j labels in the dataset
+// Color map with vibrant Neo4j Bloom lighting gradients & circular orbs
 const LABEL_COLORS = {
-  Product:     { bg: "#dcfce7", border: "#10b981", text: "#065f46", circle: "#10b981" },
-  Category:    { bg: "#f3e8ff", border: "#8b5cf6", text: "#5b21b6", circle: "#8b5cf6" },
-  SubCategory: { bg: "#fae8ff", border: "#c084fc", text: "#7e22ce", circle: "#c084fc" },
-  Customer:    { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af", circle: "#3b82f6" },
-  SalesOrder:  { bg: "#fef3c7", border: "#f59e0b", text: "#92400e", circle: "#f59e0b" },
-  Employee:    { bg: "#fce7f3", border: "#ec4899", text: "#9d174d", circle: "#ec4899" },
-  default:     { bg: "#f1f5f9", border: "#64748b", text: "#334155", circle: "#64748b" },
+  Product:     { bg: "#dcfce7", border: "#10b981", text: "#065f46", circle: "#10b981", highlight: "#6ee7b7", shadow: "#047857", shape: "circle" },
+  Category:    { bg: "#f3e8ff", border: "#8b5cf6", text: "#5b21b6", circle: "#8b5cf6", highlight: "#c4b5fd", shadow: "#6d28d9", shape: "circle" },
+  SubCategory: { bg: "#fae8ff", border: "#d946ef", text: "#86198f", circle: "#d946ef", highlight: "#f5d0fe", shadow: "#a21caf", shape: "circle" },
+  Customer:    { bg: "#dbeafe", border: "#0ea5e9", text: "#0369a1", circle: "#0ea5e9", highlight: "#7dd3fc", shadow: "#0284c7", shape: "circle" },
+  SalesOrder:  { bg: "#fef3c7", border: "#f59e0b", text: "#92400e", circle: "#f59e0b", highlight: "#fde68a", shadow: "#b45309", shape: "circle" },
+  Employee:    { bg: "#ffe4e6", border: "#f43f5e", text: "#9f1239", circle: "#f43f5e", highlight: "#fda4af", shadow: "#be123c", shape: "circle" },
+  Contract:    { bg: "#e0e7ff", border: "#6366f1", text: "#3730a3", circle: "#6366f1", highlight: "#a5b4fc", shadow: "#4338ca", shape: "circle" },
+  Clause:      { bg: "#fee2e2", border: "#ef4444", text: "#991b1b", circle: "#ef4444", highlight: "#fca5a5", shadow: "#b91c1c", shape: "circle" },
+  Company:     { bg: "#ccfbf1", border: "#06b6d4", text: "#0e7490", circle: "#06b6d4", highlight: "#67e8f9", shadow: "#0891b2", shape: "circle" },
+  default:     { bg: "#f1f5f9", border: "#64748b", text: "#334155", circle: "#64748b", highlight: "#cbd5e1", shadow: "#334155", shape: "circle" },
 };
 
 function getLabelColor(labels = []) {
@@ -24,7 +29,7 @@ function getLabelColor(labels = []) {
   return LABEL_COLORS.default;
 }
 
-export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
+export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSearch = "" }) {
   const isVi = lang === "vi";
 
   const [status, setStatus] = useState(null);
@@ -36,7 +41,9 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
   
   // Filters & limits
   const [selectedLabel, setSelectedLabel] = useState("ALL");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(() => {
+    return typeof initialSearch === "string" ? initialSearch : (initialSearch?.name || "");
+  });
   const [nodeLimit, setNodeLimit] = useState(60);
 
   // Cypher Console
@@ -52,8 +59,9 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const svgRef = useRef(null);
 
-  // Dragging node state
+  // Dragging & hover node state
   const [draggedNodeId, setDraggedNodeId] = useState(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [nodePositions, setNodePositions] = useState({});
 
   // 1. Fetch Status & Graph Data
@@ -76,10 +84,30 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
   const nodes = useMemo(() => graphData?.nodes || [], [graphData]);
   const rels = useMemo(() => graphData?.relationships || [], [graphData]);
 
+  // Degrees and neighbors for Neo4j Bloom dandelion layout & interactions
+  const { nodeDegrees, nodeNeighbors } = useMemo(() => {
+    const degs = {};
+    const adj = {};
+    nodes.forEach(n => {
+      degs[n._id] = 0;
+      adj[n._id] = new Set();
+    });
+    rels.forEach(r => {
+      const s = r.source?.id ?? r.source;
+      const t = r.target?.id ?? r.target;
+      if (degs[s] !== undefined) degs[s] += 1;
+      if (degs[t] !== undefined) degs[t] += 1;
+      if (adj[s]) adj[s].add(t);
+      if (adj[t]) adj[t].add(s);
+    });
+    return { nodeDegrees: degs, nodeNeighbors: adj };
+  }, [nodes, rels]);
+
   // Filter nodes by local search
   const filteredNodes = useMemo(() => {
-    if (!searchTerm.trim()) return nodes;
-    const term = searchTerm.toLowerCase();
+    const raw = typeof searchTerm === "string" ? searchTerm : (searchTerm?.name || "");
+    if (!raw.trim()) return nodes;
+    const term = raw.toLowerCase();
     return nodes.filter(n => {
       const name = (n.name || "").toLowerCase();
       const labels = (n._labels || []).join(" ").toLowerCase();
@@ -88,27 +116,56 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
     });
   }, [nodes, searchTerm]);
 
-  // Initialize circular / force-like coordinates for nodes
+  // D3-Force simulation layout for organic Bloom dandelion clustering (scalable to 2,000+ nodes)
   useEffect(() => {
     if (nodes.length === 0) return;
-    const width = 800;
-    const height = 550;
+
+    const width = 860;
+    const height = 580;
     const centerX = width / 2;
     const centerY = height / 2;
 
-    const initialPos = {};
-    const count = nodes.length;
-    nodes.forEach((n, idx) => {
-      // Golden angle spiral for aesthetic dispersion
-      const angle = idx * 2.399963;
-      const radius = Math.min(centerX, centerY) * 0.78 * Math.sqrt((idx + 1) / count) + 30;
-      initialPos[n._id] = {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle),
+    // Simulation nodes with degree-based radii
+    const simNodes = nodes.map(n => {
+      const deg = nodeDegrees[n._id] || 0;
+      const radius = deg >= 5 ? 24 : deg >= 2 ? 17 : 13;
+      const prev = nodePositions[n._id];
+      return {
+        id: n._id,
+        radius,
+        x: prev?.x ?? (centerX + (Math.random() - 0.5) * 260),
+        y: prev?.y ?? (centerY + (Math.random() - 0.5) * 260),
       };
     });
-    setNodePositions(initialPos);
-  }, [nodes]);
+
+    const nodeMap = new Map(simNodes.map(d => [d.id, d]));
+    const simLinks = [];
+    rels.forEach(r => {
+      const sId = r.source?.id ?? r.source;
+      const tId = r.target?.id ?? r.target;
+      if (nodeMap.has(sId) && nodeMap.has(tId)) {
+        simLinks.push({ source: sId, target: tId });
+      }
+    });
+
+    // D3 Force: Link distance for dandelion rays + Charge repulsion + Collision buffer (zero overlap)
+    const simulation = forceSimulation(simNodes)
+      .force("link", forceLink(simLinks).id(d => d.id).distance(85).strength(0.75))
+      .force("charge", forceManyBody().strength(-300).distanceMax(550))
+      .force("center", forceCenter(centerX, centerY))
+      .force("collision", forceCollide().radius(d => d.radius + 18).iterations(3))
+      .stop();
+
+    // 120 ticks fast-forward for instant stable layout without visual jitter
+    for (let i = 0; i < 120; ++i) simulation.tick();
+
+    const newPositions = {};
+    simNodes.forEach(d => {
+      newPositions[d.id] = { x: d.x, y: d.y };
+    });
+
+    setNodePositions(newPositions);
+  }, [nodes, rels, nodeDegrees]);
 
   // 3. Pan / Zoom handlers
   const handleMouseDown = (e) => {
@@ -152,13 +209,27 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
 
   // Node selection & neighbor inspection
   const handleNodeClick = async (node) => {
+    if (!node) return;
     setSelectedNode(node);
     setSelectedRel(null);
-    if (onSelectNode) onSelectNode(node);
+    if (onSelectNode) {
+      const nodeKey = typeof node === "object" ? (node.name || node.code || String(node._id || "")) : String(node);
+      onSelectNode(nodeKey);
+    }
     // Fetch live neighbor details
-    const detail = await fetchNeo4jNode(node._id);
-    if (detail?.data) {
-      setSelectedNode(prev => ({ ...prev, ...detail.data }));
+    if (node?._id) {
+      try {
+        const detail = await fetchNeo4jNode(node._id);
+        if (detail?.data) {
+          setSelectedNode(prev => ({
+            ...prev,
+            ...detail.data,
+            ...(detail.data.properties || {})
+          }));
+        }
+      } catch (e) {
+        console.warn("fetchNeo4jNode error:", e);
+      }
     }
   };
 
@@ -413,21 +484,58 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onMouseLeave={() => setHoveredNodeId(null)}
               onWheel={handleWheel}
             >
               <defs>
                 <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
                 </marker>
+
+                {/* 3D Soft Contact Shadow */}
+                <filter id="shadow-3d" x="-40%" y="-40%" width="180%" height="180%">
+                  <feDropShadow dx="0" dy="4" stdDeviation="3.5" floodColor="#0f172a" floodOpacity="0.22" />
+                </filter>
+                <filter id="halo-soft" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
+                </filter>
+                <filter id="contact-blur" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+                </filter>
+                <filter id="glow-selected" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#0284c7" floodOpacity="0.75" />
+                </filter>
+
+                {/* Neo4j Bloom Radial Gradients for all Entity Labels */}
+                {Object.entries(LABEL_COLORS).map(([lbl, c]) => (
+                  <radialGradient
+                    id={`grad-3d-${lbl}`}
+                    key={lbl}
+                    cx="32%"
+                    cy="28%"
+                    r="72%"
+                    fx="26%"
+                    fy="22%"
+                  >
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                    <stop offset="28%" stopColor={c.highlight || c.circle} stopOpacity="0.95" />
+                    <stop offset="68%" stopColor={c.circle} />
+                    <stop offset="100%" stopColor={c.shadow || "#0f172a"} />
+                  </radialGradient>
+                ))}
               </defs>
 
               <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-                {/* Relationships (Edges) */}
+                {/* Relationships (Edges - Dandelion Stems) */}
                 {rels.map((r, i) => {
-                  const srcPos = nodePositions[r.source?.id];
-                  const tgtPos = nodePositions[r.target?.id];
+                  const sId = r.source?.id ?? r.source;
+                  const tId = r.target?.id ?? r.target;
+                  const srcPos = nodePositions[sId];
+                  const tgtPos = nodePositions[tId];
                   if (!srcPos || !tgtPos) return null;
                   const isSelected = selectedRel === r;
+                  const isConnToHover = hoveredNodeId && (sId === hoveredNodeId || tId === hoveredNodeId);
+                  const isRelDimmed = hoveredNodeId && !isConnToHover;
 
                   const midX = (srcPos.x + tgtPos.x) / 2;
                   const midY = (srcPos.y + tgtPos.y) / 2;
@@ -439,83 +547,135 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
                         y1={srcPos.y}
                         x2={tgtPos.x}
                         y2={tgtPos.y}
-                        stroke={isSelected ? "#0284c7" : "#cbd5e1"}
-                        strokeWidth={isSelected ? 2.5 : 1.2}
-                        markerEnd="url(#arrow)"
+                        stroke={isSelected || isConnToHover ? "#0284c7" : "#94a3b8"}
+                        strokeWidth={isSelected || isConnToHover ? 2.2 : 1}
+                        strokeOpacity={isRelDimmed ? 0.12 : isSelected || isConnToHover ? 1 : 0.45}
+                        markerEnd={isRelDimmed ? undefined : "url(#arrow)"}
+                        style={{ transition: "stroke 0.15s, stroke-opacity 0.15s" }}
                       />
-                      <text
-                        x={midX}
-                        y={midY - 4}
-                        textAnchor="middle"
-                        fontSize={9}
-                        fontWeight={700}
-                        fill={isSelected ? "#0369a1" : "#64748b"}
-                        style={{ pointerEvents: "none" }}
-                      >
-                        {r.rel_type}
-                      </text>
+                      {(isSelected || isConnToHover || zoom >= 1.25) && (
+                        <text
+                          x={midX}
+                          y={midY - 4}
+                          textAnchor="middle"
+                          fontSize={9}
+                          fontWeight={700}
+                          fill={isSelected || isConnToHover ? "#0284c7" : "#64748b"}
+                          stroke="rgba(255,255,255,0.92)"
+                          strokeWidth={2}
+                          paintOrder="stroke"
+                          style={{ pointerEvents: "none" }}
+                        >
+                          {r.rel_type}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
 
-                {/* Nodes */}
+                {/* Neo4j Bloom Circular Spheres & Orbs */}
                 {filteredNodes.map((n) => {
-                  const pos = nodePositions[n._id] || { x: 400, y: 300 };
+                  const pos = nodePositions[n._id] || { x: 550, y: 350 };
                   const color = getLabelColor(n._labels);
                   const isSelected = selectedNode?._id === n._id;
-                  const firstLabel = (n._labels && n._labels[0]) || "Node";
+                  const isHovered = hoveredNodeId === n._id;
+                  const isConnToHover = hoveredNodeId && (nodeNeighbors[hoveredNodeId]?.has(n._id) || n._id === hoveredNodeId);
+                  const isNodeDimmed = hoveredNodeId && !isConnToHover;
+                  const firstLabel = (n._labels && n._labels[0]) || "default";
+                  const gradId = LABEL_COLORS[firstLabel] ? `grad-3d-${firstLabel}` : "grad-3d-default";
                   const displayName = n.name || n.title || firstLabel;
+
+                  const deg = nodeDegrees[n._id] || 0;
+                  const radius = deg >= 5 ? 24 : deg >= 2 ? 17 : 13;
 
                   return (
                     <g
                       key={n._id}
-                      transform={`translate(${pos.x}, ${pos.y})`}
+                      transform={`translate(${pos.x}, ${pos.y}) scale(${isHovered ? 1.15 : 1})`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleNodeClick(n);
                       }}
+                      onMouseEnter={() => setHoveredNodeId(n._id)}
+                      onMouseLeave={() => setHoveredNodeId(null)}
                       onMouseDown={(e) => {
                         e.stopPropagation();
                         setDraggedNodeId(n._id);
                       }}
-                      style={{ cursor: "pointer" }}
+                      style={{
+                        cursor: "pointer",
+                        transition: draggedNodeId === n._id ? "none" : "transform 0.15s ease-out, opacity 0.2s",
+                        opacity: isNodeDimmed ? 0.22 : 1
+                      }}
                     >
-                      {/* Selection Glow */}
-                      {isSelected && (
-                        <circle r={28} fill="none" stroke={color.border} strokeWidth={3} strokeDasharray="4 2" />
-                      )}
-
-                      {/* Main Node Circle */}
+                      {/* Ambient Bloom Glow Halo */}
                       <circle
-                        r={20}
+                        r={radius + (isHovered || isSelected ? 9 : 5)}
                         fill={color.circle}
-                        stroke="#ffffff"
-                        strokeWidth={2.5}
-                        filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.15))"
+                        opacity={isHovered || isSelected ? 0.45 : 0.2}
+                        filter="url(#halo-soft)"
                       />
 
-                      {/* Node Icon/Letter */}
+                      {/* Selection Orbit or Hub Accent Ring */}
+                      {(isSelected || isHovered || deg >= 4) && (
+                        <circle
+                          r={radius + 3}
+                          fill="none"
+                          stroke={isSelected ? "#0284c7" : color.circle}
+                          strokeWidth={isSelected ? 2 : 1.2}
+                          strokeDasharray={isSelected ? "4 2" : "none"}
+                          opacity={0.75}
+                          filter={isSelected ? "url(#glow-selected)" : undefined}
+                        />
+                      )}
+
+                      {/* 3D Circular Bloom Sphere */}
+                      <circle
+                        r={radius}
+                        fill={`url(#${gradId})`}
+                        stroke="rgba(255,255,255,0.85)"
+                        strokeWidth={1.5}
+                        filter="url(#shadow-3d)"
+                      />
+
+                      {/* Specular Gloss Arc */}
+                      <ellipse
+                        cx={-radius * 0.3}
+                        cy={-radius * 0.35}
+                        rx={radius * 0.42}
+                        ry={radius * 0.22}
+                        transform={`rotate(-25 ${-radius * 0.3} ${-radius * 0.35})`}
+                        fill="rgba(255,255,255,0.7)"
+                      />
+
+                      {/* Embossed Initial / Label Icon */}
                       <text
                         textAnchor="middle"
                         dy=".35em"
                         fill="#ffffff"
-                        fontSize={11}
-                        fontWeight={800}
-                        style={{ pointerEvents: "none" }}
+                        fontSize={radius >= 22 ? 12.5 : radius >= 17 ? 10 : 8}
+                        fontWeight={900}
+                        style={{
+                          pointerEvents: "none",
+                          textShadow: "0 1px 2px rgba(0,0,0,0.5)"
+                        }}
                       >
                         {firstLabel[0]}
                       </text>
 
-                      {/* Label badge under node */}
+                      {/* Label badge with white outline halo */}
                       <text
                         textAnchor="middle"
-                        y={32}
-                        fontSize={10.5}
-                        fontWeight={600}
-                        fill="var(--text-1, #0f172a)"
+                        y={radius + 12}
+                        fontSize={deg >= 3 || isHovered || isSelected ? 10.5 : 9}
+                        fontWeight={deg >= 3 || isHovered || isSelected ? 700 : 600}
+                        fill={isNodeDimmed ? "#94a3b8" : "var(--text-1, #0f172a)"}
+                        stroke="rgba(255,255,255,0.92)"
+                        strokeWidth={2.5}
+                        paintOrder="stroke"
                         style={{ pointerEvents: "none" }}
                       >
-                        {displayName.length > 20 ? displayName.slice(0, 18) + "..." : displayName}
+                        {displayName.length > 18 ? displayName.slice(0, 16) + "…" : displayName}
                       </text>
                     </g>
                   );
@@ -576,9 +736,24 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
                 <div style={{ border: "1px solid var(--border-soft, #e2e8f0)", borderRadius: 8, overflow: "hidden" }}>
                   <table style={{ width: "100%", fontSize: 11.5, borderCollapse: "collapse" }}>
                     <tbody>
-                      {Object.entries(selectedNode)
-                        .filter(([k]) => !["_id", "_labels", "neighbors", "properties"].includes(k))
-                        .map(([k, v]) => (
+                      {(() => {
+                        const mergedProps = {
+                          ...(selectedNode.properties || {}),
+                          ...Object.fromEntries(
+                            Object.entries(selectedNode).filter(([k]) => !["_id", "_labels", "neighbors", "properties"].includes(k))
+                          )
+                        };
+                        const entries = Object.entries(mergedProps);
+                        if (entries.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={2} style={{ padding: "8px", color: "var(--text-3, #64748b)", textAlign: "center" }}>
+                                {isVi ? "Không có thuộc tính mở rộng" : "No extra properties"}
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return entries.map(([k, v]) => (
                           <tr key={k} style={{ borderBottom: "1px solid var(--border-soft, #f1f5f9)" }}>
                             <td style={{ padding: "6px 8px", fontWeight: 600, color: "var(--text-3, #64748b)", background: "var(--bg-subtle, #fafafa)", width: "40%" }}>
                               {k}
@@ -587,7 +762,8 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null }) {
                               {typeof v === "object" ? JSON.stringify(v) : String(v ?? "")}
                             </td>
                           </tr>
-                        ))}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>

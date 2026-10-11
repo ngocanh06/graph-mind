@@ -306,3 +306,25 @@ export async function fetchDocumentDetail(docId) {
   }
   return null;
 }
+
+// ============================================================================
+// MULTI-FACET SEARCH API (REAL DATABASE DATA)
+// ============================================================================
+
+export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 12) {
+  try {
+    const sp = new URLSearchParams();
+    if (query) sp.set("q", query);
+    if (mode) sp.set("mode", mode);
+    if (dept && dept !== "ALL") sp.set("dept", dept);
+    if (status && status !== "ALL") sp.set("status", status);
+    sp.set("limit", limit);
+
+    const res = await fetch(`${API_BASE}/search?${sp.toString()}`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Search] fetchMultiFacetSearch error:", e);
+  }
+  return null;
+}
+
