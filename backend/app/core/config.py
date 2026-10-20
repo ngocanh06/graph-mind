@@ -1,0 +1,79 @@
+"""
+Application settings — loaded from .env via pydantic-settings
+"""
+from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+ROOT_DIR = BACKEND_DIR.parent
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(
+            str(ROOT_DIR / ".env"),
+            str(BACKEND_DIR / ".env"),
+            ".env",
+        ),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # Application
+    APP_ENV: str = "development"
+    PORT: int = 5000
+    FRONTEND_PORT: int = 5173
+
+    # Security & Authentication
+    SECRET_KEY: str = "change-me"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+    # PostgreSQL
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "12345678"
+    POSTGRES_DB: str = "graph_mind"
+
+    @property
+    def async_database_url(self) -> str:
+        """URL dùng cho SQLAlchemy async (asyncpg driver)"""
+        return (
+            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+
+    @property
+    def sync_database_url(self) -> str:
+        """URL dùng cho Alembic (psycopg2 driver, sync)"""
+        return (
+            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
+
+    # Neo4j
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "password123"
+
+    # Qdrant
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
+    QDRANT_COLLECTION_NAME: str = "cuad_contracts"
+
+    # Self-Hosted LLM Inference (Ollama)
+    INFERENCE_ENGINE_URL: str = "http://localhost:11434"
+    MODEL_NAME: str = "qwen2.5-7b-graphmind"
+
+    # Email / SMTP (dùng cho OTP quên mật khẩu)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""          # email gửi (VD: noreply@graphmind.ai)
+    SMTP_PASSWORD: str = ""      # App Password của Gmail / Workspace
+    SMTP_FROM_NAME: str = "GraphMind Admin"
+
+
+# Singleton instance — import và dùng ở mọi nơi
+settings = Settings()
+
