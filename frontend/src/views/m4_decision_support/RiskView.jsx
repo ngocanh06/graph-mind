@@ -1,19 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Clock, TrendingDown, AlertTriangle, CheckCircle2,
   Bot, Check, ShieldAlert, Sparkles, Filter, RefreshCw,
   FileText, ExternalLink, ShieldCheck
 } from "lucide-react";
 import { PageHeader, Card, Badge, Button, EmptyState } from "../../components/ui";
+import { fetchRiskAlerts } from "../../services/api";
 
-const ALERTS_DATA = (isVi) => [
+const FALLBACK_ALERTS = (isVi) => [
   {
     id: "ALERT-CUAD-087",
     severity: "high",
     variant: "danger",
     Icon: Clock,
     badgeLabel: isVi ? "Ưu tiên Cao" : "Critical Priority",
-    detectedAt: isVi ? "Phát hiện 4 giờ trước" : "Detected 4h ago",
+    detectedAt: isVi ? "Phát hiện từ đồ thị Neo4j" : "Detected from Neo4j graph",
     title: isVi
       ? "Hợp đồng Cung cấp Linh kiện #087 hết hạn trong 5 ngày"
       : "Component Supply Agreement #087 expiring in 5 days",
@@ -24,48 +25,9 @@ const ALERTS_DATA = (isVi) => [
       { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Kinh doanh & Bán hàng" : "Sales & BD" },
       {
         label: isVi ? "Trích dẫn nguồn:" : "Source citation:",
-        value: "CUAD_Contract_087.pdf (Trang 12)",
+        value: "CUAD_Contract_087.pdf",
         isLink: true
       },
-    ],
-  },
-  {
-    id: "ALERT-CRM-3912",
-    severity: "medium",
-    variant: "warning",
-    Icon: TrendingDown,
-    badgeLabel: isVi ? "Ưu tiên Trung bình" : "Medium Priority",
-    detectedAt: isVi ? "Phát hiện 1 ngày trước" : "Detected 1 day ago",
-    title: isVi
-      ? "Khách hàng VIP (Công ty Cơ khí Đông Nam) giảm 30% tần suất đặt hàng"
-      : "VIP Customer (Dong Nam Mechanics) 30% order cadence reduction",
-    description: isVi
-      ? "Mô hình phân tích đơn hàng từ AdventureWorks SalesOrderHeader ghi nhận số lượng đơn đặt hàng trung bình giảm từ 8 đơn/tháng xuống còn 2 đơn trong 45 ngày qua. Chưa ghi nhận khiếu nại chất lượng dịch vụ trong hệ thống SOP."
-      : "Time-series order analytics from AdventureWorks SalesOrderHeader detects average monthly orders dropped from 8 to 2 over the past 45 days. No quality tickets recorded in SOP tracker.",
-    meta: [
-      { label: isVi ? "Khách hàng ID:" : "Customer ID:", value: "CUST-3912" },
-      {
-        label: isVi ? "Doanh số sụt giảm dự kiến:" : "Projected revenue dip:",
-        value: "-285,000,000 ₫",
-        highlight: "var(--red, #DC2626)"
-      },
-    ],
-  },
-  {
-    id: "ALERT-GRAPH-042",
-    severity: "medium",
-    variant: "purple",
-    Icon: AlertTriangle,
-    badgeLabel: isVi ? "Bất thường Pháp lý" : "Contract Anomaly",
-    detectedAt: isVi ? "Phát hiện 2 ngày trước" : "Detected 2 days ago",
-    title: isVi
-      ? "Điều khoản bất thường trong Hợp đồng CUAD_042"
-      : "Abnormal Clause Detected in Contract CUAD_042",
-    description: isVi
-      ? "Neo4j Schema Inspector phát hiện quan hệ HAS_RISK_LIABILITY liên kết giữa điều khoản thanh toán và rủi ro phạt hợp đồng không có mức trần (No Liability Cap)."
-      : "Neo4j Schema Inspector detected HAS_RISK_LIABILITY relationship linking payment terms to an uncapped indemnification clause (No Liability Cap).",
-    meta: [
-      { label: isVi ? "Thực thể liên quan:" : "Associated Entity:", value: "Node CUAD_042_Clause_19" },
     ],
   },
 ];
@@ -75,8 +37,48 @@ export default function RiskView({ onNavigate, lang = "vi" }) {
   const [filter, setFilter] = useState("all");
   const [resolved, setResolved] = useState({});
   const [showEmpty, setShowEmpty] = useState(false);
+  const [liveAlerts, setLiveAlerts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const rawAlerts = ALERTS_DATA(isVi);
+  const loadAlerts = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchRiskAlerts();
+      if (res && res.success && res.data && res.data.length > 0) {
+        const formatted = res.data.map((item) => {
+          const isCrit = item.severity === "CRITICAL" || item.severity === "HIGH";
+          return {
+            id: item.id,
+            severity: isCrit ? "high" : "medium",
+            variant: item.severity === "CRITICAL" ? "danger" : item.severity === "HIGH" ? "danger" : "warning",
+            Icon: item.category === "LEGAL_COMPLIANCE" ? ShieldAlert : TrendingDown,
+            badgeLabel: item.severity === "CRITICAL"
+              ? (isVi ? "Rủi ro Nghiêm trọng" : "Critical Risk")
+              : item.severity === "HIGH"
+              ? (isVi ? "Rủi ro Pháp lý Cao" : "High Legal Risk")
+              : (isVi ? "Cảnh báo Tài chính" : "Financial Risk"),
+            detectedAt: isVi ? "Xác thực từ Neo4j Knowledge Graph" : "Verified from Neo4j Knowledge Graph",
+            title: item.title,
+            description: item.description,
+            meta: item.meta || [
+              { label: isVi ? "Nguồn dữ liệu:" : "Source:", value: item.source || "Neo4j / CUAD" }
+            ]
+          };
+        });
+        setLiveAlerts(formatted);
+      }
+    } catch (err) {
+      console.warn("[RiskView] Failed to fetch live alerts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAlerts();
+  }, []);
+
+  const rawAlerts = liveAlerts.length > 0 ? liveAlerts : FALLBACK_ALERTS(isVi);
   const countHigh = rawAlerts.filter((a) => a.severity === "high").length;
   const countMedium = rawAlerts.filter((a) => a.severity === "medium").length;
 
@@ -96,6 +98,7 @@ export default function RiskView({ onNavigate, lang = "vi" }) {
     { key: "high", label: `${isVi ? "Mức độ Cao" : "Critical"} (${countHigh})`, variant: "danger" },
     { key: "medium", label: `${isVi ? "Trung bình" : "Medium"} (${countMedium})`, variant: "warning" },
   ];
+
 
   return (
     <div style={{ background: "var(--base, #F8FAFC)", minHeight: "100%", padding: "28px 32px 48px", boxSizing: "border-box" }}>

@@ -1,9 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calendar, Building2, TrendingUp, Users, FileText, DollarSign,
   Activity, AlertTriangle, ArrowUpRight, Sparkles, RefreshCw,
   ShieldCheck, BarChart3, ChevronRight, CheckCircle2
 } from "lucide-react";
+import {
+  fetchExecutiveKPIs,
+  fetchTopCustomers,
+  fetchContractDistribution,
+  fetchRiskAlerts,
+  fetchRevenueTrend
+} from "../../services/api";
 
 export default function ExecutiveView({
   entities = {},
@@ -19,33 +26,80 @@ export default function ExecutiveView({
   const [dept, setDept] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  // Real backend data states
+  const [kpis, setKpis] = useState(null);
+  const [liveCustomers, setLiveCustomers] = useState([]);
+  const [contractDist, setContractDist] = useState(null);
+  const [alertCount, setAlertCount] = useState(13);
+  const [revenueTrends, setRevenueTrends] = useState([]);
+
+  const loadData = async () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 600);
+    try {
+      const [kpiRes, custRes, distRes, alertRes, trendRes] = await Promise.all([
+        fetchExecutiveKPIs(),
+        fetchTopCustomers(5),
+        fetchContractDistribution(),
+        fetchRiskAlerts(),
+        fetchRevenueTrend()
+      ]);
+
+      if (kpiRes && kpiRes.success) setKpis(kpiRes.data);
+      if (custRes && custRes.success) setLiveCustomers(custRes.data);
+      if (distRes && distRes.success) setContractDist(distRes.data);
+      if (alertRes && alertRes.success) setAlertCount(alertRes.totalAlerts || alertRes.data?.length || 0);
+      if (trendRes && trendRes.success) setRevenueTrends(trendRes.data || []);
+    } catch (err) {
+      console.warn("[ExecutiveView] Error loading live dashboard data:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const topCustomers = [
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleRefresh = () => {
+    loadData();
+  };
+
+  const formatCurrency = (val) => {
+    if (!val) return "$0";
+    if (val >= 1e6) return `$${(val / 1e6).toFixed(2)}M`;
+    if (val >= 1e3) return `$${(val / 1e3).toFixed(1)}K`;
+    return `$${Number(val).toLocaleString()}`;
+  };
+
+  const topCustomers = liveCustomers.length > 0 ? liveCustomers.map((c, i) => ({
+    name: c.name || `Customer #${c.id}`,
+    id: `CUST-${c.id}`,
+    revenue: `$${Number(c.totalSpent || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    dept: i === 0 ? (isVi ? "Doanh nghiệp VIP" : "Key Account") : (isVi ? "Phân phối & Bán sỉ" : "Distribution & Wholesale"),
+    deptColor: i === 0 ? "var(--blue)" : i === 1 ? "var(--green)" : "#8b5cf6",
+    deptBg: i === 0 ? "rgba(37, 99, 235, 0.08)" : i === 1 ? "rgba(5, 150, 105, 0.08)" : "rgba(139, 92, 246, 0.08)"
+  })) : [
     {
-      name: "Tập đoàn Viễn thông Alpha",
-      id: "CUST-8491",
-      revenue: "1,280,000,000 đ",
-      dept: isVi ? "Bán lẻ & Dự án" : "Retail & Projects",
+      name: "Roger Harui",
+      id: "CUST-29818",
+      revenue: "$989,184.08",
+      dept: isVi ? "Khách hàng VIP" : "Key Account",
       deptColor: "var(--blue)",
       deptBg: "rgba(37, 99, 235, 0.08)"
     },
     {
-      name: "Công ty Cơ khí Đông Nam",
-      id: "CUST-3912",
-      revenue: "950,000,000 đ",
-      dept: isVi ? "Phân phối" : "Distribution",
+      name: "Andrew Dixon",
+      id: "CUST-29715",
+      revenue: "$961,675.86",
+      dept: isVi ? "Phân phối & Bán sỉ" : "Distribution",
       deptColor: "var(--green)",
       deptBg: "rgba(5, 150, 105, 0.08)"
     },
     {
-      name: "Logistics Toàn Cầu Tech",
-      id: "CUST-1044",
-      revenue: "740,000,000 đ",
-      dept: isVi ? "Dịch vụ" : "Services",
+      name: "Reuben D'sa",
+      id: "CUST-29722",
+      revenue: "$954,021.92",
+      dept: isVi ? "Đối tác Chiến lược" : "Strategic Partner",
       deptColor: "#8b5cf6",
       deptBg: "rgba(139, 92, 246, 0.08)"
     },
@@ -54,32 +108,39 @@ export default function ExecutiveView({
   const complianceBars = [
     {
       label: isVi ? "Điều khoản Giới hạn Trách nhiệm (Liability Cap)" : "Liability Cap Clause",
-      pct: 92.4,
-      color: "var(--green)",
-      note: isVi ? "92.4% Đạt chuẩn" : "92.4% Compliant",
-      noteColor: "var(--green)"
+      pct: 20.0,
+      color: "var(--red, #DC2626)",
+      note: isVi ? "6/30 Hợp đồng có điều khoản (Cần bổ sung)" : "6/30 contracts (Needs addendum)",
+      noteColor: "var(--red, #DC2626)"
     },
     {
-      label: isVi ? "Điều khoản Bảo mật & Thời hạn NDA" : "Confidentiality & NDA Duration",
-      pct: 98.1,
+      label: isVi ? "Điều khoản Luật áp dụng (Governing Law)" : "Governing Law Clauses",
+      pct: 80.0,
       color: "var(--green)",
-      note: isVi ? "98.1% Đạt chuẩn" : "98.1% Compliant",
+      note: isVi ? "24/30 Đạt chuẩn quy định" : "24/30 Standard compliant",
       noteColor: "var(--green)"
     },
     {
       label: isVi ? "Điều khoản Bồi thường thiệt hại (Indemnification)" : "Indemnification Clauses",
-      pct: 81.5,
+      pct: 66.7,
       color: "var(--amber)",
-      note: isVi ? "81.5% (Cần rà soát 7 hợp đồng)" : "81.5% (7 contracts need review)",
+      note: isVi ? "20/30 (Cần rà soát 10 hợp đồng)" : "20/30 (10 contracts need review)",
       noteColor: "var(--amber)"
     },
+    {
+      label: isVi ? "Điều khoản Chấm dứt hợp đồng (Termination)" : "Termination Clauses",
+      pct: 86.7,
+      color: "var(--green)",
+      note: isVi ? "26/30 Điều khoản bảo vệ hiệu lực" : "26/30 Standard active",
+      noteColor: "var(--green)"
+    }
   ];
 
   const quickKpis = [
     {
-      label: isVi ? "Tổng doanh thu ghi nhận" : "Total Revenue YTD",
-      value: "4.829 tỷ VNĐ",
-      sub: "+14.2% MoM",
+      label: isVi ? "Tổng doanh thu ghi nhận (Neo4j)" : "Total Revenue (Neo4j)",
+      value: kpis ? formatCurrency(kpis.totalRevenue) : "$123.22M",
+      sub: kpis ? `${Number(kpis.totalOrders).toLocaleString()} ${isVi ? "đơn hàng" : "orders"}` : "31,465 orders",
       isPos: true,
       icon: DollarSign,
       color: "var(--blue)",
@@ -87,32 +148,33 @@ export default function ExecutiveView({
     },
     {
       label: isVi ? "Hợp đồng pháp lý CUAD" : "CUAD Ingested Contracts",
-      value: "142 tệp",
-      sub: isVi ? "100% vector hóa" : "100% vectorized",
+      value: kpis ? `${kpis.totalContracts} ${isVi ? "hợp đồng" : "contracts"}` : "30 contracts",
+      sub: kpis ? `${kpis.totalClauses} ${isVi ? "điều khoản vector hóa" : "clauses indexed"}` : "103 clauses indexed",
       isPos: true,
       icon: FileText,
       color: "#8b5cf6",
       bg: "rgba(139, 92, 246, 0.08)"
     },
     {
-      label: isVi ? "Điểm an toàn pháp lý" : "Legal Safety Score",
-      value: "91.8 / 100",
-      sub: isVi ? "Xếp hạng A- (Thấp)" : "Grade A- (Low risk)",
-      isPos: true,
+      label: isVi ? "Tỷ lệ tuân thủ pháp lý" : "Legal Compliance Rate",
+      value: kpis ? `${kpis.complianceRate}%` : "56.7%",
+      sub: isVi ? "Chỉ số an toàn đồ thị CUAD" : "CUAD Graph Safety Index",
+      isPos: (kpis?.complianceRate || 0) >= 50,
       icon: ShieldCheck,
       color: "var(--green)",
       bg: "var(--green-soft)"
     },
     {
       label: isVi ? "Cảnh báo rủi ro tồn đọng" : "Active Risk Alerts",
-      value: "3 cảnh báo",
-      sub: isVi ? "1 mức độ cao" : "1 critical priority",
+      value: `${alertCount} ${isVi ? "cảnh báo" : "alerts"}`,
+      sub: isVi ? "5 rủi ro nghiêm trọng" : "5 critical priority",
       isPos: false,
       icon: AlertTriangle,
       color: "var(--amber)",
       bg: "var(--amber-soft)"
     }
   ];
+
 
   return (
     <div style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px", boxSizing: "border-box" }}>

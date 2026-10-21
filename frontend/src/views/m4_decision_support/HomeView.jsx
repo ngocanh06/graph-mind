@@ -1,11 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Bot, Search, Share2, LayoutDashboard,
   MessageSquare, AlertTriangle, RefreshCw, FileEdit,
   ShieldAlert, Inbox, Sparkles, Wand2, Download, FileText,
-  Activity, ArrowRight
+  Activity, ArrowRight, DollarSign
 } from "lucide-react";
 import { Button, Badge, Card, Modal, PageHeader } from "../../components/ui";
+import {
+  fetchRecentActivities,
+  generateExecutiveBriefing,
+  fetchRiskAlerts
+} from "../../services/api";
+
 
 const RECENT_ACTIVITIES = [
   {
@@ -113,13 +119,40 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
   const isVi = lang === "vi";
   const [showBriefing, setShowBriefing] = useState(false);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
+  const [briefingText, setBriefingText] = useState("");
+  const [liveActivities, setLiveActivities] = useState([]);
+  const [riskCount, setRiskCount] = useState(13);
 
-  const userName = currentUser?.name || "Trần Thị Thu Hương";
+  const userName = currentUser?.name || (isVi ? "Tổng Giám Đốc" : "Executive Director");
 
-  const handleGenerateBriefing = () => {
+  useEffect(() => {
+    fetchRecentActivities(4).then((res) => {
+      if (res && res.success && res.data && res.data.length > 0) {
+        setLiveActivities(res.data);
+      }
+    }).catch(() => {});
+
+    fetchRiskAlerts().then((res) => {
+      if (res && res.success) {
+        setRiskCount(res.totalAlerts || 13);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleGenerateBriefing = async () => {
     setLoadingBriefing(true);
-    setTimeout(() => setLoadingBriefing(false), 1400);
+    try {
+      const res = await generateExecutiveBriefing("month", "executive");
+      if (res && res.briefing) {
+        setBriefingText(res.briefing);
+      }
+    } catch (err) {
+      console.warn("[HomeView] Briefing error:", err);
+    } finally {
+      setLoadingBriefing(false);
+    }
   };
+
 
   return (
     <div style={{ padding: "28px 32px 48px", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
@@ -181,7 +214,11 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
           >
             {loadingBriefing ? (
               <div style={{ color: "var(--text-3, #64748B)", fontStyle: "italic", textAlign: "center", padding: "20px 0" }}>
-                {isVi ? "Đang truy vấn đồ thị tri thức & hợp đồng CUAD..." : "Synthesizing KPI & clause risk data..."}
+                {isVi ? "Đang truy vấn đồ thị tri thức & gọi mô hình AI Ollama..." : "Synthesizing KPI & clause risk data via AI..."}
+              </div>
+            ) : briefingText ? (
+              <div style={{ whiteSpace: "pre-wrap", fontSize: "13px", color: "var(--text-1)", lineHeight: 1.6 }}>
+                {briefingText}
               </div>
             ) : (
               <>
@@ -195,28 +232,29 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                     fontFamily: "var(--f-display, inherit)",
                   }}
                 >
-                  {isVi ? "BÁO CÁO ĐIỀU HÀNH TỔNG HỢP — THÁNG 10/2026" : "EXECUTIVE SUMMARY REPORT — OCTOBER 2026"}
+                  {isVi ? "BÁO CÁO ĐIỀU HÀNH TỔNG HỢP (GRAPH KNOWLEDGE)" : "EXECUTIVE SUMMARY REPORT"}
                 </strong>
                 <p style={{ margin: "0 0 8px 0" }}>
                   <strong style={{ color: "var(--text-1)" }}>{isVi ? "1. Hiệu suất Kinh doanh: " : "1. Business Performance: "}</strong>
                   {isVi
-                    ? "Doanh thu đạt 4.829 Tỷ VND (+14.2% MoM). Đóng góp chính từ Tập đoàn Viễn thông Alpha (1.28 Tỷ VND)."
-                    : "Revenue reached 4.829B VND (+14.2% MoM). Top contributor: Vien Thong Alpha Group (1.28B VND)."}
+                    ? "Tổng doanh thu đạt $123.22M USD trên 31,465 đơn hàng AdventureWorks. Top khách hàng VIP: Roger Harui ($989K)."
+                    : "Total revenue reached $123.22M USD over 31,465 orders. Top VIP: Roger Harui ($989K)."}
                 </p>
                 <p style={{ margin: "0 0 8px 0" }}>
                   <strong style={{ color: "var(--text-1)" }}>{isVi ? "2. Điểm nóng Rủi ro: " : "2. Risk Hotspots: "}</strong>
                   {isVi
-                    ? "Ghi nhận 1 hợp đồng khẩn cấp (#087) hết hạn trong 5 ngày; 1 khách hàng VIP sụt giảm 30% đơn hàng."
-                    : "1 critical contract (#087) expiring in 5 days; 1 VIP client showing 30% order decline."}
+                    ? "Phát hiện 5 hợp đồng thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability); 4 giao dịch lớn cần phê duyệt."
+                    : "Detected 5 contracts lacking liability cap clauses; 4 high-value orders awaiting executive sign-off."}
                 </p>
                 <p style={{ margin: 0 }}>
                   <strong style={{ color: "var(--text-1)" }}>{isVi ? "3. Khuyến nghị AI: " : "3. AI Recommendations: "}</strong>
                   {isVi
-                    ? "Kích hoạt phòng Pháp chế chuẩn bị phụ lục gia hạn HĐ #087 và yêu cầu Kinh doanh tiếp xúc Cơ khí Đông Nam."
-                    : "Activate Legal to prepare renewal addendum for #087; dispatch Sales to re-engage Dong Nam Mechanical."}
+                    ? "Bấm nút 'Tạo báo cáo tổng hợp bằng AI' ở trên để mô hình Ollama (Qwen2.5) sinh bản phân tích chiến lược mới nhất."
+                    : "Click 'Generate AI-synthesized report' above to run live analysis via Ollama model."}
                 </p>
               </>
             )}
+
           </div>
         </div>
       </Modal>
@@ -367,8 +405,8 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
           padding="0"
         >
           <div style={{ display: "flex", flexDirection: "column" }}>
-            {RECENT_ACTIVITIES.slice(0, 4).map((act, idx) => {
-              const AIcon = act.icon;
+            {(liveActivities.length > 0 ? liveActivities : RECENT_ACTIVITIES.slice(0, 4)).map((act, idx) => {
+              const AIcon = act.icon || DollarSign;
               return (
                 <div
                   key={act.id}
@@ -408,10 +446,10 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                           lineHeight: 1.4,
                         }}
                       >
-                        {isVi ? act.titleVi : act.titleEn}
+                        {act.title || (isVi ? act.titleVi : act.titleEn)}
                       </div>
                       <div style={{ fontSize: "12px", color: "var(--text-3, #64748B)", marginTop: "3px" }}>
-                        {isVi ? act.metaVi : act.metaEn}
+                        {act.description || (isVi ? act.metaVi : act.metaEn)}
                       </div>
                     </div>
                   </div>
@@ -424,7 +462,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                       flexShrink: 0,
                     }}
                   >
-                    {isVi ? act.timeVi : act.timeEn}
+                    {act.timestamp || (isVi ? act.timeVi : act.timeEn)}
                   </span>
                 </div>
               );
@@ -459,7 +497,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                 }}
               >
                 <ShieldAlert size={16} strokeWidth={2} />
-                <span>{isVi ? "2 hợp đồng cần rà soát khẩn" : "2 contracts require urgent review"}</span>
+                <span>{isVi ? `${riskCount} cảnh báo rủi ro hợp đồng & giao dịch` : `${riskCount} active legal & order risks`}</span>
               </div>
               <p
                 style={{
@@ -470,8 +508,8 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                 }}
               >
                 {isVi
-                  ? "Điều khoản miễn trừ trách nhiệm bất đối xứng (Unilateral Liability Cap) được AI phát hiện trong CUAD_042 và hợp đồng #087 hết hạn trong 5 ngày."
-                  : "AI detected unilateral liability exclusion in CUAD_042 and framework agreement #087 expires in 5 days."}
+                  ? "Neo4j phát hiện 5 hợp đồng thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability), 4 hợp đồng thiếu cam kết bồi thường và 4 giao dịch vượt ngưỡng $25,000 USD."
+                  : "Neo4j identified 5 contracts lacking liability limitation clauses, 4 lacking indemnification, and 4 sales orders exceeding $25,000 USD."}
               </p>
               <div style={{ marginTop: "12px" }}>
                 <Button variant="dangerSoft" size="sm" onClick={() => onNavigate("risk")}>
@@ -479,6 +517,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                 </Button>
               </div>
             </div>
+
 
             <div
               style={{

@@ -328,3 +328,82 @@ export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = 
   return null;
 }
 
+// ============================================================================
+// MODULE 4: EXECUTIVE DECISION SUPPORT & ALERTS (REAL DATABASE DATA)
+// ============================================================================
+
+export async function fetchExecutiveKPIs() {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/kpis`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchExecutiveKPIs error:", e);
+  }
+  return null;
+}
+
+export async function fetchTopCustomers(limit = 5) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/top-customers?limit=${limit}`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchTopCustomers error:", e);
+  }
+  return null;
+}
+
+export async function fetchRevenueTrend() {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/revenue-trend`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchRevenueTrend error:", e);
+  }
+  return null;
+}
+
+export async function fetchContractDistribution() {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/contract-distribution`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchContractDistribution error:", e);
+  }
+  return null;
+}
+
+export async function fetchRiskAlerts() {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/risk-alerts`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchRiskAlerts error:", e);
+  }
+  return null;
+}
+
+export async function fetchRecentActivities(limit = 8) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/recent-activities?limit=${limit}`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchRecentActivities error:", e);
+  }
+  return null;
+}
+
+export async function generateExecutiveBriefing(timeframe = "month", focus = "executive") {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/briefing`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timeframe, focus })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] generateExecutiveBriefing error:", e);
+  }
+  return null;
+}
+
+
