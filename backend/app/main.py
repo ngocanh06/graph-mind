@@ -51,9 +51,11 @@ except ImportError:
 try:
     from app.api.v1.auth import router as auth_router
     from app.api.v1.copilot import router as copilot_router
+    from app.modules.m6_admin_security.user_admin_api import router as admin_router
 except ImportError:
     from api.v1.auth import router as auth_router
     from api.v1.copilot import router as copilot_router
+    from modules.m6_admin_security.user_admin_api import router as admin_router
 
 try:
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
@@ -136,6 +138,9 @@ app.add_middleware(
 # Authentication routers (/api/v1/auth and /api/auth)
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+
+# Admin: user CRUD, RBAC, audit log
+app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
 
 # Copilot routers (/api/copilot and /api/v1/copilot)
 app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])
