@@ -8,11 +8,11 @@ import {
 import {
   PageHeader, Tabs, Badge, Button, SearchInput, Card, StatCard
 } from "../../components/ui";
-import { UserManagementPanel, AuditLogPanel } from "./AdminLivePanels";
 
 export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
   const isVi = lang === "vi";
   const [activeTab, setActiveTab] = useState("perms"); // "perms" | "roles" | "audit" | "cost"
+  const [auditQuery, setAuditQuery] = useState("");
   const [budgetLimit, setBudgetLimit] = useState(500);
   const [toastMsg, setToastMsg] = useState("");
 
@@ -44,6 +44,27 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
         : `Permission updated for [${domain}] - [${role}]`
     );
   };
+
+  const AUDIT_LOGS = [
+    { id: "log-1", time: "10:14:22", user: "Executive Board", action: "Generated Executive Strategic Briefing #EKMP-REP-2026-Q3", type: "INFO" },
+    { id: "log-2", time: "10:08:45", user: "Tran M. Anh", action: "HITL Verification committed: Contract_CT-2026-18.pdf (4 entities)", type: "SECURITY" },
+    { id: "log-3", time: "09:42:10", user: "AI Engine", action: "Automated risk trigger: Customer ABC Corp order cadence fell 32%", type: "WARNING" },
+    { id: "log-4", time: "09:12:00", user: "Google Drive Connector", action: "Synced 14 new documents; 4,208 entities verified intact", type: "SYNC" },
+    { id: "log-5", time: "08:30:15", user: "Le V. Hung", action: "Updated financial reconciliation report for SOP-04", type: "INFO" }
+  ];
+
+  const filteredLogs = AUDIT_LOGS.filter((log) => {
+    if (!auditQuery.trim()) return true;
+    const q = auditQuery.toLowerCase();
+    return log.user.toLowerCase().includes(q) || log.action.toLowerCase().includes(q) || log.type.toLowerCase().includes(q);
+  });
+
+  const usersList = [
+    { name: "Hoàng Minh Điều (CEO)", email: "executive@graphmind.ai", role: isVi ? "BAN LÃNH ĐẠO (CEO / C-SUITE)" : "EXECUTIVE (CEO / C-SUITE)", roleBadge: "red", auth: "Hardware Token (FIDO2)", lastActive: "Active Now" },
+    { name: "SecOps Admin", email: "admin@graphmind.ai", role: isVi ? "ADMIN HỆ THỐNG & TRI THỨC" : "SYS & KNOWLEDGE ADMIN", roleBadge: "amber", auth: "Hardware Token (FIDO2)", lastActive: "5 min ago" },
+    { name: "Trần M. Anh", email: "manager@graphmind.ai", role: isVi ? "QUẢN LÝ CẤP TRUNG (TRƯỞNG PHÒNG)" : "DEPARTMENT MANAGER", roleBadge: "green", auth: "2FA App (TOTP)", lastActive: "10 min ago" },
+    { name: "Nguyễn V. Nam", email: "sales@graphmind.ai", role: isVi ? "CHUYÊN VIÊN KINH DOANH (SALES)" : "SALES EXECUTIVE", roleBadge: "cyan", auth: "2FA App (TOTP)", lastActive: "25 min ago" }
+  ];
 
   const adminTabs = [
     { id: "perms", label: isVi ? "Phân quyền Tri thức" : "Knowledge Permissions", icon: ShieldCheck },
@@ -188,11 +209,110 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
           </Card>
         )}
 
-        {/* -- TAB 2: USERS & RBAC (live API) -- */}
-        {activeTab === "roles" && <UserManagementPanel lang={lang} showToast={showToast} />}
+        {/* ── TAB 2: USERS & ROLE PERSONAS ───────────────────── */}
+        {activeTab === "roles" && (
+          <Card
+            title={isVi ? "Danh bạ Tài khoản & Phân vai Doanh nghiệp" : "Enterprise Users & Role Personas"}
+            subtitle={isVi ? "Quản lý quyền tài khoản, giao thức 2FA và thời gian hoạt động" : "Manage account credentials, 2FA protocols, and activity state"}
+            icon={Users}
+            action={
+              <Button
+                variant="primary"
+                size="sm"
+                icon={UserPlus}
+                onClick={() => showToast(isVi ? "Đã mở hộp thoại mời người dùng mới!" : "Invite user dialog opened!")}
+              >
+                {isVi ? "Thêm Người dùng" : "Add User"}
+              </Button>
+            }
+          >
+            <div style={{ overflowX: "auto", margin: "-6px -8px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "var(--surface-2)", color: "var(--text-3)", borderBottom: "1px solid var(--border)" }}>
+                    <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{isVi ? "Người dùng" : "Name"}</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{isVi ? "Email / ID" : "Email"}</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{isVi ? "Vai trò Persona" : "Role Persona"}</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{isVi ? "Xác thực 2FA" : "2FA"}</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{isVi ? "Lần đăng nhập cuối" : "Last Active"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersList.map((u, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                      <td style={{ padding: "12px 16px", fontWeight: 600, color: "var(--text-1)" }}>{u.name}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text-3)", fontFamily: "var(--f-mono)", fontSize: 12 }}>{u.email}</td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <Badge
+                          variant={u.roleBadge === "red" ? "danger" : u.roleBadge === "amber" ? "warning" : u.roleBadge === "green" ? "success" : "info"}
+                          size="sm"
+                        >
+                          {u.role}
+                        </Badge>
+                      </td>
+                      <td style={{ padding: "12px 16px", color: "var(--green)", fontWeight: 600, fontSize: 12 }}>
+                        {u.auth}
+                      </td>
+                      <td style={{ padding: "12px 16px", color: u.lastActive.includes("Now") ? "var(--blue)" : "var(--text-3)", fontWeight: u.lastActive.includes("Now") ? 700 : 500, fontSize: 12 }}>
+                        {u.lastActive}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
 
-        {/* -- TAB 3: AUDIT LOG (live API) -- */}
-        {activeTab === "audit" && <AuditLogPanel lang={lang} />}
+        {/* ── TAB 3: IMMUTABLE AUDIT TRAIL ───────────────────── */}
+        {activeTab === "audit" && (
+          <Card
+            title={isVi ? "Nhật ký Hoạt động Bất biến (Immutable Audit Trail)" : "Immutable Activity & Security Audit Trail"}
+            subtitle={isVi ? "Lịch sử tương tác hệ thống, trích xuất thực thể HITL và suy luận AI được ký số" : "Cryptographically logged activity, HITL entity commits, and inference actions"}
+            icon={ClipboardList}
+            action={
+              <div style={{ width: 280 }}>
+                <SearchInput
+                  value={auditQuery}
+                  onChange={setAuditQuery}
+                  placeholder={isVi ? "Lọc nhật ký theo tên, hành động..." : "Filter audit log..."}
+                />
+              </div>
+            }
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+              {filteredLogs.map((log) => (
+                <div
+                  key={log.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: "var(--r-md)",
+                    fontSize: 12.5
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Badge
+                      variant={log.type === "SECURITY" ? "success" : log.type === "WARNING" ? "danger" : "info"}
+                      size="sm"
+                    >
+                      {log.type}
+                    </Badge>
+                    <strong style={{ color: "var(--text-1)" }}>{log.user}:</strong>
+                    <span style={{ color: "var(--text-2)" }}>{log.action}</span>
+                  </div>
+                  <span style={{ fontFamily: "var(--f-mono)", color: "var(--text-4)", fontSize: 11, flexShrink: 0, marginLeft: 12 }}>
+                    {log.time}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* ── TAB 4: LLMOPS AI USAGE & COST GOVERNANCE ─────────── */}
         {activeTab === "cost" && (

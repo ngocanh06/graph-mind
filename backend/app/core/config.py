@@ -66,13 +66,7 @@ class Settings(BaseSettings):
     INFERENCE_ENGINE_URL: str = "http://localhost:11434"
     MODEL_NAME: str = "qwen2.5-7b-graphmind"
 
-    # Email / SMTP (dùng cho OTP quên mật khẩu)
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""          # email gửi (VD: noreply@graphmind.ai)
-    SMTP_PASSWORD: str = ""      # App Password của Gmail / Workspace
-    SMTP_FROM_NAME: str = "GraphMind Admin"
-
 
 # Singleton instance — import và dùng ở mọi nơi
 settings = Settings()
+
