@@ -1,16 +1,17 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Bot, Send, Paperclip, Sparkles, BookOpen, ChevronRight,
   Search, Plus, FileText, ThumbsUp, ThumbsDown, Copy,
   ExternalLink, ShieldCheck, AlertCircle, X, Menu, Clock,
-  ArrowUpRight, CheckCircle2, Bookmark, Check
+  ArrowUpRight, CheckCircle2, Bookmark, Check, Pin
 } from "lucide-react";
 import {
   queryCopilot,
   fetchCopilotSessions,
   fetchCopilotSessionDetail,
   createCopilotSession,
-  deleteCopilotSession
+  deleteCopilotSession,
+  pinCopilotSession
 } from "../../services/api";
 
 export default function CopilotView({
@@ -23,10 +24,18 @@ export default function CopilotView({
 }) {
   const isVi = lang === "vi";
 
-  // Sessions state (per-user database persistence)
+  // Sessions state (per-user database persistence + US37 department shared documents)
+  const [sessionTab, setSessionTab] = useState("personal"); // "personal" | "department"
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [currentSessionDetail, setCurrentSessionDetail] = useState(null);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+
+  // Pinning modal & action state (US37 · PB59 · UC.18)
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinTargetSession, setPinTargetSession] = useState(null);
+  const [pinNotesInput, setPinNotesInput] = useState("");
+  const [isPinning, setIsPinning] = useState(false);
 
   // Drawer toggle states
   const [showSessionDrawer, setShowSessionDrawer] = useState(true);
@@ -51,56 +60,61 @@ export default function CopilotView({
 
   const [messages, setMessages] = useState([]);
 
-  // Load user sessions from PostgreSQL whenever currentUser changes
-  useEffect(() => {
-    let isMounted = true;
-    async function loadSessions() {
-      setIsLoadingSessions(true);
-      try {
-        const data = await fetchCopilotSessions(currentUser);
-        if (!isMounted) return;
-        if (data && data.success && Array.isArray(data.sessions)) {
-          setSessions(data.sessions);
-          if (data.sessions.length > 0) {
-            const firstSession = data.sessions[0];
-            setCurrentSessionId(firstSession.id);
-            const detail = await fetchCopilotSessionDetail(firstSession.id, currentUser);
-            if (isMounted && detail && detail.success && detail.session) {
-              const msgs = detail.session.messages || [];
-              setMessages(msgs);
-              setShowEmptyState(msgs.length === 0);
-              const lastCopilot = msgs.slice().reverse().find(m => m.sender === "copilot" && m.citations?.length > 0);
-              if (lastCopilot && lastCopilot.citations?.length > 0) {
-                setActiveCitation(lastCopilot.citations);
-                setShowCitationDrawer(true);
-              } else {
-                setActiveCitation(null);
-                setShowCitationDrawer(false);
-              }
+  // Load user sessions from PostgreSQL whenever currentUser or sessionTab changes
+  const loadSessions = useCallback(async (tab = sessionTab, preserveActiveId = null) => {
+    setIsLoadingSessions(true);
+    try {
+      const mode = tab === "department" ? "pinned" : "personal";
+      const data = await fetchCopilotSessions(mode, currentUser);
+      if (data && data.success && Array.isArray(data.sessions)) {
+        setSessions(data.sessions);
+        const targetId = preserveActiveId || (data.sessions.length > 0 ? data.sessions[0].id : null);
+        if (targetId) {
+          const detail = await fetchCopilotSessionDetail(targetId, currentUser);
+          if (detail && detail.success && detail.session) {
+            setCurrentSessionId(targetId);
+            setCurrentSessionDetail(detail.session);
+            const msgs = detail.session.messages || [];
+            setMessages(msgs);
+            setShowEmptyState(msgs.length === 0);
+            const lastCopilot = msgs.slice().reverse().find(m => m.sender === "copilot" && m.citations?.length > 0);
+            if (lastCopilot && lastCopilot.citations?.length > 0) {
+              setActiveCitation(lastCopilot.citations);
+              setShowCitationDrawer(true);
+            } else {
+              setActiveCitation(null);
+              setShowCitationDrawer(false);
             }
-          } else {
-            setCurrentSessionId(null);
-            setMessages([]);
-            setShowEmptyState(true);
-            setActiveCitation(null);
-            setShowCitationDrawer(false);
+            return;
           }
-        } else {
+        }
+        if (!targetId) {
           setCurrentSessionId(null);
+          setCurrentSessionDetail(null);
           setMessages([]);
           setShowEmptyState(true);
           setActiveCitation(null);
           setShowCitationDrawer(false);
         }
-      } catch (err) {
-        console.warn("[Copilot] Error loading sessions:", err);
-      } finally {
-        if (isMounted) setIsLoadingSessions(false);
+      } else {
+        setSessions([]);
+        setCurrentSessionId(null);
+        setCurrentSessionDetail(null);
+        setMessages([]);
+        setShowEmptyState(true);
+        setActiveCitation(null);
+        setShowCitationDrawer(false);
       }
+    } catch (err) {
+      console.warn("[Copilot] Error loading sessions:", err);
+    } finally {
+      setIsLoadingSessions(false);
     }
-    loadSessions();
-    return () => { isMounted = false; };
-  }, [currentUser?.email, currentUser?.username, currentUser?.id]);
+  }, [sessionTab, currentUser?.email, currentUser?.username, currentUser?.id, currentUser?.department]);
+
+  useEffect(() => {
+    loadSessions(sessionTab);
+  }, [loadSessions, sessionTab]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -113,6 +127,7 @@ export default function CopilotView({
     try {
       const detail = await fetchCopilotSessionDetail(sessionId, currentUser);
       if (detail && detail.success && detail.session) {
+        setCurrentSessionDetail(detail.session);
         const msgs = detail.session.messages || [];
         setMessages(msgs);
         setShowEmptyState(msgs.length === 0);
@@ -132,6 +147,7 @@ export default function CopilotView({
 
   const handleNewChat = () => {
     setCurrentSessionId(null);
+    setCurrentSessionDetail(null);
     setMessages([]);
     setShowEmptyState(true);
     setActiveCitation(null);
@@ -151,6 +167,63 @@ export default function CopilotView({
       console.warn("[Copilot] Error deleting session:", e);
     }
   };
+
+  // Pinning Handlers (US37 · PB59 · UC.18)
+  const handleOpenPinModal = (e, session = null) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const target = session || currentSessionDetail;
+    if (!target) return;
+    setPinTargetSession(target);
+    setPinNotesInput(target.pinNotes || "");
+    setShowPinModal(true);
+  };
+
+  const handleConfirmPin = async () => {
+    if (!pinTargetSession) return;
+    setIsPinning(true);
+    try {
+      const targetDept = currentUser?.department || pinTargetSession.department || "Kinh doanh";
+      const res = await pinCopilotSession(
+        pinTargetSession.id,
+        true,
+        pinNotesInput.trim(),
+        targetDept,
+        currentUser
+      );
+      showToast(isVi ? "Đã ghim phiên hội thoại thành tài liệu dùng chung phòng ban!" : "Pinned conversation to department docs!");
+      setShowPinModal(false);
+      // Refresh current session detail and list
+      if (currentSessionId === pinTargetSession.id) {
+        const updatedDetail = await fetchCopilotSessionDetail(pinTargetSession.id, currentUser);
+        if (updatedDetail?.session) {
+          setCurrentSessionDetail(updatedDetail.session);
+        }
+      }
+      await loadSessions(sessionTab, currentSessionId);
+    } catch (err) {
+      showToast(err.message || (isVi ? "Lỗi khi ghim phiên hội thoại" : "Failed to pin session"));
+    } finally {
+      setIsPinning(false);
+    }
+  };
+
+  const handleUnpin = async (sessionId, e = null) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    try {
+      await pinCopilotSession(sessionId, false, "", null, currentUser);
+      showToast(isVi ? "Đã bỏ ghim phiên hội thoại khỏi phòng ban." : "Unpinned session from department.");
+      if (currentSessionId === sessionId) {
+        const updatedDetail = await fetchCopilotSessionDetail(sessionId, currentUser);
+        if (updatedDetail?.session) {
+          setCurrentSessionDetail(updatedDetail.session);
+        }
+      }
+      await loadSessions(sessionTab, currentSessionId);
+    } catch (err) {
+      showToast(err.message || (isVi ? "Lỗi khi bỏ ghim phiên hội thoại" : "Failed to unpin session"));
+    }
+  };
+
 
   const handleSend = async (e) => {
     if (e) e.preventDefault();
@@ -388,6 +461,43 @@ export default function CopilotView({
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: currentSessionId ? "var(--green)" : "var(--blue)" }} />
           </div>
 
+          {/* US37: Pin session as shared team document action */}
+          {currentSessionId && (
+            <button
+              onClick={(e) => handleOpenPinModal(e, currentSessionDetail)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: "var(--r-md)",
+                border: currentSessionDetail?.isPinned
+                  ? "1px solid rgba(245, 158, 11, 0.4)"
+                  : "1px solid var(--border)",
+                background: currentSessionDetail?.isPinned
+                  ? "rgba(245, 158, 11, 0.12)"
+                  : "var(--surface-2)",
+                color: currentSessionDetail?.isPinned ? "#f59e0b" : "var(--text-2)",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease"
+              }}
+              title={
+                currentSessionDetail?.isPinned
+                  ? (isVi ? "Phiên đã được ghim làm tài liệu phòng ban. Bấm để xem/sửa ghi chú." : "Pinned to department. Click to edit notes.")
+                  : (isVi ? "Ghim phiên này làm tài liệu dùng chung phòng ban (US37 · PB59 · UC.18)" : "Pin as shared team document")
+              }
+            >
+              <Pin size={13} fill={currentSessionDetail?.isPinned ? "#f59e0b" : "none"} color={currentSessionDetail?.isPinned ? "#f59e0b" : "currentColor"} />
+              <span>
+                {currentSessionDetail?.isPinned
+                  ? (isVi ? `Đã ghim (${currentSessionDetail?.department || "Phòng ban"})` : `Pinned (${currentSessionDetail?.department || "Team"})`)
+                  : (isVi ? "Ghim phòng ban" : "Pin to Dept")}
+              </span>
+            </button>
+          )}
+
           <button
             onClick={clearChatToEmpty}
             style={{
@@ -447,10 +557,10 @@ export default function CopilotView({
       {/* ── 3-COLUMN WORKSPACE ───────────────────────────────── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
-        {/* ── COLUMN 1: SESSIONS DRAWER (240px) ───────────────── */}
+        {/* ── COLUMN 1: SESSIONS DRAWER (250px) ───────────────── */}
         {showSessionDrawer && (
           <aside style={{
-            width: 240,
+            width: 250,
             background: "var(--surface)",
             borderRight: "1px solid var(--border)",
             display: "flex",
@@ -458,13 +568,70 @@ export default function CopilotView({
             flexShrink: 0
           }}>
             <div style={{ padding: 12, borderBottom: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* US37 / PB59 Tabs: Cuộc trò chuyện cá nhân vs Tài liệu ghim phòng ban */}
+              <div style={{
+                display: "flex",
+                background: "var(--surface-2)",
+                padding: 3,
+                borderRadius: "var(--r-md)",
+                border: "1px solid var(--border-soft)",
+                gap: 3
+              }}>
+                <button
+                  onClick={() => setSessionTab("personal")}
+                  style={{
+                    flex: 1,
+                    padding: "6px 4px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: sessionTab === "personal" ? "var(--surface)" : "transparent",
+                    color: sessionTab === "personal" ? "var(--text-1)" : "var(--text-3)",
+                    fontWeight: sessionTab === "personal" ? 700 : 500,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    boxShadow: sessionTab === "personal" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4
+                  }}
+                >
+                  <span>{isVi ? "Cá nhân" : "Personal"}</span>
+                </button>
+                <button
+                  onClick={() => setSessionTab("department")}
+                  style={{
+                    flex: 1,
+                    padding: "6px 4px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: sessionTab === "department" ? "var(--surface)" : "transparent",
+                    color: sessionTab === "department" ? "#f59e0b" : "var(--text-3)",
+                    fontWeight: sessionTab === "department" ? 700 : 500,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    boxShadow: sessionTab === "department" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4
+                  }}
+                  title={isVi ? "Tài liệu hỏi đáp quan trọng được ghim dùng chung phòng ban" : "Important department pinned Q&A documents"}
+                >
+                  <Pin size={11} fill={sessionTab === "department" ? "#f59e0b" : "none"} color={sessionTab === "department" ? "#f59e0b" : "currentColor"} />
+                  <span>{isVi ? "Ghim phòng ban" : "Pinned Docs"}</span>
+                </button>
+              </div>
+
               <div style={{ position: "relative" }}>
                 <Search size={13} color="var(--text-4)" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
                 <input
                   type="text"
                   value={searchHistory}
                   onChange={(e) => setSearchHistory(e.target.value)}
-                  placeholder={isVi ? "Tìm lịch sử..." : "Search history..."}
+                  placeholder={sessionTab === "department" ? (isVi ? "Tìm tài liệu ghim..." : "Search pinned docs...") : (isVi ? "Tìm lịch sử..." : "Search history...")}
                   style={{
                     width: "100%",
                     background: "var(--surface-2)",
@@ -478,26 +645,28 @@ export default function CopilotView({
                 />
               </div>
 
-              <button
-                onClick={clearChatToEmpty}
-                style={{
-                  width: "100%",
-                  padding: "6px 12px",
-                  borderRadius: "var(--r-md)",
-                  background: "var(--text-1)",
-                  color: "var(--surface)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  cursor: "pointer"
-                }}
-              >
-                <Plus size={13} />
-                <span>{isVi ? "Tạo hội thoại mới" : "Start New Chat"}</span>
-              </button>
+              {sessionTab === "personal" && (
+                <button
+                  onClick={clearChatToEmpty}
+                  style={{
+                    width: "100%",
+                    padding: "6px 12px",
+                    borderRadius: "var(--r-md)",
+                    background: "var(--text-1)",
+                    color: "var(--surface)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    cursor: "pointer"
+                  }}
+                >
+                  <Plus size={13} />
+                  <span>{isVi ? "Tạo hội thoại mới" : "Start New Chat"}</span>
+                </button>
+              )}
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -509,7 +678,9 @@ export default function CopilotView({
                 <div style={{ padding: "24px 8px", textAlign: "center", color: "var(--text-4)", fontSize: 12 }}>
                   {searchHistory 
                     ? (isVi ? "Không tìm thấy phiên nào" : "No sessions found")
-                    : (isVi ? "Chưa có cuộc hội thoại nào" : "No conversation history")}
+                    : (sessionTab === "department"
+                        ? (isVi ? "Chưa có tài liệu nào được ghim trong phòng ban này." : "No pinned documents in this department.")
+                        : (isVi ? "Chưa có cuộc hội thoại nào." : "No conversation history."))}
                 </div>
               ) : (
                 sessions
@@ -538,13 +709,13 @@ export default function CopilotView({
                         }}
                         onMouseEnter={(e) => {
                           if (!isActive) e.currentTarget.style.background = "var(--surface-2)";
-                          const delBtn = e.currentTarget.querySelector(".session-del-btn");
-                          if (delBtn) delBtn.style.opacity = "1";
+                          const btns = e.currentTarget.querySelectorAll(".session-action-btn");
+                          btns.forEach(b => b.style.opacity = "1");
                         }}
                         onMouseLeave={(e) => {
                           if (!isActive) e.currentTarget.style.background = "transparent";
-                          const delBtn = e.currentTarget.querySelector(".session-del-btn");
-                          if (delBtn) delBtn.style.opacity = "0";
+                          const btns = e.currentTarget.querySelectorAll(".session-action-btn");
+                          btns.forEach(b => b.style.opacity = "0");
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
@@ -555,28 +726,108 @@ export default function CopilotView({
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5
                           }}>
-                            {s.title || (isVi ? "Cuộc hội thoại mới" : "New Chat")}
+                            {s.isPinned && (
+                              <Pin size={11} fill="#f59e0b" color="#f59e0b" style={{ flexShrink: 0 }} />
+                            )}
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {s.title || (isVi ? "Cuộc hội thoại mới" : "New Chat")}
+                            </span>
                           </div>
-                          <button
-                            className="session-del-btn"
-                            title={isVi ? "Xóa cuộc hội thoại" : "Delete session"}
-                            onClick={(e) => handleDeleteSession(e, s.id)}
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              color: "var(--text-4)",
-                              cursor: "pointer",
-                              padding: 2,
-                              opacity: 0,
-                              transition: "opacity 0.15s",
-                              display: "flex",
-                              alignItems: "center",
-                            }}
-                          >
-                            <X size={12} />
-                          </button>
+                          
+                          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                            {/* Pin / Unpin button */}
+                            <button
+                              className="session-action-btn"
+                              title={s.isPinned ? (isVi ? "Bỏ ghim khỏi phòng ban" : "Unpin from department") : (isVi ? "Ghim vào phòng ban" : "Pin to department")}
+                              onClick={(e) => s.isPinned ? handleUnpin(s.id, e) : handleOpenPinModal(e, s)}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: s.isPinned ? "#f59e0b" : "var(--text-4)",
+                                cursor: "pointer",
+                                padding: 2,
+                                opacity: s.isPinned ? 1 : 0,
+                                transition: "opacity 0.15s",
+                                display: "flex",
+                                alignItems: "center",
+                              }}
+                            >
+                              <Pin size={12} fill={s.isPinned ? "#f59e0b" : "none"} color={s.isPinned ? "#f59e0b" : "currentColor"} />
+                            </button>
+
+                            {/* Delete button (for personal sessions) */}
+                            {sessionTab === "personal" && (
+                              <button
+                                className="session-action-btn"
+                                title={isVi ? "Xóa cuộc hội thoại" : "Delete session"}
+                                onClick={(e) => handleDeleteSession(e, s.id)}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  color: "var(--text-4)",
+                                  cursor: "pointer",
+                                  padding: 2,
+                                  opacity: 0,
+                                  transition: "opacity 0.15s",
+                                  display: "flex",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Metadata: Pinned by & department badge */}
+                        {s.isPinned && (
+                          <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 10,
+                            color: "#d97706",
+                            marginTop: 1
+                          }}>
+                            <span style={{
+                              padding: "1px 5px",
+                              borderRadius: 3,
+                              background: "rgba(245, 158, 11, 0.15)",
+                              fontWeight: 600
+                            }}>
+                              {s.department || "Phòng ban"}
+                            </span>
+                            {s.pinnedByName && (
+                              <span style={{ color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {s.pinnedByName}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Optional pin notes preview */}
+                        {s.isPinned && s.pinNotes && (
+                          <div style={{
+                            fontSize: 10.5,
+                            color: "var(--text-3)",
+                            fontStyle: "italic",
+                            background: "rgba(245, 158, 11, 0.05)",
+                            borderLeft: "2px solid #f59e0b",
+                            padding: "2px 6px",
+                            borderRadius: "0 4px 4px 0",
+                            marginTop: 2,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}>
+                            "{s.pinNotes}"
+                          </div>
+                        )}
+
                         <div style={{ fontSize: 10.5, color: isActive ? "var(--blue)" : "var(--text-4)", display: "flex", alignItems: "center", gap: 6 }}>
                           <span>{s.messageCount || 0} {isVi ? "tin nhắn" : "messages"}</span>
                           {timeFormatted && <span>• {timeFormatted}</span>}
@@ -586,6 +837,7 @@ export default function CopilotView({
                   })
               )}
             </div>
+
 
             <div style={{
               padding: "10px 14px",
@@ -632,6 +884,88 @@ export default function CopilotView({
                 <span>{isVi ? "Phạm vi:" : "Scope:"} <strong>{isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}</strong> & <strong>AdventureWorks ERP</strong> (RBAC: Executive)</span>
               </div>
             </div>
+
+            {/* US37 · PB59 · UC.18: Pinned Department Document Notice Banner */}
+            {currentSessionDetail?.isPinned && (
+              <div style={{
+                padding: "12px 16px",
+                borderRadius: "var(--r-md)",
+                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(245, 158, 11, 0.02) 100%)",
+                border: "1px solid rgba(245, 158, 11, 0.28)",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 7,
+                    background: "rgba(245, 158, 11, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#f59e0b",
+                    flexShrink: 0,
+                    marginTop: 1
+                  }}>
+                    <Pin size={15} fill="#f59e0b" color="#f59e0b" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{isVi ? "Tài liệu dùng chung phòng ban" : "Shared Department Document"}</span>
+                      <span style={{
+                        fontSize: 11,
+                        padding: "1px 8px",
+                        borderRadius: 99,
+                        background: "rgba(245, 158, 11, 0.18)",
+                        color: "#d97706",
+                        fontWeight: 700
+                      }}>
+                        {currentSessionDetail.department || currentUser?.department || (isVi ? "Phòng ban" : "Department")}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
+                      {isVi ? "Ghim bởi" : "Pinned by"} <strong style={{ color: "var(--text-2)" }}>{currentSessionDetail.pinnedByName || "Trưởng phòng / Thành viên"}</strong>
+                      {currentSessionDetail.pinnedAt && ` • ${new Date(currentSessionDetail.pinnedAt).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                    </div>
+                    {currentSessionDetail.pinNotes && (
+                      <div style={{
+                        fontSize: 12,
+                        color: "var(--text-2)",
+                        marginTop: 6,
+                        padding: "6px 10px",
+                        background: "var(--surface)",
+                        borderRadius: 6,
+                        border: "1px solid rgba(245, 158, 11, 0.2)",
+                        lineHeight: 1.45
+                      }}>
+                        💡 <strong>{isVi ? "Ghi chú:" : "Notes:"}</strong> {currentSessionDetail.pinNotes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleUnpin(currentSessionDetail.id)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: "var(--r-md)",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text-3)",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap"
+                  }}
+                  title={isVi ? "Bỏ ghim khỏi tài liệu phòng ban" : "Unpin from department"}
+                >
+                  {isVi ? "Bỏ ghim" : "Unpin"}
+                </button>
+              </div>
+            )}
+
 
             {/* Empty state */}
             {showEmptyState && (
@@ -1230,6 +1564,183 @@ export default function CopilotView({
         )}
 
       </div>
+      
+      {/* ── PIN SESSION MODAL (US37 · PB59 · UC.18) ──────────── */}
+      {showPinModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1000,
+          background: "rgba(15, 23, 42, 0.65)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 20
+        }} onClick={() => setShowPinModal(false)}>
+          <div style={{
+            width: "100%",
+            maxWidth: 500,
+            background: "var(--surface)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: "var(--r-lg)",
+            boxShadow: "var(--shadow-2xl)",
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  background: "rgba(245, 158, 11, 0.15)",
+                  color: "#d97706",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <Pin size={18} fill="#d97706" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
+                    {isVi ? "Ghim làm tài liệu dùng chung phòng ban" : "Pin as Shared Department Document"}
+                  </h3>
+                  <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
+                    US37 · PB59 · UC.18 · BR-02
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPinModal(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-4)",
+                  cursor: "pointer",
+                  padding: 4
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{
+              background: "var(--surface-2)",
+              border: "1px solid var(--border-soft)",
+              borderRadius: "var(--r-md)",
+              padding: 12,
+              fontSize: 12,
+              color: "var(--text-2)",
+              lineHeight: 1.5
+            }}>
+              <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>
+                {pinTargetSession?.title || (isVi ? "Cuộc hội thoại" : "Conversation")}
+              </div>
+              <div style={{ color: "var(--text-3)", fontSize: 11.5 }}>
+                {isVi
+                  ? "Phiên hỏi đáp này sẽ được lưu làm tài liệu dùng chung cho phòng ban tham khảo. Các trích dẫn tài liệu sẽ tự động kiểm soát quyền truy cập theo chính sách BR-02."
+                  : "This Q&A session will be pinned for your department. Document citations will enforce BR-02 data scopes."}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+                {isVi ? "Phòng ban áp dụng:" : "Target Department:"}
+              </label>
+              <div style={{
+                padding: "8px 12px",
+                borderRadius: "var(--r-md)",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                fontSize: 12.5,
+                fontWeight: 600,
+                color: "var(--text-1)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <span style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#f59e0b"
+                }} />
+                <span>{currentUser?.department || pinTargetSession?.department || "Kinh doanh (Sales)"}</span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+                {isVi ? "Ghi chú tài liệu (tùy chọn):" : "Document Notes (optional):"}
+              </label>
+              <textarea
+                value={pinNotesInput}
+                onChange={(e) => setPinNotesInput(e.target.value)}
+                placeholder={isVi ? "VD: Mẫu đối soát và chiết khấu hợp đồng khách hàng quý 4/2026..." : "e.g. Reconciliation notes for Q4 sales team..."}
+                rows={3}
+                style={{
+                  width: "100%",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r-md)",
+                  padding: 10,
+                  fontSize: 12.5,
+                  color: "var(--text-1)",
+                  outline: "none",
+                  resize: "vertical",
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => setShowPinModal(false)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "var(--r-md)",
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-2)",
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                {isVi ? "Hủy" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                disabled={isPinning}
+                onClick={handleConfirmPin}
+                style={{
+                  padding: "8px 18px",
+                  borderRadius: "var(--r-md)",
+                  border: "none",
+                  background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
+                  color: "#ffffff",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: isPinning ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: "0 2px 6px rgba(217,119,6,0.35)",
+                  opacity: isPinning ? 0.7 : 1
+                }}
+              >
+                <Pin size={13} fill="#ffffff" />
+                <span>{isPinning ? (isVi ? "Đang lưu..." : "Saving...") : (isVi ? "Xác nhận ghim" : "Confirm Pin")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

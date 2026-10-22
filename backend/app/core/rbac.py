@@ -193,13 +193,25 @@ class ScopeContext:
         for c in citations:
             src_type = c.get("sourceType", "")
             file_name = c.get("file", "") or c.get("docName", "")
+            target_dept = c.get("department") or c.get("dept")
+
+            if target_dept:
+                if self.is_department_allowed(target_dept):
+                    filtered.append(c)
+                else:
+                    redacted = dict(c)
+                    redacted["restricted"] = True
+                    redacted["text"] = f"[DỮ LIỆU ĐÃ ẨN]: Trích dẫn tài liệu thuộc phạm vi phòng ban {target_dept} (BR-02)."
+                    redacted["match"] = "RESTRICTED (BR-02)"
+                    filtered.append(redacted)
             # CUAD contracts are legal scope
-            if "CUAD" in file_name or "cuad" in file_name.lower() or "Qdrant" in src_type:
+            elif "CUAD" in file_name or "cuad" in file_name.lower() or "Qdrant" in src_type:
                 if self.is_department_allowed("Pháp chế"):
                     filtered.append(c)
                 else:
                     # Redact or mark as restricted citation
                     redacted = dict(c)
+                    redacted["restricted"] = True
                     redacted["text"] = "[DỮ LIỆU ĐÃ ẨN]: Nội dung điều khoản hợp đồng ngoài phạm vi phòng ban được cấp phép (BR-02)."
                     redacted["match"] = "RESTRICTED (BR-02)"
                     filtered.append(redacted)
@@ -209,6 +221,7 @@ class ScopeContext:
                     filtered.append(c)
                 else:
                     redacted = dict(c)
+                    redacted["restricted"] = True
                     redacted["text"] = "[DỮ LIỆU ĐÃ ẨN]: Dữ liệu giao dịch CRM ngoài phạm vi phòng ban (BR-02)."
                     redacted["match"] = "RESTRICTED (BR-02)"
                     filtered.append(redacted)
@@ -216,6 +229,7 @@ class ScopeContext:
                 filtered.append(c)
 
         return filtered
+
 
 
 # ── User Resolution Helper ───────────────────────────────────────────────────
@@ -301,16 +315,18 @@ async def get_request_user(
 # ── Scope Context Dependency ─────────────────────────────────────────────────
 async def get_user_scope(
     user: User = Depends(get_request_user),
+    x_user_role: Optional[str] = Header(None),
     x_user_dept: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ) -> ScopeContext:
     """
     Computes effective ScopeContext for current request enforcing BR-02 & BR-05.
     """
-    user_role = (user.role or "").strip().lower()
-    is_admin = user.is_superuser or user_role in ["admin", "it_admin"]
+    user_role = (x_user_role or user.role or "").strip().lower()
+    is_admin = (not x_user_role and user.is_superuser) or user_role in ["admin", "it_admin"]
     is_exec = user_role in ["executive", "ceo", "cfo"]
     is_unrestricted = is_admin or is_exec
+
 
     # Resolve Department Name
     dept_name = None

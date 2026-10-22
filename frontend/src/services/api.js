@@ -58,9 +58,10 @@ export function getAuthHeaders(currentUser = null) {
   return headers;
 }
 
-export async function fetchCopilotSessions(currentUser = null) {
+export async function fetchCopilotSessions(mode = "personal", currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/copilot/sessions`, {
+    const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
+    const res = await fetch(`${API_BASE}/copilot/sessions${query}`, {
       headers: getAuthHeaders(currentUser)
     });
     if (res.ok) return await res.json();
@@ -68,6 +69,27 @@ export async function fetchCopilotSessions(currentUser = null) {
     console.warn("[Copilot] fetchCopilotSessions failed:", e);
   }
   return null;
+}
+
+export async function pinCopilotSession(sessionId, isPinned = true, notes = "", department = null, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/copilot/sessions/${encodeURIComponent(sessionId)}/pin`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({
+        is_pinned: isPinned,
+        notes: notes || undefined,
+        department: department || currentUser?.department || undefined,
+        is_shared: true,
+      })
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Không thể cập nhật trạng thái ghim phiên hội thoại");
+  } catch (e) {
+    console.warn("[Copilot] pinCopilotSession failed:", e);
+    throw e;
+  }
 }
 
 export async function createCopilotSession(title = "Cuộc hội thoại mới", currentUser = null) {
@@ -108,6 +130,7 @@ export async function deleteCopilotSession(sessionId, currentUser = null) {
   }
   return null;
 }
+
 
 export async function queryCopilot(query, lang = "vi", sessionId = null, currentUser = null) {
   try {
