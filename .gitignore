@@ -41,5 +41,9 @@ research/data/synthetic_linking/
 frontend/dist/
 frontend/node_modules/
 
+# Test & scratch caches
+.pytest_cache/
+scratch/
+
 # Root package-lock (empty/unused)
 /package-lock.json

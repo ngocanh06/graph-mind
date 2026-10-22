@@ -31,7 +31,7 @@ class OllamaClient:
     def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """Đồng bộ tạo câu trả lời trực tiếp từ Ollama model."""
         try:
-            with httpx.Client(timeout=60.0) as client:
+            with httpx.Client(timeout=httpx.Timeout(20.0, connect=3.0)) as client:
                 payload = {
                     "model": self.model,
                     "prompt": prompt,

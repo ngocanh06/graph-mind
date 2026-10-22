@@ -9,10 +9,13 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
