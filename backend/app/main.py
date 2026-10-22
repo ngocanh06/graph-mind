@@ -9,7 +9,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -52,10 +52,16 @@ try:
     from app.api.v1.auth import router as auth_router
     from app.api.v1.copilot import router as copilot_router
     from app.api.v1.dashboard import router as dashboard_router
+    from app.api.v1.sop import router as sop_router
+    from app.api.v1.rbac import router as rbac_router
+    from app.core.rbac import get_user_scope, ScopeContext
 except ImportError:
     from api.v1.auth import router as auth_router
     from api.v1.copilot import router as copilot_router
     from api.v1.dashboard import router as dashboard_router
+    from api.v1.sop import router as sop_router
+    from api.v1.rbac import router as rbac_router
+    from core.rbac import get_user_scope, ScopeContext
 
 
 try:
@@ -147,6 +153,14 @@ app.include_router(copilot_router, prefix="/api/v1/copilot", tags=["copilot"])
 # Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
+
+# SOP routers (/api/sop and /api/v1/sop) — FR26, UC.14, BR-04
+app.include_router(sop_router, prefix="/api/v1/sop", tags=["sop"])
+app.include_router(sop_router, prefix="/api/sop", tags=["sop"])
+
+# RBAC & Department Scope routers (/api/rbac and /api/v1/rbac) — FR3, BR-02
+app.include_router(rbac_router, prefix="/api/v1/rbac", tags=["rbac"])
+app.include_router(rbac_router, prefix="/api/rbac", tags=["rbac"])
 
 
 
@@ -542,7 +556,8 @@ def multifacet_search(
     mode: Optional[str] = Query(default="hybrid"),
     dept: Optional[str] = Query(default="ALL"),
     status: Optional[str] = Query(default="ALL"),
-    limit: int = Query(default=12, ge=1, le=50)
+    limit: int = Query(default=12, ge=1, le=50),
+    scope: ScopeContext = Depends(get_user_scope),
 ):
     """
     Real database multi-facet search across:
@@ -784,12 +799,26 @@ def multifacet_search(
                 "score": 0.88
             })
 
-    # Department & Status Filtering in Memory if requested
+    # Department & Status Filtering in Memory if requested (BR-02 Scope Enforcement)
     if dept and dept != "ALL":
+        if not scope.is_department_allowed(dept):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Theo quy định BR-02: Tài khoản [{scope.user.username}] thuộc phòng ban [{scope.department_name}] không có quyền tra cứu dữ liệu phòng ban '{dept}'."
+            )
         contracts = [c for c in contracts if c.get("dept") == dept]
         customers = [cu for cu in customers if cu.get("dept") == dept]
         products = [p for p in products if p.get("dept") == dept]
         documents = [d for d in documents if d.get("dept") == dept]
+    elif not scope.is_unrestricted:
+        # Filter entities by user department scope (BR-02)
+        if not scope.is_department_allowed("Pháp chế"):
+            contracts = []
+        if not scope.is_department_allowed("Kinh doanh"):
+            customers = []
+        if not (scope.is_department_allowed("R&D") or scope.is_department_allowed("Vận hành")):
+            products = []
+        documents = scope.filter_documents(documents)
 
     # Metrics summary from live databases
     lbl_counts = neo4j_client.get_label_counts() if neo4j_client.is_connected else {}
@@ -1021,12 +1050,16 @@ def get_repository_documents(
     doc_type: Optional[str] = Query(default="ALL"),
     dept: Optional[str] = Query(default="ALL"),
     limit: int = Query(default=16, ge=1, le=200),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
+    scope: ScopeContext = Depends(get_user_scope),
 ):
-    """Returns paginated list of real CUAD documents and AdventureWorks datasets."""
+    """Returns paginated list of real CUAD documents and AdventureWorks datasets with BR-02 scope enforcement."""
     aw_items = _get_adventureworks_datasets()
     cuad_items = _get_cuad_cache()
     all_items = aw_items + cuad_items
+
+    # Enforce Department Scope (BR-02, BR-04)
+    all_items = scope.filter_documents(all_items)
 
     # Filtering
     filtered = all_items
@@ -1051,9 +1084,9 @@ def get_repository_documents(
         "limit": limit,
         "summary": {
             "total_items": len(all_items),
-            "cuad_contracts": len(cuad_items),
-            "adventureworks_datasets": len(aw_items),
-            "cuad_chunks": sum(it.get("chunk_count", 0) for it in cuad_items),
+            "cuad_contracts": len([it for it in all_items if it.get("source") == "qdrant"]),
+            "adventureworks_datasets": len([it for it in all_items if it.get("source") == "neo4j"]),
+            "cuad_chunks": sum(it.get("chunk_count", 0) for it in all_items if it.get("source") == "qdrant"),
             "neo4j_nodes": neo4j_client.get_node_count() if neo4j_client.is_connected else 52120
         },
         "data": page_items
@@ -1061,14 +1094,20 @@ def get_repository_documents(
 
 
 @app.get("/api/documents/detail")
-def get_document_detail(doc_id: str = Query(...)):
-    """Returns real detail, real text chunks (Qdrant) or real records/relations (Neo4j)."""
+def get_document_detail(
+    doc_id: str = Query(...),
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """Returns real detail, real text chunks (Qdrant) or real records/relations (Neo4j) with BR-02 check."""
     # 1. AdventureWorks Dataset Detail
     if doc_id.startswith("AW_"):
         aw_datasets = {d["id"]: d for d in _get_adventureworks_datasets()}
         item = aw_datasets.get(doc_id)
         if not item:
             raise HTTPException(status_code=404, detail="Dataset not found")
+        
+        # Enforce Department Scope (BR-02)
+        scope.assert_document_access(doc_id, item.get("dept") or item.get("deptLabel"))
         
         records = []
         relationships = []
@@ -1148,11 +1187,14 @@ def get_document_detail(doc_id: str = Query(...)):
         d["name"].lower().replace(".pdf", "") == doc_id_clean.replace(".pdf", "") or
         d["raw_id"].lower().replace(".txt", "") == doc_id_clean.replace(".txt", "").replace(".pdf", "")
     )), None)
-    if not doc and cuad_items:
+    if not doc and cuad_items and scope.is_department_allowed("Pháp chế"):
         doc = cuad_items[0]
     
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    # Enforce Department Scope (BR-02)
+    scope.assert_document_access(doc["id"], doc.get("dept") or "Pháp chế")
 
     raw_cname = doc["raw_id"]
     chunks = []

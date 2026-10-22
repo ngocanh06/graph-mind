@@ -25,7 +25,7 @@ const NAV_SECTIONS = (role, isVi) => [
     items: [
       { id: "executive", icon: LayoutDashboard, label: isVi ? "Dashboard điều hành" : "Executive Dashboard", roles: ["executive","it_admin"] },
       { id: "risk",      icon: AlertTriangle,   label: isVi ? "Cảnh báo rủi ro" : "Risk Alerts", alert: true, roles: ["executive","knowledge_manager","it_admin"] },
-      { id: "reports",   icon: BarChart2,       label: isVi ? "Báo cáo" : "Reports", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "reports",   icon: BarChart2,       label: role === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : (isVi ? "Báo cáo" : "Reports"), roles: ["executive","knowledge_manager","it_admin","standard"] },
     ],
   },
   {

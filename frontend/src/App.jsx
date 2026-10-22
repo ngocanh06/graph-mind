@@ -37,6 +37,7 @@ const VALID_VIEWS = [
   "sop",
   "sop_composer",
   "reports",
+  "department_report",
   "admin"
 ];
 
@@ -411,13 +412,14 @@ export default function App() {
             />
           )}
 
-          {view === "reports" && (
+          {(view === "reports" || view === "department_report") && (
             <ReportsView
               onNavigate={handleNavigate}
               t={t}
               lang={lang}
               role={role}
               currentUser={currentUser}
+              initialMode={view === "department_report" ? "department" : undefined}
             />
           )}
 

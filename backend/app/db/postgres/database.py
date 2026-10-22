@@ -57,10 +57,18 @@ async def get_db() -> AsyncSession:
 async def create_all_tables():
     """Tạo tất cả tables từ ORM models. Chỉ dùng trong dev/test."""
     # Import models để Base.metadata nhận diện được
-    from app.db.postgres.models import user, copilot_session  # noqa: F401
+    from app.db.postgres.models import user, copilot_session, sop_document  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migrate columns for copilot_sessions if table already existed (US37 / PB59 / UC.18)
+        from sqlalchemy import text
+        await conn.execute(text("ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;"))
+        await conn.execute(text("ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT FALSE;"))
+        await conn.execute(text("ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS department VARCHAR(100);"))
+        await conn.execute(text("ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS pinned_by_name VARCHAR(255);"))
+        await conn.execute(text("ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMP WITH TIME ZONE;"))
+        await conn.execute(text("ALTER TABLE copilot_sessions ADD COLUMN IF NOT EXISTS pin_notes VARCHAR(1000);"))
 
 
 async def drop_all_tables():
