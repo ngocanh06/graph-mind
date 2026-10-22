@@ -53,6 +53,7 @@ export function getAuthHeaders(currentUser = null) {
     if (currentUser.email) headers["X-User-Email"] = currentUser.email;
     if (currentUser.username) headers["X-User-Name"] = currentUser.username;
     if (currentUser.id) headers["X-User-Id"] = currentUser.id;
+    if (currentUser.department) headers["X-User-Dept"] = encodeURIComponent(currentUser.department);
   }
   return headers;
 }
@@ -404,6 +405,84 @@ export async function generateExecutiveBriefing(timeframe = "month", focus = "ex
     console.warn("[Dashboard] generateExecutiveBriefing error:", e);
   }
   return null;
+}
+
+// ============================================================================
+// MODULE 2: SOP & KNOWLEDGE EDITOR API (FR26, UC.14, BR-04)
+// ============================================================================
+
+export async function fetchSopList(params = {}, currentUser = null) {
+  try {
+    const sp = new URLSearchParams();
+    if (params.dept && params.dept !== "ALL") sp.set("dept", params.dept);
+    if (params.status && params.status !== "ALL") sp.set("status", params.status);
+    if (params.q) sp.set("q", params.q);
+
+    const queryStr = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/sop${queryStr}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[SOP] fetchSopList error:", e);
+  }
+  return null;
+}
+
+export async function fetchSopDetail(sopId, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop/${encodeURIComponent(sopId)}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[SOP] fetchSopDetail error:", e);
+  }
+  return null;
+}
+
+export async function saveSopDraft(payload, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.warn("[SOP] saveSopDraft error:", e);
+    return { ok: false, error: e.message };
+  }
+}
+
+export async function publishSop(payload, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop/publish`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.warn("[SOP] publishSop error:", e);
+    return { ok: false, error: e.message };
+  }
+}
+
+export async function deleteSop(sopId, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop/${encodeURIComponent(sopId)}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(currentUser),
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.warn("[SOP] deleteSop error:", e);
+    return { ok: false, error: e.message };
+  }
 }
 
 

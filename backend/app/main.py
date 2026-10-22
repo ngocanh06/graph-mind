@@ -52,10 +52,12 @@ try:
     from app.api.v1.auth import router as auth_router
     from app.api.v1.copilot import router as copilot_router
     from app.api.v1.dashboard import router as dashboard_router
+    from app.api.v1.sop import router as sop_router
 except ImportError:
     from api.v1.auth import router as auth_router
     from api.v1.copilot import router as copilot_router
     from api.v1.dashboard import router as dashboard_router
+    from api.v1.sop import router as sop_router
 
 
 try:
@@ -147,6 +149,10 @@ app.include_router(copilot_router, prefix="/api/v1/copilot", tags=["copilot"])
 # Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
+
+# SOP routers (/api/sop and /api/v1/sop) — FR26, UC.14, BR-04
+app.include_router(sop_router, prefix="/api/v1/sop", tags=["sop"])
+app.include_router(sop_router, prefix="/api/sop", tags=["sop"])
 
 
 
