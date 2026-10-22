@@ -32,6 +32,8 @@ export default function ExecutiveView({
   const [contractDist, setContractDist] = useState(null);
   const [alertCount, setAlertCount] = useState(13);
   const [revenueTrends, setRevenueTrends] = useState([]);
+  const [latestRevenue, setLatestRevenue] = useState(null);
+  const [growthRate, setGrowthRate] = useState(null);
 
   const loadData = async () => {
     setIsRefreshing(true);
@@ -48,7 +50,11 @@ export default function ExecutiveView({
       if (custRes && custRes.success) setLiveCustomers(custRes.data);
       if (distRes && distRes.success) setContractDist(distRes.data);
       if (alertRes && alertRes.success) setAlertCount(alertRes.totalAlerts || alertRes.data?.length || 0);
-      if (trendRes && trendRes.success) setRevenueTrends(trendRes.data || []);
+      if (trendRes && trendRes.success) {
+        setRevenueTrends(trendRes.data || []);
+        if (trendRes.latestYear) setLatestRevenue(trendRes.latestYear);
+        if (trendRes.growthRate !== undefined) setGrowthRate(trendRes.growthRate);
+      }
     } catch (err) {
       console.warn("[ExecutiveView] Error loading live dashboard data:", err);
     } finally {
@@ -404,7 +410,7 @@ export default function ExecutiveView({
                 </h3>
               </div>
               <button
-                onClick={() => onNavigate?.("copilot")}
+                onClick={() => onNavigate?.("copilot", isVi ? "Phân tích xu hướng doanh thu và cơ cấu tăng trưởng giao dịch gần đây" : "Analyze recent revenue trends and transaction growth structure")}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -427,10 +433,10 @@ export default function ExecutiveView({
 
             <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
               <span style={{ fontSize: 26, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>
-                4,829,000,000 VNĐ
+                {latestRevenue ? formatCurrency(latestRevenue.revenue) : (kpis ? formatCurrency(kpis.totalRevenue) : "$22.42M")}
               </span>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--green)", display: "flex", alignItems: "center", gap: 3 }}>
-                ↗ +14.2% {isVi ? "so với tháng trước" : "vs last month"}
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 3 }}>
+                {latestRevenue ? (isVi ? `Năm ${latestRevenue.year} (${Number(latestRevenue.orders).toLocaleString()} đơn hàng)` : `Year ${latestRevenue.year} (${Number(latestRevenue.orders).toLocaleString()} orders)`) : (isVi ? "Kỳ gần nhất" : "Latest Period")}
               </span>
             </div>
 
@@ -447,7 +453,7 @@ export default function ExecutiveView({
               minHeight: 140
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>
-                <span>5.5B</span><span>4.0B</span><span>2.5B</span><span>1.0B</span>
+                <span>$55M</span><span>$40M</span><span>$25M</span><span>$10M</span>
               </div>
               <div style={{ flex: 1, position: "relative", minHeight: 90 }}>
                 <svg width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none">
@@ -458,33 +464,36 @@ export default function ExecutiveView({
                     </linearGradient>
                   </defs>
                   <path
-                    d="M0,85 C60,80 100,70 150,75 S250,40 300,35 S400,48 450,40 L500,15"
+                    d="M0,69.4 L166.7,35.2 L333.3,18.8 L500,57.4"
                     fill="none"
                     stroke="#2563EB"
                     strokeWidth="2.5"
                     strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                   <path
-                    d="M0,85 C60,80 100,70 150,75 S250,40 300,35 S400,48 450,40 L500,15 L500,100 L0,100 Z"
+                    d="M0,69.4 L166.7,35.2 L333.3,18.8 L500,57.4 L500,100 L0,100 Z"
                     fill="url(#revGradTokens)"
                   />
-                  <circle cx="500" cy="15" r="4.5" fill="#2563EB" stroke="var(--surface)" strokeWidth="2" />
+                  <circle cx="0" cy="69.4" r="3.5" fill="#2563EB" />
+                  <circle cx="166.7" cy="35.2" r="3.5" fill="#2563EB" />
+                  <circle cx="333.3" cy="18.8" r="4.5" fill="#2563EB" stroke="var(--surface)" strokeWidth="2" />
+                  <circle cx="500" cy="57.4" r="4.5" fill="#2563EB" stroke="var(--surface)" strokeWidth="2" />
                 </svg>
               </div>
               <div style={{
                 display: "flex",
                 justifyContent: "space-between",
-                fontSize: 10,
-                color: "var(--text-4)",
+                fontSize: 10.5,
+                color: "var(--text-3)",
                 fontFamily: "var(--f-mono)",
                 borderTop: "1px solid var(--border-soft)",
                 paddingTop: 6
               }}>
-                <span>{isVi ? "Tuần 1" : "Wk 1"}</span>
-                <span>{isVi ? "Tuần 2" : "Wk 2"}</span>
-                <span>{isVi ? "Tuần 3" : "Wk 3"}</span>
-                <span>{isVi ? "Tuần 4" : "Wk 4"}</span>
-                <span style={{ color: "var(--blue)", fontWeight: 700 }}>{isVi ? "Hiện tại" : "Now"}</span>
+                <span>2011 ($14.2M)</span>
+                <span>2012 ($37.7M)</span>
+                <span>2013 ($49.0M)</span>
+                <span style={{ color: "var(--blue)", fontWeight: 700 }}>2014 ($22.4M)</span>
               </div>
             </div>
 
@@ -530,7 +539,7 @@ export default function ExecutiveView({
                 </h3>
               </div>
               <button
-                onClick={() => onNavigate?.("copilot")}
+                onClick={() => onNavigate?.("copilot", isVi ? "Khách hàng nào có doanh thu cao nhất và lịch sử giao dịch lớn trong hệ thống?" : "Which customers contribute the highest revenue and transaction volume?")}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -646,7 +655,7 @@ export default function ExecutiveView({
                 </h3>
               </div>
               <button
-                onClick={() => onNavigate?.("copilot")}
+                onClick={() => onNavigate?.("copilot", isVi ? "Phân tích cơ cấu danh mục hợp đồng CUAD và các loại hợp đồng phổ biến nhất" : "Analyze the CUAD contract portfolio breakdown and dominant agreement types")}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -680,11 +689,13 @@ export default function ExecutiveView({
                 <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
                   <circle cx="18" cy="18" r="14" fill="none" stroke="var(--surface-3)" strokeWidth="4.5" />
                   <circle cx="18" cy="18" r="14" fill="none" stroke="#2563EB" strokeWidth="4.5"
-                    strokeDasharray="45 100" />
+                    strokeDasharray="23.3 100" />
                   <circle cx="18" cy="18" r="14" fill="none" stroke="#8B5CF6" strokeWidth="4.5"
-                    strokeDasharray="30 100" strokeDashoffset="-45" />
+                    strokeDasharray="16.7 100" strokeDashoffset="-23.3" />
                   <circle cx="18" cy="18" r="14" fill="none" stroke="#059669" strokeWidth="4.5"
-                    strokeDasharray="25 100" strokeDashoffset="-75" />
+                    strokeDasharray="16.7 100" strokeDashoffset="-40" />
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="#F59E0B" strokeWidth="4.5"
+                    strokeDasharray="43.3 100" strokeDashoffset="-56.7" />
                 </svg>
                 <div style={{
                   position: "absolute",
@@ -695,7 +706,9 @@ export default function ExecutiveView({
                   justifyContent: "center",
                   pointerEvents: "none"
                 }}>
-                  <span style={{ fontSize: 20, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>142</span>
+                  <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>
+                    {kpis ? kpis.totalContracts : 30}
+                  </span>
                   <span style={{ fontSize: 9.5, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
                     {isVi ? "Hợp đồng" : "Contracts"}
                   </span>
@@ -703,18 +716,19 @@ export default function ExecutiveView({
               </div>
 
               {/* Legend */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11.5 }}>
                 {[
-                  { color: "#2563EB", label: isVi ? "Hợp đồng Dịch vụ (Service)" : "Service Contracts", pct: "45% (64)" },
-                  { color: "#8B5CF6", label: isVi ? "NDA & Bảo mật thông tin" : "NDA & Confidentiality", pct: "30% (43)" },
-                  { color: "#059669", label: isVi ? "Cung ứng hàng hóa (Supply)" : "Supply Agreements", pct: "25% (35)" },
+                  { color: "#2563EB", label: isVi ? "Dịch vụ & Thuê ngoài (Service/Outsourcing)" : "Service & Outsourcing", pct: "23.3% (7)" },
+                  { color: "#8B5CF6", label: isVi ? "Liên minh chiến lược & SHTT (Alliance/IP)" : "Strategic Alliance & IP", pct: "16.7% (5)" },
+                  { color: "#059669", label: isVi ? "Phân phối & Đại lý (Reseller/Distribution)" : "Reseller & Distribution", pct: "16.7% (5)" },
+                  { color: "#F59E0B", label: isVi ? "Hợp đồng thương mại khác" : "Other Commercial", pct: "43.3% (13)" },
                 ].map((item) => (
                   <div key={item.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-2)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-2)" }}>
                       <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }}></span>
                       {item.label}
                     </span>
-                    <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)", fontSize: 11.5 }}>{item.pct}</strong>
+                    <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)", fontSize: 11 }}>{item.pct}</strong>
                   </div>
                 ))}
               </div>
@@ -759,7 +773,7 @@ export default function ExecutiveView({
                 </h3>
               </div>
               <button
-                onClick={() => onNavigate?.("copilot")}
+                onClick={() => onNavigate?.("copilot", isVi ? "Đánh giá tỷ lệ tuân thủ điều khoản pháp lý và danh sách hợp đồng thiếu điều khoản bảo vệ quan trọng" : "Assess legal compliance rates and identify contracts missing critical protection clauses")}
                 style={{
                   display: "flex",
                   alignItems: "center",

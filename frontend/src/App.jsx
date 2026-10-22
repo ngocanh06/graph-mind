@@ -114,6 +114,7 @@ export default function App() {
   const [demoStep, setDemoStep] = useState(1);
   const [selectedEntity, setSelectedEntity] = useState("abc");
   const [selectedDocId, setSelectedDocId] = useState(null);
+  const [initialCopilotQuery, setInitialCopilotQuery] = useState("");
 
   const handleNavigate = (targetView, payload = null) => {
     const normView = (targetView === "graph" || targetView === "knowledge") ? "knowledge" : targetView;
@@ -121,6 +122,9 @@ export default function App() {
       setSelectedDocId(payload);
     } else if (normView === "knowledge" && payload) {
       setSelectedEntity(payload);
+    } else if (normView === "copilot" && payload) {
+      const queryStr = typeof payload === "string" ? payload : payload.query || "";
+      setInitialCopilotQuery(queryStr);
     }
     setView(normView);
   };
@@ -345,6 +349,8 @@ export default function App() {
               apiConnected={apiConnected}
               role={role}
               currentUser={currentUser}
+              initialQuery={initialCopilotQuery}
+              onClearInitialQuery={() => setInitialCopilotQuery("")}
             />
           )}
 

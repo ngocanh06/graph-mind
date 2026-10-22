@@ -80,11 +80,11 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   const handleCopySummary = () => {
     const text = isSalesRole
       ? (isVi
-        ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC - CHUYÊN VIÊN NGUYỄN V. NAM (20/09/2026):\n- Hoàn tất 4/4 ca cảnh báo (100% SLA, TB 12p/ca).\n- Bảo vệ thành công 4.1 Tỷ VND doanh số tái ký (ABC Corp 1.2B chiết khấu 10%, Delta Trading 2.9B).\n- Đã phát hành 3 bộ chứng từ (BG-2026-09, EDR #8821, Phụ lục PL #44).\n- Đề xuất Trưởng phòng: Cấp quyền duyệt nhanh mức chiết khấu 12% cho hợp đồng kỳ hạn 24 tháng."
-        : "SALES SHIFT WORK REPORT - SPECIALIST NGUYEN V. NAM (20/09/2026):\n- Resolved 4/4 priority cases (100% SLA, avg 12m/case).\n- Protected $4.1B VND renewal pipeline (ABC Corp 1.2B with 10% retention, Delta Trading 2.9B).\n- 3 document packets dispatched (BG-2026-09, EDR #8821, Annex PL #44).\n- Manager escalation: Request 12% approval threshold for 24-month commitments.")
+        ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC - CHUYÊN VIÊN NGUYỄN V. NAM (20/09/2026):\n- Hoàn tất 4/4 ca cảnh báo (100% SLA, TB 12p/ca).\n- Bảo vệ thành công $4.1M USD doanh số tái ký (ABC Corp $1.2M chiết khấu 10%, Delta Trading $2.9M).\n- Đã phát hành 3 bộ chứng từ (BG-2026-09, EDR #8821, Phụ lục PL #44).\n- Đề xuất Trưởng phòng: Cấp quyền duyệt nhanh mức chiết khấu 12% cho hợp đồng kỳ hạn 24 tháng."
+        : "SALES SHIFT WORK REPORT - SPECIALIST NGUYEN V. NAM (20/09/2026):\n- Resolved 4/4 priority cases (100% SLA, avg 12m/case).\n- Protected $4.1M USD renewal pipeline (ABC Corp $1.2M with 10% retention, Delta Trading $2.9M).\n- 3 document packets dispatched (BG-2026-09, EDR #8821, Annex PL #44).\n- Manager escalation: Request 12% approval threshold for 24-month commitments.")
       : (isVi
-        ? "BÁO CÁO LÃNH ĐẠO GRAPH MIND - TỔNG HỢP CHIẾN LƯỢC:\nDoanh thu tăng 6.2% trong 30 ngày qua nhưng tần suất đơn hàng giảm 3.1% ở 2 khách hàng VIP (ABC Corp -32%, Delta Trading -44%). Cần đàm phán gia hạn hợp đồng CT-2026-18 (hết hạn 18/10) và xử lý 8.6 tỷ VND công nợ quá hạn."
-        : "GRAPH MIND EXECUTIVE BRIEFING:\nRevenue grew 6.2% over trailing 30 days while order cadence declined 3.1% in top accounts (ABC Corp -32%, Delta Trading -44%). Urgent contract renewal required for CT-2026-18 (expires 18 Oct) and reconciliation of 8.6B VND aged receivables.");
+        ? "BÁO CÁO LÃNH ĐẠO GRAPH MIND - TỔNG HỢP CHIẾN LƯỢC:\nDoanh thu tăng 6.2% trong 30 ngày qua nhưng tần suất đơn hàng giảm 3.1% ở 2 khách hàng VIP (ABC Corp -32%, Delta Trading -44%). Cần đàm phán gia hạn hợp đồng CT-2026-18 (hết hạn 18/10) và xử lý $8.6M USD công nợ quá hạn."
+        : "GRAPH MIND EXECUTIVE BRIEFING:\nRevenue grew 6.2% over trailing 30 days while order cadence declined 3.1% in top accounts (ABC Corp -32%, Delta Trading -44%). Urgent contract renewal required for CT-2026-18 (expires 18 Oct) and reconciliation of $8.6M USD aged receivables.");
     navigator.clipboard?.writeText(text);
     showToast(isVi ? "Đã sao chép tóm tắt báo cáo vào bộ nhớ tạm!" : "Summary copied to clipboard!");
   };
@@ -607,7 +607,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               </div>
               <div>
                 <div className="rep-kpi-val" style={{ color: "#2563eb" }}>
-                  {hasGeneratedReport ? "4.1 Tỷ VND" : "0 đ"}
+                  {hasGeneratedReport ? "$4.1M USD" : "$0 USD"}
                   <span style={{ fontSize: "13px", fontWeight: "700", color: "#2563eb", background: "rgba(37, 99, 235, 0.08)", padding: "2px 8px", borderRadius: "12px" }}>
                     {hasGeneratedReport ? "+2.4% MoM" : "+0% MoM"}
                   </span>
@@ -617,7 +617,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 </div>
                 <div className="rep-kpi-meta">
                   <Icon name="fa-solid fa-building" size={15} style={{ fontSize: "11px", color: "var(--text-4)" }} />
-                  <span>{hasGeneratedReport ? "ABC Corp (1.2B) & Delta Trading (2.9B)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
+                  <span>{hasGeneratedReport ? "ABC Corp ($1.2M) & Delta Trading ($2.9M)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
                 </div>
               </div>
             </div>
@@ -844,7 +844,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                             {isVi ? "Nguy cơ rời bỏ dòng Sản phẩm B (-44%)" : "Churn risk on Product line B (-44%)"}
                           </div>
                           <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
-                            {isVi ? "Tài khoản đối tác thương mại 2.9 Tỷ VND" : "2.9B VND commercial distribution account"}
+                            {isVi ? "Tài khoản đối tác thương mại $2.9M USD" : "$2.9M USD commercial distribution account"}
                           </div>
                         </td>
                         <td>
@@ -894,8 +894,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                         <td>
                           <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
                             {isVi
-                              ? "Lập bảng báo giá chính thức 450 triệu VND gửi qua email chính thức kèm chứng thư số"
-                              : "Dispatched official 450M VND quotation via verified secure email with digital certificate"}
+                              ? "Lập bảng báo giá chính thức $450K USD gửi qua email chính thức kèm chứng thư số"
+                              : "Dispatched official $450K USD quotation via verified secure email with digital certificate"}
                           </div>
                         </td>
                         <td>
@@ -1022,8 +1022,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 </div>
                 <div style={{ background: "var(--surface-2)", padding: "14px 18px", borderRadius: "10px", border: "1px solid var(--border-soft)", fontSize: "13.5px", lineHeight: "1.65", color: "var(--text-1)" }}>
                   {isVi
-                    ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản ABC Corporation (1.2 tỷ VND) và kiểm soát rủi ro phân phối tại Delta Trading Ltd (2.9 tỷ VND)."
-                    : "During today's operational shift, the specialist monitored assigned enterprise accounts. Handled and resolved priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for ABC Corporation ($1.2B VND) and mitigated distribution channel risks for Delta Trading ($2.9B VND)."}
+                    ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản ABC Corporation ($1.2M USD) và kiểm soát rủi ro phân phối tại Delta Trading Ltd ($2.9M USD)."
+                    : "During today's operational shift, the specialist monitored assigned enterprise accounts. Handled and resolved priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for ABC Corporation ($1.2M USD) and mitigated distribution channel risks for Delta Trading ($2.9M USD)."}
                 </div>
               </div>
 
@@ -1268,7 +1268,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           <div className="text-body-sm leading-relaxed text-on-surface" style={{ whiteSpace: "pre-line" }}>
             {liveBriefing ? liveBriefing : (
               isVi
-                ? "Tổng doanh thu toàn hệ thống lũy kế đạt 123,22 triệu USD (~ 2.950 tỷ VND) với 31.465 đơn hàng AdventureWorks trong cơ sở tri thức Neo4j. Khách hàng đóng góp lớn nhất dẫn đầu bởi Roger Harui ($989K) và Andrew Dixon ($961K). Tỷ lệ tuân thủ điều khoản hợp đồng CUAD đạt 56.7%, phát hiện 5 hợp đồng thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability) cần ban lãnh đạo phê duyệt phụ lục bổ sung."
+                ? "Tổng doanh thu toàn hệ thống lũy kế đạt $123.22M USD với 31.465 đơn hàng AdventureWorks trong cơ sở tri thức Neo4j. Khách hàng đóng góp lớn nhất dẫn đầu bởi Roger Harui ($989K) và Andrew Dixon ($961K). Tỷ lệ tuân thủ điều khoản hợp đồng CUAD đạt 56.7%, phát hiện 5 hợp đồng thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability) cần ban lãnh đạo phê duyệt phụ lục bổ sung."
                 : "Total enterprise monitored revenue reached $123.22M USD across 31,465 AdventureWorks orders in Neo4j. Top contributing VIP accounts led by Roger Harui ($989K) and Andrew Dixon ($961K). CUAD contract clause compliance rate is 56.7%, with 5 agreements identified lacking limitation of liability caps."
             )}
           </div>
@@ -1282,7 +1282,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           </h3>
           <ul className="list-disc list-inside text-body-sm leading-relaxed text-on-surface-variant flex flex-col gap-space-2xs">
             <li>
-              <b>ABC Corporation:</b> {isVi ? "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng (-32% trong 60 ngày). Mô hình đồ thị xác nhận đây là chỉ báo rời bỏ trước mắt đối với tài khoản 6,4 tỷ VND." : "Order cadence dropped from 8.0/mo to 5.4/mo (-32% over 60 days). Graph model confirms high churn probability for this 6.4B VND lifetime account."}
+              <b>ABC Corporation:</b> {isVi ? "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng (-32% trong 60 ngày). Mô hình đồ thị xác nhận đây là chỉ báo rời bỏ trước mắt đối với tài khoản $6.4M USD." : "Order cadence dropped from 8.0/mo to 5.4/mo (-32% over 60 days). Graph model confirms high churn probability for this $6.4M USD lifetime account."}
             </li>
             <li>
               <b>Delta Trading Ltd:</b> {isVi ? "Nhịp độ đặt hàng Sản phẩm B giảm 44% kể từ tháng 7. Cần rà soát lại thỏa thuận phân phối độc quyền." : "Product B order cadence fell 44% since July. Exclusive distribution terms require commercial renegotiation."}
@@ -1310,21 +1310,21 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 <tr className="border-b border-outline-variant/10">
                   <td className="p-2 font-mono font-semibold">CT-2026-18</td>
                   <td className="p-2">ABC Corporation</td>
-                  <td className="p-2 font-semibold text-primary">1.2B VND</td>
+                  <td className="p-2 font-semibold text-primary">$1.2M USD</td>
                   <td className="p-2 text-error font-bold">18/10/2026 (12d)</td>
                   <td className="p-2"><span className="pill red uppercase text-[10px] font-bold">HIGH</span></td>
                 </tr>
                 <tr className="border-b border-outline-variant/10">
                   <td className="p-2 font-mono font-semibold">CT-2026-24</td>
                   <td className="p-2">Delta Trading Ltd</td>
-                  <td className="p-2 font-semibold text-primary">2.9B VND</td>
+                  <td className="p-2 font-semibold text-primary">$2.9M USD</td>
                   <td className="p-2">24/10/2026 (18d)</td>
                   <td className="p-2"><span className="pill amber uppercase text-[10px] font-bold">MED</span></td>
                 </tr>
                 <tr>
                   <td className="p-2 font-mono font-semibold">AR Receivables &gt;60d</td>
                   <td className="p-2">Finance Department</td>
-                  <td className="p-2 font-semibold text-error">8.6B VND</td>
+                  <td className="p-2 font-semibold text-error">$8.6M USD</td>
                   <td className="p-2">End of Month</td>
                   <td className="p-2"><span className="pill amber uppercase text-[10px] font-bold">ELEVATED</span></td>
                 </tr>

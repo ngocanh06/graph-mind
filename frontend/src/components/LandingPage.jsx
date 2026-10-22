@@ -819,7 +819,7 @@ export default function LandingPage({
               </div>
               <p style={{ fontSize: "11.5px", lineHeight: "1.7", color: "#e2e8f0", textAlign: "center", margin: "0 0 20px 0" }}>
                 {isVi
-                  ? "\"Graph Mind giúp ban điều hành phát hiện hợp đồng 1,2 tỷ sắp hết hạn và giảm thiểu 32% nguy cơ rời bỏ khách hàng một cách chính xác tuyệt đối.\""
+                  ? "\"Graph Mind giúp ban điều hành phát hiện hợp đồng $1.2M USD sắp hết hạn và giảm thiểu 32% nguy cơ rời bỏ khách hàng một cách chính xác tuyệt đối.\""
                   : "\"It's pretty amazing tool and UI/UX is great. Google NLP API is something that I always wanted to have for enterprise knowledge and they've got that.\""}
               </p>
               <div style={{ fontSize: "13.5px", fontWeight: "800", color: "#ffffff", marginBottom: "4px" }}>

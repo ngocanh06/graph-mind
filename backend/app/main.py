@@ -575,8 +575,8 @@ def multifacet_search(
                         "client": cname.split("_")[0] if "_" in cname else "CUAD Partner",
                         "dept": "LEGAL",
                         "deptName": "Pháp chế & R&D",
-                        "value": f"{max(500, round(score * 1400))} Triệu VND",
-                        "numValue": max(500000000, int(score * 1400000000)),
+                        "value": f"${max(25, round(score * 120)):,}K USD",
+                        "numValue": max(25000, int(score * 120000)),
                         "date": "2026",
                         "status": "VALID",
                         "statusText": "Còn hiệu lực",
@@ -631,8 +631,8 @@ def multifacet_search(
                         "client": c.get("company") or "CUAD Enterprise Partner",
                         "dept": "LEGAL",
                         "deptName": "Pháp chế & R&D",
-                        "value": f"{max(450, cl_cnt * 350)} Triệu VND",
-                        "numValue": max(450000000, cl_cnt * 350000000),
+                        "value": f"${max(20, cl_cnt * 18):,}K USD",
+                        "numValue": max(20000, cl_cnt * 18000),
                         "date": c.get("date") or "2026",
                         "status": "VALID",
                         "statusText": "Còn hiệu lực",
@@ -668,21 +668,20 @@ def multifacet_search(
             neo_custs = neo4j_client.run_cypher(cust_query, params)
             for cust in neo_custs:
                 rev = float(cust.get("total_revenue") or 0)
-                vnd_val = int(rev * 25400)
                 customers.append({
                     "id": f"cust-{cust.get('id')}",
                     "code": f"CUST-{cust.get('id')}",
                     "type": "CUSTOMER",
                     "name": cust.get("name"),
                     "tier": "Doanh nghiệp Chiến lược (Enterprise Tier 1)" if rev > 150000 else "Khách hàng Trọng điểm",
-                    "revenue": f"{vnd_val / 1e9:.2f} Tỷ VND" if vnd_val >= 1e9 else f"{vnd_val / 1e6:.0f} Triệu VND",
+                    "revenue": f"${rev / 1e6:.2f}M USD" if rev >= 1e6 else f"${rev:,.2f} USD",
                     "orders": f"{cust.get('order_count', 0)} đơn hàng",
                     "dept": "SALES",
                     "deptName": "Bán hàng (Sales)",
                     "contact": f"Khách hàng ID #{cust.get('id')}",
                     "status": "VALID",
                     "statusText": "Đang giao dịch",
-                    "numValue": vnd_val,
+                    "numValue": rev,
                     "score": 0.94
                 })
         except Exception as e:
@@ -709,7 +708,6 @@ def multifacet_search(
             neo_prods = neo4j_client.run_cypher(prod_query, params)
             for p in neo_prods:
                 price_usd = float(p.get("price") or 0)
-                vnd_val = int(price_usd * 25400)
                 products.append({
                     "id": f"prod-{p.get('id')}",
                     "code": p.get("code") or f"PROD-{p.get('id')}",
@@ -721,8 +719,8 @@ def multifacet_search(
                     "badge": p.get("subcategory"),
                     "status": "VALID",
                     "statusText": "Hoạt động",
-                    "value": f"{vnd_val / 1e6:.1f} Triệu VND" if vnd_val >= 1e6 else f"{vnd_val:,.0f} đ",
-                    "numValue": vnd_val,
+                    "value": f"${price_usd:,.2f} USD",
+                    "numValue": price_usd,
                     "score": 0.91
                 })
         except Exception as e:

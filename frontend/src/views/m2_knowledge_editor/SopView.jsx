@@ -77,7 +77,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
     version: "v2.2",
     tags: "#legal, #cuad, #risk",
     purpose:
-      "Quy trình này quy định các bước chuẩn hóa bắt buộc đối với chuyên viên Pháp chế và Quản lý Hợp đồng khi tiếp nhận, rà soát và đánh giá rủi ro pháp lý đối với toàn bộ các dự thảo hợp đồng mua sắm dịch vụ (CUAD Service Agreement) có giá trị từ 500,000,000 VNĐ trở lên hoặc hợp đồng có yếu tố đối tác nước ngoài.",
+      "Quy trình này quy định các bước chuẩn hóa bắt buộc đối với chuyên viên Pháp chế và Quản lý Hợp đồng khi tiếp nhận, rà soát và đánh giá rủi ro pháp lý đối với toàn bộ các dự thảo hợp đồng mua sắm dịch vụ (CUAD Service Agreement) có giá trị từ $50,000 USD trở lên hoặc hợp đồng có yếu tố đối tác nước ngoài.",
     steps: [
       {
         num: 1,

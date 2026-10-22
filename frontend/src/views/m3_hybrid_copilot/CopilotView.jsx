@@ -13,13 +13,209 @@ import {
   deleteCopilotSession
 } from "../../services/api";
 
+function formatInlineMetrics(text) {
+  if (!text) return null;
+  // Regex bắt các cụm tiền tệ: $XX.XX triệu USD, $XX,XXX USD, $XX.XX
+  // và các cụm đơn hàng: XXX đơn hàng, XXX đơn, khách hàng #XXXX
+  const parts = text.split(/(\$[\d,.]+\s*(?:triệu USD|tỷ USD|USD|M|K)?|\b\d{1,3}(?:,\d{3})+\s*(?:đơn hàng|đơn|khách hàng)?|\b\d{3,6}\s*(?:đơn hàng|đơn)\b|#\d+)/gi);
+
+  return parts.map((part, i) => {
+    if (/^\$[\d,.]+/i.test(part)) {
+      return (
+        <strong
+          key={i}
+          style={{
+            color: "var(--blue)",
+            background: "var(--blue-soft)",
+            padding: "1px 6px",
+            borderRadius: "var(--r-xs, 4px)",
+            fontFamily: "var(--f-mono, monospace)",
+            fontSize: "0.95em",
+            fontWeight: 700
+          }}
+        >
+          {part}
+        </strong>
+      );
+    }
+    if (/\b\d+[\d,]*\s*(?:đơn hàng|đơn|khách hàng)/i.test(part)) {
+      return (
+        <span
+          key={i}
+          style={{
+            fontWeight: 700,
+            color: "var(--text-1)"
+          }}
+        >
+          {part}
+        </span>
+      );
+    }
+    if (/^#\d+/.test(part)) {
+      return (
+        <span
+          key={i}
+          style={{
+            fontFamily: "var(--f-mono, monospace)",
+            color: "#8b5cf6",
+            background: "rgba(139,92,246,0.08)",
+            padding: "1px 5px",
+            borderRadius: 4,
+            fontWeight: 600
+          }}
+        >
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+function renderFormattedMessage(text) {
+  if (!text) return null;
+
+  // 1. Chuẩn hóa phân tách dòng triệt để
+  let str = text;
+  // Tách số đầu mục dính liền: "sau: 1. AAA" hoặc "2014. 2. BBB"
+  str = str.replace(/([.:])\s+(\d+[\.\)])\s+/g, "$1\n$2 ");
+  str = str.replace(/([)\]])\s+(\d+[\.\)])\s+/g, "$1\n$2 ");
+  // Tách gạch đầu dòng dính liền: "- Năm 2011: ... - Năm 2012:"
+  str = str.replace(/\s+([-\*•])\s+/g, "\n$1 ");
+  str = str.replace(/([.:])\s+([-\*•])\s+/g, "$1\n$2 ");
+  // Tách cụ thể / ví dụ nếu dính liền
+  str = str.replace(/([.:])\s+(Cụ thể:?|Ví dụ:?|Lưu ý:?)/g, "$1\n$2");
+  // Tách mốc năm dính liền nếu có: "... đơn. Năm 2012..." hoặc "Cụ thể, doanh thu năm 2011..."
+  str = str.replace(/([.:])\s+(Năm \d{4}:?|Đến năm \d{4},?|Vào năm \d{4},?|Trong năm \d{4},?)/g, "$1\n- $2");
+
+  const rawLines = str.split("\n").map(l => l.trim()).filter(Boolean);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {rawLines.map((line, idx) => {
+        // A. Mục đánh số danh sách: "1. Tên hợp đồng..." hoặc "1) ..."
+        const numMatch = line.match(/^(\d+)[\.\)]\s*(.+)/);
+        if (numMatch) {
+          const num = numMatch[1];
+          const content = numMatch[2];
+          return (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "10px 14px",
+                borderRadius: "var(--r-md, 10px)",
+                background: "var(--surface-1, rgba(255,255,255,0.03))",
+                border: "1px solid var(--border-soft, rgba(255,255,255,0.08))",
+                fontSize: 13,
+                lineHeight: 1.6,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "var(--blue-soft, rgba(37,99,235,0.14))",
+                  border: "1px solid rgba(37,99,235,0.25)",
+                  color: "var(--blue, #3b82f6)",
+                  fontWeight: 800,
+                  fontSize: 11.5,
+                  flexShrink: 0,
+                  marginTop: 1
+                }}
+              >
+                {num}
+              </span>
+              <div style={{ flex: 1, color: "var(--text-1)", wordBreak: "break-word" }}>
+                {formatInlineMetrics(content)}
+              </div>
+            </div>
+          );
+        }
+
+        // B. Mục gạch đầu dòng: "- AAA", "* AAA", "• AAA"
+        const bulletMatch = line.match(/^[-*•]\s*(.+)/);
+        if (bulletMatch) {
+          const content = bulletMatch[1];
+          return (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                padding: "8px 14px",
+                marginLeft: 8,
+                borderRadius: "var(--r-sm, 6px)",
+                background: "rgba(37,99,235,0.04)",
+                borderLeft: "3px solid var(--blue, #3b82f6)",
+                fontSize: 13,
+                lineHeight: 1.55,
+                color: "var(--text-1)"
+              }}
+            >
+              <div style={{ flex: 1, wordBreak: "break-word" }}>
+                {formatInlineMetrics(content)}
+              </div>
+            </div>
+          );
+        }
+
+        // C. Tiêu đề / Đoạn chuyển: "Cụ thể:", "Tóm lại:"
+        if (/^(cụ thể|tóm lại|kết luận|ghi chú|khuyến nghị):?/i.test(line)) {
+          return (
+            <div
+              key={idx}
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--text-3)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginTop: 4,
+                marginBottom: -3
+              }}
+            >
+              {line}
+            </div>
+          );
+        }
+
+        // D. Đoạn văn bản thông thường (Intro / Outro)
+        return (
+          <p
+            key={idx}
+            style={{
+              fontSize: 13.5,
+              color: "var(--text-1)",
+              lineHeight: 1.65,
+              margin: 0
+            }}
+          >
+            {formatInlineMetrics(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CopilotView({
   onNavigate,
   t = {},
   lang = "vi",
   apiConnected = false,
   role = "executive",
-  currentUser
+  currentUser,
+  initialQuery = "",
+  onClearInitialQuery
 }) {
   const isVi = lang === "vi";
 
@@ -34,10 +230,24 @@ export default function CopilotView({
 
   // Search & input states
   const [searchHistory, setSearchHistory] = useState("");
-  const [queryInput, setQueryInput] = useState("");
+  const [queryInput, setQueryInput] = useState(initialQuery || "");
   const [isInferring, setIsInferring] = useState(false);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+
+  // Tự động điền câu hỏi khi điều hướng từ các view khác (vd: Executive Dashboard)
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (initialQuery) {
+      setQueryInput(initialQuery);
+      if (onClearInitialQuery) onClearInitialQuery();
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
+    }
+  }, [initialQuery, onClearInitialQuery]);
 
   // Citation Preview state (only populated when actual citations exist from queries)
   const [activeCitation, setActiveCitation] = useState(null);
@@ -812,9 +1022,7 @@ export default function CopilotView({
                         )}
                       </div>
 
-                      <p style={{ fontSize: 13.5, color: "var(--text-1)", lineHeight: 1.6, margin: 0 }}>
-                        {msg.introText}
-                      </p>
+                      {renderFormattedMessage(msg.introText)}
 
                       {/* Risk Callout */}
                       {msg.riskBox && (
@@ -965,6 +1173,7 @@ export default function CopilotView({
                 padding: "10px 14px"
               }}>
                 <textarea
+                  ref={textareaRef}
                   rows={2}
                   value={queryInput}
                   onChange={(e) => setQueryInput(e.target.value)}

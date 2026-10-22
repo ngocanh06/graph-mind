@@ -148,10 +148,16 @@ def get_revenue_trend():
         RETURN year, orders, round(revenue, 2) AS revenue
         ORDER BY year ASC
         """
-        records = neo4j_client.run_cypher(cypher)
+        records = neo4j_client.run_cypher(cypher) or []
+        latest = records[-1] if records else {"year": "2014", "revenue": 0, "orders": 0}
+        prev = records[-2] if len(records) >= 2 else {"revenue": 1}
+        growth = round(((latest["revenue"] - prev["revenue"]) / prev["revenue"]) * 100, 1) if prev.get("revenue") else 0.0
+
         return {
             "success": True,
-            "data": records
+            "data": records,
+            "latestYear": latest,
+            "growthRate": growth
         }
     except Exception as e:
         logger.error(f"Error fetching revenue trends: {e}")

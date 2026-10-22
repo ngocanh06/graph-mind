@@ -371,13 +371,15 @@ async def ask_copilot(
             g_name = raw.get("name") or "Knowledge Graph Entity"
             g_labels = raw.get("_labels", [])
             labels_str = ", ".join(g_labels) if isinstance(g_labels, list) else str(g_labels)
+            raw_id = str(raw.get("id") or raw.get("_id") or item["id"])
+            node_clean_id = raw_id.split(":")[-1] if ":" in raw_id else raw_id
             citations_detail.append({
                 "docName": f"Đồ thị tri thức: {g_name}",
                 "file": f"Neo4j Graph ({labels_str})",
                 "match": "GRAPH VERIFIED",
-                "location": f"Node #{raw.get('_id', item['id'])} ({labels_str})",
+                "location": f"Node #{node_clean_id} ({labels_str})",
                 "text": raw.get("snippet") or f"Thực thể {g_name} thuộc nhãn {labels_str}",
-                "chunkId": str(raw.get("_id") or item["id"])[:10],
+                "chunkId": f"#{node_clean_id}",
                 "sourceType": "Neo4j Graph DB",
                 "neo4jNode": f"{labels_str}:{g_name}",
             })
