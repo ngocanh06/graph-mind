@@ -44,6 +44,10 @@ DEPT_CANONICAL: Dict[str, str] = {
     "phòng kinh doanh": "sales",
     "phòng kinh doanh & phát triển thị trường": "sales",
     "phòng kinh doanh & khách hàng doanh nghiệp": "sales",
+    "khối kinh doanh & vận hành": "sales",
+    "khối quản lý phòng ban & bộ phận": "sales",
+    "khối quản lý phòng ban": "sales",
+    "quản lý phòng ban": "sales",
     # IT / Công nghệ thông tin
     "công nghệ / it": "it",
     "công nghệ thông tin": "it",
@@ -120,6 +124,10 @@ class ScopeContext:
     department_name: str
     canonical_dept: str
     allowed_depts: Set[str] = field(default_factory=set)
+
+    @property
+    def department(self) -> str:
+        return self.canonical_dept
 
     def is_department_allowed(self, target_dept: Optional[str]) -> bool:
         """Check if access to target department data is permitted under BR-02."""

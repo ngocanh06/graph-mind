@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import Icon from '../../components/ui/Icon';
 import { generateExecutiveBriefing, fetchExecutiveKPIs } from '../../services/api';
+import DepartmentReportView from "./DepartmentReportView";
 
-export default function ReportsView({ onNavigate, t, lang, role = "executive", currentUser }) {
+export default function ReportsView({ onNavigate, t, lang, role = "executive", currentUser, initialMode }) {
   const isVi = lang === "vi";
   const isSalesRole = role === "standard";
+  const defaultMode = initialMode || (role === "knowledge_manager" ? "department" : (isSalesRole ? "shift" : "executive"));
+  const [reportMode, setReportMode] = useState(defaultMode);
 
   // Common State
   const [timeRange, setTimeRange] = useState("today");
@@ -90,11 +93,93 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   };
 
   // ----------------------------------------------------------------------
-  // RENDER FOR SALES SPECIALIST (role === 'standard')
+  // RENDER FOR DEPARTMENT MANAGER OR USERS INSPECTING DEPARTMENT REPORT
   // ----------------------------------------------------------------------
-  if (isSalesRole) {
+  if (reportMode === "department") {
     return (
       <div className="view active" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
+        {/* Scope Mode Switcher Bar */}
+        <div style={{ maxWidth: 1440, margin: "0 auto 16px auto", width: "100%", boxSizing: "border-box" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
+            <button
+              onClick={() => setReportMode("department")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+                background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
+              }}
+            >
+              {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
+            </button>
+            {role !== "standard" && (
+              <button
+                onClick={() => setReportMode("executive")}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+                  background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+                }}
+              >
+                {isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}
+              </button>
+            )}
+            {role === "standard" && (
+              <button
+                onClick={() => setReportMode("shift")}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+                  background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+                }}
+              >
+                {isVi ? "Báo Cáo Ca Chuyên Viên" : "Specialist Shift Report"}
+              </button>
+            )}
+          </div>
+        </div>
+        <DepartmentReportView
+          onNavigate={onNavigate}
+          t={t}
+          lang={lang}
+          role={role}
+          currentUser={currentUser}
+        />
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------------------------
+  // RENDER FOR SALES SPECIALIST (role === 'standard')
+  // ----------------------------------------------------------------------
+  if (isSalesRole && reportMode === "shift") {
+    return (
+      <div className="view active" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
+        {/* Switcher Bar for Specialist */}
+        <div style={{ maxWidth: 1400, margin: "0 auto 14px auto", width: "100%", boxSizing: "border-box" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
+            <button
+              onClick={() => setReportMode("shift")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+                background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
+              }}
+            >
+              {isVi ? "Báo Cáo Ca Chuyên Viên" : "Specialist Shift Report"}
+            </button>
+            <button
+              onClick={() => setReportMode("department")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+                background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+              }}
+            >
+              {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
+            </button>
+          </div>
+        </div>
+
         {/* Scoped High-End Stylesheet for Reports View */}
         <style>{`
           .sales-report-wrap {
@@ -1140,6 +1225,30 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           <span className="font-body-sm text-body-sm font-medium">{toastMsg}</span>
         </div>
       )}
+
+      {/* Scope Mode Switcher Bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
+        <button
+          onClick={() => setReportMode("executive")}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+            background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
+          }}
+        >
+          {isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}
+        </button>
+        <button
+          onClick={() => setReportMode("department")}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+            background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+          }}
+        >
+          {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
+        </button>
+      </div>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">

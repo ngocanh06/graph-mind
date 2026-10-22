@@ -434,6 +434,60 @@ export async function generateExecutiveBriefing(timeframe = "month", focus = "ex
 }
 
 // ============================================================================
+// AGGREGATED DEPARTMENT ACTIVITY REPORT (Proposal Sect. 6.1a, BR-02, BR-04)
+// ============================================================================
+
+export async function fetchDepartmentActivityReport(dept = null, timeframe = "today", currentUser = null) {
+  try {
+    const sp = new URLSearchParams();
+    if (dept && dept !== "ALL") sp.set("department", dept);
+    if (timeframe) sp.set("timeframe", timeframe);
+    const qStr = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/dashboard/department-report${qStr}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, status: 403, detail: errData.detail || "Không có quyền truy cập phạm vi phòng ban này (BR-02/BR-04)." };
+    }
+  } catch (e) {
+    console.warn("[Dashboard] fetchDepartmentActivityReport error:", e);
+  }
+  return null;
+}
+
+export async function signoffDepartmentShiftReport(submissionId, comment = "", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/department-report/signoff`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({ submissionId, comment }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return data;
+    return { success: false, status: res.status, detail: data.detail || "Phê duyệt thất bại." };
+  } catch (e) {
+    console.warn("[Dashboard] signoffDepartmentShiftReport error:", e);
+    return { success: false, detail: e.message };
+  }
+}
+
+export async function synthesizeDepartmentReport(dept = null, timeframe = "today", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/department-report/synthesize`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({ department: dept, timeframe }),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] synthesizeDepartmentReport error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
 // RBAC & SCOPE CHECK API (FR3, BR-02, BR-04)
 // ============================================================================
 
