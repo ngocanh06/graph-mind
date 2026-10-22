@@ -7,7 +7,7 @@ Implements:
 - US35 / PB65: Executive AI Briefing Generator (Ollama LLM live synthesis)
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import logging
@@ -20,10 +20,12 @@ try:
     from app.db.neo4j.client import neo4j_client
     from app.db.qdrant.client import qdrant_client
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
+    from app.core.rbac import get_user_scope, ScopeContext
 except ImportError:
     from db.neo4j.client import neo4j_client
     from db.qdrant.client import qdrant_client
     from modules.m3_hybrid_copilot.inference.client import llm_client
+    from core.rbac import get_user_scope, ScopeContext
 
 router = APIRouter()
 
@@ -40,15 +42,17 @@ class BriefingRequest(BaseModel):
 # 1. Executive KPIs (US33 / PB57 / FR41)
 # ---------------------------------------------------------------------------
 @router.get("/kpis")
-def get_executive_kpis():
+def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
     """
-    Returns real executive KPIs computed directly from Neo4j:
+    Returns real executive KPIs computed directly from Neo4j (FR41 / BR-05):
     - Total Revenue from SalesOrders
     - Total Sales Orders count
     - Total Customers count
     - Active Contracts & Clauses count
     - Compliance rate (% of contracts with critical protection clauses)
     """
+    if scope:
+        scope.assert_executive_access("Bảng điều khiển chỉ số tài chính cấp cao (Executive Decision Dashboard)")
     try:
         neo4j_client.connect()
         cypher = """
@@ -359,15 +363,19 @@ def get_recent_activities(limit: int = Query(8, ge=1, le=30)):
 # 7. Executive AI Briefing Generator (US35 / PB65 / FR44)
 # ---------------------------------------------------------------------------
 @router.post("/briefing")
-def generate_executive_briefing(req: BriefingRequest):
+def generate_executive_briefing(
+    req: BriefingRequest,
+    scope: ScopeContext = Depends(get_user_scope),
+):
     """
     Synthesizes live graph statistics into a comprehensive Executive Briefing
-    using the Ollama Local LLM (qwen2.5-7b-instruct-graphmind).
+    using the Ollama Local LLM (qwen2.5-7b-instruct-graphmind) — FR44, BR-05.
     """
+    scope.assert_executive_access("Tạo tóm tắt điều hành chiến lược (Executive Briefing)")
     try:
         neo4j_client.connect()
         # Fetch snapshot of core indicators
-        kpis = get_executive_kpis()["data"]
+        kpis = get_executive_kpis(scope)["data"]
         top_cust = get_top_customers(3)["data"]
         alerts = get_risk_alerts()["data"]
 

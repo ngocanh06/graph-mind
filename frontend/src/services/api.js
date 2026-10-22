@@ -281,7 +281,7 @@ export async function searchKnowledgeExplorer(query, top_k = 8) {
 // REPOSITORY DOCUMENTS & ADVENTUREWORKS (REAL DATA)
 // ============================================================================
 
-export async function fetchRepositoryDocuments(params = {}) {
+export async function fetchRepositoryDocuments(params = {}, currentUser = null) {
   try {
     const sp = new URLSearchParams();
     if (params.search) sp.set("search", params.search);
@@ -290,7 +290,9 @@ export async function fetchRepositoryDocuments(params = {}) {
     if (params.limit) sp.set("limit", params.limit);
     if (params.offset !== undefined) sp.set("offset", params.offset);
 
-    const res = await fetch(`${API_BASE}/documents?${sp.toString()}`);
+    const res = await fetch(`${API_BASE}/documents?${sp.toString()}`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Repository] fetchRepositoryDocuments error:", e);
@@ -298,10 +300,16 @@ export async function fetchRepositoryDocuments(params = {}) {
   return null;
 }
 
-export async function fetchDocumentDetail(docId) {
+export async function fetchDocumentDetail(docId, currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/documents/detail?doc_id=${encodeURIComponent(docId)}`);
+    const res = await fetch(`${API_BASE}/documents/detail?doc_id=${encodeURIComponent(docId)}`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, error: errData.detail || "Truy cập bị từ chối do vi phạm phạm vi phòng ban (BR-02)." };
+    }
   } catch (e) {
     console.warn("[Repository] fetchDocumentDetail error:", e);
   }
@@ -312,7 +320,7 @@ export async function fetchDocumentDetail(docId) {
 // MULTI-FACET SEARCH API (REAL DATABASE DATA)
 // ============================================================================
 
-export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 12) {
+export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 12, currentUser = null) {
   try {
     const sp = new URLSearchParams();
     if (query) sp.set("q", query);
@@ -321,8 +329,14 @@ export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = 
     if (status && status !== "ALL") sp.set("status", status);
     sp.set("limit", limit);
 
-    const res = await fetch(`${API_BASE}/search?${sp.toString()}`);
+    const res = await fetch(`${API_BASE}/search?${sp.toString()}`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, error: errData.detail || "Không có quyền tra cứu phòng ban này (BR-02)." };
+    }
   } catch (e) {
     console.warn("[Search] fetchMultiFacetSearch error:", e);
   }
@@ -333,9 +347,11 @@ export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = 
 // MODULE 4: EXECUTIVE DECISION SUPPORT & ALERTS (REAL DATABASE DATA)
 // ============================================================================
 
-export async function fetchExecutiveKPIs() {
+export async function fetchExecutiveKPIs(currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/kpis`);
+    const res = await fetch(`${API_BASE}/dashboard/kpis`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Dashboard] fetchExecutiveKPIs error:", e);
@@ -343,9 +359,11 @@ export async function fetchExecutiveKPIs() {
   return null;
 }
 
-export async function fetchTopCustomers(limit = 5) {
+export async function fetchTopCustomers(limit = 5, currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/top-customers?limit=${limit}`);
+    const res = await fetch(`${API_BASE}/dashboard/top-customers?limit=${limit}`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Dashboard] fetchTopCustomers error:", e);
@@ -353,9 +371,11 @@ export async function fetchTopCustomers(limit = 5) {
   return null;
 }
 
-export async function fetchRevenueTrend() {
+export async function fetchRevenueTrend(currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/revenue-trend`);
+    const res = await fetch(`${API_BASE}/dashboard/revenue-trend`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Dashboard] fetchRevenueTrend error:", e);
@@ -363,9 +383,11 @@ export async function fetchRevenueTrend() {
   return null;
 }
 
-export async function fetchContractDistribution() {
+export async function fetchContractDistribution(currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/contract-distribution`);
+    const res = await fetch(`${API_BASE}/dashboard/contract-distribution`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Dashboard] fetchContractDistribution error:", e);
@@ -373,9 +395,11 @@ export async function fetchContractDistribution() {
   return null;
 }
 
-export async function fetchRiskAlerts() {
+export async function fetchRiskAlerts(currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/risk-alerts`);
+    const res = await fetch(`${API_BASE}/dashboard/risk-alerts`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Dashboard] fetchRiskAlerts error:", e);
@@ -383,9 +407,11 @@ export async function fetchRiskAlerts() {
   return null;
 }
 
-export async function fetchRecentActivities(limit = 8) {
+export async function fetchRecentActivities(limit = 8, currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/recent-activities?limit=${limit}`);
+    const res = await fetch(`${API_BASE}/dashboard/recent-activities?limit=${limit}`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Dashboard] fetchRecentActivities error:", e);
@@ -393,16 +419,34 @@ export async function fetchRecentActivities(limit = 8) {
   return null;
 }
 
-export async function generateExecutiveBriefing(timeframe = "month", focus = "executive") {
+export async function generateExecutiveBriefing(timeframe = "month", focus = "executive", currentUser = null) {
   try {
     const res = await fetch(`${API_BASE}/dashboard/briefing`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(currentUser),
       body: JSON.stringify({ timeframe, focus })
     });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Dashboard] generateExecutiveBriefing error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
+// RBAC & SCOPE CHECK API (FR3, BR-02, BR-04)
+// ============================================================================
+
+export async function checkRbacPermission(params = {}, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/v1/rbac/check`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify(params),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[RBAC] checkRbacPermission error:", e);
   }
   return null;
 }

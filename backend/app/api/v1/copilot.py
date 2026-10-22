@@ -43,6 +43,12 @@ router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
 
 
+try:
+    from app.core.rbac import get_request_user, get_user_scope, ScopeContext
+except ImportError:
+    from core.rbac import get_request_user, get_user_scope, ScopeContext
+
+
 # --- Schemas ---
 class CreateSessionRequest(BaseModel):
     title: Optional[str] = "Cuộc hội thoại mới"
@@ -54,90 +60,51 @@ class CopilotAskRequest(BaseModel):
     session_id: Optional[str] = None
 
 
-# --- User Resolution Helper ---
-async def get_request_user(
-    auth_header: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
-    x_user_id: Optional[str] = Header(None),
-    x_user_email: Optional[str] = Header(None),
-    x_user_name: Optional[str] = Header(None),
-    user_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """
-    Xác định tài khoản người dùng gửi request:
-    1. Ưu tiên JWT Bearer token
-    2. Fallback header X-User-Id / X-User-Email / X-User-Name (cho persona switcher)
-    3. Mặc định tài khoản đầu tiên trong database nếu không có header
-    """
-    # 1. Bearer Token
-    if auth_header and auth_header.credentials:
-        try:
-            payload = decode_access_token(auth_header.credentials)
-            if payload and "sub" in payload:
-                uid = uuid.UUID(payload["sub"])
-                res = await db.execute(select(User).where(User.user_id == uid))
-                u = res.scalar_one_or_none()
-                if u:
-                    return u
-        except Exception:
-            pass
+class CitationItem(BaseModel):
+    docName: str
+    file: Optional[str] = None
+    location: Optional[str] = None
+    text: Optional[str] = None
+    sourceType: Optional[str] = None
+    match: Optional[str] = None
 
-    # 2. X-User-Id hoặc Query user_id
-    uid_candidate = x_user_id or user_id
-    if uid_candidate:
-        try:
-            uid = uuid.UUID(uid_candidate)
-            res = await db.execute(select(User).where(User.user_id == uid))
-            u = res.scalar_one_or_none()
-            if u:
-                return u
-        except (ValueError, TypeError):
-            pass
 
-    USER_ALIASES = {
-        "ceo": "exec",
-        "executive": "exec",
-        "huong.tran@graphmind.ai": "executive@graphmind.ai",
-        "knowledge_manager": "manager",
-        "it_admin": "admin",
-        "sales_ops": "ops",
+class CitationValidateRequest(BaseModel):
+    citations: List[Dict[str, Any]] = []
+
+
+# --- FR32 / BR-02 Citations Scoping Endpoint ---
+@router.get("/citations")
+@router.post("/citations")
+async def get_scoped_citations(
+    payload: Optional[CitationValidateRequest] = None,
+    doc_id: Optional[str] = Query(None),
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """
+    SRS FR32 (BR-02): Hiển thị trích dẫn nguồn dữ liệu trong phạm vi phòng ban được phép (Data Scope).
+    Tự động kiểm tra và ẩn các nội dung nhạy cảm ngoài phạm vi phân quyền của người dùng.
+    """
+    raw_citations = payload.citations if payload and payload.citations else []
+    if doc_id and not raw_citations:
+        raw_citations = [{
+            "docName": doc_id,
+            "file": doc_id,
+            "location": "Knowledge Repository",
+            "text": f"Hồ sơ tài liệu #{doc_id}",
+            "sourceType": "CUAD / Repository",
+        }]
+
+    filtered = scope.filter_citations(raw_citations)
+    return {
+        "success": True,
+        "rule": "BR-02 (FR32)",
+        "userRole": scope.role,
+        "department": scope.department_name,
+        "isUnrestricted": scope.is_unrestricted,
+        "count": len(filtered),
+        "citations": filtered,
     }
-
-    # 3. X-User-Email
-    if x_user_email:
-        clean_email = x_user_email.strip().lower()
-        clean_email = USER_ALIASES.get(clean_email, clean_email)
-        res = await db.execute(select(User).where(User.email.ilike(clean_email)))
-        u = res.scalar_one_or_none()
-        if u:
-            return u
-
-    # 4. X-User-Name
-    if x_user_name:
-        clean_name = x_user_name.strip().lower()
-        clean_name = USER_ALIASES.get(clean_name, clean_name)
-        res = await db.execute(
-            select(User).where(
-                or_(
-                    User.username.ilike(clean_name),
-                    User.email.ilike(f"%{clean_name}%"),
-                )
-            )
-        )
-        u = res.scalar_one_or_none()
-        if u:
-            return u
-
-    # 5. Default fallback to first active user (exec)
-    res = await db.execute(select(User).order_by(User.created_at.asc()).limit(1))
-    u = res.scalar_one_or_none()
-    if u:
-        return u
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Chưa xác định được tài khoản người dùng.",
-    )
 
 
 # --- Endpoints ---
@@ -286,13 +253,15 @@ async def delete_session(
 @router.post("/ask")
 async def ask_copilot(
     req: CopilotAskRequest,
-    user: User = Depends(get_request_user),
+    scope: ScopeContext = Depends(get_user_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Hỏi đáp với AI Copilot (Hybrid Vector-Graph Fusion RAG):
     Tự động lưu câu hỏi của người dùng và câu trả lời vào database PostgreSQL của tài khoản đó.
+    Tuân thủ phân quyền phạm vi phòng ban (Department Scope - BR-02, BR-04) và hiển thị trích dẫn (FR32).
     """
+    user = scope.user
     clean_query = req.query.strip()
     is_vi = (req.lang or "vi") == "vi"
 
@@ -381,6 +350,9 @@ async def ask_copilot(
                 "sourceType": "Neo4j Graph DB",
                 "neo4jNode": f"{labels_str}:{g_name}",
             })
+
+    # Enforce BR-02 & FR32: Filter/redact citations outside caller's Department Scope
+    citations_detail = scope.filter_citations(citations_detail)
 
     # 4. Context Synthesis & LLM Generation
     fused_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"]

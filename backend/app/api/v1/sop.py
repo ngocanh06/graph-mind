@@ -54,34 +54,10 @@ except ImportError:
 router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
 
-# ── Bảng ánh xạ phòng ban chuẩn hóa (Canonical Department Mapping) ─────────────
-DEPT_CANONICAL = {
-    "pháp chế": "legal",
-    "legal": "legal",
-    "phòng pháp chế & hợp đồng": "legal",
-    "phòng pháp chế": "legal",
-    "kinh doanh": "sales",
-    "sales": "sales",
-    "phòng kinh doanh": "sales",
-    "phòng kinh doanh & phát triển thị trường": "sales",
-    "công nghệ / it": "it",
-    "công nghệ thông tin": "it",
-    "it": "it",
-    "phòng cntt": "it",
-    "r&d": "rnd",
-    "nghiên cứu": "rnd",
-    "ai ops": "ai_ops",
-    "kế toán": "accounting",
-    "accounting": "accounting",
-    "nhân sự": "hr",
-    "hr": "hr",
-    "vận hành": "operations",
-    "vận hành & nghiệp vụ": "operations",
-    "operations": "operations",
-    "quản lý phòng ban": "all_departments",
-    "khối quản lý phòng ban & bộ phận": "all_departments",
-    "ban giám đốc": "executive",
-}
+try:
+    from app.core.rbac import get_request_user, DEPT_CANONICAL, normalize_dept
+except ImportError:
+    from core.rbac import get_request_user, DEPT_CANONICAL, normalize_dept
 
 # ── Dữ liệu khởi tạo mặc định (Initial Seed SOPs) ──────────────────────────────
 DEFAULT_SEED_SOPS = [
@@ -203,94 +179,6 @@ async def ensure_initial_seed_sops(db: AsyncSession):
         await db.rollback()
 
 
-# ── User Resolution Helper ────────────────────────────────────────────────────
-async def get_request_user(
-    auth_header: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
-    x_user_id: Optional[str] = Header(None),
-    x_user_email: Optional[str] = Header(None),
-    x_user_name: Optional[str] = Header(None),
-    x_user_dept: Optional[str] = Header(None),
-    user_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """Xác định tài khoản người dùng gửi request từ JWT Token hoặc Headers"""
-    # 1. Bearer Token
-    if auth_header and auth_header.credentials:
-        try:
-            payload = decode_access_token(auth_header.credentials)
-            if payload and "sub" in payload:
-                uid = uuid.UUID(payload["sub"])
-                res = await db.execute(select(User).where(User.user_id == uid))
-                u = res.scalar_one_or_none()
-                if u:
-                    return u
-        except Exception:
-            pass
-
-    # 2. X-User-Id hoặc Query user_id
-    uid_candidate = x_user_id or user_id
-    if uid_candidate:
-        try:
-            uid = uuid.UUID(uid_candidate)
-            res = await db.execute(select(User).where(User.user_id == uid))
-            u = res.scalar_one_or_none()
-            if u:
-                return u
-        except (ValueError, TypeError):
-            pass
-
-    USER_ALIASES = {
-        "ceo": "exec",
-        "executive": "exec",
-        "manager": "manager",
-        "knowledge_manager": "manager",
-        "it_admin": "admin",
-        "admin": "admin",
-        "sales_ops": "ops",
-        "ops": "ops",
-    }
-
-    # 3. X-User-Email
-    if x_user_email:
-        clean_email = x_user_email.strip().lower()
-        clean_email = USER_ALIASES.get(clean_email, clean_email)
-        res = await db.execute(select(User).where(User.email.ilike(clean_email)))
-        u = res.scalar_one_or_none()
-        if u:
-            return u
-
-    # 4. X-User-Name
-    if x_user_name:
-        clean_name = x_user_name.strip().lower()
-        clean_name = USER_ALIASES.get(clean_name, clean_name)
-        res = await db.execute(
-            select(User).where(
-                or_(
-                    User.username.ilike(clean_name),
-                    User.email.ilike(f"%{clean_name}%"),
-                )
-            )
-        )
-        u = res.scalar_one_or_none()
-        if u:
-            return u
-
-    # 5. Fallback mặc định tài khoản manager nếu chưa có auth (cho môi trường dev)
-    res = await db.execute(select(User).where(User.username == "manager"))
-    u = res.scalar_one_or_none()
-    if u:
-        return u
-
-    # 6. Fallback tài khoản đầu tiên
-    res = await db.execute(select(User).order_by(User.created_at.asc()).limit(1))
-    u = res.scalar_one_or_none()
-    if u:
-        return u
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Yêu cầu đăng nhập để thực hiện chức năng này.",
-    )
 
 
 # ── BR-04 Permission Verification Helper ──────────────────────────────────────
