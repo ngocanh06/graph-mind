@@ -286,6 +286,8 @@ export async function fetchRepositoryDocuments(params = {}) {
     if (params.search) sp.set("search", params.search);
     if (params.doc_type && params.doc_type !== "ALL") sp.set("doc_type", params.doc_type);
     if (params.dept && params.dept !== "ALL") sp.set("dept", params.dept);
+    if (params.sort_by && params.sort_by !== "default") sp.set("sort_by", params.sort_by);
+    if (params.new_only) sp.set("new_only", "true");
     if (params.limit) sp.set("limit", params.limit);
     if (params.offset !== undefined) sp.set("offset", params.offset);
 
@@ -311,7 +313,7 @@ export async function fetchDocumentDetail(docId) {
 // MULTI-FACET SEARCH API (REAL DATABASE DATA)
 // ============================================================================
 
-export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 12) {
+export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 12, currentUser = null) {
   try {
     const sp = new URLSearchParams();
     if (query) sp.set("q", query);
@@ -320,11 +322,85 @@ export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = 
     if (status && status !== "ALL") sp.set("status", status);
     sp.set("limit", limit);
 
-    const res = await fetch(`${API_BASE}/search?${sp.toString()}`);
+    const res = await fetch(`${API_BASE}/search?${sp.toString()}`, {
+      headers: getAuthHeaders(currentUser)
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Search] fetchMultiFacetSearch error:", e);
   }
   return null;
 }
+
+// ============================================================================
+// ASSIGNED CONTRACTS & RISK ALERTS (LIVE DATABASE API)
+// ============================================================================
+
+export async function fetchAssignedContracts(role = "standard", dept = "Kinh doanh", limit = 8) {
+  try {
+    const sp = new URLSearchParams({ role, dept, limit: String(limit) });
+    const res = await fetch(`${API_BASE}/contracts/assigned?${sp.toString()}`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Contracts] fetchAssignedContracts error:", e);
+  }
+  return null;
+}
+
+export async function fetchRiskAlerts(role = "standard", dept = "Kinh doanh") {
+  try {
+    const sp = new URLSearchParams({ role, dept });
+    const res = await fetch(`${API_BASE}/risk/alerts?${sp.toString()}`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Risk] fetchRiskAlerts error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
+// M1 DATA SYNC — AEGIS LOCAL FILE WATCHER STATUS API
+// ============================================================================
+
+export async function fetchWatcherSyncStatus() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/sync/file-watcher/status`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Watcher] fetchWatcherSyncStatus error:", e);
+  }
+  return null;
+}
+
+export async function triggerMockWatcherDrop(fileName = "HD_CungCap_ThietBi_2026.pdf", department = "Kinh doanh") {
+  try {
+    const formData = new FormData();
+    const blob = new Blob([
+      `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\nHỢP ĐỒNG KINH TẾ #${Date.now().toString().slice(-4)}\n` +
+      `Bên A: Công ty Cổ phần Công nghệ GraphMind\n` +
+      `Bên B: Tập đoàn Viễn thông Alpha (CUST-29818)\n` +
+      `Giá trị hợp đồng: 1,280,000,000 VND\n` +
+      `Điều khoản 1: Bảo mật thông tin tuyệt đối (Confidentiality).\n` +
+      `Điều khoản 2: Phương thức thanh toán 3 đợt theo khối lượng nghiệm thu.\n` +
+      `Điều khoản 3: Bồi thường thiệt hại và phạt vi phạm 8% giá trị vi phạm.`
+    ], { type: "text/plain" });
+    
+    formData.append("file", blob, fileName);
+    formData.append("department", department);
+    formData.append("file_name", fileName);
+
+    const res = await fetch(`http://localhost:5000/api/v1/sync/file-watcher`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer dev-agent-key"
+      },
+      body: formData
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Watcher] triggerMockWatcherDrop error:", e);
+  }
+  return null;
+}
+
 

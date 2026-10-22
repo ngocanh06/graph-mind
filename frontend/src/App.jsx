@@ -7,6 +7,8 @@ import { fetchHealth, fetchSignals, fetchEntities } from "./services/api";
 import Topbar from "./components/Topbar";
 import NavRail from "./components/NavRail";
 import DemoBanner from "./components/DemoBanner";
+import WatcherToast from "./components/WatcherToast";
+import { useWatcherEvents } from "./hooks/useWatcherEvents";
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 
@@ -114,6 +116,16 @@ export default function App() {
   const [demoStep, setDemoStep] = useState(1);
   const [selectedEntity, setSelectedEntity] = useState("abc");
   const [selectedDocId, setSelectedDocId] = useState(null);
+
+  const {
+    events: notifEvents,
+    unreadCount: notifUnreadCount,
+    readIds: notifReadIds,
+    toastEvent,
+    markAsRead: markNotifRead,
+    markAllRead: markAllNotifRead,
+    dismissToast,
+  } = useWatcherEvents();
 
   const handleNavigate = (targetView, payload = null) => {
     const normView = (targetView === "graph" || targetView === "knowledge") ? "knowledge" : targetView;
@@ -282,6 +294,14 @@ export default function App() {
   // 3. ENTERPRISE WORKSPACE (ROLE-AWARE)
   return (
     <div className="app-container" style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "var(--bg-app)" }}>
+      {/* Modern SaaS Watcher Toast Preview */}
+      <WatcherToast
+        event={toastEvent}
+        onDismiss={dismissToast}
+        lang={lang}
+        onNavigate={handleNavigate}
+      />
+
       <Topbar
         view={view}
         lang={lang}
@@ -296,6 +316,11 @@ export default function App() {
         onNavigate={handleNavigate}
         t={t}
         apiConnected={apiConnected}
+        notifEvents={notifEvents}
+        notifUnreadCount={notifUnreadCount}
+        notifReadIds={notifReadIds}
+        onMarkNotifRead={markNotifRead}
+        onMarkAllNotifRead={markAllNotifRead}
       />
 
       {/* Main Content: Sidebar + Workspace */}
@@ -381,7 +406,15 @@ export default function App() {
 
           {view === "connectors" && <ConnectorsView t={t} lang={lang} />}
 
-          {view === "risk" && <RiskView onNavigate={handleNavigate} t={t} lang={lang} />}
+          {view === "risk" && (
+            <RiskView
+              onNavigate={handleNavigate}
+              t={t}
+              lang={lang}
+              role={role}
+              currentUser={currentUser}
+            />
+          )}
 
           {view === "documents" && (
             <DocumentsView

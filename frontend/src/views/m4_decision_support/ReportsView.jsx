@@ -541,7 +541,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   className="rep-btn magic"
                   title={isVi ? "AI tự động thu thập nhật ký để soạn báo cáo" : "AI auto-compile shift report"}
                 >
-                  <Icon name="" size={14} />
+                  <Icon name="fa-solid fa-wand-magic-sparkles" size={14} />
                   <span>{isGenerating ? (isVi ? "AI Đang Soạn..." : "Compiling...") : (isVi ? "AI Soạn Báo Cáo" : "AI Compile Report")}</span>
                 </button>
 
@@ -973,7 +973,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   className="rep-btn magic"
                   style={{ marginTop: "8px" }}
                 >
-                  <Icon name="" size={14} />
+                  <Icon name="fa-solid fa-wand-magic-sparkles" size={14} />
                   <span>{isGenerating ? (isVi ? "AI Đang Soạn..." : "Compiling...") : (isVi ? "AI Soạn Báo Cáo Ngay" : "Compile Report Now")}</span>
                 </button>
               </div>
@@ -1080,7 +1080,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                         {isVi ? "Trần M. Anh · Trưởng Phòng Quản Lý" : "Tran M. Anh · Department Head"}
                       </span>
                       <span className="rep-status-chip" style={{ background: managerApproved ? "rgba(16, 185, 129, 0.15)" : "rgba(37, 99, 235, 0.1)", color: managerApproved ? "#059669" : "#2563eb" }}>
-                        <Icon name="" size={14} />
+                        <Icon name={managerApproved ? "fa-solid fa-circle-check" : "fa-solid fa-clock"} size={13} />
                         {managerApproved ? (isVi ? "ĐÃ PHÊ DUYỆT & KÝ SỐ" : "VERIFIED & SIGNED") : (isVi ? "SẴN SÀNG TIẾP NHẬN" : "READY FOR REVIEW")}
                       </span>
                     </div>

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================================================
   # POSTGRESQL (Đã tắt do đang sử dụng PostgreSQL cài trực tiếp trên Windows)
@@ -75,3 +73,41 @@ services:
       - "6334:6334"
     volumes:
       - ./qdrant_data:/qdrant/storage
+
+  # ============================================================================
+  # AEGIS FILE WATCHER DAEMON (DOCKER VOLUME STORAGE)
+  # Monitors /data on Docker Named Volume graphmind_documents
+  # Transmits CREATE / MODIFY / DELETE / RENAME events to Backend via Webhook
+  # ============================================================================
+  file-watcher:
+    build:
+      context: ./aegis-agent
+      dockerfile: Dockerfile
+    container_name: aegis_file_watcher
+    restart: unless-stopped
+    environment:
+      - WATCH_ROOT=/data
+      - AEGIS_BACKEND_URL=http://host.docker.internal:5000
+      - AEGIS_AGENT_API_KEY=dev-agent-key
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - graphmind_documents:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - qdrant
+      - neo4j
+
+# ============================================================================
+# PERSISTENT VOLUMES
+# Storage separation:
+#   1. graphmind_documents: Dedicated named volume for raw monitored documents (/data)
+#   2. qdrant_data: Vector database storage (isolated in ./qdrant_data)
+#   3. neo4j_data: Graph database property store (isolated in ./neo4j_data)
+# ============================================================================
+volumes:
+  graphmind_documents:
+    name: graph-mind_graphmind_documents
+    external: true
+
+

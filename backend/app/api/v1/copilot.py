@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 try:
     from app.core.security import decode_access_token
+    from app.core.rbac import check_data_scope_permission, filter_graph_entities_by_scope
     from app.db.postgres.database import get_db
     from app.db.postgres.models.user import User
     from app.db.postgres.models.copilot_session import CopilotSession
@@ -30,6 +31,7 @@ try:
     from app.modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
 except ImportError:
     from core.security import decode_access_token
+    from core.rbac import check_data_scope_permission, filter_graph_entities_by_scope
     from db.postgres.database import get_db
     from db.postgres.models.user import User
     from db.postgres.models.copilot_session import CopilotSession
@@ -321,6 +323,56 @@ async def ask_copilot(
         db.add(session_obj)
         await db.flush()
 
+    # 1.5. RBAC & Department Data Scope Security Gate (BR-02 / US19)
+    user_role = getattr(user, "role", "standard")
+    allowed, reject_reason = check_data_scope_permission(clean_query, user_role)
+    if not allowed and reject_reason:
+        blocked_msg = {
+            "answer": reject_reason,
+            "evidenceChips": [
+                {
+                    "id": "rbac-scope-guard",
+                    "label": "RBAC Data Scope Violation",
+                    "source": "Chính sách bảo mật BR-02 / US19",
+                }
+            ],
+            "citations": [
+                {
+                    "docName": "Chính sách kiểm soát truy cập (RBAC / Data Scope)",
+                    "file": "BR-02 Data Isolation Policy",
+                    "match": "RESTRICTED",
+                    "location": "Phạm vi: Ban Giám Đốc & HR Only",
+                    "startLine": 1,
+                    "endLine": 1,
+                    "text": reject_reason,
+                    "chunkId": "SEC-SCOPE-GUARD",
+                    "sourceType": "RBAC Security Gate",
+                    "score": 100.0,
+                }
+            ],
+            "confidenceScore": 100,
+            "latency": 0.05,
+            "model": "GraphMind RBAC Engine (Level-3 Isolation)",
+            "query": clean_query,
+            "session_id": str(session_obj.id),
+        }
+        new_msgs = list(session_obj.messages or [])
+        new_msgs.append({"sender": "user", "text": clean_query, "timestamp": datetime.now().isoformat()})
+        new_msgs.append({
+            "sender": "bot",
+            "text": reject_reason,
+            "timestamp": datetime.now().isoformat(),
+            "evidenceChips": blocked_msg["evidenceChips"],
+            "citations": blocked_msg["citations"],
+            "confidenceScore": 100,
+            "latency": 0.05,
+            "model": blocked_msg["model"]
+        })
+        session_obj.messages = new_msgs
+        session_obj.updated_at = datetime.now()
+        await db.commit()
+        return blocked_msg
+
     # 2. Hybrid Retrieval: Qdrant Vector + Neo4j Graph
     vector_hits = qdrant_client.vector_search(query=clean_query, limit=5)
 
@@ -332,6 +384,9 @@ async def ask_copilot(
             if matches:
                 graph_hits.extend(matches)
                 break
+
+    # Lọc node thực thể theo Data Scope của vai trò (ví dụ: loại bỏ Employee/nhân sự khỏi kết quả của Standard User)
+    graph_hits = filter_graph_entities_by_scope(graph_hits, user_role)
 
     # 3. Fusion Ranking: Reciprocal Rank Fusion (RRF k=60)
     fused_results = reciprocal_rank_fusion(vector_hits, graph_hits, k=60, top_n=6)

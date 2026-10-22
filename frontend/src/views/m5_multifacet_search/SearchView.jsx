@@ -11,11 +11,11 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   const isManagerRole = role === "knowledge_manager";
   const isExecRole = role === "executive";
 
-  // Nhân viên mặc định mở Ca việc; Quản lý / Lãnh đạo mặc định mở Tra cứu tìm kiếm
-  const [activeTab, setActiveTab] = useState(isSalesRole ? "tasks" : "search");
+  // Mặc định mở tab Tìm kiếm thông minh ("search") cho tất cả các vai trò
+  const [activeTab, setActiveTab] = useState("search");
 
   useEffect(() => {
-    setActiveTab(role === "standard" ? "tasks" : "search");
+    setActiveTab("search");
   }, [role]);
 
   const [query, setQuery] = useState("");
@@ -43,7 +43,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     const handler = setTimeout(async () => {
       setDebouncedQuery(query);
       try {
-        const res = await fetchMultiFacetSearch(query, searchMode, filterDept, filterStatus, 16);
+        const res = await fetchMultiFacetSearch(query, searchMode, filterDept, filterStatus, 16, currentUser);
         if (isMounted && res && res.success && res.data) {
           setContracts(res.data.contracts || []);
           setCustomers(res.data.customers || []);
@@ -61,7 +61,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       isMounted = false;
       clearTimeout(handler);
     };
-  }, [query, searchMode, filterDept, filterStatus]);
+  }, [query, searchMode, filterDept, filterStatus, currentUser]);
 
 
   // Modal xử lý ca nghiệp vụ
@@ -76,8 +76,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     setTimeout(() => setToastMsg(""), 3500);
   };
 
-  // Danh sách các ca tác nghiệp cần xử lý trong ngày của nhân viên (Mặc định trống cho role standard)
-  const [assignedTasks, setAssignedTasks] = useState(isSalesRole ? [] : [
+  // Danh sách các ca tác nghiệp cần xử lý trong ngày của nhân viên
+  const [assignedTasks, setAssignedTasks] = useState([
     {
       id: "task-1",
       priority: "CRITICAL",
@@ -136,13 +136,6 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       status: "PENDING"
     }
   ]);
-
-  useEffect(() => {
-    setActiveTab(role === "standard" ? "tasks" : "search");
-    if (role === "standard") {
-      setAssignedTasks([]);
-    }
-  }, [role]);
 
   const handleOpenEmailModal = (task) => {
     setSelectedTaskAction(task);

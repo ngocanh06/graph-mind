@@ -42,6 +42,53 @@ const ROLE_VIEW_TITLES = {
   knowledge_manager: { en: { reports: "Department Performance Reports" }, vi: { reports: "Báo cáo Hiệu suất Phòng ban" }},
 };
 
+const NOTIF_CONFIG = {
+  created: {
+    icon: "✓",
+    labelVi: "Đã thêm tài liệu",
+    labelEn: "Document added",
+    color: "#16a34a",
+    bg: "rgba(22, 163, 74, 0.12)",
+  },
+  modified: {
+    icon: "↻",
+    labelVi: "Đã cập nhật tài liệu",
+    labelEn: "Document updated",
+    color: "#2563eb",
+    bg: "rgba(37, 99, 235, 0.12)",
+  },
+  deleted: {
+    icon: "✓",
+    labelVi: "Đã xóa tài liệu",
+    labelEn: "Document deleted",
+    color: "#dc2626",
+    bg: "rgba(220, 38, 38, 0.12)",
+  },
+  renamed: {
+    icon: "↻",
+    labelVi: "Đã đổi tên tài liệu",
+    labelEn: "Document renamed",
+    color: "#7c3aed",
+    bg: "rgba(124, 58, 237, 0.12)",
+  },
+  error: {
+    icon: "!",
+    labelVi: "Đồng bộ thất bại",
+    labelEn: "Sync failed",
+    color: "#d97706",
+    bg: "rgba(217, 119, 6, 0.12)",
+  },
+};
+
+function formatNotifTimestamp(item) {
+  if (item.formattedTime) return item.formattedTime;
+  if (item.timestamp && item.timestamp.includes(" - ")) {
+    const parts = item.timestamp.split(" - ");
+    if (parts.length === 2) return `${parts[1]} • ${parts[0]}`;
+  }
+  return item.timestamp || item.timeStr || "";
+}
+
 export default function Topbar({
   view,
   lang,
@@ -56,16 +103,25 @@ export default function Topbar({
   onNavigate,
   t,
   apiConnected,
+  notifEvents = [],
+  notifUnreadCount = 0,
+  notifReadIds = new Set(),
+  onMarkNotifRead,
+  onMarkAllNotifRead,
 }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [hasNewNotification] = useState(true); // ponytail: demo state; replace with real subscription
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
   const isVi = lang === "vi";
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsProfileOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotifOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -178,32 +234,338 @@ export default function Topbar({
 
       {/* ── RIGHT: ACTIONS ───────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        {/* Notifications */}
-        <button
-          aria-label={isVi ? "Thông báo" : "Notifications"}
-          style={{
-            position: "relative", width: 36, height: 36,
-            borderRadius: 8, border: "1px solid transparent",
-            background: "transparent", color: "var(--text-3)",
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.15s ease",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-1)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = "var(--text-3)"; }}
-        >
-          <Bell size={17} strokeWidth={1.8} />
-          {hasNewNotification && (
-            <span
-              aria-label={isVi ? "Có thông báo mới" : "New notifications"}
+        {/* Notification Center */}
+        <div ref={notifRef} style={{ position: "relative" }}>
+          <button
+            id="notif-center-button"
+            aria-label={isVi ? "Thông báo" : "Notifications"}
+            aria-expanded={isNotifOpen}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsNotifOpen((prev) => !prev);
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            style={{
+              position: "relative",
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              border: isNotifOpen ? "1px solid var(--border)" : "1px solid transparent",
+              background: isNotifOpen ? "var(--surface-2)" : "transparent",
+              color: isNotifOpen ? "var(--text-1)" : "var(--text-3)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--surface-2)";
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.color = "var(--text-1)";
+            }}
+            onMouseLeave={(e) => {
+              if (!isNotifOpen) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "transparent";
+                e.currentTarget.style.color = "var(--text-3)";
+              }
+            }}
+          >
+            <Bell size={17} strokeWidth={1.8} />
+            {notifUnreadCount > 0 && (
+              <span
+                aria-label={`${notifUnreadCount} ${isVi ? "thông báo mới" : "new notifications"}`}
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 2,
+                  minWidth: 16,
+                  height: 16,
+                  padding: "0 4px",
+                  borderRadius: 8,
+                  background: "#ef4444",
+                  color: "#ffffff",
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "1.5px solid var(--surface)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                  lineHeight: 1,
+                  pointerEvents: "none",
+                }}
+              >
+                {notifUnreadCount > 99 ? "99+" : notifUnreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Dropdown Notification Center */}
+          {isNotifOpen && (
+            <div
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
               style={{
-                position: "absolute", top: 7, right: 7,
-                width: 7, height: 7, borderRadius: "50%",
-                background: "#ef4444",
-                border: "1.5px solid var(--surface)",
+                position: "absolute",
+                right: 0,
+                top: "calc(100% + 8px)",
+                width: 380,
+                background: "var(--surface, #ffffff)",
+                border: "1px solid var(--border, #e2e8f0)",
+                borderRadius: 12,
+                boxShadow: "0 16px 36px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08)",
+                zIndex: 99999,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
               }}
-            />
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderBottom: "1px solid var(--border-soft)",
+                  background: "var(--surface-2)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-1)" }}>
+                    {isVi ? "Thông báo" : "Notifications"}
+                  </span>
+                  {notifUnreadCount > 0 && (
+                    <span
+                      style={{
+                        padding: "2px 7px",
+                        borderRadius: 10,
+                        background: "#ef44441a",
+                        color: "#ef4444",
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {notifUnreadCount} {isVi ? "chưa đọc" : "unread"}
+                    </span>
+                  )}
+                </div>
+
+                {notifUnreadCount > 0 && (
+                  <button
+                    onClick={() => onMarkAllNotifRead?.()}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--brand, #2563eb)",
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      padding: "3px 6px",
+                      borderRadius: 4,
+                      transition: "opacity 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  >
+                    {isVi ? "Đánh dấu đã đọc" : "Mark all read"}
+                  </button>
+                )}
+              </div>
+
+              {/* Notification List */}
+              <div
+                style={{
+                  maxHeight: 360,
+                  overflowY: "auto",
+                  padding: "4px 0",
+                }}
+              >
+                {notifEvents.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "36px 16px",
+                      textAlign: "center",
+                      color: "var(--text-4)",
+                      fontSize: 12.5,
+                    }}
+                  >
+                    <Bell size={24} style={{ opacity: 0.3, display: "block", margin: "0 auto 8px" }} />
+                    {isVi ? "Chưa có thông báo nào" : "No notifications yet"}
+                  </div>
+                ) : (
+                  notifEvents.map((item) => {
+                    const isUnread = notifReadIds ? !notifReadIds.has(item.id) : false;
+                    const evType = item.eventType || (item.status === "deleted" ? "deleted" : "created");
+                    const cfg = NOTIF_CONFIG[evType] || NOTIF_CONFIG.created;
+                    const label = isVi ? cfg.labelVi : cfg.labelEn;
+                    const timeDisplay = formatNotifTimestamp(item);
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          onMarkNotifRead?.(item.id);
+                          const targetId = item.docId || item.fileName;
+                          if (evType !== "deleted" && onNavigate && targetId) {
+                            onNavigate("documents", targetId);
+                            setIsNotifOpen(false);
+                          }
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 12,
+                          padding: "10px 16px",
+                          borderBottom: "1px solid var(--border-soft)",
+                          background: isUnread ? "rgba(37, 99, 235, 0.05)" : "transparent",
+                          cursor: evType !== "deleted" ? "pointer" : "default",
+                          transition: "background 0.15s ease",
+                          position: "relative",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = isUnread
+                            ? "rgba(37, 99, 235, 0.05)"
+                            : "transparent")
+                        }
+                      >
+                        {/* Event Icon Badge */}
+                        <span
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: "50%",
+                            background: cfg.bg,
+                            color: cfg.color,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                            marginTop: 2,
+                          }}
+                        >
+                          {cfg.icon}
+                        </span>
+
+                        {/* Content */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                            <span
+                              style={{
+                                fontSize: 12,
+                                fontWeight: isUnread ? 700 : 600,
+                                color: isUnread ? "var(--text-1)" : "var(--text-2)",
+                              }}
+                            >
+                              {label}
+                            </span>
+                            {/* Read / Unread Indicator Dot */}
+                            {isUnread && (
+                              <span
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: "50%",
+                                  background: "#2563eb",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                          </div>
+
+                          {/* File Name & Rename Visual Diff */}
+                          {evType === "renamed" ? (
+                            <div style={{ marginTop: 2 }}>
+                              <div style={{ color: "var(--text-4, #94a3b8)", textDecoration: "line-through", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.oldFileName}>
+                                {item.oldFileName || item.fileName}
+                              </div>
+                              <div
+                                style={{
+                                  color: "var(--text-1)",
+                                  fontWeight: 700,
+                                  fontSize: 12.5,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  marginTop: 1,
+                                }}
+                                title={item.fileName}
+                              >
+                                <span style={{ color: "#7c3aed", fontSize: 13, flexShrink: 0 }}>➔</span>
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.fileName}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              style={{
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                color: "var(--text-1)",
+                                marginTop: 2,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={item.fileName || item.oldFileName}
+                            >
+                              {item.fileName || item.oldFileName}
+                            </div>
+                          )}
+
+                          {/* Date + Time & Click hint */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                color: "var(--text-4)",
+                                fontFamily: "var(--f-mono, monospace)",
+                              }}
+                            >
+                              {timeDisplay}
+                            </span>
+                            {evType !== "deleted" && (
+                              <span style={{ fontSize: 10.5, color: "var(--brand, #2563eb)", fontWeight: 600 }}>
+                                {isVi ? "Xem tài liệu →" : "View doc →"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div
+                style={{
+                  padding: "8px 16px",
+                  background: "var(--surface-2)",
+                  borderTop: "1px solid var(--border-soft)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: 11,
+                  color: "var(--text-4)",
+                }}
+              >
+                <span>AEGIS Local File Watcher</span>
+                <span>{notifEvents.length} {isVi ? "sự kiện" : "events"}</span>
+              </div>
+            </div>
           )}
-        </button>
+        </div>
 
         {/* Divider */}
         <div style={{ width: 1, height: 24, background: "var(--border)", flexShrink: 0 }} aria-hidden="true" />

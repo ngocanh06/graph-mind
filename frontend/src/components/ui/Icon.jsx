@@ -22,6 +22,13 @@ const FA_TO_LUCIDE = {
   "fa-paper-plane": "Send",
   "fa-file-lines": "FileText",
   "fa-file-pdf": "FileText",
+  "fa-file-excel": "FileSpreadsheet",
+  "fa-file-csv": "FileSpreadsheet",
+  "fa-file-spreadsheet": "FileSpreadsheet",
+  "fa-file-code": "FileCode",
+  "fa-file-word": "FileText",
+  "fa-file": "FileText",
+  "fa-file-contract": "FileCheck",
   "fa-file-signature": "FileCheck",
   "fa-file-circle-plus": "FilePlus",
   "fa-chart-pie": "PieChart",
@@ -133,7 +140,7 @@ export default function Icon({
   }
 
   // Get Lucide component
-  const LucideComponent = LucideIcons[resolvedName] || LucideIcons.HelpCircle;
+  const LucideComponent = LucideIcons[resolvedName] || LucideIcons.FileText || LucideIcons.HelpCircle || LucideIcons.CircleHelp;
   const isSpin = typeof name === "string" && (name.includes("fa-spin") || name.includes("spin"));
 
   return (

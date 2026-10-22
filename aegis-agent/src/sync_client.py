@@ -21,7 +21,7 @@ class SyncClient:
                 hasher.update(chunk)
         return hasher.hexdigest()
 
-    def sync_file(self, file_path: str, department: str = "General") -> Dict[str, Any]:
+    def sync_file(self, file_path: str, department: str = "General", event_type: str = "created") -> dict:
         """Send file with metadata to Backend Cloud."""
         if not os.path.exists(file_path):
             return {"success": False, "error": "File does not exist"}
@@ -36,7 +36,8 @@ class SyncClient:
                 data = {
                     "file_hash": file_hash,
                     "department": department,
-                    "file_name": file_name
+                    "file_name": file_name,
+                    "event_type": event_type
                 }
                 response = requests.post(self.endpoint, headers=headers, data=data, files=files, timeout=30)
                 return {
@@ -46,3 +47,4 @@ class SyncClient:
                 }
         except Exception as exc:
             return {"success": False, "error": str(exc)}
+

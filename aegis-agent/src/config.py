@@ -14,6 +14,14 @@ BACKEND_URL = os.getenv("AEGIS_BACKEND_URL", "http://localhost:5000")
 SYNC_ENDPOINT = f"{BACKEND_URL}/api/v1/sync/file-watcher"
 AGENT_API_KEY = os.getenv("AEGIS_AGENT_API_KEY", "dev-agent-key")
 
-# Local directories to watch
-WATCH_DIR = os.getenv("AEGIS_WATCH_DIR", str(BASE_DIR / "watched_folders"))
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
+# Canonical Document Root to watch (Docker Named Volume mounted at /data)
+WATCH_ROOT = os.getenv("WATCH_ROOT", os.getenv("AEGIS_WATCH_DIR", "/data"))
+WATCH_DIR = WATCH_ROOT  # backward-compatible alias
+
+# Strictly supported business document extensions (.txt and other files are ignored)
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv"}
+
+# Canonical 5 departments
+CANONICAL_DEPARTMENTS = ["legal", "sales", "accounting_procurement", "it", "rnd"]
+
+

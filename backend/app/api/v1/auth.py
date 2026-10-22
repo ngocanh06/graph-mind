@@ -74,28 +74,28 @@ async def login(
             detail="Tài khoản này đã bị khóa hoặc chưa được kích hoạt.",
         )
 
-    if not verify_password(payload.password, user.hashed_password):
+    if not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Mật khẩu không chính xác.",
         )
 
     # Xác định Role tương ứng cho giao diện
-    role = resolve_user_role(user.username, user.email, user.is_superuser)
+    role = resolve_user_role(user.username or "", user.email, user.is_superuser)
 
     # Sinh JWT Token
     token_data = {
-        "sub": str(user.id),
-        "username": user.username,
+        "sub": str(user.user_id),
+        "username": user.username or "",
         "email": user.email,
         "role": role,
     }
     access_token = create_access_token(token_data)
 
     user_out = UserOut(
-        id=user.id,
+        id=user.user_id,
         email=user.email,
-        username=user.username,
+        username=user.username or "",
         full_name=user.full_name,
         role=role,
         is_active=user.is_active,
@@ -134,19 +134,19 @@ async def get_current_user(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User ID không hợp lệ.")
 
-    stmt = select(User).where(User.id == user_uuid)
+    stmt = select(User).where(User.user_id == user_uuid)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
 
-    role = resolve_user_role(user.username, user.email, user.is_superuser)
+    role = resolve_user_role(user.username or "", user.email, user.is_superuser)
 
     return UserOut(
-        id=user.id,
+        id=user.user_id,
         email=user.email,
-        username=user.username,
+        username=user.username or "",
         full_name=user.full_name,
         role=role,
         is_active=user.is_active,
