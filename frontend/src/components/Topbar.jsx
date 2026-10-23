@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ENTERPRISE_ROLES } from "../data/roles";
 import {
   Bell, ChevronDown, Moon, Sun, Globe, LogOut, Home as HomeIcon,
-  Activity, ShieldCheck, Building2, Check, Search
+  Activity, ShieldCheck, Building2, Check, Search, UploadCloud
 } from "lucide-react";
 
 const VIEW_TITLES = {
@@ -233,7 +233,34 @@ export default function Topbar({
       </div>
 
       {/* ── RIGHT: ACTIONS ───────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        {/* Quick Upload Button */}
+        <button
+          id="topbar-upload-button"
+          onClick={() => onNavigate("documents", "upload")}
+          title={isVi ? "Tải lên tài liệu mới vào Central Storage (/data)" : "Upload new document to Central Storage (/data)"}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 12px",
+            borderRadius: 8,
+            background: "#2563eb",
+            color: "#ffffff",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            border: "none",
+            boxShadow: "0 1px 3px rgba(37,99,235,0.3)",
+            transition: "all 0.15s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#2563eb")}
+        >
+          <UploadCloud size={14} strokeWidth={2.4} />
+          <span>{isVi ? "+ Upload tài liệu" : "+ Upload"}</span>
+        </button>
+
         {/* Notification Center */}
         <div ref={notifRef} style={{ position: "relative" }}>
           <button

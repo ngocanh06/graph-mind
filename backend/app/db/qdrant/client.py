@@ -213,22 +213,29 @@ class QdrantClientWrapper:
                 with_vectors=False,
             )
             q_lower = query.lower()
+            tokens = [w for w in q_lower.split() if len(w) >= 3]
             matched = []
             for r in results:
                 payload = r.payload or {}
                 combined = " ".join(str(v) for v in payload.values()).lower()
+                score = 0.0
                 if q_lower in combined:
+                    score = 1.0
+                elif tokens:
+                    hit_cnt = sum(1 for t in tokens if t in combined)
+                    if hit_cnt > 0:
+                        score = round(hit_cnt / len(tokens), 2)
+                if score > 0:
                     matched.append({
                         "id": str(r.id),
-                        "score": 1.0,
+                        "score": score,
                         "contract_name": payload.get("contract_name", "Contract Document"),
                         "chunk_id": payload.get("chunk_id"),
                         "text": payload.get("text", ""),
                         "payload": payload,
                     })
-                    if len(matched) >= limit:
-                        break
-            return matched
+            matched.sort(key=lambda x: x["score"], reverse=True)
+            return matched[:limit]
         except Exception as e:
             print(f"[Qdrant] search_by_text error: {e}")
             return []

@@ -341,17 +341,113 @@ export async function fetchDocumentDetail(docId, currentUser = null) {
   return null;
 }
 
+export async function uploadDocument(file, department = "legal", currentUser = null) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("department", department);
+
+    const headers = {};
+    const token = localStorage.getItem("aegis_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
+    if (currentUser?.username) headers["X-User-Name"] = currentUser.username;
+    if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
+
+    const res = await fetch(`${API_BASE}/v1/sync/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi tải lên (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Upload] uploadDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function renameDocument(oldName, newName, department = "legal", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/documents/rename`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({
+        old_name: oldName,
+        new_name: newName,
+        department: department
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi đổi tên (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Document] renameDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function replaceDocument(file, oldName, department = "legal", currentUser = null) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("old_name", oldName);
+    formData.append("department", department);
+
+    const headers = {};
+    const token = localStorage.getItem("aegis_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
+    if (currentUser?.username) headers["X-User-Name"] = currentUser.username;
+    if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
+
+    const res = await fetch(`${API_BASE}/documents/replace`, {
+      method: "POST",
+      headers,
+      body: formData
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi thay file (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Document] replaceDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function deleteDocument(fileName, department = "legal", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/documents/delete`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({
+        file_name: fileName,
+        department: department
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi xóa tài liệu (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Document] deleteDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+
 // ============================================================================
 // MULTI-FACET SEARCH API (REAL DATABASE DATA)
 // ============================================================================
 
-export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 12, currentUser = null) {
+export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 60, currentUser = null, category = "ALL") {
   try {
     const sp = new URLSearchParams();
     if (query) sp.set("q", query);
     if (mode) sp.set("mode", mode);
     if (dept && dept !== "ALL") sp.set("dept", dept);
     if (status && status !== "ALL") sp.set("status", status);
+    if (category && category !== "ALL") sp.set("category", category);
     sp.set("limit", limit);
 
     const res = await fetch(`${API_BASE}/search?${sp.toString()}`, {

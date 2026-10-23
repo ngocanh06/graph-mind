@@ -19,6 +19,8 @@ const LABEL_COLORS = {
   Contract:    { bg: "#e0e7ff", border: "#6366f1", text: "#3730a3", circle: "#6366f1", highlight: "#a5b4fc", shadow: "#4338ca", shape: "circle" },
   Clause:      { bg: "#fee2e2", border: "#ef4444", text: "#991b1b", circle: "#ef4444", highlight: "#fca5a5", shadow: "#b91c1c", shape: "circle" },
   Company:     { bg: "#ccfbf1", border: "#06b6d4", text: "#0e7490", circle: "#06b6d4", highlight: "#67e8f9", shadow: "#0891b2", shape: "circle" },
+  Document:    { bg: "#f1f5f9", border: "#475569", text: "#1e293b", circle: "#475569", highlight: "#94a3b8", shadow: "#334155", shape: "circle" },
+  Department:  { bg: "#fef9c3", border: "#eab308", text: "#713f12", circle: "#eab308", highlight: "#fef08a", shadow: "#a16207", shape: "circle" },
   default:     { bg: "#f1f5f9", border: "#64748b", text: "#334155", circle: "#64748b", highlight: "#cbd5e1", shadow: "#334155", shape: "circle" },
 };
 

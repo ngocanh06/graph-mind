@@ -85,10 +85,10 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#ede9fe", color: "#6d28d9", fontWeight: 700 }}>
-              Qdrant: 40k vectors
+              Qdrant: 9,140 vectors
             </span>
             <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#e0f2fe", color: "#0369a1", fontWeight: 700 }}>
-              Neo4j: 52k nodes
+              Neo4j: 3,484 nodes
             </span>
           </div>
         </div>

@@ -37,18 +37,51 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   const [documents, setDocuments] = useState([]);
   const [dbMetrics, setDbMetrics] = useState(null);
 
+  // Pagination / Load more limits per section
+  const [visibleLimits, setVisibleLimits] = useState({
+    CONTRACT: 24,
+    CUSTOMER: 24,
+    PRODUCT: 24,
+    DOCUMENT: 24
+  });
+
+  const handleLoadMore = (categoryKey, step = 24) => {
+    setVisibleLimits(prev => ({
+      ...prev,
+      [categoryKey]: (prev[categoryKey] || 24) + step
+    }));
+  };
+
+  const handleShowAll = (categoryKey, totalLen) => {
+    setVisibleLimits(prev => ({
+      ...prev,
+      [categoryKey]: totalLen
+    }));
+  };
+
   useEffect(() => {
     let isMounted = true;
     setIsSearching(true);
     const handler = setTimeout(async () => {
       setDebouncedQuery(query);
       try {
-        const res = await fetchMultiFacetSearch(query, searchMode, filterDept, filterStatus, 16, currentUser);
+        const fetchLimit = activeCategory === "ALL" ? 60 : 600;
+        const res = await fetchMultiFacetSearch(query, searchMode, filterDept, filterStatus, fetchLimit, currentUser, activeCategory);
         if (isMounted && res && res.success && res.data) {
-          setContracts(res.data.contracts || []);
-          setCustomers(res.data.customers || []);
-          setProducts(res.data.products || []);
-          setDocuments(res.data.documents || []);
+          if (activeCategory === "ALL") {
+            setContracts(res.data.contracts || []);
+            setCustomers(res.data.customers || []);
+            setProducts(res.data.products || []);
+            setDocuments(res.data.documents || []);
+          } else if (activeCategory === "CONTRACT") {
+            setContracts(res.data.contracts || []);
+          } else if (activeCategory === "CUSTOMER") {
+            setCustomers(res.data.customers || []);
+          } else if (activeCategory === "PRODUCT") {
+            setProducts(res.data.products || []);
+          } else if (activeCategory === "DOCUMENT") {
+            setDocuments(res.data.documents || []);
+          }
           if (res.summary) setDbMetrics(res.summary);
         }
       } catch (e) {
@@ -61,7 +94,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       isMounted = false;
       clearTimeout(handler);
     };
-  }, [query, searchMode, filterDept, filterStatus, currentUser]);
+  }, [query, searchMode, filterDept, filterStatus, currentUser, activeCategory]);
 
 
   // Modal xử lý ca nghiệp vụ
@@ -217,6 +250,20 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     filteredProducts.length +
     filteredDocuments.length;
 
+  const hasFilter = (query && query.trim() !== "") || filterDept !== "ALL" || filterStatus !== "ALL" || filterValue !== "ALL";
+
+  const totalDbContracts = dbMetrics?.total_contracts || 510;
+  const totalDbCustomers = dbMetrics?.total_customers || 19820;
+  const totalDbProducts = dbMetrics?.total_products || 504;
+  const totalDbDocuments = dbMetrics?.total_documents || 581;
+  const totalDbAll = dbMetrics?.total_all || (totalDbContracts + totalDbCustomers + totalDbProducts + totalDbDocuments);
+
+  const displayCountContracts = hasFilter ? filteredContracts.length : totalDbContracts;
+  const displayCountCustomers = hasFilter ? (activeCategory === "CUSTOMER" ? filteredCustomers.length : totalDbCustomers) : totalDbCustomers;
+  const displayCountProducts = hasFilter ? filteredProducts.length : totalDbProducts;
+  const displayCountDocuments = hasFilter ? filteredDocuments.length : totalDbDocuments;
+  const displayCountAll = hasFilter ? totalResultsCount : totalDbAll;
+
   const pendingCount = assignedTasks.filter((t) => t.status === "PENDING").length;
 
   return (
@@ -310,8 +357,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric3Sub: isVi ? "30 hợp đồng CUAD & 5 CSDL ERP" : "30 CUAD & 5 ERP DBs",
             metric3Color: "#059669",
             metric4Label: isVi ? "Thực thể đồ thị tri thức" : "Knowledge Graph Nodes",
-            metric4Val: dbMetrics ? `${(dbMetrics.total_nodes).toLocaleString()} thực thể` : "52,283 thực thể",
-            metric4Sub: isVi ? "Neo4j (52k) + Qdrant (40k)" : "Neo4j (52k) + Qdrant (40k)",
+            metric4Val: dbMetrics ? `${(dbMetrics.total_nodes).toLocaleString()} thực thể` : "3,484 thực thể",
+            metric4Sub: isVi ? "Neo4j (3,484) + Qdrant (9,140)" : "Neo4j (3,484) + Qdrant (9,140)",
             metric4Color: "var(--cyan)",
           },
           executive: {
@@ -324,12 +371,12 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             badgeBg: "rgba(8, 145, 178, 0.1)",
             badgeBorder: "rgba(8, 145, 178, 0.25)",
             subtitle: isVi
-              ? "Hoàng Minh Điều (CEO) · Truy vấn hợp nhất 52k thực thể Neo4j, 40k vectors Qdrant, hợp đồng và dữ liệu bán hàng"
-              : "Hoang Minh Dieu (CEO) · Unified discovery across 52k Neo4j entities, 40k Qdrant vectors, contracts & sales",
+              ? "Hoàng Minh Điều (CEO) · Truy vấn hợp nhất 3,484 thực thể Neo4j, 9,140 vectors Qdrant, hợp đồng và dữ liệu bán hàng"
+              : "Hoang Minh Dieu (CEO) · Unified discovery across 3,484 Neo4j entities, 9,140 Qdrant vectors, contracts & sales",
             tabTasksLabel: isVi ? "Giám Sát Vụ Việc Toàn Doanh Nghiệp" : "Corporate Cases",
             tabSearchLabel: isVi ? "Tra Cứu Tri Thức Toàn Doanh Nghiệp" : "Enterprise Search Engine",
             metric1Label: isVi ? "Thực thể đồ thị tri thức" : "Monitored Graph Entities",
-            metric1Val: `${(dbMetrics?.total_nodes || 52283).toLocaleString()} thực thể`,
+            metric1Val: `${(dbMetrics?.total_nodes || 3484).toLocaleString()} thực thể`,
             metric1Sub: isVi ? "Đồng bộ từ CSDL Neo4j thực tế" : "Live synced from Neo4j DB",
             metric1Color: "var(--cyan)",
             metric2Label: isVi ? "Phơi nhiễm rủi ro hợp đồng" : "Contract Risk Exposure",
@@ -337,11 +384,11 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric2Sub: isVi ? "CUAD Contracts & Sales Orders" : "CUAD Contracts & Sales Orders",
             metric2Color: "#dc2626",
             metric3Label: isVi ? "Tổng hồ sơ đã lập chỉ mục" : "Indexed Documents",
-            metric3Val: `${(dbMetrics?.total_documents || 35)} hồ sơ`,
-            metric3Sub: isVi ? "30 hợp đồng CUAD & ERP Master" : "30 CUAD & ERP Master",
+            metric3Val: `${(dbMetrics?.total_documents ?? 581)} hồ sơ`,
+            metric3Sub: isVi ? "Hợp đồng CUAD & ERP Master" : "CUAD & ERP Master",
             metric3Color: "#059669",
             metric4Label: isVi ? "Vectơ nhúng ngữ nghĩa" : "Vector Chunks",
-            metric4Val: `${(dbMetrics?.total_vectors || 40194).toLocaleString()} vectors`,
+            metric4Val: `${(dbMetrics?.total_vectors || 9140).toLocaleString()} vectors`,
             metric4Sub: isVi ? "Qdrant Vector DB (cuad_contracts)" : "Qdrant Vector DB",
             metric4Color: "#2563eb",
           },
@@ -360,7 +407,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             tabTasksLabel: isVi ? "Hàng Đợi Ca Tác Nghiệp" : "Operations Queue",
             tabSearchLabel: isVi ? "Truy Vấn Đồ Thị & Bằng Chứng" : "Graph & Evidence Query",
             metric1Label: isVi ? "Nút đồ thị Neo4j" : "Neo4j Graph Nodes",
-            metric1Val: `${(dbMetrics?.total_nodes || 52283).toLocaleString()} nodes`,
+            metric1Val: `${(dbMetrics?.total_nodes ?? 0).toLocaleString()} nodes`,
             metric1Sub: isVi ? "Neo4j Bolt Sync: 100% OK" : "Neo4j Bolt Sync 100% OK",
             metric1Color: "#059669",
             metric2Label: isVi ? "Độ trễ truy vấn trung bình" : "Query Latency",
@@ -368,11 +415,11 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric2Sub: isVi ? "Pipeline hoạt động tối ưu" : "Optimal pipeline latency",
             metric2Color: "var(--cyan)",
             metric3Label: isVi ? "Điều khoản bóc tách" : "Extracted Clauses",
-            metric3Val: `${(dbMetrics?.total_clauses || 103)} điều khoản`,
+            metric3Val: `${(dbMetrics?.total_clauses ?? 0)} điều khoản`,
             metric3Sub: isVi ? "Đã xác thực đồ thị" : "Graph verified",
             metric3Color: "#d97706",
             metric4Label: isVi ? "Điểm nhúng Qdrant" : "Qdrant Vectors",
-            metric4Val: `${(dbMetrics?.total_vectors || 40194).toLocaleString()} vectors`,
+            metric4Val: `${(dbMetrics?.total_vectors ?? 0).toLocaleString()} vectors`,
             metric4Sub: isVi ? "Qdrant collection cuad_contracts" : "cuad_contracts active",
             metric4Color: "#2563eb",
           }
@@ -525,7 +572,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                   }}
                 >
                   <span>🕸️</span>
-                  <span>{isVi ? "Neo4j Graph (52k)" : "Neo4j Graph (52k)"}</span>
+                  <span>{isVi ? `Neo4j Graph (${(dbMetrics?.total_nodes || 3484).toLocaleString()})` : `Neo4j Graph (${(dbMetrics?.total_nodes || 3484).toLocaleString()})`}</span>
                 </button>
 
                 {/* Tab Qdrant Live Vector Search */}
@@ -548,7 +595,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                   }}
                 >
                   <span>🔮</span>
-                  <span>{isVi ? "Qdrant Vector (40k)" : "Qdrant Vector (40k)"}</span>
+                  <span>{isVi ? `Qdrant Vector (${(dbMetrics?.total_vectors || 9140).toLocaleString()})` : `Qdrant Vector (${(dbMetrics?.total_vectors || 9140).toLocaleString()})`}</span>
                 </button>
 
                 {/* Tab Ca việc (Default cho Sales Specialist) */}
@@ -1371,8 +1418,13 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
 
                   <span style={{ fontSize: "12.5px", color: "var(--text-3)" }}>
                     {isVi ? "Tìm thấy" : "Found"}{" "}
-                    <strong style={{ color: "var(--text-1)", fontWeight: "800" }}>{totalResultsCount} kết quả</strong>{" "}
+                    <strong style={{ color: "var(--text-1)", fontWeight: "800" }}>{displayCountAll.toLocaleString()} {isVi ? "kết quả" : "results"}</strong>{" "}
                     {isVi ? "trong 4 nhóm thực thể" : "across 4 clusters"}
+                    {!hasFilter && (
+                      <span style={{ marginLeft: "8px", fontSize: "11px", color: "var(--cyan)", fontWeight: "700" }}>
+                        {isVi ? "• Toàn bộ cơ sở dữ liệu tri thức" : "• Full Enterprise Knowledge Base"}
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
@@ -1380,11 +1432,11 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               {/* QUICK CATEGORY TABS ROW */}
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", paddingTop: "2px" }}>
                 {[
-                  { id: "ALL", label: isVi ? "Tất cả kết quả" : "All Results", count: totalResultsCount, icon: "fa-layer-group" },
-                  { id: "CONTRACT", label: isVi ? "Hợp Đồng & CUAD" : "Contracts", count: filteredContracts.length, icon: "fa-file-signature", color: "#6366f1" },
-                  { id: "CUSTOMER", label: isVi ? "Khách Hàng (CRM)" : "Customers", count: filteredCustomers.length, icon: "fa-building", color: "#3b82f6" },
-                  { id: "PRODUCT", label: isVi ? "Sản Phẩm & Dịch Vụ" : "Products", count: filteredProducts.length, icon: "fa-box-open", color: "#10b981" },
-                  { id: "DOCUMENT", label: isVi ? "Tài Liệu & SOP" : "Documents", count: filteredDocuments.length, icon: "fa-file-lines", color: "#64748b" }
+                  { id: "ALL", label: isVi ? "Tất cả kết quả" : "All Results", count: displayCountAll.toLocaleString(), icon: "fa-layer-group" },
+                  { id: "CONTRACT", label: isVi ? "Hợp Đồng & CUAD" : "Contracts", count: displayCountContracts.toLocaleString(), icon: "fa-file-signature", color: "#6366f1" },
+                  { id: "CUSTOMER", label: isVi ? "Khách Hàng (CRM)" : "Customers", count: displayCountCustomers.toLocaleString(), icon: "fa-building", color: "#3b82f6" },
+                  { id: "PRODUCT", label: isVi ? "Sản Phẩm & Dịch Vụ" : "Products", count: displayCountProducts.toLocaleString(), icon: "fa-box-open", color: "#10b981" },
+                  { id: "DOCUMENT", label: isVi ? "Tài Liệu & SOP" : "Documents", count: displayCountDocuments.toLocaleString(), icon: "fa-file-lines", color: "#64748b" }
                 ].map((cat) => {
                   const isActive = activeCategory === cat.id;
                   return (
@@ -1522,10 +1574,10 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     </thead>
                     <tbody>
                       {[
-                        ...filteredContracts.map((c) => ({ ...c, catLabel: "HỢP ĐỒNG", catColor: "#6366f1" })),
-                        ...filteredCustomers.map((cu) => ({ ...cu, catLabel: "KHÁCH HÀNG", catColor: "#3b82f6", title: cu.name, value: cu.revenue })),
-                        ...filteredProducts.map((p) => ({ ...p, catLabel: "SẢN PHẨM", catColor: "#10b981", title: p.name, value: p.value })),
-                        ...filteredDocuments.map((d) => ({ ...d, catLabel: "TÀI LIỆU", catColor: "#64748b", value: d.size }))
+                        ...(activeCategory === "ALL" || activeCategory === "CONTRACT" ? filteredContracts.map((c) => ({ ...c, catLabel: "HỢP ĐỒNG", catColor: "#6366f1" })) : []),
+                        ...(activeCategory === "ALL" || activeCategory === "CUSTOMER" ? filteredCustomers.map((cu) => ({ ...cu, catLabel: "KHÁCH HÀNG", catColor: "#3b82f6", title: cu.name, value: cu.revenue })) : []),
+                        ...(activeCategory === "ALL" || activeCategory === "PRODUCT" ? filteredProducts.map((p) => ({ ...p, catLabel: "SẢN PHẨM", catColor: "#10b981", title: p.name, value: p.value })) : []),
+                        ...(activeCategory === "ALL" || activeCategory === "DOCUMENT" ? filteredDocuments.map((d) => ({ ...d, catLabel: "TÀI LIỆU", catColor: "#64748b", value: d.size })) : [])
                       ].map((row, idx) => (
                         <tr key={idx} style={{ borderBottom: "1px solid var(--border-soft)", transition: "background 0.15s ease" }}>
                           <td style={{ padding: "12px 14px" }}>
@@ -1638,7 +1690,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             borderRadius: "10px",
                             border: "1px solid rgba(99, 102, 241, 0.2)"
                           }}>
-                            {filteredContracts.length} {isVi ? "kết quả" : "results"}
+                            {displayCountContracts.toLocaleString()} {isVi ? "kết quả" : "results"}
                           </span>
                         </h3>
                         <button
@@ -1653,7 +1705,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                       </div>
 
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "14px" }}>
-                        {filteredContracts.map((c) => (
+                        {(activeCategory === "ALL" ? filteredContracts.slice(0, 12) : filteredContracts.slice(0, visibleLimits.CONTRACT || 24)).map((c) => (
                           <div
                             key={c.id}
                             style={{
@@ -1776,6 +1828,43 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           </div>
                         ))}
                       </div>
+
+                      {/* ACTION / LOAD MORE ROW FOR CONTRACTS */}
+                      {activeCategory === "ALL" && filteredContracts.length > 12 && (
+                        <div style={{ display: "flex", justifyContent: "center", paddingTop: "8px" }}>
+                          <button
+                            onClick={() => {
+                              setActiveCategory("CONTRACT");
+                              showToast(isVi ? "Đang mở toàn bộ hợp đồng CUAD..." : "Loading all CUAD contracts...");
+                            }}
+                            className="btn secondary"
+                            style={{ padding: "8px 18px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            <Icon name="fa-solid fa-file-signature" size={14} style={{ marginRight: "8px", color: "#6366f1" }} />
+                            {isVi ? `Xem tất cả ${displayCountContracts.toLocaleString()} Hợp đồng & Điều khoản CUAD →` : `View all ${displayCountContracts.toLocaleString()} CUAD Contracts →`}
+                          </button>
+                        </div>
+                      )}
+
+                      {activeCategory === "CONTRACT" && filteredContracts.length > (visibleLimits.CONTRACT || 24) && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", paddingTop: "12px" }}>
+                          <button
+                            onClick={() => handleLoadMore("CONTRACT", 24)}
+                            className="btn secondary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "700" }}
+                          >
+                            <Icon name="fa-solid fa-arrow-down" size={13} style={{ marginRight: "6px" }} />
+                            {isVi ? `Tải thêm 24 hợp đồng (Đang xem ${Math.min(filteredContracts.length, visibleLimits.CONTRACT || 24)}/${filteredContracts.length})` : `Load 24 more (${Math.min(filteredContracts.length, visibleLimits.CONTRACT || 24)}/${filteredContracts.length})`}
+                          </button>
+                          <button
+                            onClick={() => handleShowAll("CONTRACT", filteredContracts.length)}
+                            className="btn primary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            {isVi ? `Xem toàn bộ ${filteredContracts.length} Hợp đồng` : `Show all ${filteredContracts.length}`}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1809,7 +1898,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             borderRadius: "10px",
                             border: "1px solid rgba(59, 130, 246, 0.2)"
                           }}>
-                            {filteredCustomers.length} {isVi ? "kết quả" : "results"}
+                            {displayCountCustomers.toLocaleString()} {isVi ? "kết quả" : "results"}
                           </span>
                         </h3>
                         <button
@@ -1824,7 +1913,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                       </div>
 
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "14px" }}>
-                        {filteredCustomers.map((cust) => (
+                        {(activeCategory === "ALL" ? filteredCustomers.slice(0, 12) : filteredCustomers.slice(0, visibleLimits.CUSTOMER || 24)).map((cust) => (
                           <div
                             key={cust.id}
                             style={{
@@ -1885,6 +1974,43 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           </div>
                         ))}
                       </div>
+
+                      {/* ACTION / LOAD MORE ROW FOR CUSTOMERS */}
+                      {activeCategory === "ALL" && filteredCustomers.length > 12 && (
+                        <div style={{ display: "flex", justifyContent: "center", paddingTop: "8px" }}>
+                          <button
+                            onClick={() => {
+                              setActiveCategory("CUSTOMER");
+                              showToast(isVi ? "Đang mở toàn bộ Khách hàng CRM..." : "Loading all CRM Customers...");
+                            }}
+                            className="btn secondary"
+                            style={{ padding: "8px 18px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            <Icon name="fa-solid fa-building" size={14} style={{ marginRight: "8px", color: "#3b82f6" }} />
+                            {isVi ? `Xem tất cả ${displayCountCustomers.toLocaleString()} Khách hàng Doanh nghiệp & CRM →` : `View all ${displayCountCustomers.toLocaleString()} CRM Customers →`}
+                          </button>
+                        </div>
+                      )}
+
+                      {activeCategory === "CUSTOMER" && filteredCustomers.length > (visibleLimits.CUSTOMER || 24) && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", paddingTop: "12px" }}>
+                          <button
+                            onClick={() => handleLoadMore("CUSTOMER", 24)}
+                            className="btn secondary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "700" }}
+                          >
+                            <Icon name="fa-solid fa-arrow-down" size={13} style={{ marginRight: "6px" }} />
+                            {isVi ? `Tải thêm 24 khách hàng (Đang xem ${Math.min(filteredCustomers.length, visibleLimits.CUSTOMER || 24)}/${filteredCustomers.length})` : `Load 24 more (${Math.min(filteredCustomers.length, visibleLimits.CUSTOMER || 24)}/${filteredCustomers.length})`}
+                          </button>
+                          <button
+                            onClick={() => handleShowAll("CUSTOMER", filteredCustomers.length)}
+                            className="btn primary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            {isVi ? `Xem toàn bộ ${filteredCustomers.length} Khách hàng` : `Show all ${filteredCustomers.length}`}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1918,13 +2044,22 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             borderRadius: "10px",
                             border: "1px solid rgba(16, 185, 129, 0.2)"
                           }}>
-                            {filteredProducts.length} {isVi ? "kết quả" : "results"}
+                            {displayCountProducts.toLocaleString()} {isVi ? "kết quả" : "results"}
                           </span>
                         </h3>
+                        <button
+                          onClick={() => {
+                            setActiveCategory("PRODUCT");
+                            showToast(isVi ? "Đã lọc danh sách Sản phẩm" : "Filtered by products");
+                          }}
+                          style={{ background: "transparent", border: "none", color: "var(--cyan)", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+                        >
+                          {isVi ? "Xem danh mục ERP →" : "View catalog →"}
+                        </button>
                       </div>
 
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px" }}>
-                        {filteredProducts.map((p) => (
+                        {(activeCategory === "ALL" ? filteredProducts.slice(0, 12) : filteredProducts.slice(0, visibleLimits.PRODUCT || 24)).map((p) => (
                           <div
                             key={p.id}
                             style={{
@@ -1963,6 +2098,43 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           </div>
                         ))}
                       </div>
+
+                      {/* ACTION / LOAD MORE ROW FOR PRODUCTS */}
+                      {activeCategory === "ALL" && filteredProducts.length > 12 && (
+                        <div style={{ display: "flex", justifyContent: "center", paddingTop: "8px" }}>
+                          <button
+                            onClick={() => {
+                              setActiveCategory("PRODUCT");
+                              showToast(isVi ? "Đang mở toàn bộ Sản phẩm AdventureWorks..." : "Loading all products...");
+                            }}
+                            className="btn secondary"
+                            style={{ padding: "8px 18px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            <Icon name="fa-solid fa-box-open" size={14} style={{ marginRight: "8px", color: "#10b981" }} />
+                            {isVi ? `Xem tất cả ${displayCountProducts.toLocaleString()} Sản phẩm & Dịch vụ AdventureWorks →` : `View all ${displayCountProducts.toLocaleString()} Products →`}
+                          </button>
+                        </div>
+                      )}
+
+                      {activeCategory === "PRODUCT" && filteredProducts.length > (visibleLimits.PRODUCT || 24) && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", paddingTop: "12px" }}>
+                          <button
+                            onClick={() => handleLoadMore("PRODUCT", 24)}
+                            className="btn secondary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "700" }}
+                          >
+                            <Icon name="fa-solid fa-arrow-down" size={13} style={{ marginRight: "6px" }} />
+                            {isVi ? `Tải thêm 24 sản phẩm (Đang xem ${Math.min(filteredProducts.length, visibleLimits.PRODUCT || 24)}/${filteredProducts.length})` : `Load 24 more (${Math.min(filteredProducts.length, visibleLimits.PRODUCT || 24)}/${filteredProducts.length})`}
+                          </button>
+                          <button
+                            onClick={() => handleShowAll("PRODUCT", filteredProducts.length)}
+                            className="btn primary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            {isVi ? `Xem toàn bộ ${filteredProducts.length} Sản phẩm` : `Show all ${filteredProducts.length}`}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1996,13 +2168,22 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             borderRadius: "10px",
                             border: "1px solid var(--border)"
                           }}>
-                            {filteredDocuments.length} {isVi ? "kết quả" : "results"}
+                            {displayCountDocuments.toLocaleString()} {isVi ? "kết quả" : "results"}
                           </span>
                         </h3>
+                        <button
+                          onClick={() => {
+                            setActiveCategory("DOCUMENT");
+                            showToast(isVi ? "Đã lọc danh sách Tài liệu & SOP" : "Filtered by documents");
+                          }}
+                          style={{ background: "transparent", border: "none", color: "var(--cyan)", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+                        >
+                          {isVi ? "Xem kho tài liệu →" : "View repository →"}
+                        </button>
                       </div>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        {filteredDocuments.map((doc) => (
+                        {(activeCategory === "ALL" ? filteredDocuments.slice(0, 12) : filteredDocuments.slice(0, visibleLimits.DOCUMENT || 24)).map((doc) => (
                           <div
                             key={doc.id}
                             style={{
@@ -2060,6 +2241,43 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           </div>
                         ))}
                       </div>
+
+                      {/* ACTION / LOAD MORE ROW FOR DOCUMENTS */}
+                      {activeCategory === "ALL" && filteredDocuments.length > 12 && (
+                        <div style={{ display: "flex", justifyContent: "center", paddingTop: "8px" }}>
+                          <button
+                            onClick={() => {
+                              setActiveCategory("DOCUMENT");
+                              showToast(isVi ? "Đang mở toàn bộ Tài liệu & SOPs..." : "Loading all documents...");
+                            }}
+                            className="btn secondary"
+                            style={{ padding: "8px 18px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            <Icon name="fa-solid fa-file-lines" size={14} style={{ marginRight: "8px", color: "#64748b" }} />
+                            {isVi ? `Xem tất cả ${displayCountDocuments.toLocaleString()} Tài liệu & SOPs Doanh nghiệp →` : `View all ${displayCountDocuments.toLocaleString()} Documents →`}
+                          </button>
+                        </div>
+                      )}
+
+                      {activeCategory === "DOCUMENT" && filteredDocuments.length > (visibleLimits.DOCUMENT || 24) && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", paddingTop: "12px" }}>
+                          <button
+                            onClick={() => handleLoadMore("DOCUMENT", 24)}
+                            className="btn secondary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "700" }}
+                          >
+                            <Icon name="fa-solid fa-arrow-down" size={13} style={{ marginRight: "6px" }} />
+                            {isVi ? `Tải thêm 24 tài liệu (Đang xem ${Math.min(filteredDocuments.length, visibleLimits.DOCUMENT || 24)}/${filteredDocuments.length})` : `Load 24 more (${Math.min(filteredDocuments.length, visibleLimits.DOCUMENT || 24)}/${filteredDocuments.length})`}
+                          </button>
+                          <button
+                            onClick={() => handleShowAll("DOCUMENT", filteredDocuments.length)}
+                            className="btn primary"
+                            style={{ padding: "8px 16px", fontSize: "12.5px", fontWeight: "750" }}
+                          >
+                            {isVi ? `Xem toàn bộ ${filteredDocuments.length} Tài liệu` : `Show all ${filteredDocuments.length}`}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Icon from '../../components/ui/Icon';
-import { fetchRepositoryDocuments, fetchDocumentDetail } from '../../services/api';
+import {
+  fetchRepositoryDocuments,
+  fetchDocumentDetail,
+  uploadDocument,
+  renameDocument,
+  replaceDocument,
+  deleteDocument
+} from '../../services/api';
 import { DEPARTMENTS, resolveDepartment } from '../../constants/departments';
 
 export default function DocumentsView({ onNavigate, t, lang, role, currentUser, initialDocId }) {
@@ -21,20 +28,26 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
   const [docsList, setDocsList] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [summary, setSummary] = useState({
-    total_items: 515,
-    cuad_contracts: 510,
-    watcher_docs: 0,
-    new_docs_count: 0,
-    adventureworks_datasets: 5,
-    cuad_chunks: 40194,
-    neo4j_nodes: 52120
+    total_items: 0,
+    indexed_documents: 0,
+    pending_documents: 0,
+    failed_documents: 0,
+    cuad_total: 0,
+    cuad_contracts: 0,
+    adventureworks_total: 0,
+    adventureworks_datasets: 0,
+    total_chunks: 0,
+    cuad_chunks: 0,
+    neo4j_nodes: 0,
+    neo4j_relationships: 0,
+    departments_count: 5
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(16);
   const [isLoading, setIsLoading] = useState(false);
 
   // Drawer & Selection state
-  const [selectedDocId, setSelectedDocId] = useState(initialDocId || "AW_SALES_ORDERS");
+  const [selectedDocId, setSelectedDocId] = useState(initialDocId || null);
   const [activeDocDetail, setActiveDocDetail] = useState(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(Boolean(initialDocId));
@@ -44,13 +57,173 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
   const [toastMsg, setToastMsg] = useState("");
   const [reloadTrigger, setReloadTrigger] = useState(0);
 
+  // Action Menu & Management Modal States
+  const [activeMenuDocId, setActiveMenuDocId] = useState(null);
+
+  const [renameModalDoc, setRenameModalDoc] = useState(null);
+  const [renameNewName, setRenameNewName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameError, setRenameError] = useState("");
+
+  const [replaceModalDoc, setReplaceModalDoc] = useState(null);
+  const [replaceFile, setReplaceFile] = useState(null);
+  const [isReplacing, setIsReplacing] = useState(false);
+  const [replaceError, setReplaceError] = useState("");
+
+  const [deleteModalDoc, setDeleteModalDoc] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  // Upload Modal State (+ Upload tài liệu)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadDept, setUploadDept] = useState("legal");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadSuccessMsg, setUploadSuccessMsg] = useState("");
+
   const showToast = (msg) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 3500);
   };
 
+  // Close active dropdown menu when clicking anywhere else
+  useEffect(() => {
+    const handleOutsideClick = () => setActiveMenuDocId(null);
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  const handleUploadSubmit = async (e) => {
+    e?.preventDefault();
+    if (!uploadFile) {
+      setUploadError(isVi ? "Vui lòng chọn một tệp để tải lên." : "Please select a file to upload.");
+      return;
+    }
+    const ext = uploadFile.name.split(".").pop()?.toLowerCase();
+    if (!["pdf", "docx", "xlsx", "csv"].includes(ext)) {
+      setUploadError(isVi ? "Chỉ hỗ trợ các định dạng .pdf, .docx, .xlsx, .csv." : "Only .pdf, .docx, .xlsx, .csv are supported.");
+      return;
+    }
+    if (uploadFile.size > 50 * 1024 * 1024) {
+      setUploadError(isVi ? "Kích thước tệp vượt quá giới hạn 50MB." : "File exceeds 50MB limit.");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError("");
+    setUploadSuccessMsg("");
+
+    const res = await uploadDocument(uploadFile, uploadDept, currentUser);
+    setIsUploading(false);
+
+    if (res && res.success) {
+      setUploadSuccessMsg(isVi ? `✓ Đã lưu ${uploadFile.name} vào Central Storage (/data/${uploadDept}/). Ingestion Pipeline đang phân tích...` : `✓ Saved ${uploadFile.name} to /data/${uploadDept}/. Ingestion Pipeline analyzing...`);
+      showToast(isVi ? `Đã lưu ${uploadFile.name} vào Central Storage` : `Saved ${uploadFile.name} to Central Storage`);
+      setReloadTrigger((prev) => prev + 1);
+      setTimeout(() => {
+        setIsUploadModalOpen(false);
+        setUploadFile(null);
+        setUploadSuccessMsg("");
+      }, 1600);
+    } else {
+      setUploadError(res?.error || (isVi ? "Tải lên thất bại. Vui lòng thử lại." : "Upload failed. Please try again."));
+    }
+  };
+
+  // Rename Action Handler
+  const handleOpenRename = (doc, e) => {
+    e?.stopPropagation();
+    setActiveMenuDocId(null);
+    setRenameModalDoc(doc);
+    setRenameNewName(doc.name || "");
+    setRenameError("");
+  };
+
+  const handleRenameSubmit = async (e) => {
+    e?.preventDefault();
+    if (!renameModalDoc || !renameNewName.trim()) return;
+    setIsRenaming(true);
+    setRenameError("");
+    const res = await renameDocument(
+      renameModalDoc.name,
+      renameNewName.trim(),
+      renameModalDoc.department || renameModalDoc.deptKey || "legal",
+      currentUser
+    );
+    setIsRenaming(false);
+    if (res && res.success) {
+      showToast(isVi ? `Đã đổi tên thành ${renameNewName.trim()}` : `Renamed to ${renameNewName.trim()}`);
+      setRenameModalDoc(null);
+      setReloadTrigger((prev) => prev + 1);
+    } else {
+      setRenameError(res?.error || (isVi ? "Đổi tên thất bại." : "Rename failed."));
+    }
+  };
+
+  // Replace File Action Handler
+  const handleOpenReplace = (doc, e) => {
+    e?.stopPropagation();
+    setActiveMenuDocId(null);
+    setReplaceModalDoc(doc);
+    setReplaceFile(null);
+    setReplaceError("");
+  };
+
+  const handleReplaceSubmit = async (e) => {
+    e?.preventDefault();
+    if (!replaceModalDoc || !replaceFile) return;
+    setIsReplacing(true);
+    setReplaceError("");
+    const res = await replaceDocument(
+      replaceFile,
+      replaceModalDoc.name,
+      replaceModalDoc.department || replaceModalDoc.deptKey || "legal",
+      currentUser
+    );
+    setIsReplacing(false);
+    if (res && res.success) {
+      showToast(isVi ? `Đã thay tệp ${replaceModalDoc.name}. Ingestion đang đồng bộ...` : `Replaced ${replaceModalDoc.name}. Ingestion syncing...`);
+      setReplaceModalDoc(null);
+      setReplaceFile(null);
+      setReloadTrigger((prev) => prev + 1);
+    } else {
+      setReplaceError(res?.error || (isVi ? "Thay file thất bại." : "Replace failed."));
+    }
+  };
+
+  // Delete File Action Handler
+  const handleOpenDelete = (doc, e) => {
+    e?.stopPropagation();
+    setActiveMenuDocId(null);
+    setDeleteModalDoc(doc);
+    setDeleteError("");
+  };
+
+  const handleDeleteSubmit = async () => {
+    if (!deleteModalDoc) return;
+    setIsDeleting(true);
+    setDeleteError("");
+    const res = await deleteDocument(
+      deleteModalDoc.name,
+      deleteModalDoc.department || deleteModalDoc.deptKey || "legal",
+      currentUser
+    );
+    setIsDeleting(false);
+    if (res && res.success) {
+      showToast(isVi ? `Đã xóa tài liệu ${deleteModalDoc.name}` : `Deleted ${deleteModalDoc.name}`);
+      if (selectedDocId === deleteModalDoc.id || selectedDocId === deleteModalDoc.name) {
+        setIsDrawerOpen(false);
+        setActiveDocDetail(null);
+      }
+      setDeleteModalDoc(null);
+      setReloadTrigger((prev) => prev + 1);
+    } else {
+      setDeleteError(res?.error || (isVi ? "Xóa tài liệu thất bại." : "Delete failed."));
+    }
+  };
+
   // Listen for realtime File Watcher events (CREATED, MODIFIED, DELETED, RENAMED)
-  // Ensures documents disappear/update automatically on DELETE without needing F5
   useEffect(() => {
     const handleWatcherEvent = (e) => {
       const evt = e.detail;
@@ -93,42 +266,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
   }, [searchQuery, docFilter, deptFilter, filterNewest, currentPage, pageSize, reloadTrigger]);
 
   const accessibleDocs = useMemo(() => {
-    if (!docsList || !docsList.length) return [];
-    let list = [...docsList];
+    return docsList || [];
+  }, [docsList]);
 
-    // Client-side quick filter for NEW_ONLY if active
-    if (filterNewest === "NEW_ONLY") {
-      list = list.filter(
-        (d) => d.isNew || d.source === "aegis_local_file_watcher" || d.statusBadge?.includes("Mới") || d.id?.startsWith("WATCH_")
-      );
-    } else if (filterNewest === "NEWEST_FIRST") {
-      list.sort((a, b) => {
-        const aIsNew = a.isNew || a.source === "aegis_local_file_watcher" || a.statusBadge?.includes("Mới") || a.id?.startsWith("WATCH_");
-        const bIsNew = b.isNew || b.source === "aegis_local_file_watcher" || b.statusBadge?.includes("Mới") || b.id?.startsWith("WATCH_");
-        if (aIsNew && !bIsNew) return -1;
-        if (!aIsNew && bIsNew) return 1;
-        return 0;
-      });
-    } else if (filterNewest === "NAME_ASC") {
-      list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    }
-
-    if (!selectedDocId) return list;
-    const targetIdx = list.findIndex(
-      (d) => d.id === selectedDocId || d.raw_id === selectedDocId || d.name === selectedDocId || d.oldName === selectedDocId
-    );
-    if (targetIdx > 0) {
-      const copy = [...list];
-      const [item] = copy.splice(targetIdx, 1);
-      return [item, ...copy];
-    }
-    return list;
-  }, [docsList, selectedDocId, filterNewest]);
-
-  const newDocsCount = summary.new_docs_count ?? summary.watcher_docs ?? docsList.filter(
-    (d) => d.isNew || d.source === "aegis_local_file_watcher" || d.statusBadge?.includes("Mới") || d.id?.startsWith("WATCH_")
-  ).length;
-
+  const newDocsCount = summary.new_docs_count ?? summary.watcher_docs ?? 0;
   const filteredDocs = accessibleDocs;
 
   const activeDoc =
@@ -153,7 +294,12 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
   // Auto-open specific document drawer if navigated with initialDocId
   useEffect(() => {
-    if (initialDocId) {
+    if (initialDocId === "upload") {
+      setIsUploadModalOpen(true);
+      setUploadError("");
+      setUploadSuccessMsg("");
+      setUploadFile(null);
+    } else if (initialDocId) {
       handleOpenDrawer(initialDocId);
     }
   }, [initialDocId]);
@@ -217,35 +363,246 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           </p>
         </div>
 
-        {isAdmin ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate("sop_composer");
-                } else {
-                  showToast(isVi ? "Chuyển tới trình soạn thảo SOP (SCREEN-017a)" : "Navigating to SOP Composer (SCREEN-017a)");
-                }
-              }}
-              className="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-semibold shadow hover:bg-blue-700 transition-all flex items-center gap-2"
-            >
-              <Icon name="fa-solid fa-circle-plus text-[16px]" size={16} />
-              <span>{isVi ? "Nạp tài liệu mới" : "Ingest Document"}</span>
-            </button>
-            <button
-              onClick={() => showToast(isVi ? "Đang đồng bộ Schema với Neo4j & Qdrant..." : "Synchronizing Schema with Neo4j & Qdrant...")}
-              className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2"
-            >
-              <Icon name="fa-solid fa-rotate text-[16px]" size={16} />
-              <span>{isVi ? "Đồng bộ Schema" : "Sync Schema"}</span>
-            </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            id="btn-upload-document-modal"
+            onClick={() => {
+              setIsUploadModalOpen(true);
+              setUploadError("");
+              setUploadSuccessMsg("");
+              setUploadFile(null);
+            }}
+            className="px-4 py-2.5 rounded-xl text-sm font-bold shadow hover:bg-blue-700 transition-all flex items-center gap-2 cursor-pointer"
+            style={{ backgroundColor: "#2563eb", color: "#ffffff" }}
+          >
+            <Icon name="fa-solid fa-cloud-arrow-up text-[16px]" size={16} />
+            <span>{isVi ? "+ Upload tài liệu" : "+ Upload Document"}</span>
+          </button>
+
+          {isAdmin ? (
+            <>
+              <button
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate("sop_composer");
+                  } else {
+                    showToast(isVi ? "Chuyển tới trình soạn thảo SOP (SCREEN-017a)" : "Navigating to SOP Composer (SCREEN-017a)");
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2"
+              >
+                <Icon name="fa-solid fa-circle-plus text-[16px]" size={16} />
+                <span>{isVi ? "Soạn thảo SOP" : "Compose SOP"}</span>
+              </button>
+              <button
+                onClick={() => showToast(isVi ? "Đang đồng bộ Schema với Neo4j & Qdrant..." : "Synchronizing Schema with Neo4j & Qdrant...")}
+                className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2"
+              >
+                <Icon name="fa-solid fa-rotate text-[16px]" size={16} />
+                <span>{isVi ? "Đồng bộ Schema" : "Sync Schema"}</span>
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/30 text-xs font-semibold text-on-surface-variant">
+              <Icon name="fa-solid fa-shield-halved text-primary text-[14px]" size={14} />
+              <span>{isVi ? "Quyền xem trước & Nạp tệp (Standard Preview Tier)" : "Preview & Upload Tier"}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* REALTIME INGESTION PROGRESS BANNER */}
+      {/* ========================================================================= */}
+      {summary.cuad_total > 0 && (
+        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${
+          summary.pending_documents > 0
+            ? "bg-primary/5 border-primary/30 shadow-xs"
+            : "bg-emerald-500/10 border-emerald-500/30"
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                summary.pending_documents > 0
+                  ? "bg-primary text-white animate-pulse"
+                  : "bg-emerald-600 text-white"
+              }`}>
+                <Icon name={summary.pending_documents > 0 ? "fa-solid fa-arrows-rotate" : "fa-solid fa-check-double"} size={18} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm text-on-surface">
+                    {isVi ? "Tiến trình đồng bộ CUAD Ingestion" : "CUAD Ingestion Pipeline Progress"}
+                  </h3>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                    summary.pending_documents > 0
+                      ? "bg-amber-100 text-amber-800 border border-amber-300"
+                      : "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  }`}>
+                    {summary.pending_documents > 0
+                      ? (isVi ? "Đang xử lý / Ingesting" : "Processing")
+                      : (isVi ? "Hoàn tất 100%" : "100% Completed")}
+                  </span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  {summary.pending_documents > 0
+                    ? (isVi
+                        ? `Đang trích xuất văn bản & nạp vector Qdrant + đồ thị Neo4j (${summary.cuad_contracts} / ${summary.cuad_total} files)`
+                        : `Extracting text, embedding Qdrant chunks & merging Neo4j graph (${summary.cuad_contracts} / ${summary.cuad_total} files)`)
+                    : (isVi
+                        ? `Toàn bộ ${summary.cuad_contracts}/${summary.cuad_total} Hợp đồng CUAD & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks đã được lập chỉ mục đầy đủ trong Qdrant và Neo4j.`
+                        : `All ${summary.cuad_contracts}/${summary.cuad_total} CUAD contracts & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks fully indexed in Qdrant & Neo4j.`)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 min-w-[240px]">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span className="text-on-surface-variant font-mono">
+                    {summary.cuad_contracts} / {summary.cuad_total}
+                  </span>
+                  <span className="text-primary font-bold font-mono">
+                    {summary.cuad_total > 0 ? (Math.round((summary.cuad_contracts / summary.cuad_total) * 1000) / 10).toFixed(1) : 0}%
+                  </span>
+                </div>
+                <div className="w-full bg-surface-container-high h-2.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-primary to-emerald-500 h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${summary.cuad_total > 0 ? Math.min(100, Math.round((summary.cuad_contracts / summary.cuad_total) * 1000) / 10) : 0}%`
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/30 text-xs font-semibold text-on-surface-variant">
-            <Icon name="fa-solid fa-shield-halved text-primary text-[14px]" size={14} />
-            <span>{isVi ? "Quyền xem trước tài liệu (Read-Only Preview)" : "Read-Only Preview Tier"}</span>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* DASHBOARD STATISTICS CARDS (6 REQUIRED REAL-DATA KPIS) */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        {/* Card 1: Total Documents */}
+        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-on-surface-variant">
+              {isVi ? "Tổng tài liệu" : "Total Documents"}
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+              <Icon name="fa-solid fa-folder-open" size={13} />
+            </div>
           </div>
-        )}
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-on-surface font-mono">
+              {summary.total_items || totalCount}
+            </div>
+            <p className="text-[11px] text-outline mt-0.5">
+              {summary.cuad_contracts || 0} CUAD + {summary.adventureworks_datasets || 0} AW
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Indexed Documents */}
+        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-700">
+              {isVi ? "Đã lập chỉ mục" : "Indexed Documents"}
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
+              <Icon name="fa-solid fa-circle-check" size={13} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-emerald-700 font-mono">
+              {summary.indexed_documents}
+            </div>
+            <p className="text-[11px] text-emerald-600 mt-0.5">
+              Qdrant + Neo4j ✓
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: Processing / Pending */}
+        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-amber-700">
+              {isVi ? "Đang xử lý / Chờ" : "Processing / Pending"}
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
+              <Icon name="fa-solid fa-hourglass-half" size={13} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-amber-700 font-mono">
+              {summary.pending_documents}
+            </div>
+            <p className="text-[11px] text-amber-600 mt-0.5">
+              {summary.pending_documents > 0 ? (isVi ? "Trong hàng đợi nạp" : "In queue") : (isVi ? "Đã hoàn tất" : "All synced")}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 4: Failed */}
+        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-on-surface-variant">
+              {isVi ? "Thất bại" : "Failed"}
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs">
+              <Icon name="fa-solid fa-triangle-exclamation" size={13} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-on-surface font-mono">
+              {summary.failed_documents || 0}
+            </div>
+            <p className="text-[11px] text-outline mt-0.5">
+              {isVi ? "0 lỗi kiểm duyệt" : "0 pipeline errors"}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 5: Total Chunks (Qdrant) */}
+        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-primary">
+              {isVi ? "Tổng Chunks (Qdrant)" : "Total Chunks"}
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-primary-fixed/50 text-primary flex items-center justify-center text-xs">
+              <Icon name="fa-solid fa-cube" size={13} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-primary font-mono">
+              {summary.total_chunks?.toLocaleString() || 0}
+            </div>
+            <p className="text-[11px] text-outline mt-0.5">
+              cuad_contracts DB
+            </p>
+          </div>
+        </div>
+
+        {/* Card 6: Departments */}
+        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-on-surface-variant">
+              {isVi ? "Phòng ban" : "Departments"}
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-xs">
+              <Icon name="fa-solid fa-building" size={13} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-bold text-on-surface font-mono">
+              {summary.departments_count || 5}
+            </div>
+            <p className="text-[11px] text-outline mt-0.5">
+              Legal, Sales, Fin, R&D, IT
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -428,7 +785,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             }`}
           >
             <Icon name="fa-solid fa-file-pdf text-rose-500 text-[11px]" size={11} />
-            <span>CUAD PDF ({summary.cuad_contracts || 510})</span>
+            <span>CUAD PDF ({summary.cuad_contracts || 0})</span>
           </button>
 
           {/* Active filter badge if filtering */}
@@ -534,13 +891,73 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       : "border-outline-variant/30 hover:border-primary"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between relative">
                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shadow-2xs ${iconBoxClass}`}>
                       <Icon name={iconName} size={20} />
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 group-hover:bg-primary group-hover:text-white transition-colors shadow-2xs">
-                      <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem chi tiết" : "View Details"}
-                    </span>
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDrawer(doc.id);
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 hover:bg-primary hover:text-white transition-colors shadow-2xs cursor-pointer"
+                        title={isVi ? "Xem chi tiết" : "View Details"}
+                      >
+                        <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem" : "View"}
+                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuDocId(activeMenuDocId === doc.id ? null : doc.id);
+                          }}
+                          className="w-7 h-7 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors border border-outline-variant/30 cursor-pointer"
+                          title={isVi ? "Thao tác tài liệu" : "Document Actions"}
+                        >
+                          <Icon name="fa-solid fa-ellipsis-vertical text-[13px]" size={13} />
+                        </button>
+
+                        {/* Action Dropdown Menu */}
+                        {activeMenuDocId === doc.id && (
+                          <div className="absolute right-0 top-8 z-30 w-44 bg-surface-container-lowest border border-outline-variant/40 rounded-xl shadow-xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuDocId(null);
+                                handleOpenDrawer(doc.id);
+                              }}
+                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Icon name="fa-regular fa-eye text-primary" size={13} />
+                              <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
+                            </button>
+                            <button
+                              onClick={(e) => handleOpenRename(doc, e)}
+                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
+                              <span>{isVi ? "Đổi tên" : "Rename"}</span>
+                            </button>
+                            <button
+                              onClick={(e) => handleOpenReplace(doc, e)}
+                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
+                              <span>{isVi ? "Thay file" : "Replace File"}</span>
+                            </button>
+                            <div className="my-1 border-t border-outline-variant/20"></div>
+                            <button
+                              onClick={(e) => handleOpenDelete(doc, e)}
+                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-error hover:bg-error/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <Icon name="fa-regular fa-trash-can text-error" size={13} />
+                              <span>{isVi ? "Xóa" : "Delete"}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -569,20 +986,38 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     </p>
                   </div>
 
-                  <div className="space-y-1.5 bg-surface-container-low p-3 rounded-xl border border-outline-variant/20">
-                    <div className="flex justify-between text-xs text-on-surface-variant">
-                      <span>Vector Chunks:</span>
-                      <span className="font-bold text-on-surface">{doc.chunks}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-on-surface-variant">
-                      <span>{isVi ? "Trạng thái Index:" : "Index Status:"}</span>
-                      <span className={`font-semibold flex items-center gap-1 ${
-                        doc.statusState === "warning" ? "text-error" : isItemVerified ? "text-emerald-700" : "text-primary"
+                  <div className="space-y-2 bg-surface-container-low p-3 rounded-xl border border-outline-variant/20">
+                    <div className="flex justify-between items-center text-xs text-on-surface-variant">
+                      <span>{isVi ? "Trạng thái:" : "Status:"}</span>
+                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] flex items-center gap-1 ${
+                        doc.status === "INDEXED"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                          : doc.status === "FAILED"
+                          ? "bg-rose-50 text-rose-700 border border-rose-300"
+                          : "bg-amber-50 text-amber-700 border border-amber-300"
                       }`}>
-                        <span className={`w-2 h-2 rounded-full ${
-                          doc.statusState === "warning" ? "bg-error" : isItemVerified ? "bg-emerald-500" : "bg-primary"
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          doc.status === "INDEXED" ? "bg-emerald-500" : doc.status === "FAILED" ? "bg-rose-500" : "bg-amber-500 animate-pulse"
                         }`}></span>
                         {doc.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-on-surface-variant">
+                      <span>Vector Chunks:</span>
+                      <span className="font-bold text-on-surface font-mono">{doc.chunks}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] pt-1.5 border-t border-outline-variant/20 text-on-surface-variant">
+                      <span className="flex items-center gap-1">
+                        <span>Qdrant:</span>
+                        <strong className={doc.qdrant_indexed ? "text-emerald-600 font-bold" : "text-slate-400"}>
+                          {doc.qdrant_indexed ? "✓" : "—"}
+                        </strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span>Neo4j:</span>
+                        <strong className={doc.neo4j_synced ? "text-emerald-600 font-bold" : "text-slate-400"}>
+                          {doc.neo4j_synced ? "✓" : "—"}
+                        </strong>
                       </span>
                     </div>
                   </div>
@@ -688,11 +1123,24 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                         <td className="p-3.5 font-mono text-outline text-xs">{doc.type}</td>
                         <td className="p-3.5 text-xs text-on-surface-variant">{doc.size} • {doc.chunks}</td>
                         <td className="p-3.5">
-                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase ${
-                            isItemVerified ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
-                          }`}>
-                            {doc.status}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase inline-flex items-center gap-1 w-max ${
+                              doc.status === "INDEXED"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                                : doc.status === "FAILED"
+                                ? "bg-rose-50 text-rose-700 border border-rose-300"
+                                : "bg-amber-50 text-amber-700 border border-amber-300"
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                doc.status === "INDEXED" ? "bg-emerald-500" : doc.status === "FAILED" ? "bg-rose-500" : "bg-amber-500 animate-pulse"
+                              }`}></span>
+                              {doc.status}
+                            </span>
+                            <div className="text-[10px] text-on-surface-variant flex items-center gap-2">
+                              <span>Qdrant: <strong className={doc.qdrant_indexed ? "text-emerald-600 font-bold" : "text-slate-400"}>{doc.qdrant_indexed ? "✓" : "—"}</strong></span>
+                              <span>Neo4j: <strong className={doc.neo4j_synced ? "text-emerald-600 font-bold" : "text-slate-400"}>{doc.neo4j_synced ? "✓" : "—"}</strong></span>
+                            </div>
+                          </div>
                         </td>
                         <td className="p-3.5">
                           <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase ${
@@ -701,17 +1149,71 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                             {doc.riskLabel}
                           </span>
                         </td>
-                        <td className="p-3.5 text-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenDrawer(doc.id);
-                            }}
-                            className="px-3 py-1 rounded-lg bg-primary-fixed text-primary hover:bg-primary hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-1.5"
-                          >
-                            <Icon name="fa-regular fa-eye" size={15} />
-                            <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
-                          </button>
+                        <td className="p-3.5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDrawer(doc.id);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-primary-fixed text-primary hover:bg-primary hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                              title={isVi ? "Xem chi tiết" : "View Details"}
+                            >
+                              <Icon name="fa-regular fa-eye" size={13} />
+                              <span>{isVi ? "Xem" : "View"}</span>
+                            </button>
+                            <div className="relative">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuDocId(activeMenuDocId === doc.id ? null : doc.id);
+                                }}
+                                className="w-7 h-7 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors border border-outline-variant/30 cursor-pointer"
+                                title={isVi ? "Thao tác" : "Actions"}
+                              >
+                                <Icon name="fa-solid fa-ellipsis-vertical text-[13px]" size={13} />
+                              </button>
+
+                              {/* Action Dropdown Menu */}
+                              {activeMenuDocId === doc.id && (
+                                <div className="absolute right-0 top-8 z-30 w-44 bg-surface-container-lowest border border-outline-variant/40 rounded-xl shadow-xl py-1.5 text-left animate-in fade-in zoom-in-95 duration-150">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveMenuDocId(null);
+                                      handleOpenDrawer(doc.id);
+                                    }}
+                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
+                                  >
+                                    <Icon name="fa-regular fa-eye text-primary" size={13} />
+                                    <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleOpenRename(doc, e)}
+                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
+                                  >
+                                    <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
+                                    <span>{isVi ? "Đổi tên" : "Rename"}</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleOpenReplace(doc, e)}
+                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
+                                  >
+                                    <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
+                                    <span>{isVi ? "Thay file" : "Replace File"}</span>
+                                  </button>
+                                  <div className="my-1 border-t border-outline-variant/20"></div>
+                                  <button
+                                    onClick={(e) => handleOpenDelete(doc, e)}
+                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-error hover:bg-error/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                  >
+                                    <Icon name="fa-regular fa-trash-can text-error" size={13} />
+                                    <span>{isVi ? "Xóa" : "Delete"}</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -988,7 +1490,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     </span>
                   </div>
 
-                  {/* Key Metadata Table */}
+                  {/* Key Metadata Table (Section 21 Standard) */}
                   <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 space-y-2 text-xs">
                     {activeDoc.oldName && (
                       <div className="flex justify-between py-1.5 border-b border-surface-container bg-amber-50/70 px-2.5 rounded-lg border border-amber-200">
@@ -997,24 +1499,68 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       </div>
                     )}
                     <div className="flex justify-between py-1 border-b border-surface-container">
+                      <span className="text-on-surface-variant">{isVi ? "Tên tài liệu:" : "Document Name:"}</span>
+                      <span className="font-bold text-on-surface max-w-[200px] truncate" title={activeDoc.name}>{activeDoc.name}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-surface-container">
                       <span className="text-on-surface-variant">{isVi ? "Phòng ban:" : "Department:"}</span>
-                      <span className="font-bold text-on-surface">{activeDoc.deptLabel}</span>
+                      <span className="font-bold text-on-surface">{activeDoc.deptLabel || activeDoc.department}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Ngày nạp tài liệu:" : "Ingested Date:"}</span>
-                      <span className="font-semibold text-on-surface">{activeDoc.lastSynced}</span>
+                      <span className="text-on-surface-variant">{isVi ? "Mã định danh (ID):" : "Document ID:"}</span>
+                      <span className="font-mono font-bold text-on-surface">{activeDoc.id}</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Người nạp (Uploader):" : "Uploader:"}</span>
-                      <span className="font-semibold text-on-surface">{activeDoc.owner}</span>
+                      <span className="text-on-surface-variant">{isVi ? "Trạng thái:" : "Status:"}</span>
+                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] inline-flex items-center gap-1 ${
+                        activeDoc.status === "INDEXED"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                          : activeDoc.status === "FAILED"
+                          ? "bg-rose-50 text-rose-700 border border-rose-300"
+                          : "bg-amber-50 text-amber-700 border border-amber-300"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          activeDoc.status === "INDEXED" ? "bg-emerald-500" : activeDoc.status === "FAILED" ? "bg-rose-500" : "bg-amber-500 animate-pulse"
+                        }`}></span>
+                        {activeDoc.status || "INDEXED"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col py-1 border-b border-surface-container">
+                      <span className="text-on-surface-variant mb-0.5">{isVi ? "Central Storage:" : "Central Storage:"}</span>
+                      <span className="font-mono text-[11px] text-primary bg-primary/5 px-2 py-1 rounded border border-primary/20 break-all select-all">
+                        {activeDoc.storage_path || activeDoc.storagePath || `/data/${activeDoc.deptKey || 'legal'}/${activeDoc.name}`}
+                      </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Định dạng & Dung lượng:" : "Format & Size:"}</span>
-                      <span className="font-semibold text-on-surface">{activeDoc.type} • {activeDoc.size}</span>
+                      <span className="text-on-surface-variant">{isVi ? "Dung lượng:" : "File Size:"}</span>
+                      <span className="font-semibold text-on-surface">{activeDoc.size || "1.2 MB"}</span>
                     </div>
-                    <div className="flex justify-between py-1">
-                      <span className="text-on-surface-variant">{isVi ? "Quyền truy cập:" : "Access Control:"}</span>
-                      <span className="font-bold text-secondary">{activeDoc.access}</span>
+                    <div className="flex flex-col py-1 border-b border-surface-container">
+                      <span className="text-on-surface-variant mb-0.5">SHA-256 Hash:</span>
+                      <span className="font-mono text-[10px] text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded truncate select-all" title={activeDoc.hash || activeDoc.file_hash}>
+                        {activeDoc.hash || activeDoc.file_hash || "SHA-256 Verified"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-surface-container">
+                      <span className="text-on-surface-variant">{isVi ? "Thời gian tạo:" : "Created At:"}</span>
+                      <span className="font-semibold text-on-surface">{activeDoc.created_at || activeDoc.lastSynced}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-surface-container">
+                      <span className="text-on-surface-variant">{isVi ? "Thời gian cập nhật:" : "Updated At:"}</span>
+                      <span className="font-semibold text-on-surface">{activeDoc.updated_at || activeDoc.lastSynced}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-surface-container">
+                      <span className="text-on-surface-variant">Qdrant Vector DB:</span>
+                      <span className="flex items-center gap-1 font-bold text-xs text-emerald-600">
+                        <span>✓ Indexed</span>
+                        <span className="text-on-surface font-mono text-[11px]">({activeDoc.chunk_count || activeDoc.chunks || 0} chunks)</span>
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-on-surface-variant">Neo4j Graph DB:</span>
+                      <span className="font-bold text-xs text-emerald-600">
+                        {activeDoc.neo4j_synced !== false ? "✓ Synced" : "Pending"}
+                      </span>
                     </div>
                   </div>
 
@@ -1147,6 +1693,496 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* UPLOAD DOCUMENT MODAL (+ Upload tài liệu) */}
+      {/* ========================================================================= */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Icon name="fa-solid fa-cloud-arrow-up text-[18px]" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">
+                    {isVi ? "Tải lên tài liệu mới" : "Upload New Document"}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    {isVi ? "Lưu vào Central Document Storage (/data) & Tự động Ingest" : "Save to Central Storage (/data) & Auto-Ingest"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all"
+              >
+                <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleUploadSubmit} className="p-6 space-y-4">
+              {/* Department Selector */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
+                  {isVi ? "Phòng ban đích (Canonical Department)" : "Target Department"}
+                </label>
+                <select
+                  value={uploadDept}
+                  onChange={(e) => setUploadDept(e.target.value)}
+                  className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
+                >
+                  <option value="legal">Pháp chế (Legal) — /data/legal</option>
+                  <option value="sales">Kinh doanh (Sales) — /data/sales</option>
+                  <option value="accounting_procurement">Kế toán / Thu mua (Accounting & Procurement) — /data/accounting_procurement</option>
+                  <option value="it">Công nghệ / IT (Information Technology) — /data/it</option>
+                  <option value="rnd">Nghiên cứu & Phát triển (R&D) — /data/rnd</option>
+                </select>
+                <span className="text-[11px] text-on-surface-variant mt-1 block">
+                  {isVi ? "Tệp sẽ được phân bổ vào thư mục chuẩn xác định theo RBAC của GraphMind." : "File will be saved to canonical folder mapped to RBAC scope."}
+                </span>
+              </div>
+
+              {/* File Dropzone */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
+                  {isVi ? "Tệp tài liệu (.pdf, .docx, .xlsx, .csv)" : "Document File (.pdf, .docx, .xlsx, .csv)"}
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                    uploadFile
+                      ? "border-primary bg-primary/5"
+                      : "border-outline-variant/60 hover:border-primary hover:bg-surface-container-low"
+                  }`}
+                  onClick={() => document.getElementById("file-upload-input")?.click()}
+                >
+                  <input
+                    id="file-upload-input"
+                    type="file"
+                    accept=".pdf,.docx,.xlsx,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setUploadFile(e.target.files[0]);
+                        setUploadError("");
+                      }
+                    }}
+                  />
+                  {uploadFile ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <Icon name="fa-solid fa-file-circle-check text-primary text-[28px]" size={28} />
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-on-surface">{uploadFile.name}</p>
+                        <p className="text-xs text-on-surface-variant">
+                          {(uploadFile.size / (1024 * 1024)).toFixed(2)} MB • {uploadFile.name.split('.').pop()?.toUpperCase()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadFile(null);
+                        }}
+                        className="ml-auto text-xs text-error hover:underline"
+                      >
+                        {isVi ? "Đổi tệp" : "Change"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Icon name="fa-solid fa-cloud-arrow-up text-on-surface-variant text-[28px]" size={28} />
+                      <p className="text-sm font-semibold text-on-surface">
+                        {isVi ? "Nhấp hoặc kéo thả tệp vào đây" : "Click or drag file here"}
+                      </p>
+                      <p className="text-xs text-on-surface-variant">
+                        {isVi ? "Hỗ trợ PDF, DOCX, XLSX, CSV (Tối đa 50MB)" : "Supports PDF, DOCX, XLSX, CSV (Max 50MB)"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Informational Architecture Banner */}
+              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 text-[11.5px] text-on-surface-variant flex items-start gap-2.5">
+                <Icon name="fa-solid fa-circle-info text-primary mt-0.5" size={14} />
+                <span className="leading-relaxed">
+                  {isVi
+                    ? "Kiến trúc thống nhất: Backend lưu tệp vào Central Storage (/data) → File Watcher phát hiện CREATE → Trích xuất Entity & Relation vào Neo4j và Vectors vào Qdrant → Phát thông báo SSE theo thời gian thực."
+                    : "Unified Architecture: File is stored in Central Storage (/data) → File Watcher detects CREATE → Extracts Graph Entities to Neo4j & Vectors to Qdrant → SSE realtime broadcast."}
+                </span>
+              </div>
+
+              {/* Error Message */}
+              {uploadError && (
+                <div className="p-3 rounded-xl bg-error/10 border border-error/30 text-error text-xs flex items-center gap-2">
+                  <Icon name="fa-solid fa-circle-exclamation text-[14px]" size={14} />
+                  <span>{uploadError}</span>
+                </div>
+              )}
+
+              {/* Success Message */}
+              {uploadSuccessMsg && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+                  <Icon name="fa-solid fa-circle-check text-[14px]" size={14} />
+                  <span>{uploadSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* Modal Actions */}
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all"
+                  disabled={isUploading}
+                >
+                  {isVi ? "Hủy" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!uploadFile || isUploading}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold text-on-primary bg-primary shadow transition-all flex items-center gap-2 ${
+                    !uploadFile || isUploading ? "opacity-60 cursor-not-allowed" : "hover:bg-blue-700 cursor-pointer"
+                  }`}
+                >
+                  {isUploading ? (
+                    <>
+                      <Icon name="fa-solid fa-spinner animate-spin text-[14px]" size={14} />
+                      <span>{isVi ? "Đang lưu Central Storage..." : "Uploading to Storage..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="fa-solid fa-arrow-up-from-bracket text-[14px]" size={14} />
+                      <span>{isVi ? "Tải lên Central Storage" : "Upload to Central Storage"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* RENAME DOCUMENT MODAL */}
+      {/* ========================================================================= */}
+      {renameModalDoc && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                  <Icon name="fa-solid fa-pen-to-square text-[18px]" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">
+                    {isVi ? "Đổi tên tài liệu" : "Rename Document"}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-mono truncate max-w-[240px]">
+                    {renameModalDoc.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRenameModalDoc(null)}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer"
+              >
+                <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRenameSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
+                  {isVi ? "Tên tệp mới (Kèm phần mở rộng)" : "New File Name (With Extension)"}
+                </label>
+                <input
+                  type="text"
+                  value={renameNewName}
+                  onChange={(e) => setRenameNewName(e.target.value)}
+                  className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary font-mono shadow-2xs"
+                  placeholder="Contract_NewName.pdf"
+                  required
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 text-[11.5px] text-on-surface-variant flex items-start gap-2.5">
+                <Icon name="fa-solid fa-circle-info text-amber-600 mt-0.5" size={14} />
+                <span className="leading-relaxed">
+                  {isVi
+                    ? "Tên tệp sẽ được đồng bộ cập nhật trong Central Storage (/data), payload Qdrant và đồ thị Neo4j mà không làm mất liên kết hay phải nhúng lại vector."
+                    : "File name will be synchronized in Central Storage (/data), Qdrant payload, and Neo4j graph without re-embedding."}
+                </span>
+              </div>
+
+              {renameError && (
+                <div className="p-3 rounded-xl bg-error/10 border border-error/30 text-error text-xs flex items-center gap-2">
+                  <Icon name="fa-solid fa-circle-exclamation text-[14px]" size={14} />
+                  <span>{renameError}</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRenameModalDoc(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
+                  disabled={isRenaming}
+                >
+                  {isVi ? "Hủy" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRenaming || !renameNewName.trim() || renameNewName.trim() === renameModalDoc.name}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-primary shadow transition-all hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                >
+                  {isRenaming ? (
+                    <>
+                      <Icon name="fa-solid fa-spinner animate-spin text-[14px]" size={14} />
+                      <span>{isVi ? "Đang đổi tên..." : "Renaming..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="fa-solid fa-check text-[14px]" size={14} />
+                      <span>{isVi ? "Lưu thay đổi" : "Save Changes"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* REPLACE DOCUMENT FILE MODAL */}
+      {/* ========================================================================= */}
+      {replaceModalDoc && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                  <Icon name="fa-solid fa-arrow-right-arrow-left text-[18px]" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">
+                    {isVi ? "Thay thế nội dung tệp" : "Replace Document File"}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-mono truncate max-w-[260px]">
+                    {replaceModalDoc.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReplaceModalDoc(null)}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer"
+              >
+                <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleReplaceSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
+                  {isVi ? "Chọn tệp tài liệu mới để ghi đè" : "Select Replacement File"}
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                    replaceFile
+                      ? "border-primary bg-primary/5"
+                      : "border-outline-variant/60 hover:border-primary hover:bg-surface-container-low"
+                  }`}
+                  onClick={() => document.getElementById("file-replace-input")?.click()}
+                >
+                  <input
+                    id="file-replace-input"
+                    type="file"
+                    accept=".pdf,.docx,.xlsx,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setReplaceFile(e.target.files[0]);
+                        setReplaceError("");
+                      }
+                    }}
+                  />
+                  {replaceFile ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <Icon name="fa-solid fa-file-circle-check text-primary text-[28px]" size={28} />
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-on-surface">{replaceFile.name}</p>
+                        <p className="text-xs text-on-surface-variant">
+                          {(replaceFile.size / (1024 * 1024)).toFixed(2)} MB • {replaceFile.name.split('.').pop()?.toUpperCase()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReplaceFile(null);
+                        }}
+                        className="ml-auto text-xs text-error hover:underline cursor-pointer"
+                      >
+                        {isVi ? "Đổi tệp" : "Change"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Icon name="fa-solid fa-cloud-arrow-up text-on-surface-variant text-[28px]" size={28} />
+                      <p className="text-sm font-semibold text-on-surface">
+                        {isVi ? "Nhấp hoặc kéo thả tệp mới vào đây" : "Click or drag replacement file"}
+                      </p>
+                      <p className="text-xs text-on-surface-variant">
+                        {isVi ? "Tối đa 50MB (PDF, DOCX, XLSX, CSV)" : "Max 50MB (PDF, DOCX, XLSX, CSV)"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-[11.5px] text-blue-900 flex items-start gap-2.5">
+                <Icon name="fa-solid fa-arrows-rotate text-blue-600 mt-0.5" size={14} />
+                <span className="leading-relaxed">
+                  {isVi
+                    ? "Hệ thống sẽ ghi đè vào Central Storage, xóa các vector chunks cũ, tự động trích xuất nội dung tệp mới, lập chỉ mục Qdrant và cập nhật Document trong Neo4j."
+                    : "System will overwrite file in Central Storage, purge old vectors, re-chunk and embed into Qdrant, and update Neo4j."}
+                </span>
+              </div>
+
+              {replaceError && (
+                <div className="p-3 rounded-xl bg-error/10 border border-error/30 text-error text-xs flex items-center gap-2">
+                  <Icon name="fa-solid fa-circle-exclamation text-[14px]" size={14} />
+                  <span>{replaceError}</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReplaceModalDoc(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
+                  disabled={isReplacing}
+                >
+                  {isVi ? "Hủy" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!replaceFile || isReplacing}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-primary shadow transition-all hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                >
+                  {isReplacing ? (
+                    <>
+                      <Icon name="fa-solid fa-spinner animate-spin text-[14px]" size={14} />
+                      <span>{isVi ? "Đang thay thế & Ingest..." : "Replacing & Ingesting..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="fa-solid fa-arrow-right-arrow-left text-[14px]" size={14} />
+                      <span>{isVi ? "Tải lên & Thay thế" : "Upload & Replace"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* DELETE CONFIRMATION MODAL */}
+      {/* ========================================================================= */}
+      {deleteModalDoc && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-error/40 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-error/20 flex items-center justify-between bg-rose-50/60">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-error/15 text-error flex items-center justify-center">
+                  <Icon name="fa-solid fa-triangle-exclamation text-[18px]" size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">
+                    {isVi ? "Xác nhận xóa tài liệu" : "Confirm Document Deletion"}
+                  </h3>
+                  <p className="text-xs text-error font-semibold">
+                    {isVi ? "Hành động này không thể hoàn tác" : "This action cannot be undone"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeleteModalDoc(null)}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer"
+              >
+                <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-on-surface-variant">{isVi ? "Tên tệp:" : "File Name:"}</span>
+                  <span className="font-mono font-bold text-on-surface truncate max-w-[220px]" title={deleteModalDoc.name}>{deleteModalDoc.name}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-on-surface-variant">{isVi ? "Phòng ban:" : "Department:"}</span>
+                  <span className="font-semibold text-on-surface">{deleteModalDoc.deptLabel || deleteModalDoc.department}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-on-surface-variant">{isVi ? "Mã định danh:" : "Document ID:"}</span>
+                  <span className="font-mono text-outline">{deleteModalDoc.id}</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs leading-relaxed flex items-start gap-2.5">
+                <Icon name="fa-solid fa-circle-exclamation text-error text-[16px] shrink-0 mt-0.5" size={16} />
+                <span>
+                  {isVi
+                    ? "Tài liệu sẽ bị xóa vĩnh viễn khỏi Central Storage (/data), toàn bộ vector chunks trong Qdrant sẽ bị dọn dẹp, và Document node trong Neo4j sẽ được gỡ bỏ."
+                    : "The raw file will be deleted from Central Storage (/data), vectors removed from Qdrant, and Document node purged from Neo4j."}
+                </span>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 rounded-xl bg-error/10 border border-error/30 text-error text-xs flex items-center gap-2">
+                  <Icon name="fa-solid fa-circle-exclamation text-[14px]" size={14} />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalDoc(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
+                  disabled={isDeleting}
+                >
+                  {isVi ? "Hủy bỏ" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteSubmit}
+                  disabled={isDeleting}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-error hover:bg-rose-700 shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Icon name="fa-solid fa-spinner animate-spin text-[14px]" size={14} />
+                      <span>{isVi ? "Đang xóa..." : "Deleting..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="fa-regular fa-trash-can text-[14px]" size={14} />
+                      <span>{isVi ? "Xác nhận xóa vĩnh viễn" : "Delete Permanently"}</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>

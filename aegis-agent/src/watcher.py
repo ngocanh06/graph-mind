@@ -1,28 +1,52 @@
 """
-AEGIS Local Agent — File System Watcher Daemon
+AEGIS Local Agent — Central Storage File System Watcher Daemon
 Module: M1 AEGIS Edge Watcher (aegis-agent/src/watcher.py)
 
-Monitors specified local SME directories for document creation/modifications,
-debounces filesystem events, and automatically transmits files via secure HTTPS
-webhook to GraphMind Backend Cloud for Graph & Vector extraction.
+Monitors Central Document Storage (/data) recursively for:
+- CREATE: debounces, verifies size stability, transmits to backend for indexing
+- MODIFY: verifies SHA-256 hash change before re-indexing
+- RENAME: updates document name and history without re-embedding
+- DELETE: cleans up document vectors in Qdrant and Document/Clause nodes in Neo4j
+- INITIAL SYNC: scans volume on startup, checks known hashes, skips existing docs
 """
 
 import sys
-# Fix UnicodeEncodeError on Windows cp1252 console when printing Vietnamese text
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import os
 import time
+import hashlib
 import requests
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from .config import WATCH_ROOT, SUPPORTED_EXTENSIONS, SYNC_ENDPOINT, AGENT_API_KEY, CANONICAL_DEPARTMENTS
+from .config import (
+    WATCH_ROOT,
+    SUPPORTED_EXTENSIONS,
+    SYNC_ENDPOINT,
+    AGENT_API_KEY,
+    CANONICAL_DEPARTMENTS,
+    BACKEND_URL,
+    FALLBACK_BACKEND_URL
+)
 from .sync_client import SyncClient
 
-BASE_URL = SYNC_ENDPOINT.rsplit("/file-watcher", 1)[0]  # http://localhost:5000/api/v1/sync
+def _backend_request(method: str, path: str, **kwargs) -> Optional[requests.Response]:
+    """Tries primary backend endpoint, falls back to host.docker.internal if unresolvable."""
+    urls = [
+        f"{BACKEND_URL.rstrip('/')}/api/v1/sync{path}",
+        f"{FALLBACK_BACKEND_URL.rstrip('/')}/api/v1/sync{path}"
+    ]
+    for url in urls:
+        try:
+            resp = requests.request(method, url, **kwargs)
+            return resp
+        except requests.exceptions.RequestException:
+            continue
+    return None
 
 
 def _detect_department_from_path(file_path: str) -> str:
@@ -56,9 +80,7 @@ def _detect_department_from_path(file_path: str) -> str:
         if any(a in seg for a in ["r&d", "rnd"]):
             return "R&D"
 
-    return "Kinh doanh (Sales)"
-
-
+    return "Pháp chế (Legal)"
 
 
 def _is_supported(file_path: str) -> bool:
@@ -67,15 +89,39 @@ def _is_supported(file_path: str) -> bool:
     return ext in SUPPORTED_EXTENSIONS and not name.startswith(("~", "."))
 
 
+def _wait_for_file_stable(file_path: str, max_attempts: int = 5, check_interval: float = 0.3) -> bool:
+    """
+    Debounce helper: Ensures file copy/writing has completely finished.
+    Checks that file exists, size > 0, and size remains stable between 2 intervals.
+    """
+    time.sleep(check_interval)
+    if not os.path.exists(file_path):
+        return False
+
+    prev_size = -1
+    for _ in range(max_attempts):
+        try:
+            cur_size = os.path.getsize(file_path)
+            if cur_size > 0 and cur_size == prev_size:
+                return True
+            prev_size = cur_size
+            time.sleep(check_interval)
+        except (OSError, PermissionError):
+            time.sleep(check_interval)
+
+    return os.path.exists(file_path) and os.path.getsize(file_path) > 0
+
+
 class DocumentChangeHandler(FileSystemEventHandler):
     def __init__(self, sync_client: SyncClient):
         super().__init__()
         self.sync_client = sync_client
-        self._debounce: dict = {}      # filepath -> last_processed timestamp
+        self._debounce: dict = {}          # filepath -> timestamp
+        self._known_hashes: dict = {}      # filepath -> sha256 hash
         self._debounce_sec = 2.0
 
     def _debounced(self, key: str, window: float = None) -> bool:
-        """Returns True if we should skip (within debounce window)."""
+        """Returns True if we should skip processing (within debounce window)."""
         now = time.time()
         win = window if window is not None else self._debounce_sec
         last = self._debounce.get(key, 0)
@@ -86,13 +132,23 @@ class DocumentChangeHandler(FileSystemEventHandler):
 
     # ── CREATED ──────────────────────────────────────────────────────────
     def on_created(self, event):
-        if not event.is_directory and _is_supported(event.src_path):
-            self._ingest(event.src_path, "created")
+        if event.is_directory:
+            return
+        if not _is_supported(event.src_path):
+            ext = Path(event.src_path).suffix.lower()
+            name = os.path.basename(event.src_path)
+            if not name.startswith((".", "~")):
+                print(f"[AEGIS Watcher] SKIP unsupported file: {name} (ext: '{ext}'). Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}")
+            return
+        self._ingest(event.src_path, "created")
 
     # ── MODIFIED ─────────────────────────────────────────────────────────
     def on_modified(self, event):
-        if not event.is_directory and _is_supported(event.src_path):
-            self._ingest(event.src_path, "modified")
+        if event.is_directory:
+            return
+        if not _is_supported(event.src_path):
+            return
+        self._ingest(event.src_path, "modified")
 
     # ── DELETED ──────────────────────────────────────────────────────────
     def on_deleted(self, event):
@@ -108,16 +164,20 @@ class DocumentChangeHandler(FileSystemEventHandler):
         dept = _detect_department_from_path(path)
         print(f"\n[AEGIS Watcher] ===================================================")
         print(f"[AEGIS Watcher] File DELETED: {filename}")
-        print(f"[AEGIS Watcher] Notifying backend to remove from index...")
+        print(f"[AEGIS Watcher] Notifying backend to remove vectors and Document node...")
+
+        if path in self._known_hashes:
+            del self._known_hashes[path]
 
         try:
-            resp = requests.post(
-                f"{BASE_URL}/file-watcher/deleted",
+            resp = _backend_request(
+                "POST",
+                "/file-watcher/deleted",
                 json={"file_name": filename, "department": dept},
                 headers={"Authorization": f"Bearer {AGENT_API_KEY}"},
                 timeout=15
             )
-            data = resp.json() if resp.ok else {}
+            data = resp.json() if resp and resp.ok else {}
             print(f"[AEGIS Watcher] DELETE result: removed={data.get('removed_docs', 0)}, "
                   f"Neo4j={data.get('neo4j_removed')}, Qdrant={data.get('qdrant_removed')}")
         except Exception as e:
@@ -129,32 +189,39 @@ class DocumentChangeHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         src, dest = event.src_path, event.dest_path
-        # If dest is still a supported file type → rename, else treat as delete
+
         if _is_supported(dest):
             if self._debounced(f"mv:{src}:{dest}"):
                 return
             old_name = os.path.basename(src)
             new_name = os.path.basename(dest)
             dept = _detect_department_from_path(dest)
-            # Extended debounce window (6.0s) for dest file so immediate on_created/on_modified don't overwrite rename event
-            self._debounce[dest] = time.time() + 6.0
-            self._debounce[f"mv:{src}:{dest}"] = time.time() + 6.0
+
+            # Extended debounce window for dest file so immediate on_created doesn't duplicate
+            self._debounce[dest] = time.time() + 5.0
+            self._debounce[f"mv:{src}:{dest}"] = time.time() + 5.0
+
+            # Transfer hash tracking
+            if src in self._known_hashes:
+                self._known_hashes[dest] = self._known_hashes.pop(src)
+
             print(f"\n[AEGIS Watcher] ===================================================")
             print(f"[AEGIS Watcher] File RENAMED: {old_name} → {new_name}")
             try:
-                resp = requests.post(
-                    f"{BASE_URL}/file-watcher/renamed",
+                resp = _backend_request(
+                    "POST",
+                    "/file-watcher/renamed",
                     json={"old_name": old_name, "new_name": new_name, "department": dept},
                     headers={"Authorization": f"Bearer {AGENT_API_KEY}"},
                     timeout=15
                 )
-                data = resp.json() if resp.ok else {}
+                data = resp.json() if resp and resp.ok else {}
                 print(f"[AEGIS Watcher] RENAME result: updated={data.get('updated_docs', 0)}")
             except Exception as e:
                 print(f"[AEGIS Watcher] RENAME notify failed: {e}")
             print(f"[AEGIS Watcher] ===================================================\n")
         elif _is_supported(src):
-            # Moved out of watched folder → treat as delete
+            # Moved out of supported files -> treat as delete
             self.on_deleted(type("E", (), {"is_directory": False, "src_path": src})())
 
     # ── INGEST (CREATED / MODIFIED) ───────────────────────────────────────
@@ -162,22 +229,38 @@ class DocumentChangeHandler(FileSystemEventHandler):
         if self._debounced(file_path):
             return
 
-        # Wait briefly for OS to finish writing
-        time.sleep(0.3)
-        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        # Debounce: wait for copy to complete and verify file size is stable
+        if not _wait_for_file_stable(file_path):
             return
 
         filename = os.path.basename(file_path)
+
+        # Idempotency check: calculate SHA-256 hash before transmitting
+        try:
+            hasher = hashlib.sha256()
+            with open(file_path, "rb") as f:
+                while chunk := f.read(65536):
+                    hasher.update(chunk)
+            current_hash = hasher.hexdigest()
+        except (OSError, PermissionError) as err:
+            print(f"[AEGIS Watcher] File read error ({filename}): {err}")
+            return
+
+        # If modified but content is identical to last seen hash -> SKIP
+        if action == "modified" and self._known_hashes.get(file_path) == current_hash:
+            return
+
         dept = _detect_department_from_path(file_path)
         print(f"\n[AEGIS Watcher] ===================================================")
         print(f"[AEGIS Watcher] File {action.upper()}: {filename}")
-        print(f"[AEGIS Watcher] Department: {dept}  Size: {os.path.getsize(file_path)} bytes")
-        print(f"[AEGIS Watcher] Transmitting to backend...")
+        print(f"[AEGIS Watcher] Department: {dept} | Size: {os.path.getsize(file_path)} bytes | Hash: {current_hash[:12]}...")
+        print(f"[AEGIS Watcher] Transmitting to Unified Ingestion Pipeline...")
 
         result = self.sync_client.sync_file(file_path, department=dept, event_type=action)
         if result.get("success"):
+            self._known_hashes[file_path] = current_hash
             data = result.get("data", {}).get("data", {})
-            print(f"[AEGIS Watcher] OK — doc_id={data.get('doc_id')}, "
+            print(f"[AEGIS Watcher] SUCCESS: doc_id={data.get('doc_id')}, "
                   f"chunks={data.get('chunks_extracted')}, "
                   f"Qdrant={data.get('qdrant_indexed')}, Neo4j={data.get('neo4j_synced')}")
         else:
@@ -187,30 +270,32 @@ class DocumentChangeHandler(FileSystemEventHandler):
 
 def initial_sync_scan(sync_client: SyncClient, watch_path: str) -> None:
     """
-    On startup, scans watch_path recursively, computes SHA-256 for all existing supported files,
-    checks with backend to see which files are already indexed, and ingests any new/unindexed files.
-    Ensures idempotency without duplicate processing.
+    On container startup, scans watch_path recursively.
+    Queries backend for known SHA-256 hashes:
+      - Already indexed: SKIP
+      - New / Unindexed: INGEST
+    Guarantees that restarting the container will NOT re-embed unchanged files.
     """
-    import hashlib
-    print(f"\n[AEGIS Watcher] Running Initial Sync scan on: {watch_path}")
+    print(f"\n[AEGIS Watcher] Starting Initial Sync Scan on: {watch_path}")
     known_hashes = set()
     try:
-        resp = requests.get(f"{BASE_URL}/file-watcher/known-hashes", timeout=8)
-        if resp.ok:
+        resp = _backend_request("GET", "/file-watcher/known-hashes", timeout=8)
+        if resp and resp.ok:
             known_hashes = set(resp.json().get("hashes", []))
+            print(f"[AEGIS Watcher] Retrieved {len(known_hashes)} known hashes from GraphMind.")
     except Exception as e:
-        print(f"[AEGIS Watcher] [Initial Sync] Note: Backend hashes query note: {e}")
+        print(f"[AEGIS Watcher] [Initial Sync] Query known-hashes note: {e}")
 
     synced_cnt = 0
     skipped_cnt = 0
 
     for root, _, files in os.walk(watch_path):
-        for fname in files:
+        for fname in sorted(files):
             fpath = os.path.join(root, fname)
             if not _is_supported(fpath):
                 continue
             try:
-                # Safe read with retry for Windows locking
+                # Safe read with retry for locked files
                 content = None
                 for _ in range(3):
                     try:
@@ -219,6 +304,7 @@ def initial_sync_scan(sync_client: SyncClient, watch_path: str) -> None:
                         break
                     except (PermissionError, OSError):
                         time.sleep(0.2)
+
                 if content is None or len(content) == 0:
                     continue
 
@@ -236,7 +322,7 @@ def initial_sync_scan(sync_client: SyncClient, watch_path: str) -> None:
             except Exception as ex:
                 print(f"[AEGIS Watcher] [Initial Sync] Error reading {fname}: {ex}")
 
-    print(f"[AEGIS Watcher] Initial Sync complete: {synced_cnt} newly ingested, {skipped_cnt} already indexed.\n")
+    print(f"[AEGIS Watcher] Initial Sync Complete: {synced_cnt} newly ingested, {skipped_cnt} already indexed.\n")
 
 
 def start_watcher(watch_path: str = WATCH_ROOT):
@@ -246,8 +332,8 @@ def start_watcher(watch_path: str = WATCH_ROOT):
         os.makedirs(os.path.join(watch_path, folder), exist_ok=True)
 
     sync_client = SyncClient()
-    
-    # 1. Run Initial Sync scan to ingest any offline/unindexed files
+
+    # 1. Run Initial Sync Scan to index any unindexed files
     initial_sync_scan(sync_client, watch_path)
 
     # 2. Start Realtime Filesystem Observer
@@ -257,11 +343,11 @@ def start_watcher(watch_path: str = WATCH_ROOT):
     observer.start()
 
     print(f"\n========================================================")
-    print(f" AEGIS Local File Watcher Agent — RUNNING")
-    print(f" Monitoring: {os.path.abspath(watch_path)}")
-    print(f" Types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}")
+    print(f" AEGIS Central File Watcher Daemon — RUNNING")
+    print(f" Storage Volume: {os.path.abspath(watch_path)}")
+    print(f" Supported Types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}")
     print(f" Events: CREATED · MODIFIED · DELETED · RENAMED")
-    print(f" Backend: {BASE_URL}")
+    print(f" Backend Endpoint: {SYNC_ENDPOINT}")
     print(f"========================================================\n")
 
     try:
@@ -275,4 +361,3 @@ def start_watcher(watch_path: str = WATCH_ROOT):
 
 if __name__ == "__main__":
     start_watcher()
-

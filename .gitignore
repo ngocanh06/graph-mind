@@ -47,3 +47,7 @@ scratch/
 
 # Root package-lock (empty/unused)
 /package-lock.json
+
+# Archive and temporary verification files
+*.tar
+DockerUploadVerification.pdf
