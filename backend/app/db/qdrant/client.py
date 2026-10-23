@@ -44,12 +44,16 @@ class QdrantClientWrapper:
         self._client = None
         self._connected = False
         self._collection = None
+        self._host = "localhost"
+        self._port = 6333
 
     def connect(self) -> bool:
         if not QDRANT_AVAILABLE:
             return False
         host = (settings.QDRANT_HOST if settings else None) or os.getenv("QDRANT_HOST", "localhost")
         port = int((settings.QDRANT_PORT if settings else None) or os.getenv("QDRANT_PORT", "6333"))
+        self._host = host
+        self._port = port
         self._collection = (settings.QDRANT_COLLECTION_NAME if settings else None) or os.getenv("QDRANT_COLLECTION_NAME", "cuad_contracts")
         try:
             self._client = QdrantClient(host=host, port=port, timeout=8)
@@ -167,26 +171,37 @@ class QdrantClientWrapper:
         model = get_embed_model()
         if model:
             try:
+                import urllib.request
+                import json
+
                 query_vec = model.encode(query.strip()).tolist()
-                hits = self._client.search(
-                    collection_name=col,
-                    query_vector=query_vec,
-                    limit=limit,
-                    with_payload=True,
-                    with_vectors=False,
+                url = f"http://{self._host}:{self._port}/collections/{col}/points/search"
+                req_data = json.dumps({
+                    "vector": query_vec,
+                    "limit": limit,
+                    "with_payload": True,
+                    "with_vector": False
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=req_data,
+                    headers={"Content-Type": "application/json"}
                 )
-                results = []
-                for h in hits:
-                    payload = h.payload or {}
-                    results.append({
-                        "id": str(h.id),
-                        "score": round(float(h.score), 4),
-                        "contract_name": payload.get("contract_name", "Contract Document"),
-                        "chunk_id": payload.get("chunk_id"),
-                        "text": payload.get("text", ""),
-                        "payload": payload,
-                    })
-                return results
+                with urllib.request.urlopen(req, timeout=6) as response:
+                    res_json = json.loads(response.read().decode("utf-8"))
+                    hits = res_json.get("result", [])
+                    results = []
+                    for h in hits:
+                        payload = h.get("payload") or {}
+                        results.append({
+                            "id": str(h.get("id")),
+                            "score": round(float(h.get("score", 0)), 4),
+                            "contract_name": payload.get("contract_name", "Contract Document"),
+                            "chunk_id": payload.get("chunk_id"),
+                            "text": payload.get("text", ""),
+                            "payload": payload,
+                        })
+                    return results
             except Exception as e:
                 print(f"[Qdrant] vector_search error, falling back to text search: {e}")
 
