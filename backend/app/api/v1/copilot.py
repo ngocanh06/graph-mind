@@ -9,6 +9,7 @@ Endpoints:
 """
 import uuid
 import time
+import re
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
@@ -437,7 +438,29 @@ async def ask_copilot(
         await db.flush()
 
     # 2. Hybrid Retrieval: Qdrant Vector + Neo4j Graph
-    vector_hits = qdrant_client.vector_search(query=clean_query, limit=5)
+    # Differentiate between AdventureWorks ERP queries (Revenue, Orders, Customers)
+    # and CUAD Legal Contract queries (Clauses, Compliance, Addendums)
+    q_lower = clean_query.lower()
+    is_legal_contract_query = any(k in q_lower for k in [
+        "hợp đồng", "contract", "điều khoản", "clause", "tuân thủ", "compliance",
+        "trách nhiệm", "liability", "bồi hoàn", "indemnif", "chấm dứt", "termination",
+        "luật áp dụng", "governing law", "bảo mật", "confidential", "sop", "pháp lý"
+    ])
+    
+    is_erp_query = any(k in q_lower for k in [
+        "doanh thu", "revenue", "xu hướng", "trend", "tăng trưởng", "growth",
+        "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
+        "sản phẩm", "product"
+    ]) and not any(k in q_lower for k in ["hợp đồng", "điều khoản", "clause", "pháp lý"])
+
+    if is_erp_query:
+        # ERP financial/customer queries should not be polluted with legal contract text from Qdrant
+        vector_hits = []
+    else:
+        vector_hits = qdrant_client.vector_search(query=clean_query, limit=5)
+        # Filter out weak vector noise (< 0.58) if not explicitly a legal text query
+        if not is_legal_contract_query:
+            vector_hits = [vh for vh in vector_hits if vh.get("score", 0) >= 0.58]
 
     graph_hits = execute_text_to_cypher(clean_query)
     if not graph_hits:
@@ -463,7 +486,11 @@ async def ask_copilot(
         })
         if item_type == "vector":
             c_name = raw.get("contract_name") or "CUAD Contract Document"
-            chunk_num = raw.get("chunk_id")
+            raw_chunk = raw.get("chunk_id")
+            try:
+                chunk_num = int(raw_chunk) if raw_chunk is not None else None
+            except (ValueError, TypeError):
+                chunk_num = None
             c_text = raw.get("text") or ""
             score_val = min(99.6, item['rrf_score'] * 3500) if item.get("rrf_score") else 95.0
             line_count = len([l for l in c_text.splitlines() if l.strip()]) or 20
@@ -583,5 +610,7 @@ async def ask_copilot(
         "latency": latency,
         "sessionId": str(session_obj.id),
         "session": session_obj.to_dict(),
+        "citations": citations_detail,
+        "evidenceChips": evidence_chips,
         "data": response_data,
     }

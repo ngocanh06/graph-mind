@@ -69,25 +69,25 @@ class OllamaClient:
         evidence_chunks = evidence_chunks or []
         graph_entities = graph_entities or []
 
-        # 1. Trích xuất text từ vector chunks
+        # 1. Trích xuất text từ vector chunks (tối ưu độ dài context cho CPU inference)
         chunks_text_list = []
-        for i, c in enumerate(evidence_chunks[:4]):
+        for i, c in enumerate(evidence_chunks[:2]):
             t = c.get("text") or c.get("content") or ""
             cname = c.get("contract_name") or c.get("name") or "CUAD Contract"
             cid = c.get("chunk_id", i + 1)
             if t:
-                chunks_text_list.append(f"[Trích đoạn #{cid} - {cname}]:\n{t[:600]}")
+                chunks_text_list.append(f"[Trích đoạn #{cid} - {cname}]:\n{t[:300]}")
         chunks_context = "\n\n".join(chunks_text_list)
 
         # 2. Trích xuất text từ graph entities
         entities_text_list = []
-        for e in graph_entities[:10]:
+        for e in graph_entities[:4]:
             name = e.get("name") or e.get("title") or e.get("_id")
             labels = "/".join(e.get("_labels") or ["Entity"])
             snippet = e.get("snippet")
             info = f"{name} ({labels})"
             if snippet:
-                info += f": {snippet}"
+                info += f": {snippet[:350]}"
             if name:
                 entities_text_list.append(info)
         entities_context = "\n".join([f"- {it}" for it in entities_text_list])
@@ -144,7 +144,9 @@ class OllamaClient:
                         "options": {
                             "temperature": 0.3,
                             "top_p": 0.9,
-                            "num_predict": 512
+                            "num_predict": 220,
+                            "repeat_penalty": 1.18,
+                            "repeat_last_n": 64
                         }
                     }
                 )

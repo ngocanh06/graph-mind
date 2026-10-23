@@ -246,9 +246,13 @@ export default function RiskView({ onNavigate, lang = "vi" }) {
                                 ? `Phân tích rủi ro pháp lý của hợp đồng ${alert.contractId} (${alert.title}) và đề xuất phương án xử lý theo dữ liệu đồ thị tri thức`
                                 : `Analyze the legal risk for contract ${alert.contractId} (${alert.title}) and recommend protective clause amendments based on knowledge graph`)
                             : alert.orderId
-                            ? (isVi
-                                ? `Phân tích chi tiết giao dịch giá trị lớn Order #${alert.orderId} (${alert.title}) và kiểm tra lịch sử tín dụng của khách hàng này trong database`
-                                : `Analyze high-value transaction Order #${alert.orderId} (${alert.title}) and review customer credit limits`)
+                            ? (() => {
+                                const cust = alert.meta?.find(m => m.label?.includes("Khách hàng") || m.label?.includes("Customer"))?.value || "";
+                                const val = alert.meta?.find(m => m.label?.includes("Giá trị") || m.label?.includes("Value"))?.value || "";
+                                return isVi
+                                  ? `Phân tích đơn hàng Order #${alert.orderId}${cust ? ` của khách hàng ${cust}` : ""}${val ? ` (giá trị ${val})` : ""} và kiểm tra danh mục sản phẩm, lịch sử giao dịch trên đồ thị tri thức Neo4j`
+                                  : `Analyze Order #${alert.orderId}${cust ? ` for customer ${cust}` : ""}${val ? ` (value ${val})` : ""} and review purchased products and transaction history in Neo4j`;
+                              })()
                             : (isVi
                                 ? `Phân tích cảnh báo rủi ro: ${alert.title}`
                                 : `Analyze risk alert: ${alert.title}`);

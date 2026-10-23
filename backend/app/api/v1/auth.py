@@ -16,11 +16,15 @@ try:
     from app.db.postgres.database import get_db
     from app.db.postgres.models.user import User
     from app.schemas.auth import LoginRequest, TokenResponse, UserOut
+    from app.modules.m6_admin_security.audit_service import log_action
+    from app.modules.m6_admin_security.rbac import canonical_role
 except ImportError:
     from core.security import create_access_token, decode_access_token, verify_password
     from db.postgres.database import get_db
     from db.postgres.models.user import User
     from schemas.auth import LoginRequest, TokenResponse, UserOut
+    from modules.m6_admin_security.audit_service import log_action
+    from modules.m6_admin_security.rbac import canonical_role
 
 router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
@@ -71,17 +75,19 @@ async def login(
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản này đã bị khóa hoặc chưa được kích hoạt.",
+            detail="Tài khoản này đã bị khóa",
         )
 
     if not verify_password(payload.password, user.hashed_password):
+        await log_action(db, action="LOGIN_FAIL", resource_type="user",
+                         resource_id=str(user.user_id), detail=f"email={user.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Mật khẩu không chính xác.",
         )
 
-    # Xác định Role tương ứng cho giao diện
-    role = resolve_user_role(user.username, user.email, user.is_superuser)
+    # Role JWT lấy từ cột users.role (canonical), không còn ánh xạ cứng theo username
+    role = canonical_role(user)
 
     # Sinh JWT Token
     token_data = {
@@ -101,6 +107,10 @@ async def login(
         is_active=user.is_active,
         is_superuser=user.is_superuser,
     )
+
+    await log_action(db, action="LOGIN", actor_id=user.user_id,
+                     resource_type="user", resource_id=str(user.user_id),
+                     detail=f"email={user.email} role={role}")
 
     return TokenResponse(
         access_token=access_token,
@@ -141,7 +151,7 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
 
-    role = resolve_user_role(user.username, user.email, user.is_superuser)
+    role = canonical_role(user)
 
     return UserOut(
         id=user.id,
