@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     # Neo4j
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "password123"
+    NEO4J_PASSWORD: str = "graphmind_secret"
 
     # Qdrant
     QDRANT_HOST: str = "localhost"
@@ -65,13 +65,6 @@ class Settings(BaseSettings):
     # Self-Hosted LLM Inference (Ollama)
     INFERENCE_ENGINE_URL: str = "http://localhost:11434"
     MODEL_NAME: str = "qwen2.5-7b-graphmind"
-
-    # Email / SMTP (dùng cho OTP quên mật khẩu)
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""          # email gửi (VD: noreply@graphmind.ai)
-    SMTP_PASSWORD: str = ""      # App Password của Gmail / Workspace
-    SMTP_FROM_NAME: str = "GraphMind Admin"
 
 
 # Singleton instance — import và dùng ở mọi nơi

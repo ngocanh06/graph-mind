@@ -13,102 +13,13 @@ export default function LoginPage({
 }) {
   const isVi = lang === "vi";
 
-  // Đăng nhập
+  // Thông tin đăng nhập
   const [identifier, setIdentifier] = useState("exec");
   const [password, setPassword] = useState("123456");
   const [rememberMe, setRememberMe] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  // Quên mật khẩu (0=ẩn, 1=nhập email, 2=nhập OTP, 3=đặt mật khẩu mới)
-  const [forgotStep, setForgotStep] = useState(0);
-  const [fpIdentifier, setFpIdentifier] = useState("");
-  const [fpEmail, setFpEmail] = useState("");      // email trả về từ bước 1
-  const [fpOtp, setFpOtp] = useState("");
-  const [fpResetToken, setFpResetToken] = useState("");
-  const [fpNewPw, setFpNewPw] = useState("");
-  const [fpMsg, setFpMsg] = useState({ text: "", ok: true });  // thông báo trong flow
-  const [fpLoading, setFpLoading] = useState(false);
-  const [fpCooldown, setFpCooldown] = useState(0);              // Đếm ngược 60s để gửi lại OTP
-
-  const API = "http://localhost:5000/api/v1/auth";
-
-  // Hiệu ứng đếm ngược 60 giây khi ở bước OTP
-  useEffect(() => {
-    if (fpCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setFpCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [fpCooldown]);
-
-  const fpStep1 = async (e) => {
-    e?.preventDefault?.();
-    const cleanId = (fpIdentifier || fpEmail).trim();
-    if (!cleanId) {
-      setFpMsg({ text: isVi ? "Vui lòng nhập email hoặc tên đăng nhập." : "Please enter email or username.", ok: false });
-      return;
-    }
-    // Nếu có chứa ký tự '@', kiểm tra regex email hợp lệ
-    if (cleanId.includes("@") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanId)) {
-      setFpMsg({ text: isVi ? "Định dạng email không hợp lệ (ví dụ: user@company.com)." : "Invalid email format (e.g. user@company.com).", ok: false });
-      return;
-    }
-
-    setFpLoading(true); setFpMsg({ text: "", ok: true });
-    try {
-      const r = await fetch(`${API}/forgot-password`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: cleanId }),
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        setFpMsg({ text: d.detail || (isVi ? "Có lỗi xảy ra." : "An error occurred."), ok: false });
-        setFpLoading(false);
-        return;
-      }
-      setFpEmail(d.email || fpIdentifier.trim());
-      setForgotStep(2);
-      setFpCooldown(60); // Bắt đầu đếm ngược 60 giây
-      setFpMsg({ text: isVi ? `Mã OTP đã được gửi tới ${d.email || "email của bạn"}.` : `OTP sent to ${d.email || "your email"}.`, ok: true });
-    } catch { setFpMsg({ text: isVi ? "Không thể kết nối đến máy chủ." : "Cannot connect to server.", ok: false }); }
-    setFpLoading(false);
-  };
-
-  const fpStep2 = async (e) => {
-    e.preventDefault();
-    setFpLoading(true); setFpMsg({ text: "", ok: true });
-    try {
-      const r = await fetch(`${API}/verify-otp`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: fpEmail, otp: fpOtp }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || "OTP không hợp lệ");
-      setFpResetToken(d.reset_token);
-      setForgotStep(3);
-      setFpMsg({ text: "", ok: true });
-    } catch (err) { setFpMsg({ text: err.message, ok: false }); }
-    setFpLoading(false);
-  };
-
-  const fpStep3 = async (e) => {
-    e.preventDefault();
-    if (fpNewPw.length < 8) { setFpMsg({ text: isVi ? "Mật khẩu tối thiểu 8 ký tự." : "Min 8 chars.", ok: false }); return; }
-    setFpLoading(true); setFpMsg({ text: "", ok: true });
-    try {
-      const r = await fetch(`${API}/reset-password-otp`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: fpEmail, otp: fpResetToken, new_password: fpNewPw }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || "Lỗi");
-      setFpMsg({ text: isVi ? "Đã đặt lại mật khẩu! Đăng nhập ngay." : "Password reset! Sign in now.", ok: true });
-      setTimeout(() => { setForgotStep(0); setFpIdentifier(""); setFpOtp(""); setFpNewPw(""); }, 2000);
-    } catch (err) { setFpMsg({ text: err.message, ok: false }); }
-    setFpLoading(false);
-  };
 
   // Nhanh chóng chọn tài khoản mẫu đã seed trong DB
   const handleQuickSelect = (u, p) => {
@@ -537,7 +448,10 @@ export default function LoginPage({
               </label>
               <a
                 href="#forgot"
-                onClick={(e) => { e.preventDefault(); setForgotStep(1); setFpMsg({ text: "", ok: true }); }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert(isVi ? "Vui lòng liên hệ IT Administrator để đặt lại mật khẩu hoặc cấp lại quyền qua SSO." : "Please contact IT Administrator for SSO credentials reset.");
+                }}
                 style={{ color: "#0284c7", fontWeight: "600", textDecoration: "none" }}
               >
                 {isVi ? "Quên mật khẩu?" : "Forgot password?"}
@@ -610,161 +524,6 @@ export default function LoginPage({
               <span>{isVi ? "Đăng nhập với Microsoft Entra ID / SSO" : "Sign in with Microsoft Entra ID / SSO"}</span>
             </button>
           </form>
-
-          {/* ============================================================ */}
-          {/* FORGOT PASSWORD OVERLAY (3 bước OTP)                          */}
-          {/* ============================================================ */}
-          {forgotStep > 0 && (
-            <div style={{
-              position: "fixed", inset: 0, zIndex: 200,
-              background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <div style={{
-                background: "#fff", borderRadius: "14px", padding: "36px 32px",
-                width: "100%", maxWidth: "420px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-              }}>
-                {/* Tiêu đề */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: "#002b3d" }}>
-                      {isVi ? "Quên mật khẩu" : "Forgot Password"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>
-                      {forgotStep === 1 && (isVi ? "Bước 1: Nhập email / tên đăng nhập" : "Step 1: Enter email or username")}
-                      {forgotStep === 2 && (isVi ? "Bước 2: Nhập mã OTP" : "Step 2: Enter OTP code")}
-                      {forgotStep === 3 && (isVi ? "Bước 3: Mật khẩu mới" : "Step 3: New password")}
-                    </div>
-                  </div>
-                  <button onClick={() => setForgotStep(0)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8" }}>✕</button>
-                </div>
-
-                {/* Thanh tiến trình */}
-                <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-                  {[1, 2, 3].map(s => (
-                    <div key={s} style={{
-                      flex: 1, height: 4, borderRadius: 2,
-                      background: s <= forgotStep ? "#0284c7" : "#e2e8f0",
-                      transition: "background 0.3s",
-                    }} />
-                  ))}
-                </div>
-
-                {/* Thông báo */}
-                {fpMsg.text && (
-                  <div style={{
-                    padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 12.5, fontWeight: 600,
-                    background: fpMsg.ok ? "#f0fdf4" : "#fef2f2",
-                    border: `1px solid ${fpMsg.ok ? "#bbf7d0" : "#fecaca"}`,
-                    color: fpMsg.ok ? "#16a34a" : "#dc2626",
-                  }}>
-                    {fpMsg.ok ? "✓ " : "⚠ "}{fpMsg.text}
-                  </div>
-                )}
-
-                {/* Bước 1 */}
-                {forgotStep === 1 && (
-                  <form onSubmit={fpStep1}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
-                      {isVi ? "Email hoặc tên đăng nhập" : "Email or Username"}
-                    </label>
-                    <input
-                      required autoFocus type="text" value={fpIdentifier}
-                      onChange={e => setFpIdentifier(e.target.value)}
-                      placeholder={isVi ? "email@graphmind.ai hoặc tên đăng nhập" : "email or username"}
-                      style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #cbd5e1", borderRadius: 6, fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                      onFocus={e => e.target.style.borderColor = "#0284c7"}
-                      onBlur={e => e.target.style.borderColor = "#cbd5e1"}
-                    />
-                    <button type="submit" disabled={fpLoading} style={{
-                      width: "100%", marginTop: 16, padding: "12px", background: "#0284c7", color: "#fff",
-                      border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer",
-                    }}>
-                      {fpLoading ? (isVi ? "Đang gửi..." : "Sending...") : (isVi ? "Gửi mã OTP" : "Send OTP")}
-                    </button>
-                  </form>
-                )}
-
-                {/* Bước 2 */}
-                {forgotStep === 2 && (
-                  <form onSubmit={fpStep2}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
-                      {isVi ? "Mã OTP (6 chữ số)" : "OTP Code (6 digits)"}
-                    </label>
-                    <input
-                      required autoFocus maxLength={6} value={fpOtp}
-                      onChange={e => setFpOtp(e.target.value.replace(/\D/g, ""))}
-                      placeholder="000000"
-                      style={{
-                        width: "100%", padding: "14px", border: "1.5px solid #cbd5e1", borderRadius: 6,
-                        fontSize: 28, fontWeight: 800, letterSpacing: 12, textAlign: "center", outline: "none", boxSizing: "border-box",
-                      }}
-                      onFocus={e => e.target.style.borderColor = "#0284c7"}
-                      onBlur={e => e.target.style.borderColor = "#cbd5e1"}
-                    />
-                    <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 8 }}>
-                      {isVi ? `OTP gửi tới: ${fpEmail}` : `OTP sent to: ${fpEmail}`}
-                    </div>
-                    <button type="submit" disabled={fpLoading || fpOtp.length !== 6} style={{
-                      width: "100%", marginTop: 16, padding: "12px", background: fpOtp.length === 6 ? "#0284c7" : "#cbd5e1",
-                      color: "#fff", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700,
-                      cursor: fpOtp.length === 6 ? "pointer" : "not-allowed",
-                    }}>
-                      {fpLoading ? (isVi ? "Đang xác minh..." : "Verifying...") : (isVi ? "Xác minh OTP" : "Verify OTP")}
-                    </button>
-                    
-                    {/* Nút gửi lại mã với đếm ngược 60s */}
-                    <div style={{ marginTop: 12, textAlign: "center" }}>
-                      {fpCooldown > 0 ? (
-                        <span style={{ fontSize: 12.5, color: "#64748b" }}>
-                          {isVi ? `Gửi lại mã sau ` : `Resend code in `}
-                          <strong style={{ color: "#0284c7" }}>{fpCooldown}s</strong>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={fpLoading}
-                          onClick={() => fpStep1()}
-                          style={{
-                            background: "none", border: "none", color: "#0284c7",
-                            fontWeight: 700, fontSize: 13, cursor: "pointer", textDecoration: "underline", padding: 0
-                          }}
-                        >
-                          {isVi ? "Gửi lại mã OTP" : "Resend OTP code"}
-                        </button>
-                      )}
-                    </div>
-
-                    <button type="button" onClick={() => { setForgotStep(1); setFpCooldown(0); }} style={{ width: "100%", marginTop: 10, padding: "9px", background: "none", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 12, color: "#64748b", cursor: "pointer" }}>
-                      {isVi ? "← Nhập lại email" : "← Re-enter email"}
-                    </button>
-                  </form>
-                )}
-
-                {/* Bước 3 */}
-                {forgotStep === 3 && (
-                  <form onSubmit={fpStep3}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
-                      {isVi ? "Mật khẩu mới (≥ 8 ký tự)" : "New Password (≥ 8 chars)"}
-                    </label>
-                    <input
-                      required autoFocus type="password" value={fpNewPw} minLength={8}
-                      onChange={e => setFpNewPw(e.target.value)}
-                      placeholder={isVi ? "Mật khẩu mới..." : "New password..."}
-                      style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #cbd5e1", borderRadius: 6, fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                      onFocus={e => e.target.style.borderColor = "#0284c7"}
-                      onBlur={e => e.target.style.borderColor = "#cbd5e1"}
-                    />
-                    <button type="submit" disabled={fpLoading} style={{
-                      width: "100%", marginTop: 16, padding: "12px", background: "#002b3d", color: "#fff",
-                      border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer",
-                    }}>
-                      {fpLoading ? (isVi ? "Đang lưu..." : "Saving...") : (isVi ? "Đặt lại mật khẩu" : "Reset Password")}
-                    </button>
-                  </form>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* ============================================================ */}
           {/* HUY HIỆU BẢO MẬT & CHUẨN TUÂN THỦ DOANH NGHIỆP              */}

@@ -1,266 +1,363 @@
 import React from "react";
+import {
+  Home, Bot, Search, Share2, LayoutDashboard, AlertTriangle,
+  BarChart2, FolderOpen, ClipboardList, Settings, Database,
+  ChevronLeft, ChevronRight, Activity
+} from "lucide-react";
+
+const NAV_SECTIONS = (role, isVi) => [
+  {
+    id: "core",
+    label: isVi ? "TRỌNG TÂM" : "CORE",
+    items: [
+      { id: "home",      icon: Home,          label: isVi ? "Trang chủ" : "Home", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "copilot",   icon: Bot,           label: isVi ? "AI Copilot" : "AI Copilot", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "search",    icon: Search,        label: isVi ? "Tìm kiếm thông minh" : "Smart Search", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "knowledge", icon: Share2,        label: isVi ? "Knowledge Graph" : "Knowledge Graph", roles: ["executive","knowledge_manager","it_admin"] },
+      { id: "explorer",  icon: Activity,      label: isVi ? "Knowledge Explorer" : "Knowledge Explorer", roles: ["executive","knowledge_manager","it_admin","standard"] },
+    ],
+  },
+  {
+    id: "decision",
+    label: isVi ? "ĐIỀU HÀNH" : "EXECUTIVE",
+    badge: "EXEC",
+    badgeColor: "#7c3aed",
+    items: [
+      { id: "executive", icon: LayoutDashboard, label: isVi ? "Dashboard điều hành" : "Executive Dashboard", roles: ["executive","it_admin"] },
+      { id: "risk",      icon: AlertTriangle,   label: isVi ? "Cảnh báo rủi ro" : "Risk Alerts", alert: true, roles: ["executive","knowledge_manager","it_admin"] },
+      { id: "reports",   icon: BarChart2,       label: role === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : (isVi ? "Báo cáo" : "Reports"), roles: ["executive","knowledge_manager","it_admin","standard"] },
+    ],
+  },
+  {
+    id: "knowledge_mgmt",
+    label: isVi ? "TRI THỨC" : "KNOWLEDGE",
+    items: [
+      { id: "documents",  icon: FolderOpen,      label: isVi ? "Kho tài liệu" : "Documents", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "sop",        icon: ClipboardList,   label: isVi ? "SOP nội bộ" : "Internal SOP", roles: ["executive","knowledge_manager","it_admin"] },
+      { id: "connectors", icon: Database,        label: isVi ? "Kết nối dữ liệu" : "Data Connectors", roles: ["it_admin"] },
+      { id: "admin",      icon: Settings,        label: isVi ? "Quản trị hệ thống" : "System Admin", roles: ["it_admin"] },
+    ],
+  },
+];
 
 export default function NavRail({
   currentView,
   onNavigate,
   onOpenLanding,
   onLogout,
-  isOpen,
+  isOpen = true,
   onToggleOpen,
   t,
   lang,
   role = "executive",
   currentUser,
-  onRoleChange
+  onRoleChange,
 }) {
   const isVi = lang === "vi";
-
-  // Role persona metadata & partitioned view definitions
-  const ROLE_CONFIGS = {
-    executive: {
-      badge: "EXECUTIVE BOARD",
-      name: "Hoàng Minh Điều",
-      initials: "HĐ",
-      title: isVi ? "Ban Lãnh Đạo · Giám Đốc Điều Hành (CEO / C-Suite)" : "Executive Leadership · C-Suite / CEO",
-      color: "#0891b2",
-      colorBg: "rgba(8, 145, 178, 0.08)",
-      primaryGroup: isVi ? "Chiến lược & Điều hành" : "Strategic Intelligence",
-      primary: [
-        { id: "executive", label: t.nav_executive, idx: "01", icon: "pulse" },
-        { id: "risk", label: t.nav_risk, idx: "02", badge: "3", icon: "risk" },
-        { id: "reports", label: t.nav_reports, idx: "03", icon: "reports" },
-        { id: "copilot", label: t.nav_copilot, idx: "04", icon: "copilot" }
-      ],
-      secondaryGroup: isVi ? "Mở rộng & Tra cứu" : "Explorations",
-      secondary: [
-        { id: "knowledge", label: t.nav_knowledge, idx: "05", icon: "knowledge" },
-        { id: "search", label: t.nav_search, idx: "06", icon: "search" }
-      ]
-    },
-    knowledge_manager: {
-      badge: isVi ? "TRƯỞNG PHÒNG" : "DEPT MANAGER",
-      name: "Trần M. Anh",
-      initials: "TA",
-      title: isVi ? "Trưởng Phòng · Quản lý Cấp trung" : "Department Head · Middle Management",
-      color: "#059669",
-      colorBg: "rgba(5, 150, 105, 0.08)",
-      primaryGroup: isVi ? "Bộ phận & Tiến độ" : "Department Operations",
-      primary: [
-        { id: "reports", label: isVi ? "Báo Cáo Phòng Ban" : "Department Reports", idx: "01", icon: "reports" },
-        { id: "documents", label: t.nav_documents, idx: "02", icon: "documents" },
-        { id: "copilot", label: t.nav_copilot, idx: "03", icon: "copilot" },
-        { id: "risk", label: t.nav_risk, idx: "04", badge: "2", icon: "risk" }
-      ],
-      secondaryGroup: isVi ? "Tra cứu & Tri thức" : "Search & Knowledge",
-      secondary: [
-        { id: "search", label: t.nav_search, idx: "05", icon: "search" }
-      ]
-    },
-    it_admin: {
-      badge: isVi ? "ADMIN HỆ THỐNG & TRI THỨC" : "SYS & KNOWLEDGE ADMIN",
-      name: "SecOps Admin",
-      initials: "SA",
-      title: isVi ? "Quản trị viên Hệ thống & Tri thức · SecOps Lead" : "System & Knowledge Administrator · SecOps Lead",
-      color: "#d97706",
-      colorBg: "rgba(217, 119, 6, 0.08)",
-      primaryGroup: isVi ? "Hệ thống & Tri thức" : "System & Knowledge",
-      primary: [
-        { id: "admin", label: t.nav_admin, idx: "01", icon: "admin" },
-        { id: "knowledge", label: t.nav_knowledge, idx: "02", icon: "knowledge" },
-        { id: "connectors", label: t.nav_connectors, idx: "03", icon: "connectors" },
-        { id: "documents", label: t.nav_documents, idx: "04", icon: "documents" }
-      ],
-      secondaryGroup: isVi ? "Giám sát & Tra cứu" : "Monitoring",
-      secondary: [
-        { id: "search", label: t.nav_search, idx: "05", icon: "search" },
-        { id: "reports", label: t.nav_reports, idx: "06", icon: "reports" },
-        { id: "executive", label: t.nav_executive, idx: "07", icon: "pulse" }
-      ]
-    },
-    standard: {
-      badge: isVi ? "CHUYÊN VIÊN KINH DOANH" : "SALES EXECUTIVE",
-      name: "Nguyễn V. Nam",
-      initials: "NN",
-      title: isVi ? "Chuyên viên Kinh doanh & Khách hàng" : "Sales & Account Executive",
-      color: "#2563eb",
-      colorBg: "rgba(37, 99, 235, 0.08)",
-      primaryGroup: isVi ? "Nghiệp vụ Bán hàng" : "Sales & Clients",
-      primary: [
-        { id: "search", label: isVi ? "Tác Nghiệp Khách Hàng" : "Client Operations", idx: "01", icon: "search" },
-        { id: "copilot", label: isVi ? "Trợ Lý AI" : "AI Copilot", idx: "02", icon: "copilot" },
-        { id: "documents", label: isVi ? "Kho Hợp Đồng & Báo Giá" : "Contracts & Quotes", idx: "03", icon: "documents" },
-        { id: "reports", label: isVi ? "Báo Cáo Công Việc" : "Work Reports", idx: "04", icon: "reports" }
-      ],
-      secondaryGroup: null,
-      secondary: []
-    }
-  };
-
-  const currentRoleConfig = ROLE_CONFIGS[role] || ROLE_CONFIGS.executive;
-
-  const renderIcon = (type) => {
-    switch (type) {
-      case "pulse":
-        return <i className="fa-solid fa-chart-line" style={{ fontSize: "16px" }} />;
-      case "copilot":
-        return <i className="fa-solid fa-brain" style={{ fontSize: "16px" }} />;
-      case "knowledge":
-        return <i className="fa-solid fa-diagram-project" style={{ fontSize: "16px" }} />;
-      case "search":
-        return <i className="fa-solid fa-magnifying-glass" style={{ fontSize: "16px" }} />;
-      case "connectors":
-        return <i className="fa-solid fa-network-wired" style={{ fontSize: "16px" }} />;
-      case "risk":
-        return <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: "16px" }} />;
-      case "documents":
-        return <i className="fa-solid fa-file-invoice" style={{ fontSize: "16px" }} />;
-      case "reports":
-        return <i className="fa-solid fa-file-lines" style={{ fontSize: "16px" }} />;
-      case "admin":
-        return <i className="fa-solid fa-gear" style={{ fontSize: "16px" }} />;
-      default:
-        return null;
-    }
-  };
+  const sections = NAV_SECTIONS(role, isVi);
 
   return (
-    <aside className={`rail ${isOpen ? "open" : ""}`} id="rail">
-      {/* Toggle button */}
-      <button className="rail-toggle" onClick={onToggleOpen} title="Toggle navigation">
-        <i className={`fa-solid ${isOpen ? "fa-chevron-left" : "fa-chevron-right"}`} style={{ fontSize: "10px" }} />
-      </button>
-
-      {/* Brand logo */}
-      <div className="rail-brand" onClick={onOpenLanding} title={isVi ? "Về Trang Chủ Giới Thiệu" : "Back to Landing Page"}>
-        <img
-          src="/logo-icon.svg"
-          alt="Graph Mind Logo"
-          style={{
-            width: "28px",
-            height: "28px",
-            borderRadius: "8px",
-            objectFit: "contain",
-            flexShrink: 0,
-            boxShadow: "0 0 10px rgba(0,229,255,0.35)",
-            filter: "drop-shadow(0 0 4px rgba(0,229,255,0.25))"
-          }}
-        />
-        <div className="brand-text">
-          GRAPH MIND<span>{t.brand_sub}</span>
-        </div>
-
-        {isOpen && (
-          <button
-            className="rail-toggle-btn"
-            onClick={onToggleOpen}
-            title={isVi ? "Thu gọn thanh điều hướng" : "Collapse sidebar"}
-            aria-label="Toggle navigation"
-          >
-            <i className="fa-solid fa-chevron-left" style={{ fontSize: "12px" }} />
-          </button>
-        )}
-      </div>
-
-      {/* Role Indicator Card */}
-      <div style={{
-        margin: "10px 10px 6px",
-        padding: isOpen ? "9px 12px" : "8px 4px",
-        borderRadius: "8px",
-        background: "var(--surface-2)",
-        border: "1px solid var(--border)",
+    <aside
+      aria-label={isVi ? "Điều hướng chính" : "Main navigation"}
+      style={{
+        width: isOpen ? 240 : 60,
+        flexShrink: 0,
+        background: "var(--surface)",
+        borderRight: "1px solid var(--border-soft)",
         display: "flex",
         flexDirection: "column",
-        gap: "4px",
-        transition: "all var(--transition-fast)"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", justifyContent: isOpen ? "flex-start" : "center" }}>
-          <span style={{
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            background: currentRoleConfig.color,
-            flexShrink: 0,
-            boxShadow: `0 0 6px ${currentRoleConfig.color}80`
-          }} />
-          {isOpen && (
-            <span style={{
-              fontSize: "11px",
-              fontWeight: "750",
-              letterSpacing: "0.03em",
-              color: currentRoleConfig.color,
-              fontFamily: "var(--f-body)",
-              whiteSpace: "nowrap",
-              textTransform: "uppercase"
-            }}>
-              {currentRoleConfig.badge}
-            </span>
-          )}
-        </div>
-
+        height: "100%",
+        overflowY: "auto",
+        overflowX: "hidden",
+        transition: "width 0.22s cubic-bezier(0.4,0,0.2,1)",
+        position: "relative",
+        zIndex: 40,
+      }}
+    >
+      {/* ── BRAND HEADER ─────────────────────────────────── */}
+      <div
+        style={{
+          height: 62,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isOpen ? "space-between" : "center",
+          padding: isOpen ? "0 12px 0 16px" : "0",
+          borderBottom: "1px solid var(--border-soft)",
+          flexShrink: 0,
+          gap: 8,
+        }}
+      >
         {isOpen && (
-          <div style={{
-            fontSize: "11.5px",
-            color: "var(--text-2)",
-            lineHeight: "1.4",
-            fontWeight: "500",
-            wordBreak: "break-word"
-          }}>
-            {currentRoleConfig.title}
+          <div
+            onClick={onOpenLanding}
+            style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", minWidth: 0, overflow: "hidden" }}
+            title={isVi ? "Về trang chủ" : "Back to landing"}
+          >
+            {/* Brand mark */}
+            <img
+              src="/logo-icon.svg"
+              alt="GraphMind Logo"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                flexShrink: 0,
+                objectFit: "contain",
+                boxShadow: "0 2px 8px rgba(19, 62, 112, 0.18)",
+              }}
+            />
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em", fontFamily: "var(--f-display)", whiteSpace: "nowrap" }}>
+                GraphMind
+              </div>
+              <div style={{ fontSize: 9.5, fontWeight: 600, color: "var(--text-4)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                EKMP · v1.2
+              </div>
+            </div>
           </div>
         )}
+
+        {!isOpen && (
+          <div
+            onClick={onOpenLanding}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+            title="GraphMind"
+          >
+            <img
+              src="/logo-icon.svg"
+              alt="GraphMind Logo"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                objectFit: "contain",
+                boxShadow: "0 2px 8px rgba(19, 62, 112, 0.18)",
+              }}
+            />
+          </div>
+        )}
+
+        {/* Toggle button */}
+        <button
+          onClick={onToggleOpen}
+          aria-label={isOpen ? (isVi ? "Thu gọn menu" : "Collapse sidebar") : (isVi ? "Mở rộng menu" : "Expand sidebar")}
+          aria-expanded={isOpen}
+          style={{
+            width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+            border: "1px solid var(--border)",
+            background: "var(--surface-2)",
+            color: "var(--text-3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-3)"; e.currentTarget.style.color = "var(--cyan)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.color = "var(--text-3)"; }}
+        >
+          {isOpen ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
+        </button>
       </div>
 
-      {/* Role-Partitioned Navigation Items */}
-      <nav className="rail-nav">
-        {/* Primary Group */}
-        <div className="rail-group-label">
-          {currentRoleConfig.primaryGroup}
-        </div>
+      {/* ── NAVIGATION ───────────────────────────────────── */}
+      <nav style={{ flex: 1, overflowY: "auto", padding: "10px 0 8px" }}>
+        {sections.map((section) => {
+          const visibleItems = section.items.filter(item =>
+            !item.roles || item.roles.includes(role)
+          );
+          if (!visibleItems.length) return null;
 
-        {currentRoleConfig.primary.map((item) => {
-          const isActive = currentView === item.id;
           return (
-            <div
-              key={item.id}
-              className={`nav-item ${isActive ? "active" : ""}`}
-              onClick={() => onNavigate(item.id)}
-              title={item.label}
-            >
-              <span className="n-icon">{renderIcon(item.icon)}</span>
-              <span className="n-label">{item.label}</span>
-              {item.badge && (
-                <span className="n-badge">{item.badge}</span>
+            <div key={section.id} style={{ marginBottom: 4 }}>
+              {/* Section label */}
+              {isOpen && (
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 16px 5px",
+                }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: "var(--text-4)",
+                    letterSpacing: "0.07em", textTransform: "uppercase",
+                    fontFamily: "var(--f-body)",
+                  }}>
+                    {section.label}
+                  </span>
+                  {section.badge && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, color: section.badgeColor || "#7c3aed",
+                      background: `${section.badgeColor || "#7c3aed"}15`,
+                      border: `1px solid ${section.badgeColor || "#7c3aed"}30`,
+                      borderRadius: 3, padding: "1px 5px", letterSpacing: "0.04em",
+                    }}>
+                      {section.badge}
+                    </span>
+                  )}
+                </div>
               )}
+
+              {/* Items */}
+              <div style={{ padding: "0 6px" }}>
+                {visibleItems.map((item) => {
+                  const isActive = currentView === item.id;
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => onNavigate(item.id)}
+                      title={!isOpen ? item.label : undefined}
+                      aria-current={isActive ? "page" : undefined}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: isOpen ? "8px 10px" : "9px 0",
+                        justifyContent: isOpen ? "flex-start" : "center",
+                        borderRadius: 8,
+                        border: "none",
+                        background: isActive ? "rgba(37,99,235,0.08)" : "transparent",
+                        color: isActive ? "#2563eb" : "var(--text-2)",
+                        fontSize: 13,
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        textAlign: "left",
+                        position: "relative",
+                        marginBottom: 2,
+                        fontFamily: "var(--f-body)",
+                        boxSizing: "border-box",
+                        // Left accent border for active
+                        boxShadow: isActive ? "inset 3px 0 0 #2563eb" : "none",
+                      }}
+                      onMouseEnter={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = "var(--surface-2)";
+                          e.currentTarget.style.color = "var(--text-1)";
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = "transparent";
+                          e.currentTarget.style.color = "var(--text-2)";
+                        }
+                      }}
+                    >
+                      {/* Icon */}
+                      <span style={{
+                        width: 20, height: 20, display: "flex", alignItems: "center",
+                        justifyContent: "center", flexShrink: 0,
+                        color: isActive ? "#2563eb" : "var(--text-3)",
+                      }}>
+                        <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} />
+                      </span>
+
+                      {/* Label */}
+                      {isOpen && (
+                        <span style={{
+                          flex: 1, minWidth: 0, overflow: "hidden",
+                          textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          lineHeight: 1.3,
+                        }}>
+                          {item.label}
+                        </span>
+                      )}
+
+                      {/* Alert dot */}
+                      {item.alert && (
+                        <span style={{
+                          width: 6, height: 6, borderRadius: "50%",
+                          background: "#ef4444",
+                          flexShrink: 0,
+                          marginLeft: isOpen ? "auto" : 0,
+                          boxShadow: "0 0 5px rgba(239,68,68,0.5)",
+                        }} aria-label={isVi ? "Có cảnh báo" : "Has alerts"} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
-
-        {/* Secondary Group (Extended cross-functional access) */}
-        {currentRoleConfig.secondary && currentRoleConfig.secondary.length > 0 && (
-          <>
-            <div className="rail-group-label" style={{ marginTop: "12px" }}>
-              {currentRoleConfig.secondaryGroup}
-            </div>
-            {currentRoleConfig.secondary.map((item) => {
-              const isActive = currentView === item.id;
-              return (
-                <div
-                  key={item.id}
-                  className={`nav-item ${isActive ? "active" : ""}`}
-                  onClick={() => onNavigate(item.id)}
-                  title={item.label}
-                >
-                  <span className="n-icon">{renderIcon(item.icon)}</span>
-                  <span className="n-label">{item.label}</span>
-                  {item.badge && (
-                    <span className="n-badge">{item.badge}</span>
-                  )}
-                </div>
-              );
-            })}
-          </>
-        )}
       </nav>
+
+      {/* ── FOOTER ───────────────────────────────────────── */}
+      <div style={{
+        borderTop: "1px solid var(--border-soft)",
+        padding: "10px 6px 12px",
+        flexShrink: 0,
+      }}>
+        {/* System health indicator */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: isOpen ? "7px 10px" : "7px 0",
+          justifyContent: isOpen ? "flex-start" : "center",
+          borderRadius: 8,
+          background: "var(--surface-2)",
+          border: "1px solid var(--border-soft)",
+          margin: "0 0 6px",
+        }}>
+          <span style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: "#10b981",
+            flexShrink: 0,
+            boxShadow: "0 0 0 0 rgba(16,185,129,0.4)",
+            animation: "dotpulse 2.2s infinite",
+          }} />
+          {isOpen && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", lineHeight: 1.2 }}>
+                {isVi ? "Hệ thống ổn định" : "System Nominal"}
+              </div>
+              <div style={{ fontSize: 9.5, color: "var(--text-4)", lineHeight: 1.2 }}>
+                {isVi ? "247 nguồn đã kết nối" : "247 sources connected"}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* User mini-profile */}
+        {currentUser && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: isOpen ? "7px 10px" : "7px 0",
+            justifyContent: isOpen ? "flex-start" : "center",
+            borderRadius: 8, cursor: "pointer",
+            transition: "background 0.15s",
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            title={!isOpen ? (currentUser?.name || "") : undefined}
+          >
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+              background: `linear-gradient(135deg, ${currentUser?.color || "#2563eb"}, ${currentUser?.accentColor || "#0891b2"})`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#fff", fontSize: 10.5, fontWeight: 800,
+              letterSpacing: "0.02em",
+            }}>
+              {currentUser?.avatar || "US"}
+            </div>
+            {isOpen && (
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.25 }}>
+                  {currentUser?.name || "User"}
+                </div>
+                <div style={{ fontSize: 10, color: "var(--text-4)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {lang === "vi" ? currentUser?.badge : currentUser?.badgeEn}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

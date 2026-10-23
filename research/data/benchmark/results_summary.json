@@ -1,0 +1,23 @@
+{
+  "Pure Vector RAG": {
+    "Accuracy": 5.0,
+    "Faithfulness": 43.0,
+    "Context Recall": 2.5,
+    "Answer Relevance": 20.41,
+    "Latency": 0.1445
+  },
+  "Pure GraphRAG": {
+    "Accuracy": 58.0,
+    "Faithfulness": 70.4,
+    "Context Recall": 54.5,
+    "Answer Relevance": 25.73,
+    "Latency": 0.0267
+  },
+  "Hybrid GraphRAG (Ours)": {
+    "Accuracy": 60.0,
+    "Faithfulness": 76.0,
+    "Context Recall": 50.0,
+    "Answer Relevance": 24.57,
+    "Latency": 0.1713
+  }
+}

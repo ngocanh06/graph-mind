@@ -10,6 +10,7 @@ import DemoBanner from "./components/DemoBanner";
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 
+import HomeView from "./views/m4_decision_support/HomeView";
 import ExecutiveView from "./views/m4_decision_support/ExecutiveView";
 import CopilotView from "./views/m3_hybrid_copilot/CopilotView";
 import KnowledgeView from "./views/m2_knowledge_editor/KnowledgeView";
@@ -17,18 +18,26 @@ import SearchView from "./views/m5_multifacet_search/SearchView";
 import ConnectorsView from "./views/m1_data_sync/ConnectorsView";
 import RiskView from "./views/m4_decision_support/RiskView";
 import DocumentsView from "./views/m2_knowledge_editor/DocumentsView";
+import SopView from "./views/m2_knowledge_editor/SopView";
 import ReportsView from "./views/m4_decision_support/ReportsView";
 import AdminView from "./views/m6_admin_security/AdminView";
+import KnowledgeExplorerView from "./views/m5_multifacet_search/KnowledgeExplorerView";
 
 const VALID_VIEWS = [
+  "home",
   "executive",
   "copilot",
   "knowledge",
+  "graph",
+  "explorer",
   "search",
   "connectors",
   "risk",
   "documents",
+  "sop",
+  "sop_composer",
   "reports",
+  "department_report",
   "admin"
 ];
 
@@ -39,6 +48,9 @@ function getInitialRouting() {
     const queryView = params.get("view");
     const queryMode = params.get("mode");
 
+    if (queryView === "graph") {
+      return { mode: "app", view: "knowledge" };
+    }
     if (queryView && VALID_VIEWS.includes(queryView)) {
       return { mode: "app", view: queryView };
     }
@@ -46,10 +58,11 @@ function getInitialRouting() {
       return { mode: queryMode, view: "executive" };
     }
 
-    // 2. Kiểm tra URL hash (#admin, #search, #login, #landing, ...)
+    // 2. Kiểm tra URL hash (#admin, #search, #login, #landing, #graph...)
     const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
     if (hash === "login") return { mode: "login", view: "executive" };
     if (hash === "landing") return { mode: "landing", view: "executive" };
+    if (hash === "graph") return { mode: "app", view: "knowledge" };
     if (VALID_VIEWS.includes(hash)) {
       return { mode: "app", view: hash };
     }
@@ -59,7 +72,9 @@ function getInitialRouting() {
     const savedView = localStorage.getItem("aegis_current_view");
 
     if (savedMode === "app") {
-      const activeView = (savedView && VALID_VIEWS.includes(savedView)) ? savedView : "executive";
+      const activeView = (savedView === "graph" || savedView === "knowledge")
+        ? "knowledge"
+        : ((savedView && VALID_VIEWS.includes(savedView)) ? savedView : "home");
       return { mode: "app", view: activeView };
     }
     if (savedMode === "login") return { mode: "login", view: "executive" };
@@ -69,12 +84,12 @@ function getInitialRouting() {
   }
 
   // Mặc định nếu chưa từng truy cập
-  return { mode: "app", view: "executive" };
+  return { mode: "app", view: "home" };
 }
 
 export default function App() {
   const initialRoute = getInitialRouting();
-  const [lang, setLang] = useState(() => localStorage.getItem("aegis_lang") || "en");
+  const [lang, setLang] = useState(() => localStorage.getItem("aegis_lang") || "vi");
   const [theme, setTheme] = useState(() => localStorage.getItem("aegis_theme") || "light");
   const [role, setRole] = useState(() => {
     try {
@@ -86,7 +101,11 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem("aegis_user");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u.id === "executive") return ENTERPRISE_ROLES.executive;
+        return u;
+      }
     } catch (e) {}
     return ENTERPRISE_ROLES.executive;
   });
@@ -95,6 +114,21 @@ export default function App() {
   const [isRailOpen, setIsRailOpen] = useState(true);
   const [demoStep, setDemoStep] = useState(1);
   const [selectedEntity, setSelectedEntity] = useState("abc");
+  const [selectedDocId, setSelectedDocId] = useState(null);
+  const [initialCopilotQuery, setInitialCopilotQuery] = useState("");
+
+  const handleNavigate = (targetView, payload = null) => {
+    const normView = (targetView === "graph" || targetView === "knowledge") ? "knowledge" : targetView;
+    if (normView === "documents" && payload) {
+      setSelectedDocId(payload);
+    } else if (normView === "knowledge" && payload) {
+      setSelectedEntity(payload);
+    } else if (normView === "copilot" && payload) {
+      const queryStr = typeof payload === "string" ? payload : payload.query || "";
+      setInitialCopilotQuery(queryStr);
+    }
+    setView(normView);
+  };
 
   const [entities, setEntities] = useState(INITIAL_DATA.entities);
   const [signals, setSignals] = useState(INITIAL_DATA.signals);
@@ -151,7 +185,7 @@ export default function App() {
         setPageMode("landing");
       } else if (VALID_VIEWS.includes(hash)) {
         setPageMode("app");
-        setView(hash);
+        setView(hash === "graph" ? "knowledge" : hash);
       }
     };
 
@@ -185,10 +219,7 @@ export default function App() {
     try {
       localStorage.setItem("aegis_user", JSON.stringify(user));
     } catch (e) {}
-    if (newRole === "executive") setView("executive");
-    else if (newRole === "knowledge_manager") setView("knowledge");
-    else if (newRole === "it_admin") setView("admin");
-    else if (newRole === "standard") setView("search");
+    setView("home");
   };
 
   const handleDemoStep = (step) => {
@@ -255,48 +286,57 @@ export default function App() {
 
   // 3. ENTERPRISE WORKSPACE (ROLE-AWARE)
   return (
-    <div className="app-container">
-      {/* Sidebar Rail with Role Partitioning */}
-      <NavRail
-        currentView={view}
-        onNavigate={setView}
-        onOpenLanding={() => setPageMode("landing")}
-        onLogout={() => setPageMode("login")}
-        isOpen={isRailOpen}
-        onToggleOpen={() => setIsRailOpen(!isRailOpen)}
-        t={t}
+    <div className="app-container" style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "var(--bg-app)" }}>
+      <Topbar
+        view={view}
         lang={lang}
+        theme={theme}
         role={role}
         currentUser={currentUser}
+        onThemeChange={setTheme}
+        onLangChange={setLang}
         onRoleChange={handleRoleChange}
+        onOpenLanding={() => setPageMode("landing")}
+        onLogout={() => setPageMode("login")}
+        onNavigate={handleNavigate}
+        t={t}
+        apiConnected={apiConnected}
       />
 
-      {/* Main Content Workspace */}
-      <div className="shell">
-        <Topbar
-          view={view}
-          lang={lang}
-          theme={theme}
-          role={role}
-          currentUser={currentUser}
-          onThemeChange={setTheme}
-          onLangChange={setLang}
-          onRoleChange={handleRoleChange}
+      {/* Main Content: Sidebar + Workspace */}
+      <div className="shell" style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <NavRail
+          currentView={view}
+          onNavigate={handleNavigate}
           onOpenLanding={() => setPageMode("landing")}
           onLogout={() => setPageMode("login")}
-          onNavigate={setView}
+          isOpen={isRailOpen}
+          onToggleOpen={() => setIsRailOpen(!isRailOpen)}
           t={t}
-          apiConnected={apiConnected}
+          lang={lang}
+          role={role}
+          currentUser={currentUser}
+          onRoleChange={handleRoleChange}
         />
 
-        <main className="workspace">
+        <main className="workspace" style={{ flex: 1, overflowY: "auto", minWidth: 0, background: "var(--bg-app)" }}>
+          {view === "home" && (
+            <HomeView
+              onNavigate={handleNavigate}
+              role={role}
+              currentUser={currentUser}
+              lang={lang}
+              t={t}
+            />
+          )}
+
           {view === "executive" && (
             <ExecutiveView
               entities={entities}
               selectedEntity={selectedEntity}
               onSelectEntity={setSelectedEntity}
               signals={signals}
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
             />
@@ -304,27 +344,40 @@ export default function App() {
 
           {view === "copilot" && (
             <CopilotView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
               apiConnected={apiConnected}
+              role={role}
+              currentUser={currentUser}
+              initialQuery={initialCopilotQuery}
+              onClearInitialQuery={() => setInitialCopilotQuery("")}
             />
           )}
 
-          {view === "knowledge" && (
+          {(view === "knowledge" || view === "graph") && (
             <KnowledgeView
               entities={entities}
               selectedEntity={selectedEntity}
               onSelectEntity={setSelectedEntity}
               onUpdateEntity={handleUpdateEntity}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
+              role={role}
+              currentUser={currentUser}
             />
+          )}
+
+          {view === "explorer" && (
+            <div style={{ height: "100%", overflowY: "auto", padding: 20 }}>
+              <KnowledgeExplorerView lang={lang} />
+            </div>
           )}
 
           {view === "search" && (
             <SearchView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               onSelectEntity={setSelectedEntity}
               t={t}
               lang={lang}
@@ -335,29 +388,44 @@ export default function App() {
 
           {view === "connectors" && <ConnectorsView t={t} lang={lang} />}
 
-          {view === "risk" && <RiskView onNavigate={setView} t={t} lang={lang} />}
+          {view === "risk" && <RiskView onNavigate={handleNavigate} t={t} lang={lang} />}
 
           {view === "documents" && (
             <DocumentsView
-              onNavigate={setView}
+              initialDocId={selectedDocId}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
               role={role}
+              currentUser={currentUser}
             />
           )}
 
-          {view === "reports" && (
-            <ReportsView
-              onNavigate={setView}
+          {(view === "sop" || view === "sop_composer") && (
+            <SopView
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
               role={role}
+              currentUser={currentUser}
+              initialMode={view === "sop_composer" ? "composer" : "list"}
+            />
+          )}
+
+          {(view === "reports" || view === "department_report") && (
+            <ReportsView
+              onNavigate={handleNavigate}
+              t={t}
+              lang={lang}
+              role={role}
+              currentUser={currentUser}
+              initialMode={view === "department_report" ? "department" : undefined}
             />
           )}
 
           {view === "admin" && (
             <AdminView
-              onNavigate={setView}
+              onNavigate={handleNavigate}
               t={t}
               lang={lang}
             />

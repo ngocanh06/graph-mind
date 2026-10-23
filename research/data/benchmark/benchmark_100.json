@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "BM_ERP_01",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #57418 của khách hàng #11000",
+    "ground_truth": "Đơn hàng #57418 của khách hàng #11000 có giá trị $2,770.27 USD.",
+    "expected_keywords": [
+      "11000",
+      "57418"
+    ]
+  },
+  {
+    "id": "BM_ERP_02",
+    "category": "ERP",
+    "query": "Khách hàng #11000 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #51522 của khách hàng #11000 có giá trị $2,587.88 USD.",
+    "expected_keywords": [
+      "11000",
+      "51522"
+    ]
+  },
+  {
+    "id": "BM_ERP_03",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #43793 của khách hàng #11000",
+    "ground_truth": "Đơn hàng #43793 của khách hàng #11000 có giá trị $3,756.99 USD.",
+    "expected_keywords": [
+      "11000",
+      "43793"
+    ]
+  },
+  {
+    "id": "BM_ERP_04",
+    "category": "ERP",
+    "query": "Khách hàng #11001 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #72773 của khách hàng #11001 có giá trị $650.80 USD.",
+    "expected_keywords": [
+      "11001",
+      "72773"
+    ]
+  },
+  {
+    "id": "BM_ERP_05",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #51493 của khách hàng #11001",
+    "ground_truth": "Đơn hàng #51493 của khách hàng #11001 có giá trị $2,674.02 USD.",
+    "expected_keywords": [
+      "11001",
+      "51493"
+    ]
+  },
+  {
+    "id": "BM_ERP_06",
+    "category": "ERP",
+    "query": "Khách hàng #11001 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #43767 của khách hàng #11001 có giá trị $3,729.36 USD.",
+    "expected_keywords": [
+      "11001",
+      "43767"
+    ]
+  },
+  {
+    "id": "BM_ERP_07",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #51238 của khách hàng #11002",
+    "ground_truth": "Đơn hàng #51238 của khách hàng #11002 có giá trị $2,535.96 USD.",
+    "expected_keywords": [
+      "11002",
+      "51238"
+    ]
+  },
+  {
+    "id": "BM_ERP_08",
+    "category": "ERP",
+    "query": "Khách hàng #11002 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #53237 của khách hàng #11002 có giá trị $2,673.06 USD.",
+    "expected_keywords": [
+      "11002",
+      "53237"
+    ]
+  },
+  {
+    "id": "BM_ERP_09",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #43736 của khách hàng #11002",
+    "ground_truth": "Đơn hàng #43736 của khách hàng #11002 có giá trị $3,756.99 USD.",
+    "expected_keywords": [
+      "11002",
+      "43736"
+    ]
+  },
+  {
+    "id": "BM_ERP_10",
+    "category": "ERP",
+    "query": "Khách hàng #11003 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #57783 của khách hàng #11003 có giá trị $2,674.48 USD.",
+    "expected_keywords": [
+      "11003",
+      "57783"
+    ]
+  },
+  {
+    "id": "BM_ERP_11",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #51315 của khách hàng #11003",
+    "ground_truth": "Đơn hàng #51315 của khách hàng #11003 có giá trị $2,562.45 USD.",
+    "expected_keywords": [
+      "11003",
+      "51315"
+    ]
+  },
+  {
+    "id": "BM_ERP_12",
+    "category": "ERP",
+    "query": "Khách hàng #11003 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #43701 của khách hàng #11003 có giá trị $3,756.99 USD.",
+    "expected_keywords": [
+      "11003",
+      "43701"
+    ]
+  },
+  {
+    "id": "BM_ERP_13",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #57293 của khách hàng #11004",
+    "ground_truth": "Đơn hàng #57293 của khách hàng #11004 có giá trị $2,673.06 USD.",
+    "expected_keywords": [
+      "11004",
+      "57293"
+    ]
+  },
+  {
+    "id": "BM_ERP_14",
+    "category": "ERP",
+    "query": "Khách hàng #11004 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #51595 của khách hàng #11004 có giá trị $2,626.54 USD.",
+    "expected_keywords": [
+      "11004",
+      "51595"
+    ]
+  },
+  {
+    "id": "BM_ERP_15",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #43810 của khách hàng #11004",
+    "ground_truth": "Đơn hàng #43810 của khách hàng #11004 có giá trị $3,756.99 USD.",
+    "expected_keywords": [
+      "11004",
+      "43810"
+    ]
+  },
+  {
+    "id": "BM_ERP_16",
+    "category": "ERP",
+    "query": "Khách hàng #11005 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #57361 của khách hàng #11005 có giá trị $2,634.40 USD.",
+    "expected_keywords": [
+      "11005",
+      "57361"
+    ]
+  },
+  {
+    "id": "BM_ERP_17",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #51612 của khách hàng #11005",
+    "ground_truth": "Đơn hàng #51612 của khách hàng #11005 có giá trị $2,610.31 USD.",
+    "expected_keywords": [
+      "11005",
+      "51612"
+    ]
+  },
+  {
+    "id": "BM_ERP_18",
+    "category": "ERP",
+    "query": "Khách hàng #11005 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #43704 của khách hàng #11005 có giá trị $3,729.36 USD.",
+    "expected_keywords": [
+      "11005",
+      "43704"
+    ]
+  },
+  {
+    "id": "BM_ERP_19",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #58007 của khách hàng #11006",
+    "ground_truth": "Đơn hàng #58007 của khách hàng #11006 có giá trị $2,634.40 USD.",
+    "expected_keywords": [
+      "11006",
+      "58007"
+    ]
+  },
+  {
+    "id": "BM_ERP_20",
+    "category": "ERP",
+    "query": "Khách hàng #11006 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #51198 của khách hàng #11006 có giá trị $2,580.14 USD.",
+    "expected_keywords": [
+      "11006",
+      "51198"
+    ]
+  },
+  {
+    "id": "BM_ERP_21",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #43819 của khách hàng #11006",
+    "ground_truth": "Đơn hàng #43819 của khách hàng #11006 có giá trị $3,756.99 USD.",
+    "expected_keywords": [
+      "11006",
+      "43819"
+    ]
+  },
+  {
+    "id": "BM_ERP_22",
+    "category": "ERP",
+    "query": "Khách hàng #11007 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #54705 của khách hàng #11007 có giá trị $2,673.06 USD.",
+    "expected_keywords": [
+      "11007",
+      "54705"
+    ]
+  },
+  {
+    "id": "BM_ERP_23",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #51581 của khách hàng #11007",
+    "ground_truth": "Đơn hàng #51581 của khách hàng #11007 có giá trị $2,643.10 USD.",
+    "expected_keywords": [
+      "11007",
+      "51581"
+    ]
+  },
+  {
+    "id": "BM_ERP_24",
+    "category": "ERP",
+    "query": "Khách hàng #11007 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #43743 của khách hàng #11007 có giá trị $3,756.99 USD.",
+    "expected_keywords": [
+      "11007",
+      "43743"
+    ]
+  },
+  {
+    "id": "BM_ERP_25",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #53765 của khách hàng #11008",
+    "ground_truth": "Đơn hàng #53765 của khách hàng #11008 có giá trị $2,673.06 USD.",
+    "expected_keywords": [
+      "11008",
+      "53765"
+    ]
+  },
+  {
+    "id": "BM_ERP_26",
+    "category": "ERP",
+    "query": "Khách hàng #11008 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #51282 của khách hàng #11008 có giá trị $2,555.05 USD.",
+    "expected_keywords": [
+      "11008",
+      "51282"
+    ]
+  },
+  {
+    "id": "BM_ERP_27",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #43826 của khách hàng #11008",
+    "ground_truth": "Đơn hàng #43826 của khách hàng #11008 có giá trị $3,729.36 USD.",
+    "expected_keywords": [
+      "11008",
+      "43826"
+    ]
+  },
+  {
+    "id": "BM_ERP_28",
+    "category": "ERP",
+    "query": "Khách hàng #11009 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #57736 của khách hàng #11009 có giá trị $2,673.06 USD.",
+    "expected_keywords": [
+      "11009",
+      "57736"
+    ]
+  },
+  {
+    "id": "BM_ERP_29",
+    "category": "ERP",
+    "query": "Kiểm tra giá trị đơn hàng #51562 của khách hàng #11009",
+    "ground_truth": "Đơn hàng #51562 của khách hàng #11009 có giá trị $2,538.49 USD.",
+    "expected_keywords": [
+      "11009",
+      "51562"
+    ]
+  },
+  {
+    "id": "BM_ERP_30",
+    "category": "ERP",
+    "query": "Khách hàng #11009 có đơn hàng nào trong hệ thống không?",
+    "ground_truth": "Đơn hàng #43837 của khách hàng #11009 có giá trị $3,729.36 USD.",
+    "expected_keywords": [
+      "11009",
+      "43837"
+    ]
+  },
+  {
+    "id": "BM_CUAD_01",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Governing Law trong hợp đồng của công ty WPPPLC",
+    "ground_truth": "Hợp đồng WPPPLC_04_30_2020-EX-4.28-SERVICE AGREEMENT của WPPPLC quy định điều khoản Governing Law: The Company is not a party to any collective agreement which affects the Executive's employment. 22. GENERAL 22.1 This Agreement is governed by and co",
+    "expected_keywords": [
+      "WPPPLC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_CUAD_02",
+    "category": "CUAD",
+    "query": "Quy định về Termination áp dụng cho đối tác WPPPLC như thế nào?",
+    "ground_truth": "Hợp đồng WPPPLC_04_30_2020-EX-4.28-SERVICE AGREEMENT của WPPPLC quy định điều khoản Termination: . The deferred stock element will be governed by the rules of the relevant stock plan. 1.4 In the event the Executive's employment is terminated or he",
+    "expected_keywords": [
+      "WPPPLC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_03",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Termination trong hợp đồng của công ty ASPIRITYHOLDINGSLLC",
+    "ground_truth": "Hợp đồng ASPIRITYHOLDINGSLLC_05_07_2012-EX-10.6-OUTSOURCING AGREEMENT của ASPIRITYHOLDINGSLLC quy định điều khoản Termination: .01 Representations and Warranties of the Contractor. The Contractor hereby represents and warrants to the Company as  follows, which representations ",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_04",
+    "category": "CUAD",
+    "query": "Quy định về Confidentiality áp dụng cho đối tác ASPIRITYHOLDINGSLLC như thế nào?",
+    "ground_truth": "Hợp đồng ASPIRITYHOLDINGSLLC_05_07_2012-EX-10.6-OUTSOURCING AGREEMENT của ASPIRITYHOLDINGSLLC quy định điều khoản Confidentiality: .     Failure of Suppliers to Perform: Contractor will endeavor to the best of its knowledge and ability guard against any loss to Company  through fa",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_CUAD_05",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Governing Law trong hợp đồng của công ty ASPIRITYHOLDINGSLLC",
+    "ground_truth": "Hợp đồng ASPIRITYHOLDINGSLLC_05_07_2012-EX-10.6-OUTSOURCING AGREEMENT của ASPIRITYHOLDINGSLLC quy định điều khoản Governing Law: .01 Representations and Warranties of the Contractor. The Contractor hereby represents and warrants to the Company as  follows, which representations ",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_CUAD_06",
+    "category": "CUAD",
+    "query": "Quy định về Indemnification áp dụng cho đối tác ASPIRITYHOLDINGSLLC như thế nào?",
+    "ground_truth": "Hợp đồng ASPIRITYHOLDINGSLLC_05_07_2012-EX-10.6-OUTSOURCING AGREEMENT của ASPIRITYHOLDINGSLLC quy định điều khoản Indemnification: Responsibility of and Indemnification by Agency: Contractor agrees to indemnify and hold Company, its officers, directors, agents and  employees harml",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_CUAD_07",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Confidentiality trong hợp đồng của công ty HOSPITALITYINVESTORSTRUST,INC",
+    "ground_truth": "Hợp đồng HOSPITALITYINVESTORSTRUST,INC_04_07_2014-EX-10.26-FRANCHISE AGREEMENT của HOSPITALITYINVESTORSTRUST,INC quy định điều khoản Confidentiality: . You will not make unauthorized copies of any portion of the Proprietary Information; and will adopt and implement all procedures we may periodically",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_CUAD_08",
+    "category": "CUAD",
+    "query": "Quy định về Indemnification áp dụng cho đối tác HOSPITALITYINVESTORSTRUST,INC như thế nào?",
+    "ground_truth": "Hợp đồng HOSPITALITYINVESTORSTRUST,INC_04_07_2014-EX-10.26-FRANCHISE AGREEMENT của HOSPITALITYINVESTORSTRUST,INC quy định điều khoản Indemnification: .   13.2.4.4 You may not sell any Securities unless you clearly disclose to all purchasers and offerees that: (i) neither we, nor any Entity, nor any ",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_CUAD_09",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Governing Law trong hợp đồng của công ty HOSPITALITYINVESTORSTRUST,INC",
+    "ground_truth": "Hợp đồng HOSPITALITYINVESTORSTRUST,INC_04_07_2014-EX-10.26-FRANCHISE AGREEMENT của HOSPITALITYINVESTORSTRUST,INC quy định điều khoản Governing Law: . You consent to personal jurisdiction and venue in each of these jurisdictions and waive, and agree not to assert, move or otherwise claim that the v",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_CUAD_10",
+    "category": "CUAD",
+    "query": "Quy định về Termination áp dụng cho đối tác HOSPITALITYINVESTORSTRUST,INC như thế nào?",
+    "ground_truth": "Hợp đồng HOSPITALITYINVESTORSTRUST,INC_04_07_2014-EX-10.26-FRANCHISE AGREEMENT của HOSPITALITYINVESTORSTRUST,INC quy định điều khoản Termination: . We may immediately terminate this Agreement on notice to you and without any opportunity to cure the default if:   14.2.1 after curing any material ",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_11",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Audit Rights trong hợp đồng của công ty HOSPITALITYINVESTORSTRUST,INC",
+    "ground_truth": "Hợp đồng HOSPITALITYINVESTORSTRUST,INC_04_07_2014-EX-10.26-FRANCHISE AGREEMENT của HOSPITALITYINVESTORSTRUST,INC quy định điều khoản Audit Rights: .0 DEFINITIONS   The following capitalized terms will have the meanings set forth after each term:   \"Affiliate\" means any natural person or firm, cor",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Audit Rights"
+    ]
+  },
+  {
+    "id": "BM_CUAD_12",
+    "category": "CUAD",
+    "query": "Quy định về Termination áp dụng cho đối tác Smart Rx Systems Inc như thế nào?",
+    "ground_truth": "Hợp đồng SmartRxSystemsInc_20180914_1-A_EX1A-6 MAT CTRCT_11351705_EX1A-6 MAT CTRCT_Distributor Agreement của Smart Rx Systems Inc quy định điều khoản Termination: . All rights to use such Company Marks shall cease upon expiration or termination of this Agreement. 5.5 Infringement Enforcement. Distributor agrees ",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_13",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Confidentiality trong hợp đồng của công ty Smart Rx Systems Inc",
+    "ground_truth": "Hợp đồng SmartRxSystemsInc_20180914_1-A_EX1A-6 MAT CTRCT_11351705_EX1A-6 MAT CTRCT_Distributor Agreement của Smart Rx Systems Inc quy định điều khoản Confidentiality: . All rights to use such Company Marks shall cease upon expiration or termination of this Agreement. 5.5 Infringement Enforcement. Distributor agrees ",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_CUAD_14",
+    "category": "CUAD",
+    "query": "Quy định về Governing Law áp dụng cho đối tác Smart Rx Systems Inc như thế nào?",
+    "ground_truth": "Hợp đồng SmartRxSystemsInc_20180914_1-A_EX1A-6 MAT CTRCT_11351705_EX1A-6 MAT CTRCT_Distributor Agreement của Smart Rx Systems Inc quy định điều khoản Governing Law: . 9.4 No Implied Warranties. TO THE EXTENT PERMITTED BY APPLICABLE LAW, ALL IMPLIED WARRANTIES, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MER",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_CUAD_15",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Indemnification trong hợp đồng của công ty Smart Rx Systems Inc",
+    "ground_truth": "Hợp đồng SmartRxSystemsInc_20180914_1-A_EX1A-6 MAT CTRCT_11351705_EX1A-6 MAT CTRCT_Distributor Agreement của Smart Rx Systems Inc quy định điều khoản Indemnification: . 9.4 No Implied Warranties. TO THE EXTENT PERMITTED BY APPLICABLE LAW, ALL IMPLIED WARRANTIES, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MER",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_CUAD_16",
+    "category": "CUAD",
+    "query": "Quy định về Dispute Resolution áp dụng cho đối tác SUCAMPOPHARMACEUTICALS,INC như thế nào?",
+    "ground_truth": "Hợp đồng SUCAMPOPHARMACEUTICALS,INC_11_04_2015-EX-10.2-STRATEGIC ALLIANCE AGREEMENT của SUCAMPOPHARMACEUTICALS,INC quy định điều khoản Dispute Resolution: DEFINITIONS AND INTERPRETATION Section 1.01 Definitions. As used in this Agreement, the following terms have the respective meanings set forth below: ",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Dispute Resolution"
+    ]
+  },
+  {
+    "id": "BM_CUAD_17",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Indemnification trong hợp đồng của công ty SUCAMPOPHARMACEUTICALS,INC",
+    "ground_truth": "Hợp đồng SUCAMPOPHARMACEUTICALS,INC_11_04_2015-EX-10.2-STRATEGIC ALLIANCE AGREEMENT của SUCAMPOPHARMACEUTICALS,INC quy định điều khoản Indemnification: . Section 5.03 Indemnification Procedure. Whenever any claim shall arise for indemnification under this Article V, the indemnified Person making such ",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_CUAD_18",
+    "category": "CUAD",
+    "query": "Quy định về Termination áp dụng cho đối tác SUCAMPOPHARMACEUTICALS,INC như thế nào?",
+    "ground_truth": "Hợp đồng SUCAMPOPHARMACEUTICALS,INC_11_04_2015-EX-10.2-STRATEGIC ALLIANCE AGREEMENT của SUCAMPOPHARMACEUTICALS,INC quy định điều khoản Termination: ., which is no longer effective; (ii) under which the Company has incurred outstanding Indebtedness, guarantees or Liens, or has assumed other similar",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_19",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Governing Law trong hợp đồng của công ty SUCAMPOPHARMACEUTICALS,INC",
+    "ground_truth": "Hợp đồng SUCAMPOPHARMACEUTICALS,INC_11_04_2015-EX-10.2-STRATEGIC ALLIANCE AGREEMENT của SUCAMPOPHARMACEUTICALS,INC quy định điều khoản Governing Law: ARTICLE VII GUARANTEE\n\nSection 7.01 Guarantee 19\n\nARTICLE VIII MISCELLANEOUS\n\nSection 8.01 Governing Law 19 Section 8.02 Jurisdiction 19 Section 8.03 ",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_CUAD_20",
+    "category": "CUAD",
+    "query": "Quy định về Termination áp dụng cho đối tác BEYONDCOMCORP như thế nào?",
+    "ground_truth": "Hợp đồng BEYONDCOMCORP_08_03_2000-EX-10.2-CO-HOSTING AGREEMENT của BEYONDCOMCORP quy định điều khoản Termination: . A party may terminate this Agreement immediately: (i) if           the other party engages in any material unlawful business practice and           ",
+    "expected_keywords": [
+      "BEYONDCOMCORP",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_21",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Governing Law trong hợp đồng của công ty BEYONDCOMCORP",
+    "ground_truth": "Hợp đồng BEYONDCOMCORP_08_03_2000-EX-10.2-CO-HOSTING AGREEMENT của BEYONDCOMCORP quy định điều khoản Governing Law: 8.   GENERAL.\n\n\n\n\n\n  (a)  Co-Host agrees that it will not, directly or indirectly, export or           transmit the Product and technical data (or any",
+    "expected_keywords": [
+      "BEYONDCOMCORP",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_CUAD_22",
+    "category": "CUAD",
+    "query": "Quy định về Confidentiality áp dụng cho đối tác BEYONDCOMCORP như thế nào?",
+    "ground_truth": "Hợp đồng BEYONDCOMCORP_08_03_2000-EX-10.2-CO-HOSTING AGREEMENT của BEYONDCOMCORP quy định điều khoản Confidentiality: Agreement.\n\n  (b)  Advertising Materials; Destination Operation. Co-Host shall provide to           NAI artwork and text materials with respect to the",
+    "expected_keywords": [
+      "BEYONDCOMCORP",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_CUAD_23",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Indemnification trong hợp đồng của công ty ADIANUTRITION,INC",
+    "ground_truth": "Hợp đồng ADIANUTRITION,INC_04_01_2005-EX-10.D2-RESELLER AGREEMENT của ADIANUTRITION,INC quy định điều khoản Indemnification: 3.4 TAXES, TARIFFS, FEES. PivX's Suggested Prices and Per Copy Fees do not include any national, state or local sales, use, value added or other taxes",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_CUAD_24",
+    "category": "CUAD",
+    "query": "Quy định về Audit Rights áp dụng cho đối tác ADIANUTRITION,INC như thế nào?",
+    "ground_truth": "Hợp đồng ADIANUTRITION,INC_04_01_2005-EX-10.D2-RESELLER AGREEMENT của ADIANUTRITION,INC quy định điều khoản Audit Rights: 3.3 PAYMENT. All payments to PivX shall be made within thirty (30) days after the receipt by Detto of the PivX's invoice. Detto shall pay PivX a late ",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Audit Rights"
+    ]
+  },
+  {
+    "id": "BM_CUAD_25",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Governing Law trong hợp đồng của công ty ADIANUTRITION,INC",
+    "ground_truth": "Hợp đồng ADIANUTRITION,INC_04_01_2005-EX-10.D2-RESELLER AGREEMENT của ADIANUTRITION,INC quy định điều khoản Governing Law: 3.5 SHIPMENT AND DELIVERY. PivX shall electronically deliver Qwik-Fix Pro to Detto. Detto shall inspect all software delivered to it, upon receipt and",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_CUAD_26",
+    "category": "CUAD",
+    "query": "Quy định về Limitation of Liability áp dụng cho đối tác ADIANUTRITION,INC như thế nào?",
+    "ground_truth": "Hợp đồng ADIANUTRITION,INC_04_01_2005-EX-10.D2-RESELLER AGREEMENT của ADIANUTRITION,INC quy định điều khoản Limitation of Liability: (b) The following shall survive termination of this Agreement: Section 1.2, the last two sentences of Section 2.2, Sections 2.3 through and including ",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Limitation of Liability"
+    ]
+  },
+  {
+    "id": "BM_CUAD_27",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Termination trong hợp đồng của công ty ADIANUTRITION,INC",
+    "ground_truth": "Hợp đồng ADIANUTRITION,INC_04_01_2005-EX-10.D2-RESELLER AGREEMENT của ADIANUTRITION,INC quy định điều khoản Termination: (b) The following shall survive termination of this Agreement: Section 1.2, the last two sentences of Section 2.2, Sections 2.3 through and including ",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_28",
+    "category": "CUAD",
+    "query": "Quy định về Termination áp dụng cho đối tác BNLFINANCIALCORP như thế nào?",
+    "ground_truth": "Hợp đồng BNLFINANCIALCORP_03_30_2007-EX-10.8-OUTSOURCING AGREEMENT của BNLFINANCIALCORP quy định điều khoản Termination: .   F. Upon termination or expiration of this Agreement, BNL shall return all software and related manuals, if any, provided by VIP to BNL during the ",
+    "expected_keywords": [
+      "BNLFINANCIALCORP",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_CUAD_29",
+    "category": "CUAD",
+    "query": "Tìm điều khoản Limitation of Liability trong hợp đồng của công ty BNLFINANCIALCORP",
+    "ground_truth": "Hợp đồng BNLFINANCIALCORP_03_30_2007-EX-10.8-OUTSOURCING AGREEMENT của BNLFINANCIALCORP quy định điều khoản Limitation of Liability: 11. BNL LIMITATION OF LIABILITY.  BNL shall have no liability with respect to its obligations under this agreement or otherwise for consequential, exe",
+    "expected_keywords": [
+      "BNLFINANCIALCORP",
+      "Limitation of Liability"
+    ]
+  },
+  {
+    "id": "BM_CUAD_30",
+    "category": "CUAD",
+    "query": "Quy định về Indemnification áp dụng cho đối tác BNLFINANCIALCORP như thế nào?",
+    "ground_truth": "Hợp đồng BNLFINANCIALCORP_03_30_2007-EX-10.8-OUTSOURCING AGREEMENT của BNLFINANCIALCORP quy định điều khoản Indemnification: direction, such copies of BNL data maintained on the VIIP system in a format and in a manner as designated by BNL. BNL shall pay a fee to VIP for prep",
+    "expected_keywords": [
+      "BNLFINANCIALCORP",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_01",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Termination và khách hàng #11000",
+    "ground_truth": "Thông tin đa diện gồm đối tác WPPPLC, điều khoản Termination và tài khoản #11000.",
+    "expected_keywords": [
+      "WPPPLC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_02",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty ASPIRITYHOLDINGSLLC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Termination và tài khoản #11000.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_03",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Confidentiality khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Confidentiality và tài khoản #11001.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_MULTI_04",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác ASPIRITYHOLDINGSLLC và các điều khoản Governing Law kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Governing Law và tài khoản #11001.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_05",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Indemnification và khách hàng #11001",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Indemnification và tài khoản #11001.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_06",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty HOSPITALITYINVESTORSTRUST,INC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Confidentiality và tài khoản #11002.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_MULTI_07",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Indemnification khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Indemnification và tài khoản #11002.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_08",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác HOSPITALITYINVESTORSTRUST,INC và các điều khoản Governing Law kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Governing Law và tài khoản #11002.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_09",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Termination và khách hàng #11003",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Termination và tài khoản #11003.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_10",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty HOSPITALITYINVESTORSTRUST,INC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Audit Rights và tài khoản #11003.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Audit Rights"
+    ]
+  },
+  {
+    "id": "BM_MULTI_11",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Termination khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác Smart Rx Systems Inc, điều khoản Termination và tài khoản #11003.",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_12",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác Smart Rx Systems Inc và các điều khoản Confidentiality kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác Smart Rx Systems Inc, điều khoản Confidentiality và tài khoản #11004.",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_MULTI_13",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Governing Law và khách hàng #11004",
+    "ground_truth": "Thông tin đa diện gồm đối tác Smart Rx Systems Inc, điều khoản Governing Law và tài khoản #11004.",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_14",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty Smart Rx Systems Inc và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác Smart Rx Systems Inc, điều khoản Indemnification và tài khoản #11004.",
+    "expected_keywords": [
+      "Smart Rx Systems Inc",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_15",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Dispute Resolution khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác SUCAMPOPHARMACEUTICALS,INC, điều khoản Dispute Resolution và tài khoản #11005.",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Dispute Resolution"
+    ]
+  },
+  {
+    "id": "BM_MULTI_16",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác SUCAMPOPHARMACEUTICALS,INC và các điều khoản Indemnification kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác SUCAMPOPHARMACEUTICALS,INC, điều khoản Indemnification và tài khoản #11005.",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_17",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Termination và khách hàng #11005",
+    "ground_truth": "Thông tin đa diện gồm đối tác SUCAMPOPHARMACEUTICALS,INC, điều khoản Termination và tài khoản #11005.",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_18",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty SUCAMPOPHARMACEUTICALS,INC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác SUCAMPOPHARMACEUTICALS,INC, điều khoản Governing Law và tài khoản #11006.",
+    "expected_keywords": [
+      "SUCAMPOPHARMACEUTICALS,INC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_19",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Termination khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác BEYONDCOMCORP, điều khoản Termination và tài khoản #11006.",
+    "expected_keywords": [
+      "BEYONDCOMCORP",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_20",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác BEYONDCOMCORP và các điều khoản Governing Law kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác BEYONDCOMCORP, điều khoản Governing Law và tài khoản #11006.",
+    "expected_keywords": [
+      "BEYONDCOMCORP",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_21",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Confidentiality và khách hàng #11007",
+    "ground_truth": "Thông tin đa diện gồm đối tác BEYONDCOMCORP, điều khoản Confidentiality và tài khoản #11007.",
+    "expected_keywords": [
+      "BEYONDCOMCORP",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_MULTI_22",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty ADIANUTRITION,INC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác ADIANUTRITION,INC, điều khoản Indemnification và tài khoản #11007.",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_23",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Audit Rights khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác ADIANUTRITION,INC, điều khoản Audit Rights và tài khoản #11007.",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Audit Rights"
+    ]
+  },
+  {
+    "id": "BM_MULTI_24",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác ADIANUTRITION,INC và các điều khoản Governing Law kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác ADIANUTRITION,INC, điều khoản Governing Law và tài khoản #11008.",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_25",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Limitation of Liability và khách hàng #11008",
+    "ground_truth": "Thông tin đa diện gồm đối tác ADIANUTRITION,INC, điều khoản Limitation of Liability và tài khoản #11008.",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Limitation of Liability"
+    ]
+  },
+  {
+    "id": "BM_MULTI_26",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty ADIANUTRITION,INC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác ADIANUTRITION,INC, điều khoản Termination và tài khoản #11008.",
+    "expected_keywords": [
+      "ADIANUTRITION,INC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_27",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Termination khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác BNLFINANCIALCORP, điều khoản Termination và tài khoản #11009.",
+    "expected_keywords": [
+      "BNLFINANCIALCORP",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_28",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác BNLFINANCIALCORP và các điều khoản Limitation of Liability kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác BNLFINANCIALCORP, điều khoản Limitation of Liability và tài khoản #11009.",
+    "expected_keywords": [
+      "BNLFINANCIALCORP",
+      "Limitation of Liability"
+    ]
+  },
+  {
+    "id": "BM_MULTI_29",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Indemnification và khách hàng #11009",
+    "ground_truth": "Thông tin đa diện gồm đối tác BNLFINANCIALCORP, điều khoản Indemnification và tài khoản #11009.",
+    "expected_keywords": [
+      "BNLFINANCIALCORP",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_30",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty WPPPLC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác WPPPLC, điều khoản Governing Law và tài khoản #11000.",
+    "expected_keywords": [
+      "WPPPLC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_31",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Termination khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác WPPPLC, điều khoản Termination và tài khoản #11000.",
+    "expected_keywords": [
+      "WPPPLC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_32",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác ASPIRITYHOLDINGSLLC và các điều khoản Termination kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Termination và tài khoản #11000.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_33",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Confidentiality và khách hàng #11001",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Confidentiality và tài khoản #11001.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_MULTI_34",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty ASPIRITYHOLDINGSLLC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Governing Law và tài khoản #11001.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_35",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Indemnification khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác ASPIRITYHOLDINGSLLC, điều khoản Indemnification và tài khoản #11001.",
+    "expected_keywords": [
+      "ASPIRITYHOLDINGSLLC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_36",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác HOSPITALITYINVESTORSTRUST,INC và các điều khoản Confidentiality kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Confidentiality và tài khoản #11002.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Confidentiality"
+    ]
+  },
+  {
+    "id": "BM_MULTI_37",
+    "category": "MULTI",
+    "query": "Tra cứu chính sách hợp đồng Indemnification và khách hàng #11002",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Indemnification và tài khoản #11002.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Indemnification"
+    ]
+  },
+  {
+    "id": "BM_MULTI_38",
+    "category": "MULTI",
+    "query": "Tìm kiếm tổng hợp thông tin công ty HOSPITALITYINVESTORSTRUST,INC và lịch sử giao dịch",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Governing Law và tài khoản #11002.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Governing Law"
+    ]
+  },
+  {
+    "id": "BM_MULTI_39",
+    "category": "MULTI",
+    "query": "Rà soát rủi ro pháp lý điều khoản Termination khi ký kết đơn hàng mới",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Termination và tài khoản #11003.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Termination"
+    ]
+  },
+  {
+    "id": "BM_MULTI_40",
+    "category": "MULTI",
+    "query": "Kiểm tra đối tác HOSPITALITYINVESTORSTRUST,INC và các điều khoản Audit Rights kèm tình trạng đơn hàng",
+    "ground_truth": "Thông tin đa diện gồm đối tác HOSPITALITYINVESTORSTRUST,INC, điều khoản Audit Rights và tài khoản #11003.",
+    "expected_keywords": [
+      "HOSPITALITYINVESTORSTRUST,INC",
+      "Audit Rights"
+    ]
+  }
+]

@@ -1,19 +1,265 @@
-import React, { useState, useRef, useEffect } from "react";
-import { queryCopilot } from "../../services/api";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Bot, Send, Paperclip, Sparkles, BookOpen, ChevronRight,
+  Search, Plus, FileText, ThumbsUp, ThumbsDown, Copy,
+  ExternalLink, ShieldCheck, AlertCircle, X, Menu, Clock,
+  ArrowUpRight, CheckCircle2, Bookmark, Check, Pin
+} from "lucide-react";
+import {
+  queryCopilot,
+  fetchCopilotSessions,
+  fetchCopilotSessionDetail,
+  createCopilotSession,
+  deleteCopilotSession,
+  pinCopilotSession
+} from "../../services/api";
 
-export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
+function formatInlineMetrics(text) {
+  if (!text) return null;
+  // Regex bắt các cụm tiền tệ: $XX.XX triệu USD, $XX,XXX USD, $XX.XX
+  // và các cụm đơn hàng: XXX đơn hàng, XXX đơn, khách hàng #XXXX
+  const parts = text.split(/(\$[\d,.]+\s*(?:triệu USD|tỷ USD|USD|M|K)?|\b\d{1,3}(?:,\d{3})+\s*(?:đơn hàng|đơn|khách hàng)?|\b\d{3,6}\s*(?:đơn hàng|đơn)\b|#\d+)/gi);
+
+  return parts.map((part, i) => {
+    if (/^\$[\d,.]+/i.test(part)) {
+      return (
+        <strong
+          key={i}
+          style={{
+            color: "var(--blue)",
+            background: "var(--blue-soft)",
+            padding: "1px 6px",
+            borderRadius: "var(--r-xs, 4px)",
+            fontFamily: "var(--f-mono, monospace)",
+            fontSize: "0.95em",
+            fontWeight: 700
+          }}
+        >
+          {part}
+        </strong>
+      );
+    }
+    if (/\b\d+[\d,]*\s*(?:đơn hàng|đơn|khách hàng)/i.test(part)) {
+      return (
+        <span
+          key={i}
+          style={{
+            fontWeight: 700,
+            color: "var(--text-1)"
+          }}
+        >
+          {part}
+        </span>
+      );
+    }
+    if (/^#\d+/.test(part)) {
+      return (
+        <span
+          key={i}
+          style={{
+            fontFamily: "var(--f-mono, monospace)",
+            color: "#8b5cf6",
+            background: "rgba(139,92,246,0.08)",
+            padding: "1px 5px",
+            borderRadius: 4,
+            fontWeight: 600
+          }}
+        >
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+function renderFormattedMessage(text) {
+  if (!text) return null;
+
+  // 1. Chuẩn hóa phân tách dòng triệt để
+  let str = text;
+  // Tách số đầu mục dính liền: "sau: 1. AAA" hoặc "2014. 2. BBB"
+  str = str.replace(/([.:])\s+(\d+[\.\)])\s+/g, "$1\n$2 ");
+  str = str.replace(/([)\]])\s+(\d+[\.\)])\s+/g, "$1\n$2 ");
+  // Tách gạch đầu dòng dính liền: "- Năm 2011: ... - Năm 2012:"
+  str = str.replace(/\s+([-\*•])\s+/g, "\n$1 ");
+  str = str.replace(/([.:])\s+([-\*•])\s+/g, "$1\n$2 ");
+  // Tách cụ thể / ví dụ nếu dính liền
+  str = str.replace(/([.:])\s+(Cụ thể:?|Ví dụ:?|Lưu ý:?)/g, "$1\n$2");
+  // Tách mốc năm dính liền nếu có: "... đơn. Năm 2012..." hoặc "Cụ thể, doanh thu năm 2011..."
+  str = str.replace(/([.:])\s+(Năm \d{4}:?|Đến năm \d{4},?|Vào năm \d{4},?|Trong năm \d{4},?)/g, "$1\n- $2");
+
+  const rawLines = str.split("\n").map(l => l.trim()).filter(Boolean);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {rawLines.map((line, idx) => {
+        // A. Mục đánh số danh sách: "1. Tên hợp đồng..." hoặc "1) ..."
+        const numMatch = line.match(/^(\d+)[\.\)]\s*(.+)/);
+        if (numMatch) {
+          const num = numMatch[1];
+          const content = numMatch[2];
+          return (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "10px 14px",
+                borderRadius: "var(--r-md, 10px)",
+                background: "var(--surface-1, rgba(255,255,255,0.03))",
+                border: "1px solid var(--border-soft, rgba(255,255,255,0.08))",
+                fontSize: 13,
+                lineHeight: 1.6,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "var(--blue-soft, rgba(37,99,235,0.14))",
+                  border: "1px solid rgba(37,99,235,0.25)",
+                  color: "var(--blue, #3b82f6)",
+                  fontWeight: 800,
+                  fontSize: 11.5,
+                  flexShrink: 0,
+                  marginTop: 1
+                }}
+              >
+                {num}
+              </span>
+              <div style={{ flex: 1, color: "var(--text-1)", wordBreak: "break-word" }}>
+                {formatInlineMetrics(content)}
+              </div>
+            </div>
+          );
+        }
+
+        // B. Mục gạch đầu dòng: "- AAA", "* AAA", "• AAA"
+        const bulletMatch = line.match(/^[-*•]\s*(.+)/);
+        if (bulletMatch) {
+          const content = bulletMatch[1];
+          return (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                padding: "8px 14px",
+                marginLeft: 8,
+                borderRadius: "var(--r-sm, 6px)",
+                background: "rgba(37,99,235,0.04)",
+                borderLeft: "3px solid var(--blue, #3b82f6)",
+                fontSize: 13,
+                lineHeight: 1.55,
+                color: "var(--text-1)"
+              }}
+            >
+              <div style={{ flex: 1, wordBreak: "break-word" }}>
+                {formatInlineMetrics(content)}
+              </div>
+            </div>
+          );
+        }
+
+        // C. Tiêu đề / Đoạn chuyển: "Cụ thể:", "Tóm lại:"
+        if (/^(cụ thể|tóm lại|kết luận|ghi chú|khuyến nghị):?/i.test(line)) {
+          return (
+            <div
+              key={idx}
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--text-3)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginTop: 4,
+                marginBottom: -3
+              }}
+            >
+              {line}
+            </div>
+          );
+        }
+
+        // D. Đoạn văn bản thông thường (Intro / Outro)
+        return (
+          <p
+            key={idx}
+            style={{
+              fontSize: 13.5,
+              color: "var(--text-1)",
+              lineHeight: 1.65,
+              margin: 0
+            }}
+          >
+            {formatInlineMetrics(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function CopilotView({
+  onNavigate,
+  t = {},
+  lang = "vi",
+  apiConnected = false,
+  role = "executive",
+  currentUser,
+  initialQuery = "",
+  onClearInitialQuery
+}) {
   const isVi = lang === "vi";
-  const [queryInput, setQueryInput] = useState("");
+
+  // Sessions state (per-user database persistence + US37 department shared documents)
+  const [sessionTab, setSessionTab] = useState("personal"); // "personal" | "department"
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [currentSessionDetail, setCurrentSessionDetail] = useState(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+
+  // Pinning modal & action state (US37 · PB59 · UC.18)
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinTargetSession, setPinTargetSession] = useState(null);
+  const [pinNotesInput, setPinNotesInput] = useState("");
+  const [isPinning, setIsPinning] = useState(false);
+
+  // Drawer toggle states
+  const [showSessionDrawer, setShowSessionDrawer] = useState(true);
+  const [showCitationDrawer, setShowCitationDrawer] = useState(false);
+
+  // Search & input states
+  const [searchHistory, setSearchHistory] = useState("");
+  const [queryInput, setQueryInput] = useState(initialQuery || "");
   const [isInferring, setIsInferring] = useState(false);
-  const [activeThread, setActiveThread] = useState(1);
+  const [showEmptyState, setShowEmptyState] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
 
-  // Modal xem văn bản gốc trích dẫn (Citation Preview)
-  const [activeCitation, setActiveCitation] = useState(null);
+  // Tự động điền câu hỏi khi điều hướng từ các view khác (vd: Executive Dashboard)
+  const textareaRef = useRef(null);
 
-  // Modal soạn thư từ Action Trigger
-  const [actionDraftModal, setActionDraftModal] = useState(null);
-  const [copiedDraft, setCopiedDraft] = useState(false);
+  useEffect(() => {
+    if (initialQuery) {
+      setQueryInput(initialQuery);
+      if (onClearInitialQuery) onClearInitialQuery();
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
+    }
+  }, [initialQuery, onClearInitialQuery]);
+
+  // Citation Preview state (only populated when actual citations exist from queries)
+  const [activeCitation, setActiveCitation] = useState(null);
 
   const messagesEndRef = useRef(null);
 
@@ -22,1141 +268,1514 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
     setTimeout(() => setToastMsg(""), 3500);
   };
 
-  // Lịch sử chat theo thread
-  const [threads, setThreads] = useState({
-    1: {
-      id: 1,
-      title: isVi ? "Khách hàng VIP ABC Corp & Hợp đồng CT-18" : "VIP ABC Corp Churn & Contract CT-18",
-      scope: isVi ? "Bán hàng & Vận hành" : "Sales & Ops",
-      messages: [
-        {
-          id: "m1",
-          sender: "user",
-          time: "10:14",
-          text: isVi
-            ? "Khách hàng ABC Corporation gần đây có rủi ro gì và tôi cần chuẩn bị hồ sơ gì trước ngày 18/10?"
-            : "What are the recent risks with ABC Corporation and what dossier should I prepare before 18 Oct?"
-        },
-        {
-          id: "m2",
-          sender: "copilot",
-          time: "10:14",
-          text: isVi
-            ? "Dựa trên Đồ thị Tri thức và đối soát dữ liệu ERP/CRM của phòng Bán hàng & Vận hành:\n\n1. **Tín hiệu cảnh báo**: Tập đoàn ABC giảm tần suất đặt hàng 32% (từ 8,0 xuống 5,4 đơn/tháng) trong 60 ngày gần nhất.\n2. **Hợp đồng CT-2026-18** (giá trị 1,2 tỷ VND cung ứng linh kiện Sản phẩm A) sẽ hết hạn vào ngày **18/10/2026 (còn 12 ngày)**, chưa có biên bản gia hạn.\n3. **Khuyến nghị tác nghiệp**: Cần chuẩn bị phụ lục hợp đồng 2027 với ưu đãi chiết khấu 5.5% và cam kết SLA giao hàng trong 24h để giữ chân tài khoản này."
-            : "Based on the Sales & Operations Knowledge Graph and ERP telemetry:\n\n1. **Anomaly Signal**: ABC Corp order cadence dropped 32% (from 8.0/mo to 5.4/mo) over trailing 60 days.\n2. **Contract CT-2026-18** (1.2B VND manufacturing supply) expires on **18 Oct 2026 (in 12 days)** with no renewal logged.\n3. **Recommended Action**: Prepare 2027 renewal addendum with 5.5% volume discount and 24h SLA delivery commitment.",
-          graphNodes: [
-            { id: "abc", label: "ABC Corporation", type: "Khách hàng VIP", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5", icon: "fa-building" },
-            { id: "ct18", label: "Contract CT-2026-18", type: "Hợp đồng (1.2B)", color: "#d97706", bg: "#fef3c7", border: "#fcd34d", icon: "fa-file-signature" },
-            { id: "proda", label: "Sản phẩm A", type: "Linh kiện cung ứng", color: "#0284c7", bg: "#e0f2fe", border: "#7dd3fc", icon: "fa-box-archive" },
-            { id: "sig1", label: "Tín hiệu giảm -32%", type: "Cảnh báo rời bỏ", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5", icon: "fa-triangle-exclamation" }
-          ],
-          citations: [
-            {
-              id: "c1",
-              title: "Contract_CT-2026-18.pdf",
-              location: "Trang 2, Điều 4.2",
-              page: "Trang 2",
-              excerpt: isVi
-                ? "Thời hạn hiệu lực đến hết ngày 18 tháng 10 năm 2026. Nếu hai bên không thông báo tái tục trước 15 ngày, hợp đồng sẽ tự động chấm dứt quyền ưu đãi giá."
-                : "Effective until 18 October 2026. Unless renewed 15 days prior, preferential pricing shall lapse.",
-              type: "PDF"
-            },
-            {
-              id: "c2",
-              title: "CRM_Account_Ledger_2026.xlsx",
-              location: "Sheet 'Orders', Dòng 142",
-              page: "Dòng 142",
-              excerpt: isVi
-                ? "Tháng 8: 5 đơn hàng (420M VND). Tháng 9: 3 đơn hàng (260M VND). Nhịp mua hàng giảm 32.4% so với trung bình quý 2."
-                : "August: 5 orders (420M VND). September: 3 orders (260M VND). Cadence reduced by 32.4% vs Q2 average.",
-              type: "SHEETS"
+  const [messages, setMessages] = useState([]);
+
+  // Load user sessions from PostgreSQL whenever currentUser or sessionTab changes
+  const loadSessions = useCallback(async (tab = sessionTab, preserveActiveId = null) => {
+    setIsLoadingSessions(true);
+    try {
+      const mode = tab === "department" ? "pinned" : "personal";
+      const data = await fetchCopilotSessions(mode, currentUser);
+      if (data && data.success && Array.isArray(data.sessions)) {
+        setSessions(data.sessions);
+        const targetId = preserveActiveId || (data.sessions.length > 0 ? data.sessions[0].id : null);
+        if (targetId) {
+          const detail = await fetchCopilotSessionDetail(targetId, currentUser);
+          if (detail && detail.success && detail.session) {
+            setCurrentSessionId(targetId);
+            setCurrentSessionDetail(detail.session);
+            const msgs = detail.session.messages || [];
+            setMessages(msgs);
+            setShowEmptyState(msgs.length === 0);
+            const lastCopilot = msgs.slice().reverse().find(m => m.sender === "copilot" && m.citations?.length > 0);
+            if (lastCopilot && lastCopilot.citations?.length > 0) {
+              setActiveCitation(lastCopilot.citations);
+              setShowCitationDrawer(true);
+            } else {
+              setActiveCitation(null);
+              setShowCitationDrawer(false);
             }
-          ]
-        }
-      ]
-    },
-    2: {
-      id: 2,
-      title: isVi ? "Quy trình Đối soát Công nợ SOP-04" : "Reconciliation SOP-04 Validation",
-      scope: isVi ? "Kế toán & Vận hành" : "Finance & Operations",
-      messages: [
-        {
-          id: "m2-1",
-          sender: "user",
-          time: "09:30",
-          text: isVi ? "Tài liệu SOP-04 hiện tại thiếu trường thông tin nào?" : "What metadata is missing from SOP-04?"
-        },
-        {
-          id: "m2-2",
-          sender: "copilot",
-          time: "09:30",
-          text: isVi
-            ? "Tài liệu **SOP-04_Reconciliation.docx** đang thiếu trường **'Phòng ban chịu trách nhiệm'** và **'Chữ ký kiểm duyệt của Trưởng ban'**. Khoản công nợ 8,6 tỷ VND cần hoàn tất rà soát trước kỳ đối soát cuối quý."
-            : "File **SOP-04_Reconciliation.docx** is missing **'Responsible Department'** and **'Approver Signature'** fields.",
-          graphNodes: [
-            { id: "sop4", label: "SOP-04 Reconciliation", type: "Quy trình", color: "#059669", bg: "#d1fae5", border: "#a7f3d0", icon: "fa-file-lines" },
-            { id: "fin", label: "Phòng Tài chính", type: "Phòng ban", color: "#0284c7", bg: "#e0f2fe", border: "#7dd3fc", icon: "fa-building" }
-          ],
-          citations: [
-            {
-              id: "c3",
-              title: "SOP-04_Reconciliation.docx",
-              location: "Mục 1.2",
-              page: "Trang 1",
-              excerpt: isVi ? "Mục 1.2: Người lập quy trình chưa ký số điện tử." : "Section 1.2: Author digital signature missing.",
-              type: "DOCX"
-            }
-          ]
-        }
-      ]
-    }
-  });
-
-  const currentThreadData = threads[activeThread] || threads[1];
-  const hasUserInteracted = useRef(false);
-
-  // Auto scroll tin nhắn mới khi có tương tác
-  useEffect(() => {
-    if (hasUserInteracted.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [currentThreadData.messages.length, isInferring]);
-
-  // Helper render markdown phong cách doanh nghiệp tinh tế
-  const renderFormattedText = (rawText) => {
-    if (!rawText) return null;
-    const lines = rawText.split("\n");
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {lines.map((line, lIdx) => {
-          if (!line.trim()) return <div key={lIdx} style={{ height: "4px" }} />;
-
-          // Phát hiện danh sách số "1. ", "2. ", "3. "
-          const numMatch = line.match(/^(\d+)\.\s+(.*)/);
-          if (numMatch) {
-            const num = numMatch[1];
-            const content = numMatch[2];
-            return (
-              <div key={lIdx} style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "2px" }}>
-                <span style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "20px",
-                  height: "20px",
-                  borderRadius: "50%",
-                  background: "var(--cyan-soft)",
-                  color: "var(--cyan)",
-                  fontSize: "11px",
-                  fontWeight: "800",
-                  flexShrink: 0,
-                  marginTop: "1px"
-                }}>
-                  {num}
-                </span>
-                <span style={{ flex: 1, lineHeight: "1.6" }}>
-                  {formatInlineText(content)}
-                </span>
-              </div>
-            );
+            return;
           }
-
-          // Phát hiện danh sách gạch đầu dòng "• " hoặc "- "
-          const bulletMatch = line.match(/^([•\-])\s+(.*)/);
-          if (bulletMatch) {
-            const content = bulletMatch[2];
-            return (
-              <div key={lIdx} style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "2px" }}>
-                <span style={{
-                  color: "var(--cyan)",
-                  fontSize: "13px",
-                  fontWeight: "800",
-                  flexShrink: 0,
-                  marginTop: "-1px"
-                }}>
-                  •
-                </span>
-                <span style={{ flex: 1, lineHeight: "1.6" }}>
-                  {formatInlineText(content)}
-                </span>
-              </div>
-            );
-          }
-
-          return (
-            <p key={lIdx} style={{ margin: 0, lineHeight: "1.6" }}>
-              {formatInlineText(line)}
-            </p>
-          );
-        })}
-      </div>
-    );
-  };
-
-  // Helper parse bold **text** sang thẻ strong đậm rõ ràng
-  const formatInlineText = (text) => {
-    const parts = text.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, pIdx) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return (
-          <strong key={pIdx} style={{ color: "var(--text-1)", fontWeight: "700" }}>
-            {part.slice(2, -2)}
-          </strong>
-        );
+        }
+        if (!targetId) {
+          setCurrentSessionId(null);
+          setCurrentSessionDetail(null);
+          setMessages([]);
+          setShowEmptyState(true);
+          setActiveCitation(null);
+          setShowCitationDrawer(false);
+        }
+      } else {
+        setSessions([]);
+        setCurrentSessionId(null);
+        setCurrentSessionDetail(null);
+        setMessages([]);
+        setShowEmptyState(true);
+        setActiveCitation(null);
+        setShowCitationDrawer(false);
       }
-      return part;
-    });
+    } catch (err) {
+      console.warn("[Copilot] Error loading sessions:", err);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [sessionTab, currentUser?.email, currentUser?.username, currentUser?.id, currentUser?.department]);
+
+  useEffect(() => {
+    loadSessions(sessionTab);
+  }, [loadSessions, sessionTab]);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isInferring]);
+
+  const handleSelectSession = async (sessionId) => {
+    if (sessionId === currentSessionId && messages.length > 0) return;
+    setCurrentSessionId(sessionId);
+    try {
+      const detail = await fetchCopilotSessionDetail(sessionId, currentUser);
+      if (detail && detail.success && detail.session) {
+        setCurrentSessionDetail(detail.session);
+        const msgs = detail.session.messages || [];
+        setMessages(msgs);
+        setShowEmptyState(msgs.length === 0);
+        const lastCopilot = msgs.slice().reverse().find(m => m.sender === "copilot" && m.citations?.length > 0);
+        if (lastCopilot && lastCopilot.citations?.length > 0) {
+          setActiveCitation(lastCopilot.citations);
+          setShowCitationDrawer(true);
+        } else {
+          setActiveCitation(null);
+          setShowCitationDrawer(false);
+        }
+      }
+    } catch (e) {
+      console.warn("[Copilot] Could not load session:", e);
+    }
   };
 
-  // Xử lý gửi câu hỏi với bộ lọc bảo mật RBAC
-  const handleSendMessage = async (textToSend) => {
-    const text = textToSend || queryInput;
-    if (!text.trim()) return;
+  const handleNewChat = () => {
+    setCurrentSessionId(null);
+    setCurrentSessionDetail(null);
+    setMessages([]);
+    setShowEmptyState(true);
+    setActiveCitation(null);
+    setShowCitationDrawer(false);
+  };
 
-    hasUserInteracted.current = true;
+  const handleDeleteSession = async (e, sessionId) => {
+    e.stopPropagation();
+    try {
+      await deleteCopilotSession(sessionId, currentUser);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (currentSessionId === sessionId) {
+        handleNewChat();
+      }
+      showToast(isVi ? "Đã xóa cuộc hội thoại" : "Deleted conversation");
+    } catch (e) {
+      console.warn("[Copilot] Error deleting session:", e);
+    }
+  };
 
-    // 1. KIỂM TRA BỘ LỌC BẢO MẬT PHÒNG BAN (RBAC DEPT SCOPING)
-    const lowerText = text.toLowerCase();
-    const isHrSalaryQuery =
-      lowerText.includes("lương") ||
-      lowerText.includes("salary") ||
-      lowerText.includes("payroll") ||
-      lowerText.includes("nhân sự") ||
-      lowerText.includes("hr") ||
-      lowerText.includes("bảo hiểm");
+  // Pinning Handlers (US37 · PB59 · UC.18)
+  const handleOpenPinModal = (e, session = null) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const target = session || currentSessionDetail;
+    if (!target) return;
+    setPinTargetSession(target);
+    setPinNotesInput(target.pinNotes || "");
+    setShowPinModal(true);
+  };
 
-    const isBoardConfidential =
-      lowerText.includes("quỹ kín") ||
-      lowerText.includes("m&a") ||
-      lowerText.includes("cổ đông");
+  const handleConfirmPin = async () => {
+    if (!pinTargetSession) return;
+    setIsPinning(true);
+    try {
+      const targetDept = currentUser?.department || pinTargetSession.department || "Kinh doanh";
+      const res = await pinCopilotSession(
+        pinTargetSession.id,
+        true,
+        pinNotesInput.trim(),
+        targetDept,
+        currentUser
+      );
+      showToast(isVi ? "Đã ghim phiên hội thoại thành tài liệu dùng chung phòng ban!" : "Pinned conversation to department docs!");
+      setShowPinModal(false);
+      // Refresh current session detail and list
+      if (currentSessionId === pinTargetSession.id) {
+        const updatedDetail = await fetchCopilotSessionDetail(pinTargetSession.id, currentUser);
+        if (updatedDetail?.session) {
+          setCurrentSessionDetail(updatedDetail.session);
+        }
+      }
+      await loadSessions(sessionTab, currentSessionId);
+    } catch (err) {
+      showToast(err.message || (isVi ? "Lỗi khi ghim phiên hội thoại" : "Failed to pin session"));
+    } finally {
+      setIsPinning(false);
+    }
+  };
 
-    const userMessage = {
-      id: `usr-${Date.now()}`,
+  const handleUnpin = async (sessionId, e = null) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    try {
+      await pinCopilotSession(sessionId, false, "", null, currentUser);
+      showToast(isVi ? "Đã bỏ ghim phiên hội thoại khỏi phòng ban." : "Unpinned session from department.");
+      if (currentSessionId === sessionId) {
+        const updatedDetail = await fetchCopilotSessionDetail(sessionId, currentUser);
+        if (updatedDetail?.session) {
+          setCurrentSessionDetail(updatedDetail.session);
+        }
+      }
+      await loadSessions(sessionTab, currentSessionId);
+    } catch (err) {
+      showToast(err.message || (isVi ? "Lỗi khi bỏ ghim phiên hội thoại" : "Failed to unpin session"));
+    }
+  };
+
+
+  const handleSend = async (e) => {
+    if (e) e.preventDefault();
+    if (!queryInput.trim() || isInferring) return;
+
+    const userText = queryInput.trim();
+    setQueryInput("");
+    setShowEmptyState(false);
+
+    const userMsg = {
+      id: `u_${Date.now()}`,
       sender: "user",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      text: text
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      userLabel: currentUser?.name || currentUser?.username || "Executive User",
+      text: userText
     };
 
-    setThreads((prev) => ({
-      ...prev,
-      [activeThread]: {
-        ...prev[activeThread],
-        messages: [...prev[activeThread].messages, userMessage]
-      }
-    }));
-    setQueryInput("");
+    setMessages((prev) => [...prev, userMsg]);
     setIsInferring(true);
 
-    // Giả lập độ trễ suy luận AI
-    setTimeout(() => {
-      setIsInferring(false);
-
-      // TRƯỜNG HỢP 1: VI PHẠM BỘ LỌC BẢO MẬT PHÒNG BAN (RBAC REJECTION)
-      if (isHrSalaryQuery || isBoardConfidential) {
-        const rejectionMessage = {
-          id: `ai-${Date.now()}`,
-          sender: "copilot",
-          isSecurityAlert: true,
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          text: isVi
-            ? "⛔ [TỪ CHỐI TRUY XUẤT — BẢO MẬT PHÒNG BAN L4]:\n\nTài khoản của bạn thuộc Khối Vận hành Kinh doanh (Sales & Operations). Hệ thống AI tự động kích hoạt Hàng rào Bảo vệ RAG Guardrails nghiêm cấm truy xuất thông tin về Bảng lương Nhân sự (HR Payroll) hoặc Dữ liệu Mật của Ban Giám đốc.\n\n✓ Mọi truy vấn ngoài thẩm quyền đều được ghi lại vào Nhật ký Kiểm toán An ninh (Audit Log #SEC-403)."
-            : "⛔ [RBAC SECURITY REJECTION — ACCESS DENIED]:\n\nYour account belongs to Sales & Operations. Automated RAG Guardrails strictly restrict access to HR Payroll or Executive Board files.\n\n✓ Security audit incident logged (#SEC-403).",
-          citations: []
-        };
-
-        setThreads((prev) => ({
-          ...prev,
-          [activeThread]: {
-            ...prev[activeThread],
-            messages: [...prev[activeThread].messages, rejectionMessage]
-          }
-        }));
-        showToast(isVi ? "⚠️ Cảnh báo: Truy vấn vượt quá thẩm quyền phòng ban!" : "Security Alert: Out-of-scope query rejected!");
-        return;
-      }
-
-      // TRƯỜNG HỢP 2: TRUY VẤN HỢP LỆ VỚI DỮ LIỆU ĐỒ THỊ & TRÍCH DẪN
-      const botResponse = {
-        id: `ai-${Date.now()}`,
-        sender: "copilot",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        text: isVi
-          ? `Đã trích xuất thông tin hợp chuẩn cho câu hỏi "${text}":\n\n1. **Dữ liệu xác thực**: Tìm thấy 3 thực thể liên kết trên Đồ thị Tri thức Bán hàng & Vận hành.\n2. **Khuyến nghị**: Nên kết hợp phụ lục chiết khấu để tháo gỡ điểm nghẽn và ghi nhận nhật ký ca làm việc ngay hôm nay.`
-          : `Synthesized verified operational response for "${text}":\n\n1. **Verified Data**: Found 3 linked entities across the Sales & Operations Knowledge Graph.\n2. **Recommendation**: Combine discount addendum to unlock blockers and log case resolution.`,
-        graphNodes: [
-          { id: "q1", label: "Thực thể truy vấn", type: "Thực thể", color: "#0284c7", bg: "#e0f2fe", border: "#7dd3fc", icon: "fa-circle-nodes" },
-          { id: "q2", label: "Quy trình nghiệp vụ", type: "SOP", color: "#059669", bg: "#d1fae5", border: "#a7f3d0", icon: "fa-file-lines" },
-          { id: "q3", label: "Phòng Bán hàng", type: "Bộ phận", color: "#8b5cf6", bg: "#ede9fe", border: "#c4b5fd", icon: "fa-building" }
-        ],
-        citations: [
-          {
-            id: "c-new",
-            title: "Quy_dinh_ban_hang_2026.pdf",
-            location: "Trang 4, Mục 2",
-            page: "Trang 4",
-            excerpt: isVi ? "Chính sách chiết khấu cấp trung tối đa 6.0% đối với tài khoản VIP nhóm 1." : "Tier-1 VIP retention discount threshold capped at 6.0%.",
-            type: "PDF"
-          }
-        ]
-      };
-
-      setThreads((prev) => ({
-        ...prev,
-        [activeThread]: {
-          ...prev[activeThread],
-          messages: [...prev[activeThread].messages, botResponse]
+    try {
+      const response = await queryCopilot(userText, isVi ? "vi" : "en", currentSessionId, currentUser);
+      if (response && response.success) {
+        if (response.sessionId) {
+          setCurrentSessionId(response.sessionId);
         }
-      }));
-      showToast(isVi ? "✓ Phản hồi đã được kiểm chứng qua Đồ thị Tri thức!" : "Response verified across Knowledge Graph!");
-    }, 850);
+        if (response.session && response.session.messages) {
+          setMessages(response.session.messages);
+        } else {
+          const data = response?.data || response;
+          const answerText = response?.answer || data?.insight || response?.text || (isVi ? "Hệ thống đã hoàn tất xử lý." : "Processing completed.");
+          const latencyStr = response?.latency ? `${response.latency}s latency` : "1.2s latency";
+          const modelBadge = response?.model || "Qwen2.5-7B + Hybrid GraphRAG";
+          const serverCitations = response?.citations || data?.citations || [];
+          const citationCount = serverCitations.length;
+          const confidenceScore = data?.confidenceScore ? `${data.confidenceScore}%` : "98.5%";
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `c_${Date.now()}`,
+              sender: "copilot",
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              verifiedBadge: modelBadge,
+              confidence: confidenceScore,
+              citationCount: citationCount,
+              latency: latencyStr,
+              introText: answerText,
+              evidenceChips: data?.evidenceChips || [],
+              citations: serverCitations
+            }
+          ]);
+        }
+
+        // Cập nhật trích dẫn thực tế: Chỉ mở Drawer khi có trích dẫn thực tế
+        const realCitations = response?.citations || response?.data?.citations || [];
+        if (realCitations && realCitations.length > 0) {
+          setActiveCitation(realCitations);
+          setShowCitationDrawer(true);
+        } else {
+          setActiveCitation(null);
+          setShowCitationDrawer(false);
+        }
+
+        // Refresh sessions list in left drawer
+        const sData = await fetchCopilotSessions(currentUser);
+        if (sData && sData.sessions) {
+          setSessions(sData.sessions);
+        }
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `c_${Date.now()}`,
+            sender: "copilot",
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            verifiedBadge: "AI Local Engine",
+            confidence: "85.0%",
+            citationCount: 0,
+            latency: "1.0s latency",
+            introText: isVi
+              ? `Không nhận được phản hồi từ AI Copilot cho yêu cầu "${userText}". Vui lòng thử lại.`
+              : `No response from AI Copilot for "${userText}". Please try again.`
+          }
+        ]);
+        setActiveCitation(null);
+        setShowCitationDrawer(false);
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `c_err_${Date.now()}`,
+          sender: "copilot",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          verifiedBadge: "Offline",
+          confidence: "0.0%",
+          citationCount: 0,
+          introText: isVi
+            ? "Lỗi kết nối máy chủ Copilot. Vui lòng kiểm tra lại dịch vụ."
+            : "Copilot server connection error. Please verify the service."
+        }
+      ]);
+      setActiveCitation(null);
+      setShowCitationDrawer(false);
+    } finally {
+      setIsInferring(false);
+    }
+  };
+
+  const fillPrompt = (text) => {
+    setQueryInput(text);
+  };
+
+  const clearChatToEmpty = () => {
+    handleNewChat();
   };
 
   return (
-    <div
-      className="view active"
-      style={{
-        height: "100%",
-        maxHeight: "100%",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-        padding: "12px 18px 14px",
-        boxSizing: "border-box"
-      }}
-    >
-      {/* Toast Notification */}
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      background: "var(--base)",
+      position: "relative",
+      overflow: "hidden"
+    }}>
+
+      {/* Toast */}
       {toastMsg && (
         <div style={{
           position: "fixed",
-          bottom: "28px",
-          right: "28px",
-          zIndex: 9999,
+          bottom: 24,
+          right: 24,
+          zIndex: 100,
           background: "var(--surface)",
-          border: "1.5px solid var(--cyan)",
-          color: "var(--text-1)",
-          padding: "12px 20px",
+          border: "1px solid var(--border-strong)",
           borderRadius: "var(--r-md)",
-          boxShadow: "var(--shadow-lg)",
+          padding: "12px 18px",
+          boxShadow: "var(--shadow-xl)",
           display: "flex",
           alignItems: "center",
-          gap: "12px",
-          fontSize: "13.5px",
-          fontWeight: "600"
+          gap: 10,
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--text-1)"
         }}>
-          <i className="fa-solid fa-brain" style={{ color: "var(--cyan)", fontSize: "18px" }}></i>
+          <CheckCircle2 size={16} color="var(--green)" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* Top Banner: RBAC Department Security Bar (Compact & Sleek) */}
+      {/* ── COPILOT TOPBAR ───────────────────────────────────── */}
       <div style={{
+        height: 56,
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "10px",
-        padding: "8px 16px",
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--r-md)",
-        boxShadow: "var(--shadow-sm)",
-        flexShrink: 0
+        padding: "0 20px",
+        flexShrink: 0,
+        gap: 12
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          <div style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "3px 10px",
-            borderRadius: "5px",
-            background: "var(--green-soft)",
-            border: "1px solid var(--green-dim)",
-            color: "var(--green)",
-            fontWeight: "700",
-            fontSize: "11.5px",
-            letterSpacing: "0.02em"
-          }}>
-            <i className="fa-solid fa-shield-halved"></i>
-            <span>{isVi ? "BẢO MẬT PHÒNG BAN (RBAC L4)" : "DEPARTMENT RBAC ENFORCED"}</span>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={() => setShowSessionDrawer(!showSessionDrawer)}
+            title={isVi ? "Mở/Đóng danh sách phiên chat" : "Toggle chat sessions"}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "var(--r-md)",
+              border: "1px solid var(--border)",
+              background: showSessionDrawer ? "var(--surface-2)" : "transparent",
+              color: "var(--text-2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer"
+            }}
+          >
+            <Menu size={16} />
+          </button>
 
-          <span style={{ fontSize: "12.5px", color: "var(--text-3)", fontWeight: "500" }}>
-            {isVi
-              ? "Phạm vi RAG: Chỉ truy cập dữ liệu Khách hàng, Đơn hàng, Hợp đồng & SOP Bán hàng / Vận hành"
-              : "RAG Scope: Restricted to Sales, Orders, Contracts & Operational SOPs"}
-          </span>
-        </div>
+          <div style={{ width: 1, height: 20, background: "var(--border-soft)" }} />
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11.5px", color: "var(--text-3)" }}>
-          <span>{isVi ? "Chuyên viên:" : "Operator:"} <b style={{ color: "var(--text-1)" }}>Nguyễn V. Nam (@ops)</b></span>
-          <span>·</span>
-          <span style={{ color: "var(--cyan)", fontFamily: "var(--f-mono)", fontWeight: "700" }}>MILVUS + NEO4J</span>
-        </div>
-      </div>
-
-      {/* 3-COLUMN WORKSPACE COCKPIT */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "240px 1fr 280px",
-        gap: "14px",
-        alignItems: "stretch",
-        flex: 1,
-        minHeight: 0,
-        width: "100%"
-      }}>
-        {/* ============================================================ */}
-        {/* CỘT 1: SESSIONS & PHẠM VI NGHIỆP VỤ (240px)                  */}
-        {/* ============================================================ */}
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-          minWidth: 0,
-          overflowY: "auto",
-          paddingRight: "4px"
-        }}>
-          {/* Card Phiên Tác Nghiệp */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)",
-            padding: "14px 16px",
-            boxShadow: "var(--shadow-sm)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)", paddingBottom: "8px" }}>
-              <span style={{
-                fontSize: "11.5px",
-                fontWeight: "700",
-                color: "var(--text-3)",
-                textTransform: "uppercase",
-                letterSpacing: "0.03em"
-              }}>
-                {isVi ? "Phiên Tác Nghiệp" : "Chat Sessions"}
-              </span>
-
-              <button
-                onClick={() => {
-                  const newId = Date.now();
-                  setThreads((prev) => ({
-                    ...prev,
-                    [newId]: {
-                      id: newId,
-                      title: isVi ? "Phiên tác nghiệp mới" : "New Operational Session",
-                      scope: isVi ? "Bán hàng & Vận hành" : "Sales & Ops",
-                      messages: []
-                    }
-                  }));
-                  setActiveThread(newId);
-                  showToast(isVi ? "Đã mở phiên chat tác nghiệp mới!" : "Opened new session!");
-                }}
-                style={{
-                  background: "var(--cyan-soft)",
-                  border: "1px solid var(--cyan-dim)",
-                  padding: "2px 8px",
-                  borderRadius: "5px",
-                  fontSize: "11px",
-                  color: "var(--cyan)",
-                  fontWeight: "700",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}
-              >
-                <i className="fa-solid fa-plus" style={{ fontSize: "10px" }}></i>
-                {isVi ? "Mới" : "New"}
-              </button>
-            </div>
-
-            {/* Danh sách threads */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {Object.values(threads).map((th) => {
-                const isActive = activeThread === th.id;
-                return (
-                  <div
-                    key={th.id}
-                    onClick={() => setActiveThread(th.id)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: "var(--r-md)",
-                      cursor: "pointer",
-                      transition: "all var(--transition-fast)",
-                      background: isActive ? "var(--surface)" : "var(--surface-2)",
-                      border: `1.5px solid ${isActive ? "var(--cyan)" : "var(--border-soft)"}`,
-                      boxShadow: isActive ? "0 2px 8px rgba(8, 145, 178, 0.12)" : "none",
-                      borderLeft: isActive ? "3.5px solid var(--cyan)" : "1.5px solid var(--border-soft)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "5px"
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "10.5px" }}>
-                      <span style={{
-                        fontWeight: "700",
-                        color: "var(--cyan)",
-                        background: "var(--cyan-soft)",
-                        padding: "1px 6px",
-                        borderRadius: "4px"
-                      }}>
-                        {th.scope}
-                      </span>
-                      <span style={{ color: "var(--text-4)", fontWeight: "600" }}>{th.messages.length} tin</span>
-                    </div>
-
-                    <div style={{
-                      fontSize: "12px",
-                      fontWeight: isActive ? "700" : "600",
-                      color: isActive ? "var(--text-1)" : "var(--text-2)",
-                      lineHeight: "1.35"
-                    }}>
-                      {th.title}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Card Gợi ý câu hỏi hợp lệ */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)",
-            padding: "14px 16px",
-            boxShadow: "var(--shadow-sm)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px"
-          }}>
-            <span style={{
-              fontSize: "11.5px",
-              fontWeight: "700",
-              color: "var(--text-3)",
-              textTransform: "uppercase",
-              letterSpacing: "0.03em",
-              borderBottom: "1px solid var(--border-soft)",
-              paddingBottom: "8px"
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              background: "linear-gradient(135deg, #0F233D 0%, #2563EB 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ffffff"
             }}>
-              {isVi ? "Truy Vấn Mẫu" : "Quick Prompts"}
-            </span>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-              <button
-                onClick={() => handleSendMessage(isVi ? "Hợp đồng CT-2026-18 có điều khoản phạt chậm giao hàng như thế nào?" : "What are penalty clauses in contract CT-18?")}
-                style={{
-                  textAlign: "left",
-                  fontSize: "11.5px",
-                  padding: "8px 10px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-soft)",
-                  borderRadius: "6px",
-                  color: "var(--text-2)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  lineHeight: "1.35"
-                }}
-              >
-                <i className="fa-regular fa-file-lines" style={{ color: "var(--cyan)", fontSize: "12px", flexShrink: 0 }}></i>
-                <span>{isVi ? "Điều khoản phạt chậm giao hàng CT-18" : "Penalty clauses in CT-18"}</span>
-              </button>
-
-              <button
-                onClick={() => handleSendMessage(isVi ? "Soạn phương án đàm phán ưu đãi gia hạn cho khách hàng ABC" : "Draft renewal retention strategy for ABC Corp")}
-                style={{
-                  textAlign: "left",
-                  fontSize: "11.5px",
-                  padding: "8px 10px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-soft)",
-                  borderRadius: "6px",
-                  color: "var(--text-2)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  lineHeight: "1.35"
-                }}
-              >
-                <i className="fa-regular fa-envelope" style={{ color: "var(--blue)", fontSize: "12px", flexShrink: 0 }}></i>
-                <span>{isVi ? "Soạn phương án ưu đãi gia hạn ABC Corp" : "Draft renewal strategy for ABC Corp"}</span>
-              </button>
+              <Bot size={17} strokeWidth={2.2} />
             </div>
-
-            {/* Nút kiểm tra cơ chế bảo mật phòng ban */}
-            <div style={{ paddingTop: "8px", borderTop: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: "6px" }}>
-              <span style={{ fontSize: "10.5px", color: "var(--red)", fontWeight: "700", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "5px" }}>
-                <i className="fa-solid fa-shield-halved" style={{ fontSize: "11px" }}></i>
-                <span>{isVi ? "Thử nghiệm RBAC:" : "Test RBAC:"}</span>
-              </span>
-
-              <button
-                onClick={() => handleSendMessage(isVi ? "Cho tôi xem bảng lương chi tiết của phòng Nhân sự HR tháng 9" : "Show me HR payroll records")}
-                style={{
-                  textAlign: "left",
-                  fontSize: "11.5px",
-                  padding: "8px 10px",
-                  background: "var(--red-soft)",
-                  border: "1px solid var(--red-dim)",
-                  borderRadius: "6px",
-                  color: "var(--red)",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  lineHeight: "1.35"
-                }}
-                title="Hệ thống sẽ từ chối do nhân viên Sales/Ops không có quyền xem lương HR"
-              >
-                <i className="fa-solid fa-ban" style={{ fontSize: "12px", flexShrink: 0 }}></i>
-                <span>{isVi ? "Hỏi về Bảng lương HR (Thử vi phạm)" : "Ask for HR Payroll (Test Rejection)"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* CỘT 2: KHUNG CHAT MULTI-TURN HERO (RỘNG RÃI & LUÔN CỐ ĐỊNH) */}
-        {/* ============================================================ */}
-        <div style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)",
-          boxShadow: "var(--shadow-sm)",
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          minHeight: 0,
-          overflow: "hidden"
-        }}>
-          {/* Header phiên chat (Luôn cố định trên đầu) */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: "1px solid var(--border-soft)",
-            padding: "12px 18px",
-            flexShrink: 0,
-            background: "var(--surface)"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "8px",
-                background: "linear-gradient(135deg, var(--cyan), var(--blue))",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "800",
-                fontSize: "13px",
-                boxShadow: "0 2px 6px rgba(8, 145, 178, 0.25)",
-                flexShrink: 0
-              }}>
-                AI
-              </div>
-
-              <div>
-                <h3 style={{
-                  fontSize: "15px",
-                  fontWeight: "800",
-                  color: "var(--text-1)",
-                  margin: 0,
-                  letterSpacing: "-0.01em"
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--f-display)" }}>
+                <span>GraphMind AI Copilot</span>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: 99,
+                  background: "var(--blue-soft)",
+                  color: "var(--blue)",
+                  border: "1px solid rgba(37,99,235,0.2)"
                 }}>
-                  {currentThreadData.title}
-                </h3>
-                <span style={{ fontSize: "12px", color: "var(--text-3)", fontWeight: "500" }}>
-                  {isVi ? "Xác thực logic qua Multi-hop GraphRAG" : "Deterministic Multi-hop GraphRAG"}
+                  Qwen2.5-7B LoRA + Neo4j GraphRAG
                 </span>
               </div>
             </div>
+          </div>
+        </div>
 
-            <span style={{
-              fontSize: "11px",
-              fontWeight: "600",
-              padding: "4px 10px",
-              borderRadius: "6px",
-              background: "var(--surface-3)",
-              color: "var(--text-2)",
-              border: "1px solid var(--border-soft)",
-              whiteSpace: "nowrap"
-            }}>
-              {currentThreadData.scope}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 10px",
+            borderRadius: "var(--r-md)",
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            fontSize: 11.5,
+            color: "var(--text-3)"
+          }}>
+            <span>{isVi ? "Phiên:" : "Session:"}</span>
+            <span style={{ fontFamily: "var(--f-mono)", color: "var(--text-1)", fontWeight: 600 }}>
+              {currentSessionId ? `SES-${currentSessionId.slice(0, 6).toUpperCase()}` : (isVi ? "MỚI" : "NEW")}
             </span>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: currentSessionId ? "var(--green)" : "var(--blue)" }} />
           </div>
 
-          {/* Stream tin nhắn (Cuộn mượt mà bên trong, không đẩy mất Header hay Input) */}
-          <div style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "18px 22px",
+          {/* US37: Pin session as shared team document action */}
+          {currentSessionId && (
+            <button
+              onClick={(e) => handleOpenPinModal(e, currentSessionDetail)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: "var(--r-md)",
+                border: currentSessionDetail?.isPinned
+                  ? "1px solid rgba(245, 158, 11, 0.4)"
+                  : "1px solid var(--border)",
+                background: currentSessionDetail?.isPinned
+                  ? "rgba(245, 158, 11, 0.12)"
+                  : "var(--surface-2)",
+                color: currentSessionDetail?.isPinned ? "#f59e0b" : "var(--text-2)",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease"
+              }}
+              title={
+                currentSessionDetail?.isPinned
+                  ? (isVi ? "Phiên đã được ghim làm tài liệu phòng ban. Bấm để xem/sửa ghi chú." : "Pinned to department. Click to edit notes.")
+                  : (isVi ? "Ghim phiên này làm tài liệu dùng chung phòng ban (US37 · PB59 · UC.18)" : "Pin as shared team document")
+              }
+            >
+              <Pin size={13} fill={currentSessionDetail?.isPinned ? "#f59e0b" : "none"} color={currentSessionDetail?.isPinned ? "#f59e0b" : "currentColor"} />
+              <span>
+                {currentSessionDetail?.isPinned
+                  ? (isVi ? `Đã ghim (${currentSessionDetail?.department || "Phòng ban"})` : `Pinned (${currentSessionDetail?.department || "Team"})`)
+                  : (isVi ? "Ghim phòng ban" : "Pin to Dept")}
+              </span>
+            </button>
+          )}
+
+          <button
+            onClick={clearChatToEmpty}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: "var(--r-md)",
+              border: "1px solid var(--border)",
+              background: "var(--surface-2)",
+              color: "var(--text-2)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            <Plus size={14} />
+            <span>{isVi ? "Phiên mới" : "New Chat"}</span>
+          </button>
+
+          {(() => {
+            const count = Array.isArray(activeCitation) ? activeCitation.length : (activeCitation ? 1 : 0);
+            return (
+              <button
+                onClick={() => {
+                  if (count > 0) {
+                    setShowCitationDrawer(!showCitationDrawer);
+                  } else {
+                    showToast(isVi ? "Chưa có nguồn trích dẫn từ tài liệu cho câu hỏi này" : "No citations available for this query");
+                  }
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: "var(--r-md)",
+                  border: `1px solid ${showCitationDrawer ? "rgba(37,99,235,0.3)" : "var(--border)"}`,
+                  background: showCitationDrawer ? "var(--blue-soft)" : "var(--surface-2)",
+                  color: showCitationDrawer ? "var(--blue)" : count > 0 ? "var(--text-2)" : "var(--text-4)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: count > 0 ? "pointer" : "default",
+                  opacity: count > 0 ? 1 : 0.65,
+                  transition: "all 0.15s ease"
+                }}
+                title={count > 0 ? (isVi ? "Xem chi tiết nguồn trích dẫn" : "View source citations") : (isVi ? "Chưa có trích dẫn" : "No citations")}
+              >
+                <BookOpen size={14} />
+                <span>{isVi ? `Trích dẫn & Nguồn (${count})` : `Citations (${count})`}</span>
+              </button>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* ── 3-COLUMN WORKSPACE ───────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+
+        {/* ── COLUMN 1: SESSIONS DRAWER (250px) ───────────────── */}
+        {showSessionDrawer && (
+          <aside style={{
+            width: 250,
+            background: "var(--surface)",
+            borderRight: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
-            gap: "18px",
-            minHeight: 0
+            flexShrink: 0
           }}>
-            {currentThreadData.messages.map((msg) => {
-              const isUser = msg.sender === "user";
-              return (
-                <div
-                  key={msg.id}
+            <div style={{ padding: 12, borderBottom: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* US37 / PB59 Tabs: Cuộc trò chuyện cá nhân vs Tài liệu ghim phòng ban */}
+              <div style={{
+                display: "flex",
+                background: "var(--surface-2)",
+                padding: 3,
+                borderRadius: "var(--r-md)",
+                border: "1px solid var(--border-soft)",
+                gap: 3
+              }}>
+                <button
+                  onClick={() => setSessionTab("personal")}
                   style={{
+                    flex: 1,
+                    padding: "6px 4px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: sessionTab === "personal" ? "var(--surface)" : "transparent",
+                    color: sessionTab === "personal" ? "var(--text-1)" : "var(--text-3)",
+                    fontWeight: sessionTab === "personal" ? 700 : 500,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    boxShadow: sessionTab === "personal" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.15s ease",
                     display: "flex",
-                    flexDirection: "column",
-                    gap: "6px",
-                    alignItems: isUser ? "flex-end" : "flex-start",
-                    maxWidth: "100%"
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "var(--text-4)" }}>
-                    <span style={{ fontWeight: "700", color: isUser ? "var(--cyan)" : "var(--text-3)" }}>
-                      {isUser ? (isVi ? "Bạn (Nguyễn V. Nam)" : "You") : "AI Copilot Core"}
-                    </span>
-                    <span>·</span>
-                    <span>{msg.time}</span>
-                  </div>
+                  <span>{isVi ? "Cá nhân" : "Personal"}</span>
+                </button>
+                <button
+                  onClick={() => setSessionTab("department")}
+                  style={{
+                    flex: 1,
+                    padding: "6px 4px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: sessionTab === "department" ? "var(--surface)" : "transparent",
+                    color: sessionTab === "department" ? "#f59e0b" : "var(--text-3)",
+                    fontWeight: sessionTab === "department" ? 700 : 500,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    boxShadow: sessionTab === "department" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4
+                  }}
+                  title={isVi ? "Tài liệu hỏi đáp quan trọng được ghim dùng chung phòng ban" : "Important department pinned Q&A documents"}
+                >
+                  <Pin size={11} fill={sessionTab === "department" ? "#f59e0b" : "none"} color={sessionTab === "department" ? "#f59e0b" : "currentColor"} />
+                  <span>{isVi ? "Ghim phòng ban" : "Pinned Docs"}</span>
+                </button>
+              </div>
 
-                  {/* BONG BÓNG TIN NHẮN RỘNG RÃI, DỄ ĐỌC */}
-                  <div
-                    style={{
-                      padding: "14px 18px",
-                      borderRadius: isUser ? "14px 14px 2px 14px" : "14px 14px 14px 2px",
-                      maxWidth: isUser ? "80%" : "96%",
-                      fontSize: "13.5px",
-                      lineHeight: "1.65",
-                      background: isUser
-                        ? "linear-gradient(135deg, #0284c7, #0891b2)"
-                        : msg.isSecurityAlert
-                        ? "var(--red-soft)"
-                        : "var(--surface-2)",
-                      color: isUser
-                        ? "#ffffff"
-                        : msg.isSecurityAlert
-                        ? "var(--red)"
-                        : "var(--text-2)",
-                      border: isUser
-                        ? "none"
-                        : msg.isSecurityAlert
-                        ? "1.5px solid var(--red-dim)"
-                        : "1px solid var(--border-soft)",
-                      boxShadow: isUser ? "0 2px 8px rgba(2, 132, 199, 0.25)" : "var(--shadow-sm)"
-                    }}
-                  >
-                    {isUser ? (
-                      <span style={{ fontWeight: "500" }}>{msg.text}</span>
-                    ) : (
-                      renderFormattedText(msg.text)
+              <div style={{ position: "relative" }}>
+                <Search size={13} color="var(--text-4)" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
+                <input
+                  type="text"
+                  value={searchHistory}
+                  onChange={(e) => setSearchHistory(e.target.value)}
+                  placeholder={sessionTab === "department" ? (isVi ? "Tìm tài liệu ghim..." : "Search pinned docs...") : (isVi ? "Tìm lịch sử..." : "Search history...")}
+                  style={{
+                    width: "100%",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r-md)",
+                    padding: "6px 10px 6px 28px",
+                    fontSize: 12,
+                    color: "var(--text-1)",
+                    outline: "none"
+                  }}
+                />
+              </div>
+
+              {sessionTab === "personal" && (
+                <button
+                  onClick={clearChatToEmpty}
+                  style={{
+                    width: "100%",
+                    padding: "6px 12px",
+                    borderRadius: "var(--r-md)",
+                    background: "var(--text-1)",
+                    color: "var(--surface)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    cursor: "pointer"
+                  }}
+                >
+                  <Plus size={13} />
+                  <span>{isVi ? "Tạo hội thoại mới" : "Start New Chat"}</span>
+                </button>
+              )}
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+              {isLoadingSessions ? (
+                <div style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
+                  {isVi ? "Đang tải danh sách..." : "Loading sessions..."}
+                </div>
+              ) : sessions.filter(s => !searchHistory || (s.title && s.title.toLowerCase().includes(searchHistory.toLowerCase()))).length === 0 ? (
+                <div style={{ padding: "24px 8px", textAlign: "center", color: "var(--text-4)", fontSize: 12 }}>
+                  {searchHistory 
+                    ? (isVi ? "Không tìm thấy phiên nào" : "No sessions found")
+                    : (sessionTab === "department"
+                        ? (isVi ? "Chưa có tài liệu nào được ghim trong phòng ban này." : "No pinned documents in this department.")
+                        : (isVi ? "Chưa có cuộc hội thoại nào." : "No conversation history."))}
+                </div>
+              ) : (
+                sessions
+                  .filter(s => !searchHistory || (s.title && s.title.toLowerCase().includes(searchHistory.toLowerCase())))
+                  .map((s) => {
+                    const isActive = s.id === currentSessionId;
+                    const timeFormatted = s.updatedAt
+                      ? new Date(s.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : "";
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => handleSelectSession(s.id)}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: "var(--r-md)",
+                          background: isActive ? "var(--blue-soft)" : "transparent",
+                          border: isActive ? "1px solid rgba(37,99,235,0.25)" : "1px solid transparent",
+                          color: isActive ? "var(--blue)" : "var(--text-2)",
+                          cursor: "pointer",
+                          position: "relative",
+                          transition: "all 0.15s ease",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 3,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) e.currentTarget.style.background = "var(--surface-2)";
+                          const btns = e.currentTarget.querySelectorAll(".session-action-btn");
+                          btns.forEach(b => b.style.opacity = "1");
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) e.currentTarget.style.background = "transparent";
+                          const btns = e.currentTarget.querySelectorAll(".session-action-btn");
+                          btns.forEach(b => b.style.opacity = "0");
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                          <div style={{
+                            fontSize: 12.5,
+                            fontWeight: isActive ? 700 : 500,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5
+                          }}>
+                            {s.isPinned && (
+                              <Pin size={11} fill="#f59e0b" color="#f59e0b" style={{ flexShrink: 0 }} />
+                            )}
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {s.title || (isVi ? "Cuộc hội thoại mới" : "New Chat")}
+                            </span>
+                          </div>
+                          
+                          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                            {/* Pin / Unpin button */}
+                            <button
+                              className="session-action-btn"
+                              title={s.isPinned ? (isVi ? "Bỏ ghim khỏi phòng ban" : "Unpin from department") : (isVi ? "Ghim vào phòng ban" : "Pin to department")}
+                              onClick={(e) => s.isPinned ? handleUnpin(s.id, e) : handleOpenPinModal(e, s)}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: s.isPinned ? "#f59e0b" : "var(--text-4)",
+                                cursor: "pointer",
+                                padding: 2,
+                                opacity: s.isPinned ? 1 : 0,
+                                transition: "opacity 0.15s",
+                                display: "flex",
+                                alignItems: "center",
+                              }}
+                            >
+                              <Pin size={12} fill={s.isPinned ? "#f59e0b" : "none"} color={s.isPinned ? "#f59e0b" : "currentColor"} />
+                            </button>
+
+                            {/* Delete button (for personal sessions) */}
+                            {sessionTab === "personal" && (
+                              <button
+                                className="session-action-btn"
+                                title={isVi ? "Xóa cuộc hội thoại" : "Delete session"}
+                                onClick={(e) => handleDeleteSession(e, s.id)}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  color: "var(--text-4)",
+                                  cursor: "pointer",
+                                  padding: 2,
+                                  opacity: 0,
+                                  transition: "opacity 0.15s",
+                                  display: "flex",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Metadata: Pinned by & department badge */}
+                        {s.isPinned && (
+                          <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 10,
+                            color: "#d97706",
+                            marginTop: 1
+                          }}>
+                            <span style={{
+                              padding: "1px 5px",
+                              borderRadius: 3,
+                              background: "rgba(245, 158, 11, 0.15)",
+                              fontWeight: 600
+                            }}>
+                              {s.department || "Phòng ban"}
+                            </span>
+                            {s.pinnedByName && (
+                              <span style={{ color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {s.pinnedByName}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Optional pin notes preview */}
+                        {s.isPinned && s.pinNotes && (
+                          <div style={{
+                            fontSize: 10.5,
+                            color: "var(--text-3)",
+                            fontStyle: "italic",
+                            background: "rgba(245, 158, 11, 0.05)",
+                            borderLeft: "2px solid #f59e0b",
+                            padding: "2px 6px",
+                            borderRadius: "0 4px 4px 0",
+                            marginTop: 2,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}>
+                            "{s.pinNotes}"
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: 10.5, color: isActive ? "var(--blue)" : "var(--text-4)", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>{s.messageCount || 0} {isVi ? "tin nhắn" : "messages"}</span>
+                          {timeFormatted && <span>• {timeFormatted}</span>}
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+
+
+            <div style={{
+              padding: "10px 14px",
+              borderTop: "1px solid var(--border-soft)",
+              background: "var(--surface-2)",
+              fontSize: 11,
+              color: "var(--text-3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}>
+              <span>{isVi ? "Hạn mức:" : "Quota:"} <strong style={{ color: "var(--text-1)" }}>{isVi ? "Không giới hạn" : "Unlimited"}</strong></span>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)" }} />
+            </div>
+          </aside>
+        )}
+
+        {/* ── COLUMN 2: CHAT CONVERSATION VIEWPORT (FLEX-1) ──── */}
+        <div style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--surface)",
+          position: "relative",
+          minWidth: 0
+        }}>
+          {/* Scroll area */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Context notice */}
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div style={{
+                padding: "6px 14px",
+                borderRadius: 99,
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                fontSize: 11.5,
+                color: "var(--text-3)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}>
+                <ShieldCheck size={13} color="var(--blue)" />
+                <span>{isVi ? "Phạm vi:" : "Scope:"} <strong>{isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}</strong> & <strong>AdventureWorks ERP</strong> (RBAC: Executive)</span>
+              </div>
+            </div>
+
+            {/* US37 · PB59 · UC.18: Pinned Department Document Notice Banner */}
+            {currentSessionDetail?.isPinned && (
+              <div style={{
+                padding: "12px 16px",
+                borderRadius: "var(--r-md)",
+                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(245, 158, 11, 0.02) 100%)",
+                border: "1px solid rgba(245, 158, 11, 0.28)",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 7,
+                    background: "rgba(245, 158, 11, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#f59e0b",
+                    flexShrink: 0,
+                    marginTop: 1
+                  }}>
+                    <Pin size={15} fill="#f59e0b" color="#f59e0b" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{isVi ? "Tài liệu dùng chung phòng ban" : "Shared Department Document"}</span>
+                      <span style={{
+                        fontSize: 11,
+                        padding: "1px 8px",
+                        borderRadius: 99,
+                        background: "rgba(245, 158, 11, 0.18)",
+                        color: "#d97706",
+                        fontWeight: 700
+                      }}>
+                        {currentSessionDetail.department || currentUser?.department || (isVi ? "Phòng ban" : "Department")}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
+                      {isVi ? "Ghim bởi" : "Pinned by"} <strong style={{ color: "var(--text-2)" }}>{currentSessionDetail.pinnedByName || "Trưởng phòng / Thành viên"}</strong>
+                      {currentSessionDetail.pinnedAt && ` • ${new Date(currentSessionDetail.pinnedAt).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                    </div>
+                    {currentSessionDetail.pinNotes && (
+                      <div style={{
+                        fontSize: 12,
+                        color: "var(--text-2)",
+                        marginTop: 6,
+                        padding: "6px 10px",
+                        background: "var(--surface)",
+                        borderRadius: 6,
+                        border: "1px solid rgba(245, 158, 11, 0.2)",
+                        lineHeight: 1.45
+                      }}>
+                        💡 <strong>{isVi ? "Ghi chú:" : "Notes:"}</strong> {currentSessionDetail.pinNotes}
+                      </div>
                     )}
                   </div>
+                </div>
+                <button
+                  onClick={() => handleUnpin(currentSessionDetail.id)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: "var(--r-md)",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text-3)",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap"
+                  }}
+                  title={isVi ? "Bỏ ghim khỏi tài liệu phòng ban" : "Unpin from department"}
+                >
+                  {isVi ? "Bỏ ghim" : "Unpin"}
+                </button>
+              </div>
+            )}
 
-                  {/* ACTION TRIGGERS CHO CÂU TRẢ LỜI CỦA AI */}
-                  {!isUser && !msg.isSecurityAlert && (
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                      <button
-                        onClick={() => {
-                          setActionDraftModal({
-                            recipient: "Tran M. Anh (Procurement Dir - ABC Corp)",
-                            subject: "[Graph Mind] Đề xuất tái tục Hợp đồng CT-2026-18 & Ưu đãi 5.5%",
-                            body: isVi
-                              ? "Kính gửi Ông/Bà Tran M. Anh,\n\nTôi là Nguyễn V. Nam (Phòng Vận hành & Khách hàng Doanh nghiệp). Liên quan Hợp đồng CT-2026-18 hết hạn vào 18/10, chúng tôi trân trọng đề xuất gói gia hạn 2027 với ưu đãi chiết khấu 5.5% và cam kết SLA giao hàng 24h.\n\nKính đề nghị Quý công ty xếp lịch trao đổi sáng Thứ Năm tuần này."
-                              : "Dear Tran M. Anh,\n\nRegarding Contract CT-2026-18 expiring 18 Oct, we propose a 5.5% retention volume discount package."
-                          });
-                        }}
-                        style={{
-                          fontSize: "11.5px",
-                          fontWeight: "700",
-                          padding: "5px 12px",
-                          borderRadius: "6px",
-                          background: "var(--cyan-soft)",
-                          color: "var(--cyan)",
-                          border: "1px solid var(--cyan-dim)",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          transition: "all 0.15s ease",
-                          boxShadow: "var(--shadow-sm)"
-                        }}
-                      >
-                        <i className="fa-solid fa-paper-plane" style={{ fontSize: "10.5px" }}></i>
-                        <span>{isVi ? "Soạn thư gửi khách hàng" : "Draft Outreach"}</span>
-                      </button>
 
-                      <button
-                        onClick={() => {
-                          onNavigate?.("documents");
-                          showToast(isVi ? "Đang mở Hợp đồng CT-2026-18.pdf trong kho tài liệu..." : "Opening Contract_CT-2026-18.pdf...");
-                        }}
-                        style={{
-                          fontSize: "11.5px",
-                          fontWeight: "700",
-                          padding: "5px 12px",
-                          borderRadius: "6px",
-                          background: "var(--red-soft)",
-                          color: "var(--red)",
-                          border: "1px solid var(--red-dim)",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          transition: "all 0.15s ease",
-                          boxShadow: "var(--shadow-sm)"
-                        }}
-                      >
-                        <i className="fa-solid fa-file-pdf" style={{ fontSize: "11px" }}></i>
-                        <span>{isVi ? "Mở văn bản PDF" : "Open PDF"}</span>
-                      </button>
+            {/* Empty state */}
+            {showEmptyState && (
+              <div style={{
+                margin: "auto 0",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                padding: 32,
+                gap: 16
+              }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: "var(--blue-soft)",
+                  color: "var(--blue)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <Sparkles size={28} />
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-1)", margin: "0 0 6px", fontFamily: "var(--f-display)" }}>
+                    {isVi ? "Bắt đầu cuộc trò chuyện với AI Copilot" : "Start a Conversation with AI Copilot"}
+                  </h4>
+                  <p style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 440, margin: 0, lineHeight: 1.5 }}>
+                    {isVi
+                      ? "Hỏi đáp tự nhiên trên dữ liệu kinh doanh ERP và hệ thống hợp đồng pháp lý CUAD. Mọi câu trả lời đều có trích dẫn nguồn xác thực."
+                      : "Query freely across AdventureWorks ERP and CUAD legal contracts with grounded evidence citations."}
+                  </p>
+                </div>
 
-                      <button
-                        onClick={() => {
-                          showToast(isVi ? "Đã chuyển tiếp câu trả lời và đề xuất lên Trưởng phòng (@manager)!" : "Escalated case to Department Manager!");
-                        }}
-                        style={{
-                          fontSize: "11.5px",
-                          fontWeight: "700",
-                          padding: "5px 12px",
-                          borderRadius: "6px",
-                          background: "var(--amber-soft)",
-                          color: "var(--amber)",
-                          border: "1px solid var(--amber-dim)",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          transition: "all 0.15s ease",
-                          boxShadow: "var(--shadow-sm)"
-                        }}
-                      >
-                        <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: "10.5px" }}></i>
-                        <span>{isVi ? "Trình duyệt Trưởng phòng" : "Escalate to Mgr"}</span>
-                      </button>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 520, width: "100%", textAlign: "left" }}>
+                  <button
+                    onClick={() => fillPrompt(isVi ? "Tìm các hợp đồng dịch vụ sắp hết hạn trong 30 ngày tới" : "Find service agreements expiring in the next 30 days")}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-1)",
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>📄 {isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "Quét các hợp đồng cần tái đàm phán" : "Scan contracts needing renewal"}</div>
+                  </button>
+
+                  <button
+                    onClick={() => fillPrompt(isVi ? "Khách hàng VIP nào giảm tần suất đặt hàng trong quý 3?" : "Which VIP customers experienced order frequency drop in Q3?")}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-1)",
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>📉 {isVi ? "Rủi ro sụt giảm đơn hàng" : "Order Cadence Dips"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "So sánh dữ liệu đơn hàng gần đây" : "Compare time-series order history"}</div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Messages */}
+            {messages.map((msg) => {
+              if (msg.sender === "user") {
+                return (
+                  <div key={msg.id} style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <div style={{ maxWidth: "75%", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                      <div style={{
+                        background: "var(--blue-soft)",
+                        border: "1px solid rgba(37,99,235,0.25)",
+                        borderRadius: "16px 16px 4px 16px",
+                        padding: "14px 18px",
+                        color: "var(--text-1)",
+                        fontSize: 13.5,
+                        lineHeight: 1.6,
+                        boxShadow: "var(--shadow-xs)"
+                      }}>
+                        {msg.text}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-4)", paddingRight: 4 }}>
+                        <span>{msg.userLabel}</span> • <span>{msg.time}</span>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                );
+              }
+
+              return (
+                <div key={msg.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #0F233D 0%, #2563EB 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#ffffff",
+                    flexShrink: 0,
+                    marginTop: 4
+                  }}>
+                    <Bot size={17} strokeWidth={2.2} />
+                  </div>
+
+                  <div style={{ flex: 1, maxWidth: "85%", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "4px 16px 16px 16px",
+                      padding: "18px 22px",
+                      boxShadow: "var(--shadow-xs)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 14
+                    }}>
+                      {/* Badge row */}
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottom: "1px solid var(--border-soft)",
+                        paddingBottom: 10
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{
+                            padding: "2px 8px",
+                            borderRadius: "var(--r-xs)",
+                            background: "var(--blue-soft)",
+                            color: "var(--blue)",
+                            fontWeight: 700,
+                            fontSize: 11,
+                            border: "1px solid rgba(37,99,235,0.2)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4
+                          }}>
+                            <Sparkles size={11} />
+                            {msg.verifiedBadge}
+                          </span>
+                          <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                            {isVi ? "Độ tin cậy:" : "Confidence:"} <strong style={{ color: "var(--text-1)" }}>{msg.confidence}</strong>
+                          </span>
+                        </div>
+
+                        {msg.citations && msg.citations.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setActiveCitation(msg.citations);
+                              setShowCitationDrawer(true);
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "3px 10px",
+                              borderRadius: 99,
+                              background: "var(--amber-soft)",
+                              border: "1px solid rgba(217,119,6,0.25)",
+                              color: "var(--amber)",
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            <Bookmark size={11} />
+                            <span>{msg.citations.length} {isVi ? "Trích dẫn nguồn" : "Citations"}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {renderFormattedMessage(msg.introText)}
+
+                      {/* Risk Callout */}
+                      {msg.riskBox && (
+                        <div style={{
+                          background: "var(--red-soft)",
+                          borderLeft: "4px solid var(--red)",
+                          borderRadius: "0 var(--r-md) var(--r-md) 0",
+                          padding: "12px 16px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6
+                        }}>
+                          <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            color: "var(--red)"
+                          }}>
+                            <AlertCircle size={15} />
+                            <span>{msg.riskBox.title}</span>
+                          </div>
+                          <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6, margin: 0 }}>
+                            {msg.riskBox.text}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Action buttons */}
+                      <div style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        borderTop: "1px solid var(--border-soft)",
+                        paddingTop: 10
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button
+                            onClick={() => onNavigate?.("knowledge")}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "5px 10px",
+                              borderRadius: "var(--r-md)",
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              color: "var(--blue)",
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                          >
+                            <span>{isVi ? "Xem đồ thị Neo4j" : "View Neo4j Graph"}</span>
+                            <ArrowUpRight size={12} />
+                          </button>
+
+                          {msg.citations && msg.citations.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setActiveCitation(msg.citations);
+                                setShowCitationDrawer(true);
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                                padding: "5px 10px",
+                                borderRadius: "var(--r-md)",
+                                background: "var(--surface)",
+                                border: "1px solid var(--border)",
+                                color: "var(--text-2)",
+                                fontSize: 11.5,
+                                fontWeight: 600,
+                                cursor: "pointer"
+                              }}
+                            >
+                              <FileText size={12} />
+                              <span>{isVi ? "Soi trích dẫn" : "Inspect Citation"}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <button
+                            onClick={() => showToast(isVi ? "Đánh giá: Hữu ích" : "Marked helpful")}
+                            title={isVi ? "Hữu ích" : "Helpful"}
+                            style={{ width: 28, height: 28, borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", cursor: "pointer" }}
+                          >
+                            <ThumbsUp size={13} />
+                          </button>
+                          <button
+                            onClick={() => showToast(isVi ? "Đã phản hồi ý kiến" : "Feedback noted")}
+                            title={isVi ? "Chưa đúng" : "Inaccurate"}
+                            style={{ width: 28, height: 28, borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", cursor: "pointer" }}
+                          >
+                            <ThumbsDown size={13} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard?.writeText(msg.introText);
+                              showToast(isVi ? "Đã sao chép câu trả lời" : "Copied to clipboard");
+                            }}
+                            title={isVi ? "Sao chép" : "Copy"}
+                            style={{ width: 28, height: 28, borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-4)", cursor: "pointer" }}
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: 11, color: "var(--text-4)", paddingLeft: 4 }}>
+                      GraphMind AI Copilot • {msg.latency || "1.42s latency"}
+                    </div>
+                  </div>
                 </div>
               );
             })}
 
             {isInferring && (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12.5px", color: "var(--cyan)", padding: "6px 0", fontWeight: "600" }}>
-                <i className="fa-solid fa-circle-notch fa-spin"></i>
-                <span>{isVi ? "AI đang duyệt đồ thị & kiểm tra bảo mật RBAC..." : "Traversing Knowledge Graph & enforcing RBAC..."}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)", width: "fit-content" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--blue)" }} className="pulse-dot" />
+                <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500 }}>
+                  {isVi ? "Đang tra vấn đồ thị quan hệ Neo4j & trích xuất vector Qdrant..." : "Querying Neo4j relations & extracting Qdrant vectors..."}
+                </span>
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Ô nhập tin nhắn (Luôn cố định chân chat, không bao giờ bị trôi) */}
+          {/* Sticky input */}
           <div style={{
-            borderTop: "1px solid var(--border-soft)",
-            padding: "10px 16px",
+            padding: "16px 24px",
+            borderTop: "1px solid var(--border)",
+            background: "var(--surface)"
+          }}>
+            <form onSubmit={handleSend} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{
+                position: "relative",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-lg)",
+                padding: "10px 14px"
+              }}>
+                <textarea
+                  ref={textareaRef}
+                  rows={2}
+                  value={queryInput}
+                  onChange={(e) => setQueryInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  placeholder={isVi ? "Đặt câu hỏi về khách hàng, đơn hàng, điều khoản hợp đồng CUAD..." : "Ask questions regarding contracts, customers, ERP orders..."}
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    resize: "none",
+                    fontSize: 13,
+                    color: "var(--text-1)",
+                    lineHeight: 1.5,
+                    paddingRight: 80
+                  }}
+                />
+
+                <div style={{ position: "absolute", right: 10, bottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => showToast(isVi ? "Đính kèm tệp phân tích..." : "Attach analysis file...")}
+                    title={isVi ? "Đính kèm tài liệu" : "Attach document"}
+                    style={{ width: 30, height: 30, borderRadius: "var(--r-md)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", cursor: "pointer" }}
+                  >
+                    <Paperclip size={15} />
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={!queryInput.trim() || isInferring}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "var(--r-md)",
+                      background: !queryInput.trim() || isInferring ? "var(--surface-3)" : "var(--blue)",
+                      color: !queryInput.trim() || isInferring ? "var(--text-4)" : "#ffffff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      cursor: !queryInput.trim() || isInferring ? "not-allowed" : "pointer",
+                      transition: "all 0.15s ease"
+                    }}
+                  >
+                    <span>{isVi ? "Gửi" : "Send"}</span>
+                    <Send size={12} />
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-4)", padding: "0 4px" }}>
+                <span>{isVi ? "Nhấn Enter để gửi, Shift + Enter để xuống dòng" : "Press Enter to send, Shift + Enter for new line"}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <CheckCircle2 size={11} color="var(--green)" />
+                  {isVi ? "Không bịa đặt thông tin • Luôn neo vào cơ sở tri thức" : "Fact-grounded • Tied to verified knowledge"}
+                </span>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* ── COLUMN 3: CITATION DRAWER (380px) ───────────────── */}
+        {showCitationDrawer && (
+          <aside style={{
+            width: 380,
             background: "var(--surface)",
-            flexShrink: 0,
+            borderLeft: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
-            gap: "6px"
+            flexShrink: 0
           }}>
             <div style={{
+              height: 56,
+              padding: "0 16px",
+              borderBottom: "1px solid var(--border)",
               display: "flex",
               alignItems: "center",
-              background: "var(--surface-2)",
-              border: "1.5px solid var(--border)",
-              borderRadius: "8px",
-              padding: "6px 8px 6px 14px",
-              transition: "all 0.15s ease",
-              boxShadow: "var(--shadow-sm)"
+              justifyContent: "space-between",
+              background: "var(--surface-2)"
             }}>
-              <input
-                type="text"
-                value={queryInput}
-                onChange={(e) => setQueryInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSendMessage();
-                }}
-                placeholder={isVi ? "Hỏi bất kỳ điều gì trong phạm vi Bán hàng & Vận hành..." : "Ask across Sales & Operations knowledge..."}
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  fontSize: "13.5px",
-                  color: "var(--text-1)",
-                  fontWeight: "500"
-                }}
-              />
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--amber)" }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {isVi ? "Trích Dẫn & Nguồn Chứng Thực" : "Grounded Evidence Citations"}
+                </span>
+                {Array.isArray(activeCitation) && activeCitation.length > 0 && (
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "1px 7px",
+                    borderRadius: 99,
+                    background: "var(--amber-soft)",
+                    color: "var(--amber)",
+                    border: "1px solid rgba(217,119,6,0.3)"
+                  }}>
+                    {activeCitation.length}
+                  </span>
+                )}
+              </div>
 
               <button
-                onClick={() => handleSendMessage()}
-                disabled={isInferring || !queryInput.trim()}
-                className="btn primary sm"
+                onClick={() => setShowCitationDrawer(false)}
                 style={{
-                  padding: "6px 14px",
-                  flexShrink: 0,
-                  opacity: isInferring || !queryInput.trim() ? 0.6 : 1,
+                  width: 28,
+                  height: 28,
+                  borderRadius: "var(--r-xs)",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px"
+                  justifyContent: "center",
+                  color: "var(--text-3)",
+                  cursor: "pointer",
+                  background: "transparent",
+                  border: "none"
                 }}
               >
-                <span>{isVi ? "Gửi" : "Send"}</span>
-                <i className="fa-solid fa-paper-plane" style={{ fontSize: "10.5px" }}></i>
+                <X size={15} />
               </button>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "10px", color: "var(--text-4)", padding: "0 2px" }}>
-              <span>{isVi ? "Nhấn Enter để gửi · Hệ thống tự lọc dữ liệu ngoài thẩm quyền" : "Press Enter to send · Out-of-scope queries automatically rejected"}</span>
-              <span style={{ fontFamily: "var(--f-mono)", fontWeight: "700", color: "var(--green)" }}>L4 RBAC ACTIVE</span>
-            </div>
-          </div>
-        </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+              {(!activeCitation || (Array.isArray(activeCitation) && activeCitation.length === 0)) ? (
+                <div style={{ padding: "40px 16px", textAlign: "center", color: "var(--text-4)", fontSize: 12 }}>
+                  {isVi ? "Chưa có nguồn trích dẫn từ tài liệu thực tế cho câu hỏi này." : "No grounded citations available for this query."}
+                </div>
+              ) : (
+                (Array.isArray(activeCitation) ? activeCitation : [activeCitation]).map((cite, idx) => (
+                  <div
+                    key={cite.chunkId || idx}
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r-md)",
+                      padding: "14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10
+                    }}
+                  >
+                    {/* Header: Type + Match */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--blue)", textTransform: "uppercase" }}>
+                        {cite.sourceType || (isVi ? "Tài liệu chứng thực" : "Verified Source")}
+                      </span>
+                      {cite.match && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: "var(--green)",
+                          background: "var(--green-soft)",
+                          padding: "2px 6px",
+                          borderRadius: 4
+                        }}>
+                          {cite.match}
+                        </span>
+                      )}
+                    </div>
 
-        {/* ============================================================ */}
-        {/* CỘT 3: KNOWLEDGE GRAPH & CITATIONS (280px)                    */}
-        {/* ============================================================ */}
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-          minWidth: 0,
-          overflowY: "auto",
-          paddingRight: "4px"
-        }}>
-          {/* 1. SƠ ĐỒ MẠNG LƯỚI THU NHỎ (MINI KNOWLEDGE GRAPH) */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)",
-            padding: "14px 16px",
-            boxShadow: "var(--shadow-sm)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)", paddingBottom: "8px" }}>
-              <span style={{
-                fontSize: "11.5px",
-                fontWeight: "700",
-                color: "var(--text-3)",
-                textTransform: "uppercase",
-                letterSpacing: "0.03em"
-              }}>
-                {isVi ? "Đồ Thị Logic Thu Nhỏ" : "Mini Knowledge Graph"}
-              </span>
+                    {/* File name */}
+                    <div>
+                      <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 2 }}>
+                        {isVi ? "Tệp tài liệu gốc:" : "Source File:"}
+                      </div>
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--text-1)",
+                        fontFamily: "var(--f-mono)",
+                        wordBreak: "break-all",
+                        lineHeight: 1.4
+                      }}>
+                        📄 {cite.docName || cite.file || "Contract_Document.txt"}
+                      </div>
+                    </div>
 
-              <span style={{
-                fontSize: "10px",
-                fontWeight: "700",
-                padding: "2px 7px",
-                borderRadius: "4px",
-                background: "var(--green-soft)",
-                color: "var(--green)",
-                border: "1px solid var(--green-dim)"
-              }}>
-                4 NODES
-              </span>
-            </div>
+                    {/* Line / Chunk Location */}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      color: "var(--text-3)",
+                      background: "var(--surface)",
+                      padding: "6px 10px",
+                      borderRadius: "var(--r-xs)",
+                      border: "1px solid var(--border-soft)"
+                    }}>
+                      <span>📍 {isVi ? "Vị trí & Dòng:" : "Location & Line:"}</span>
+                      <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)" }}>
+                        {cite.location || (cite.chunkId ? `Chunk #${cite.chunkId}` : "Toàn văn")}
+                      </strong>
+                    </div>
 
-            <p style={{ fontSize: "11px", color: "var(--text-3)", margin: 0, lineHeight: "1.35" }}>
-              {isVi ? "Thực thể liên quan đến câu trả lời:" : "Entities referenced in reasoning:"}
-            </p>
+                    {/* Excerpt Text */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" }}>
+                        {isVi ? "Đoạn trích thực tế từ tệp:" : "Actual Excerpt from File:"}
+                      </div>
+                      <div style={{
+                        background: "var(--amber-soft)",
+                        border: "1px solid rgba(217,119,6,0.25)",
+                        borderRadius: "var(--r-md)",
+                        padding: "10px 12px",
+                        fontSize: 12,
+                        color: "var(--text-1)",
+                        lineHeight: 1.6,
+                        maxHeight: 220,
+                        overflowY: "auto",
+                        whiteSpace: "pre-wrap"
+                      }}>
+                        {cite.text || (isVi ? "(Không có trích đoạn văn bản)" : "(No snippet available)")}
+                      </div>
+                    </div>
 
-            {/* Visualizer đồ thị mini */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              {[
-                { name: "ABC Corporation", type: "Khách hàng VIP", icon: "fa-building", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" },
-                { name: "Contract CT-2026-18", type: "Hợp đồng (1.2B)", icon: "fa-file-signature", color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
-                { name: "Sản phẩm A", type: "Linh kiện", icon: "fa-box-archive", color: "#0284c7", bg: "#e0f2fe", border: "#7dd3fc" },
-                { name: "Tín hiệu giảm -32%", type: "Cảnh báo rủi ro", icon: "fa-triangle-exclamation", color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" }
-              ].map((n, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border-soft)",
-                    gap: "8px"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
-                    <i className={`fa-solid ${n.icon}`} style={{ color: n.color, fontSize: "11px", width: "12px", textAlign: "center", flexShrink: 0 }}></i>
-                    <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {n.name}
-                    </span>
+                    {/* Neo4j Node if present */}
+                    {cite.neo4jNode && (
+                      <div style={{
+                        background: "var(--surface)",
+                        border: "1px solid var(--border-soft)",
+                        borderRadius: "var(--r-xs)",
+                        padding: "8px 10px",
+                        fontSize: 11,
+                        color: "var(--text-3)"
+                      }}>
+                        <span>Graph Entity: </span>
+                        <code style={{ color: "var(--blue)" }}>{cite.neo4jNode}</code>
+                      </div>
+                    )}
                   </div>
-
-                  <span style={{
-                    fontSize: "9.5px",
-                    fontWeight: "700",
-                    padding: "1px 6px",
-                    borderRadius: "4px",
-                    background: n.bg,
-                    color: n.color,
-                    border: `1px solid ${n.border}`,
-                    flexShrink: 0,
-                    whiteSpace: "nowrap"
-                  }}>
-                    {n.type}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. BỘ TRÍCH DẪN NGUỒN VĂN BẢN GỐC (CITATION VIEWER) */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)",
-            padding: "14px 16px",
-            boxShadow: "var(--shadow-sm)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)", paddingBottom: "8px" }}>
-              <span style={{
-                fontSize: "11.5px",
-                fontWeight: "700",
-                color: "var(--text-3)",
-                textTransform: "uppercase",
-                letterSpacing: "0.03em"
-              }}>
-                {isVi ? "Trích Dẫn Nguồn Gốc" : "Verified Citations"}
-              </span>
-
-              <span style={{
-                fontSize: "10px",
-                fontWeight: "700",
-                padding: "2px 7px",
-                borderRadius: "4px",
-                background: "var(--blue-soft)",
-                color: "var(--blue)",
-                border: "1px solid var(--blue-dim)"
-              }}>
-                L5 PROVENANCE
-              </span>
+                ))
+              )}
             </div>
 
-            <p style={{ fontSize: "11px", color: "var(--text-3)", margin: 0, lineHeight: "1.35" }}>
-              {isVi ? "Bấm vào để xem đoạn văn bản gốc:" : "Click to view original excerpt:"}
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div
-                onClick={() =>
-                  setActiveCitation({
-                    title: "Contract_CT-2026-18.pdf — Trang 2, Điều 4.2",
-                    type: "PDF HỢP ĐỒNG",
-                    content:
-                      "Điều 4.2 (Hiệu lực hợp đồng): Hợp đồng này có giá trị hiệu lực đến hết ngày 18 tháng 10 năm 2026. Trong trường hợp Bên B (Tập đoàn ABC) có nhu cầu tái ký hoặc gia hạn hợp đồng, hai bên sẽ tiến hành rà soát chỉ tiêu mua sắm tối thiểu 15 ngày trước ngày kết thúc hợp đồng. Nếu không có văn bản gia hạn, các mức giá ưu đãi cam kết sẽ tự động mất hiệu lực."
-                  })
-                }
+            <div style={{ padding: 16, borderTop: "1px solid var(--border-soft)", background: "var(--surface-2)" }}>
+              <button
+                onClick={() => onNavigate?.("knowledge")}
                 style={{
-                  padding: "9px 11px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-soft)",
+                  width: "100%",
+                  padding: "8px 14px",
                   borderRadius: "var(--r-md)",
-                  cursor: "pointer",
-                  transition: "all var(--transition-fast)",
+                  background: "var(--blue)",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 600,
                   display: "flex",
-                  flexDirection: "column",
-                  gap: "5px"
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                  border: "none"
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                  <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--cyan)", display: "flex", alignItems: "center", gap: "6px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    <i className="fa-solid fa-file-pdf" style={{ color: "var(--red)", fontSize: "12px", flexShrink: 0 }}></i>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>Contract_CT-2026-18.pdf</span>
-                  </span>
-                  <span style={{ fontSize: "10px", fontFamily: "var(--f-mono)", color: "var(--text-4)", flexShrink: 0, whiteSpace: "nowrap" }}>Trang 2</span>
-                </div>
-                <p style={{
-                  fontSize: "11px",
-                  color: "var(--text-3)",
-                  margin: 0,
-                  lineHeight: "1.4",
-                  fontStyle: "italic",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  borderLeft: "2px solid var(--cyan)",
-                  paddingLeft: "7px"
-                }}>
-                  "...Thời hạn hiệu lực đến hết ngày 18 tháng 10 năm 2026. Nếu không tái ký trước 15 ngày..."
-                </p>
-              </div>
-
-              <div
-                onClick={() =>
-                  setActiveCitation({
-                    title: "CRM_Account_Ledger_2026.xlsx — Dòng 142",
-                    type: "BẢNG TÍNH SHEETS",
-                    content:
-                      "Bản ghi CRM ID #142 (ABC Corporation):\n• Tháng 7: 8 đơn hàng — Doanh thu 680,000,000 VND\n• Tháng 8: 5 đơn hàng — Doanh thu 420,000,000 VND\n• Tháng 9: 3 đơn hàng — Doanh thu 260,000,000 VND\n• Tốc độ tăng trưởng: -32.4% (Tín hiệu rời bỏ mức độ cao, cần can thiệp chăm sóc khẩn cấp)."
-                  })
-                }
-                style={{
-                  padding: "9px 11px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border-soft)",
-                  borderRadius: "var(--r-md)",
-                  cursor: "pointer",
-                  transition: "all var(--transition-fast)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "5px"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                  <span style={{ fontWeight: "700", fontSize: "11.5px", color: "var(--green)", display: "flex", alignItems: "center", gap: "6px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    <i className="fa-solid fa-file-excel" style={{ color: "var(--green)", fontSize: "12px", flexShrink: 0 }}></i>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>CRM_Account_Ledger_2026.xlsx</span>
-                  </span>
-                  <span style={{ fontSize: "10px", fontFamily: "var(--f-mono)", color: "var(--text-4)", flexShrink: 0, whiteSpace: "nowrap" }}>Dòng 142</span>
-                </div>
-                <p style={{
-                  fontSize: "11px",
-                  color: "var(--text-3)",
-                  margin: 0,
-                  lineHeight: "1.4",
-                  fontStyle: "italic",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  borderLeft: "2px solid var(--green)",
-                  paddingLeft: "7px"
-                }}>
-                  "...Tháng 8: 5 đơn hàng. Tháng 9: 3 đơn hàng. Nhịp mua hàng giảm 32.4%..."
-                </p>
-              </div>
+                <span>{isVi ? "Mở trong Knowledge Base" : "Open in Knowledge Base"}</span>
+                <ExternalLink size={13} />
+              </button>
             </div>
-          </div>
-        </div>
+          </aside>
+        )}
+
       </div>
-
-      {/* ============================================================ */}
-      {/* MODAL 1: XEM CHI TIẾT TRÍCH DẪN VĂN BẢN GỐC (CITATION VIEWER)*/}
-      {/* ============================================================ */}
-      {activeCitation && (
+      
+      {/* ── PIN SESSION MODAL (US37 · PB59 · UC.18) ──────────── */}
+      {showPinModal && (
         <div style={{
           position: "fixed",
           inset: 0,
@@ -1166,158 +1785,165 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "16px"
-        }}>
+          padding: 20
+        }} onClick={() => setShowPinModal(false)}>
           <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-xl)",
-            maxWidth: "600px",
             width: "100%",
-            padding: "22px 24px",
-            boxShadow: "var(--shadow-lg)",
+            maxWidth: 500,
+            background: "var(--surface)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: "var(--r-lg)",
+            boxShadow: "var(--shadow-2xl)",
+            padding: 24,
             display: "flex",
             flexDirection: "column",
-            gap: "16px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)", paddingBottom: "12px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <i className="fa-solid fa-quote-left" style={{ color: "var(--cyan)", fontSize: "16px" }}></i>
-                <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
-                  {activeCitation.title}
-                </h3>
+            gap: 16
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  background: "rgba(245, 158, 11, 0.15)",
+                  color: "#d97706",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <Pin size={18} fill="#d97706" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
+                    {isVi ? "Ghim làm tài liệu dùng chung phòng ban" : "Pin as Shared Department Document"}
+                  </h3>
+                  <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
+                    US37 · PB59 · UC.18 · BR-02
+                  </div>
+                </div>
               </div>
               <button
-                onClick={() => setActiveCitation(null)}
-                style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: "16px" }}
+                onClick={() => setShowPinModal(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-4)",
+                  cursor: "pointer",
+                  padding: 4
+                }}
               >
-                <i className="fa-solid fa-xmark"></i>
+                <X size={16} />
               </button>
             </div>
 
             <div style={{
-              padding: "14px 16px",
               background: "var(--surface-2)",
-              borderRadius: "8px",
               border: "1px solid var(--border-soft)",
-              fontSize: "13px",
+              borderRadius: "var(--r-md)",
+              padding: 12,
+              fontSize: 12,
               color: "var(--text-2)",
-              lineHeight: "1.6",
-              fontFamily: "var(--f-mono)",
-              whiteSpace: "pre-line"
+              lineHeight: 1.5
             }}>
-              {activeCitation.content}
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border-soft)", paddingTop: "12px" }}>
-              <span style={{ fontSize: "11.5px", color: "var(--green)", display: "flex", alignItems: "center", gap: "6px", fontWeight: "600" }}>
-                <i className="fa-solid fa-circle-check"></i>
-                {isVi ? "Bằng chứng đã được kiểm toán toàn vẹn" : "Cryptographically verified provenance"}
-              </span>
-
-              <button
-                onClick={() => {
-                  onNavigate?.("documents");
-                  setActiveCitation(null);
-                  showToast(isVi ? "Đang chuyển sang Kho Tài liệu toàn văn..." : "Opening full document...");
-                }}
-                className="btn primary sm"
-              >
-                {isVi ? "Mở Toàn Văn Tệp" : "Open Full Document"} →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================ */}
-      {/* MODAL 2: ACTION TRIGGER DRAFT MODAL                           */}
-      {/* ============================================================ */}
-      {actionDraftModal && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 1000,
-          background: "rgba(15, 23, 42, 0.65)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px"
-        }}>
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-xl)",
-            maxWidth: "620px",
-            width: "100%",
-            padding: "22px 24px",
-            boxShadow: "var(--shadow-lg)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)", paddingBottom: "12px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <i className="fa-solid fa-paper-plane" style={{ color: "var(--cyan)", fontSize: "16px" }}></i>
-                <h3 style={{ fontSize: "15px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
-                  {isVi ? "Thư Đề Xuất Do AI Soạn Sẵn" : "AI Generated Outreach Email"}
-                </h3>
+              <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>
+                {pinTargetSession?.title || (isVi ? "Cuộc hội thoại" : "Conversation")}
               </div>
-              <button
-                onClick={() => setActionDraftModal(null)}
-                style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: "16px" }}
-              >
-                <i className="fa-solid fa-xmark"></i>
-              </button>
+              <div style={{ color: "var(--text-3)", fontSize: 11.5 }}>
+                {isVi
+                  ? "Phiên hỏi đáp này sẽ được lưu làm tài liệu dùng chung cho phòng ban tham khảo. Các trích dẫn tài liệu sẽ tự động kiểm soát quyền truy cập theo chính sách BR-02."
+                  : "This Q&A session will be pinned for your department. Document citations will enforce BR-02 data scopes."}
+              </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12.5px", color: "var(--text-2)" }}>
-              <div><b style={{ color: "var(--text-1)" }}>{isVi ? "Người nhận:" : "To:"}</b> {actionDraftModal.recipient}</div>
-              <div><b style={{ color: "var(--text-1)" }}>{isVi ? "Tiêu đề:" : "Subject:"}</b> {actionDraftModal.subject}</div>
-            </div>
-
-            <textarea
-              rows={8}
-              value={actionDraftModal.body}
-              onChange={(e) => setActionDraftModal({ ...actionDraftModal, body: e.target.value })}
-              style={{
-                width: "100%",
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+                {isVi ? "Phòng ban áp dụng:" : "Target Department:"}
+              </label>
+              <div style={{
+                padding: "8px 12px",
+                borderRadius: "var(--r-md)",
                 background: "var(--surface-2)",
-                color: "var(--text-1)",
-                padding: "12px 14px",
-                borderRadius: "8px",
                 border: "1px solid var(--border)",
-                fontSize: "13px",
-                lineHeight: "1.6",
-                outline: "none",
-                fontFamily: "var(--f-body)"
-              }}
-            />
+                fontSize: 12.5,
+                fontWeight: 600,
+                color: "var(--text-1)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <span style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#f59e0b"
+                }} />
+                <span>{currentUser?.department || pinTargetSession?.department || "Kinh doanh (Sales)"}</span>
+              </div>
+            </div>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border-soft)", paddingTop: "12px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+                {isVi ? "Ghi chú tài liệu (tùy chọn):" : "Document Notes (optional):"}
+              </label>
+              <textarea
+                value={pinNotesInput}
+                onChange={(e) => setPinNotesInput(e.target.value)}
+                placeholder={isVi ? "VD: Mẫu đối soát và chiết khấu hợp đồng khách hàng quý 4/2026..." : "e.g. Reconciliation notes for Q4 sales team..."}
+                rows={3}
+                style={{
+                  width: "100%",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r-md)",
+                  padding: 10,
+                  fontSize: 12.5,
+                  color: "var(--text-1)",
+                  outline: "none",
+                  resize: "vertical",
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
               <button
                 type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(actionDraftModal.body);
-                  setCopiedDraft(true);
-                  setTimeout(() => setCopiedDraft(false), 2500);
+                onClick={() => setShowPinModal(false)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "var(--r-md)",
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-2)",
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: "pointer"
                 }}
-                className="btn sm"
               >
-                <i className={`fa-solid ${copiedDraft ? "fa-check" : "fa-copy"}`} style={{ color: copiedDraft ? "var(--green)" : "inherit", marginRight: "6px" }}></i>
-                {copiedDraft ? (isVi ? "Đã sao chép!" : "Copied!") : (isVi ? "Sao chép thư" : "Copy Email")}
+                {isVi ? "Hủy" : "Cancel"}
               </button>
-
               <button
                 type="button"
-                onClick={() => {
-                  setActionDraftModal(null);
-                  showToast(isVi ? "✅ Đã gửi thư và cập nhật nhật ký tác nghiệp!" : "Email sent & logged to audit trail!");
+                disabled={isPinning}
+                onClick={handleConfirmPin}
+                style={{
+                  padding: "8px 18px",
+                  borderRadius: "var(--r-md)",
+                  border: "none",
+                  background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
+                  color: "#ffffff",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: isPinning ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: "0 2px 6px rgba(217,119,6,0.35)",
+                  opacity: isPinning ? 0.7 : 1
                 }}
-                className="btn primary sm"
               >
-                {isVi ? "Gửi Đi & Lưu Nhật Ký" : "Send & Log"}
+                <Pin size={13} fill="#ffffff" />
+                <span>{isPinning ? (isVi ? "Đang lưu..." : "Saving...") : (isVi ? "Xác nhận ghim" : "Confirm Pin")}</span>
               </button>
             </div>
           </div>
@@ -1326,3 +1952,4 @@ export default function CopilotView({ onNavigate, t, lang, apiConnected }) {
     </div>
   );
 }
+

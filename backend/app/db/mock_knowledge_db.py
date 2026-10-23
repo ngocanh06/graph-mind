@@ -1,4 +1,4 @@
-﻿"""
+"""
 Graph Mind — Enterprise Knowledge Base & Graph Dataset (Python)
 """
 from typing import Dict, Any, List
@@ -31,8 +31,8 @@ AI_SIGNALS: List[Dict[str, Any]] = [
         "badge": "MEDIUM RISK",
         "what_en": "3 contracts expire within 21 days with no renewal activity logged.",
         "what_vi": "3 hợp đồng hết hạn trong 21 ngày tới chưa có hoạt động gia hạn.",
-        "why_en": "Combined value of 4.1B VND has no renewal activity logged in CRM or Drive folders.",
-        "why_vi": "Tổng giá trị hợp đồng 4,1 tỷ VND chưa ghi nhận động thái gia hạn nào trên CRM hoặc Google Drive.",
+        "why_en": "Combined value of $4.1M USD has no renewal activity logged in CRM or Drive folders.",
+        "why_vi": "Tổng giá trị hợp đồng $4.1M USD chưa ghi nhận động thái gia hạn nào trên CRM hoặc Google Drive.",
         "action_en": "Open Risk Center",
         "action_vi": "Mở Trung tâm Rủi ro",
         "entityId": "ct18"
@@ -61,7 +61,7 @@ ENTITIES: Dict[str, Any] = {
         "risk": "Elevated",
         "industry": "Manufacturing & Industrial",
         "contact": "Tran M. Anh (Procurement Dir.)",
-        "revenue": "6.4B VND",
+        "revenue": "$6.4M USD",
         "ordersCount": 214,
         "activeContracts": 2,
         "relationships": [
@@ -79,7 +79,7 @@ ENTITIES: Dict[str, Any] = {
         "risk": "High",
         "industry": "Legal / Sales",
         "contact": "Pham Q. Linh (Account Mgr)",
-        "revenue": "1.2B VND",
+        "revenue": "$1.2M USD",
         "ordersCount": 18,
         "activeContracts": 1,
         "relationships": [
@@ -97,7 +97,7 @@ ENTITIES: Dict[str, Any] = {
         "risk": "Medium",
         "industry": "Distribution & Logistics",
         "contact": "Nguyen V. Binh (Director)",
-        "revenue": "3.2B VND",
+        "revenue": "$3.2M USD",
         "ordersCount": 94,
         "activeContracts": 1,
         "relationships": [
@@ -115,7 +115,7 @@ ENTITIES: Dict[str, Any] = {
         "risk": "Low",
         "industry": "Software & Services",
         "contact": "Product Management Team",
-        "revenue": "28.4B VND (YTD)",
+        "revenue": "$28.4M USD (YTD)",
         "ordersCount": 840,
         "activeContracts": 180,
         "relationships": [

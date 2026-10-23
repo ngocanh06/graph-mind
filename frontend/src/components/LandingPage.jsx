@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Icon from './ui/Icon';
 
 export default function LandingPage({
   onEnterPlatform,
@@ -98,8 +99,8 @@ export default function LandingPage({
                 height: "36px",
                 borderRadius: "10px",
                 objectFit: "contain",
-                boxShadow: "0 0 16px rgba(0,229,255,0.4)",
-                filter: "drop-shadow(0 0 6px rgba(0,229,255,0.3))",
+                boxShadow: "0 4px 14px rgba(44, 131, 115, 0.4), 0 0 1px rgba(255, 255, 255, 0.3)",
+                filter: "drop-shadow(0 2px 6px rgba(19, 62, 112, 0.3))",
                 display: "block"
               }}
             />
@@ -107,7 +108,7 @@ export default function LandingPage({
               <div style={{ fontSize: "16px", fontWeight: "800", letterSpacing: "-0.01em", color: "#ffffff", lineHeight: "1.15" }}>
                 GRAPH MIND
               </div>
-              <div style={{ fontSize: "9px", letterSpacing: "0.08em", color: "#00e5ff", textTransform: "uppercase", fontWeight: "700", marginTop: "3px" }}>
+              <div style={{ fontSize: "9px", letterSpacing: "0.08em", color: "#2dd4bf", textTransform: "uppercase", fontWeight: "700", marginTop: "3px" }}>
                 KNOWLEDGE OBSERVATORY
               </div>
             </div>
@@ -355,7 +356,7 @@ export default function LandingPage({
                     onMouseLeave={(e) => e.currentTarget.style.transform = "translateX(0)"}
                   >
                     <span style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#ffffff", color: "#011422", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", flexShrink: 0 }}>
-                      <i className="fa-solid fa-check"></i>
+                      <Icon name="fa-solid fa-check" size={15} />
                     </span>
                     <span>{item}</span>
                   </div>
@@ -792,7 +793,7 @@ export default function LandingPage({
                   border: "2px solid #00283b",
                   boxShadow: "0 2px 6px rgba(0,0,0,0.4)"
                 }} title="Doanh nghiệp đã xác thực">
-                  <i className="fa-solid fa-check"></i>
+                  <Icon name="fa-solid fa-check" size={15} />
                 </div>
               </div>
 
@@ -810,15 +811,15 @@ export default function LandingPage({
                 borderRadius: "12px",
                 marginBottom: "12px"
               }}>
-                <i className="fa-solid fa-building" style={{ fontSize: "9px" }}></i> Vinamilk Group
+                <Icon name="fa-solid fa-building" size={15} style={{ fontSize: "9px" }} /> Vinamilk Group
               </div>
 
               <div style={{ display: "flex", gap: "3px", color: "#f59e0b", fontSize: "11px", marginBottom: "12px" }}>
-                {[...Array(5)].map((_, i) => <i key={i} className="fa-solid fa-star"></i>)}
+                {[...Array(5)].map((_, i) => <Icon name="fa-solid fa-star" size={14} key={i} />)}
               </div>
               <p style={{ fontSize: "11.5px", lineHeight: "1.7", color: "#e2e8f0", textAlign: "center", margin: "0 0 20px 0" }}>
                 {isVi
-                  ? "\"Graph Mind giúp ban điều hành phát hiện hợp đồng 1,2 tỷ sắp hết hạn và giảm thiểu 32% nguy cơ rời bỏ khách hàng một cách chính xác tuyệt đối.\""
+                  ? "\"Graph Mind giúp ban điều hành phát hiện hợp đồng $1.2M USD sắp hết hạn và giảm thiểu 32% nguy cơ rời bỏ khách hàng một cách chính xác tuyệt đối.\""
                   : "\"It's pretty amazing tool and UI/UX is great. Google NLP API is something that I always wanted to have for enterprise knowledge and they've got that.\""}
               </p>
               <div style={{ fontSize: "13.5px", fontWeight: "800", color: "#ffffff", marginBottom: "4px" }}>
@@ -878,7 +879,7 @@ export default function LandingPage({
                   border: "2px solid #00283b",
                   boxShadow: "0 2px 6px rgba(0,0,0,0.4)"
                 }} title="Doanh nghiệp đã xác thực">
-                  <i className="fa-solid fa-check"></i>
+                  <Icon name="fa-solid fa-check" size={15} />
                 </div>
               </div>
 
@@ -896,11 +897,11 @@ export default function LandingPage({
                 borderRadius: "12px",
                 marginBottom: "12px"
               }}>
-                <i className="fa-solid fa-building" style={{ fontSize: "9px" }}></i> Techcom Capital
+                <Icon name="fa-solid fa-building" size={15} style={{ fontSize: "9px" }} /> Techcom Capital
               </div>
 
               <div style={{ display: "flex", gap: "3px", color: "#f59e0b", fontSize: "11px", marginBottom: "12px" }}>
-                {[...Array(5)].map((_, i) => <i key={i} className="fa-solid fa-star"></i>)}
+                {[...Array(5)].map((_, i) => <Icon name="fa-solid fa-star" size={14} key={i} />)}
               </div>
               <p style={{ fontSize: "11.5px", lineHeight: "1.7", color: "#e2e8f0", textAlign: "center", margin: "0 0 20px 0" }}>
                 {isVi
@@ -964,7 +965,7 @@ export default function LandingPage({
                   border: "2px solid #00283b",
                   boxShadow: "0 2px 6px rgba(0,0,0,0.4)"
                 }} title="Doanh nghiệp đã xác thực">
-                  <i className="fa-solid fa-check"></i>
+                  <Icon name="fa-solid fa-check" size={15} />
                 </div>
               </div>
 
@@ -982,11 +983,11 @@ export default function LandingPage({
                 borderRadius: "12px",
                 marginBottom: "12px"
               }}>
-                <i className="fa-solid fa-building" style={{ fontSize: "9px" }}></i> PVN Energy Holding
+                <Icon name="fa-solid fa-building" size={15} style={{ fontSize: "9px" }} /> PVN Energy Holding
               </div>
 
               <div style={{ display: "flex", gap: "3px", color: "#f59e0b", fontSize: "11px", marginBottom: "12px" }}>
-                {[...Array(5)].map((_, i) => <i key={i} className="fa-solid fa-star"></i>)}
+                {[...Array(5)].map((_, i) => <Icon name="fa-solid fa-star" size={14} key={i} />)}
               </div>
               <p style={{ fontSize: "11.5px", lineHeight: "1.7", color: "#e2e8f0", textAlign: "center", margin: "0 0 20px 0" }}>
                 {isVi
@@ -1067,7 +1068,7 @@ export default function LandingPage({
                 }}
               >
                 {isVi ? "Gửi Yêu Cầu" : "Submit"}
-                <i className="fa-solid fa-paper-plane" style={{ marginLeft: "8px", fontSize: "11px" }}></i>
+                <Icon name="fa-solid fa-paper-plane" size={15} style={{ marginLeft: "8px", fontSize: "11px" }} />
               </button>
             </div>
           </div>
@@ -1152,7 +1153,7 @@ export default function LandingPage({
                   height: "30px",
                   borderRadius: "7px",
                   objectFit: "contain",
-                  boxShadow: "0 0 14px rgba(0, 229, 255, 0.45)",
+                  boxShadow: "0 2px 10px rgba(44, 131, 115, 0.35)",
                   flexShrink: 0
                 }}
               />
@@ -1179,41 +1180,25 @@ export default function LandingPage({
             }}>
               {/* 1. HomepageAlternativeOutlined */}
               <div style={{ display: "flex", alignItems: "flex-start" }}>
-                <i
-                  className="fa-solid fa-house"
-                  style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", marginTop: "2px", flexShrink: 0, width: "22px", textAlign: "center" }}
-                  title="Trụ sở chính"
-                ></i>
+                <Icon name="fa-solid fa-house" size={15} style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", marginTop: "2px", flexShrink: 0, width: "22px", textAlign: "center" }} />
                 <span>Tòa tháp AEGIS Tower, Phường Mễ Trì, Quận Nam Từ Liêm, Hà Nội</span>
               </div>
 
               {/* 2. MailOutlined */}
               <div style={{ display: "flex", alignItems: "center" }}>
-                <i
-                  className="fa-regular fa-envelope"
-                  style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", flexShrink: 0, width: "22px", textAlign: "center" }}
-                  title="Hộp thư điện tử"
-                ></i>
+                <Icon name="fa-regular fa-envelope" size={15} style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", flexShrink: 0, width: "22px", textAlign: "center" }} />
                 <span>contact@graphmind.ai / info@aegis-ekmp.vn</span>
               </div>
 
               {/* 3. PhoneOutlined */}
               <div style={{ display: "flex", alignItems: "center" }}>
-                <i
-                  className="fa-solid fa-phone"
-                  style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", flexShrink: 0, width: "22px", textAlign: "center" }}
-                  title="Hotline hỗ trợ"
-                ></i>
+                <Icon name="fa-solid fa-phone" size={15} style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", flexShrink: 0, width: "22px", textAlign: "center" }} />
                 <span>Hotline: 0987.654.321</span>
               </div>
 
               {/* 4. PrinterOutlined */}
               <div style={{ display: "flex", alignItems: "center" }}>
-                <i
-                  className="fa-solid fa-print"
-                  style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", flexShrink: 0, width: "22px", textAlign: "center" }}
-                  title="Fax / Hotline kỹ thuật"
-                ></i>
+                <Icon name="fa-solid fa-print" size={15} style={{ fontSize: "20px", color: "#00e5ff", marginRight: "8px", flexShrink: 0, width: "22px", textAlign: "center" }} />
                 <span>Fax / Kỹ thuật: (+84) 24.3999.8888</span>
               </div>
             </div>
@@ -1327,7 +1312,7 @@ export default function LandingPage({
                       style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                     />
                   ) : (
-                    <i className={item.icon} style={{ fontSize: "18px" }}></i>
+                    <Icon name={item.icon} size={16} />
                   )}
                 </a>
               ))}
