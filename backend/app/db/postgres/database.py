@@ -56,8 +56,7 @@ async def get_db() -> AsyncSession:
 # ── Tạo / xóa toàn bộ tables (dùng trong dev/test, production dùng Alembic) ─
 async def create_all_tables():
     """Tạo tất cả tables từ ORM models. Chỉ dùng trong dev/test."""
-    # Import models để Base.metadata nhận diện được
-    from app.db.postgres.models import user, copilot_session, sop_document  # noqa: F401
+    from app.db.postgres.models import user, copilot_session, sop_document, audit_log, knowledge_permission, otp  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -165,6 +165,19 @@ app.include_router(sop_router, prefix="/api/sop", tags=["sop"])
 app.include_router(rbac_router, prefix="/api/v1/rbac", tags=["rbac"])
 app.include_router(rbac_router, prefix="/api/rbac", tags=["rbac"])
 
+# M6 Admin & Security router
+try:
+    from app.modules.m6_admin_security.user_admin_api import router as admin_router
+except ImportError:
+    from modules.m6_admin_security.user_admin_api import router as admin_router
+app.include_router(admin_router, prefix="/api/v1")
+
+# M6 Forgot Password / OTP router (PB43)
+try:
+    from app.modules.m6_admin_security.forgot_password_router import router as forgot_router
+except ImportError:
+    from modules.m6_admin_security.forgot_password_router import router as forgot_router
+app.include_router(forgot_router, prefix="/api/v1/auth")
 
 
 # --- Pydantic Schemas ---

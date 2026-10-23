@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     INFERENCE_ENGINE_URL: str = "http://localhost:11434"
     MODEL_NAME: str = "qwen2.5-7b-graphmind"
 
+    # SMTP Email
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    SMTP_FROM_NAME: str = "Admin Công Ty"
+
 
 # Singleton instance — import và dùng ở mọi nơi
 settings = Settings()
