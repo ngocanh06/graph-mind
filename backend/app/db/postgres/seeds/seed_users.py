@@ -65,6 +65,24 @@ SEED_USERS = [
         "is_superuser": False,
         "is_active": True,
     },
+    {
+        "username": "test1",
+        "email": "phananhbao123456789@gmail.com",
+        "full_name": "Phan Anh Bảo",
+        "password": "123456",
+        "role": "executive",
+        "is_superuser": False,
+        "is_active": True,
+    },
+    {
+        "username": "phananhkhanh889",
+        "email": "phananhkhanh889@gmail.com",
+        "full_name": "Phan Anh Khánh",
+        "password": "123456",
+        "role": "standard",
+        "is_superuser": False,
+        "is_active": True,
+    },
 ]
 
 
