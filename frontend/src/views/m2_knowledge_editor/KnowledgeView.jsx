@@ -28,24 +28,24 @@ export default function KnowledgeView({
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState("Customer");
 
-  // Selected Node state for Inspector
+  // Selected Node state for Inspector (Live CUAD Clause from Neo4j & Qdrant)
   const [selectedNode, setSelectedNode] = useState({
-    id: "Clause_12.2",
-    name: "Unilateral Liability Cap",
-    label: "Mục 12.2: Giới hạn trách nhiệm bồi thường",
+    id: "CUAD_001_Termination",
+    name: "Termination Clause (#75)",
+    label: "Điều khoản Chấm dứt hợp đồng (Termination)",
     type: "Clause",
     badge: "Clause Node",
-    docSource: "CUAD_Service_Agreement_v4.pdf",
-    chunkId: "Qdrant_Chunk_#402",
-    penaltyLimit: "10% total fee in 12 months",
-    isRisk: true,
-    notes: "Mức trần 10% này thấp hơn tiêu chuẩn 30% của công ty. Cần lưu ý khi soạn phụ lục đàm phán lại.",
+    docSource: "WPPPLC_04_30_2020-EX-4.28-SERVICE AGREEMENT.pdf",
+    chunkId: "Qdrant_Chunk_#75",
+    penaltyLimit: "Stock Plan Vesting & Bonus",
+    isRisk: false,
+    notes: "Điều khoản chấm dứt hợp đồng trích xuất từ CUAD_001 liên kết đối tác WPPPLC trong đồ thị Neo4j.",
     properties: {
-      is_unilateral: "true (Bất đối xứng)",
-      cap_percentage: "10% (0.10)",
-      risk_score: "0.942 (Rất cao)",
-      contract_ref: "CUAD_042",
-      page_number: "16"
+      contract_ref: "CUAD_001 (WPPPLC)",
+      clause_type: "Termination",
+      qdrant_vector_point: "#75",
+      neo4j_label: "Clause",
+      neo4j_verified: "true"
     }
   });
 
@@ -128,13 +128,13 @@ export default function KnowledgeView({
   };
 
   const ENTITY_CHIPS = [
-    { key: "Customer", label: "Customer", count: 340, bg: "bg-blue-50 text-blue-800 border-blue-200", dot: "bg-blue-600" },
-    { key: "Product", label: "Product", count: 1120, bg: "bg-cyan-50 text-cyan-800 border-cyan-200", dot: "bg-cyan-600" },
-    { key: "Order", label: "Order", count: 4290, bg: "bg-amber-50 text-amber-900 border-amber-200", dot: "bg-amber-600" },
-    { key: "Employee", label: "Employee", count: 89, bg: "bg-purple-50 text-purple-900 border-purple-200", dot: "bg-purple-600" },
-    { key: "Vendor", label: "Vendor", count: 142, bg: "bg-orange-50 text-orange-900 border-orange-200", dot: "bg-orange-600" },
-    { key: "Contract", label: "Contract", count: 68, bg: "bg-indigo-50 text-indigo-900 border-indigo-200", dot: "bg-indigo-600" },
-    { key: "Clause", label: "Clause", count: 412, bg: "bg-rose-50 text-rose-900 border-rose-200 font-bold", dot: "bg-rose-600" },
+    { key: "Customer", label: "Customer", count: 19820, bg: "bg-blue-50 text-blue-800 border-blue-200", dot: "bg-blue-600" },
+    { key: "Product", label: "Product", count: 504, bg: "bg-cyan-50 text-cyan-800 border-cyan-200", dot: "bg-cyan-600" },
+    { key: "Order", label: "SalesOrder", count: 31465, bg: "bg-amber-50 text-amber-900 border-amber-200", dot: "bg-amber-600" },
+    { key: "Employee", label: "Employee", count: 290, bg: "bg-purple-50 text-purple-900 border-purple-200", dot: "bg-purple-600" },
+    { key: "Vendor", label: "Company", count: 30, bg: "bg-orange-50 text-orange-900 border-orange-200", dot: "bg-orange-600" },
+    { key: "Contract", label: "Contract", count: 30, bg: "bg-indigo-50 text-indigo-900 border-indigo-200", dot: "bg-indigo-600" },
+    { key: "Clause", label: "Clause", count: 103, bg: "bg-rose-50 text-rose-900 border-rose-200 font-bold", dot: "bg-rose-600" },
   ];
 
   const handleSaveAttributeChanges = () => {
@@ -321,7 +321,7 @@ export default function KnowledgeView({
             }`}
           >
             <span>🕸️</span>
-            <span>{isVi ? "Neo4j Live (52.120 Nodes)" : "Neo4j Live (52k Nodes)"}</span>
+            <span>{isVi ? "Neo4j Live (52.283 Nodes)" : "Neo4j Live (52,283 Nodes)"}</span>
           </button>
         </div>
       </div>
@@ -477,130 +477,135 @@ export default function KnowledgeView({
                   HAS_RISK_LIABILITY
                 </text>
 
-                {/* Node 1: Vendor (Alpha Corp) */}
+                {/* Node 1: Top Customer (Roger Harui - $989K USD) */}
                 <g
                   className="cursor-pointer group"
                   transform="translate(180, 180)"
                   onClick={() => {
                     setSelectedNode({
-                      id: "Party_AlphaCorp",
-                      name: "Alpha Corporation",
-                      label: "Alpha Corp (Customer VIP)",
+                      id: "CUST-29818",
+                      name: "Roger Harui",
+                      label: "Roger Harui (Top 1 VIP Customer)",
                       type: "Customer",
                       badge: "Customer Node",
-                      docSource: "CUAD_Service_Agreement_v4.pdf",
-                      chunkId: "Qdrant_Chunk_#101",
+                      docSource: "AdventureWorks Sales.Customer",
+                      chunkId: "Neo4j Node #29818",
                       penaltyLimit: "N/A",
                       isRisk: false,
-                      notes: "Khách hàng cấp Enterprise, đã ký hợp đồng dịch vụ CUAD.",
+                      notes: "Khách hàng VIP doanh thu cao nhất trên cơ sở dữ liệu AdventureWorks Neo4j ($989K USD).",
                       properties: {
-                        credit_rating: "AAA Enterprise",
-                        annual_revenue: "42,000,000,000 VND",
-                        contract_status: "Active (Chờ rà soát Q4)"
+                        customer_id: "29818",
+                        total_orders: "12 đơn hàng",
+                        total_revenue: "$989,184.08 USD",
+                        contract_status: "Active VIP"
                       }
                     });
-                    showToast(isVi ? "Đã chọn Node: Alpha Corp" : "Selected Node: Alpha Corp");
+                    showToast(isVi ? "Đã chọn Node: Roger Harui ($989K USD)" : "Selected Node: Roger Harui ($989K USD)");
                   }}
                 >
                   <circle r="42" fill="#EAEDFF" stroke="#004AC6" strokeWidth="2" />
                   <circle cx="0" cy="0" r="6" fill="#004AC6" />
-                  <text y="-8" textAnchor="middle" fill="#004AC6" fontSize="11" fontWeight="bold" fontFamily="Inter">Alpha Corp</text>
-                  <text y="10" textAnchor="middle" fill="#434655" fontSize="9" fontFamily="Inter">Party / Vendor</text>
+                  <text y="-8" textAnchor="middle" fill="#004AC6" fontSize="11" fontWeight="bold" fontFamily="Inter">Roger Harui</text>
+                  <text y="10" textAnchor="middle" fill="#434655" fontSize="9" fontFamily="Inter">$989K VIP</text>
                 </g>
 
-                {/* Node 2: Center Contract (CUAD_042) */}
+                {/* Node 2: Center Contract (CUAD_001 - WPPPLC) */}
                 <g
                   className="cursor-pointer group"
                   transform="translate(350, 140)"
                   onClick={() => {
                     setSelectedNode({
-                      id: "CUAD_042",
-                      name: "Master Service Agreement v4",
-                      label: "Hợp đồng dịch vụ CUAD_042",
+                      id: "CUAD_001",
+                      name: "WPPPLC Service Agreement",
+                      label: "Hợp đồng dịch vụ CUAD_001 (WPPPLC)",
                       type: "Contract",
                       badge: "Contract Node",
-                      docSource: "CUAD_Service_Agreement_v4.pdf",
-                      chunkId: "Qdrant_Chunk_#204",
-                      penaltyLimit: "1.2B VND (Total Valuation)",
-                      isRisk: true,
-                      notes: "Hợp đồng dịch vụ IT có điều khoản giới hạn bồi thường bất lợi.",
+                      docSource: "WPPPLC_04_30_2020-EX-4.28-SERVICE AGREEMENT.pdf",
+                      chunkId: "Qdrant_Chunk_#66",
+                      penaltyLimit: "$36,000 USD (Clause #75)",
+                      isRisk: false,
+                      notes: "Hợp đồng dịch vụ WPPPLC ký ngày 04/30/2020, chứa điều khoản Termination và Governing Law.",
                       properties: {
-                        effective_date: "01/01/2026",
-                        expiration_date: "18/10/2026 (12 ngày còn lại)",
-                        governing_law: "Luật Thương mại Việt Nam"
+                        id: "CUAD_001",
+                        effective_date: "04/30/2020",
+                        party: "WPPPLC",
+                        governing_law: "English Law (Wales Jurisdiction)",
+                        clause_count: "2"
                       }
                     });
-                    showToast(isVi ? "Đã chọn Node: CUAD_042" : "Selected Node: CUAD_042");
+                    showToast(isVi ? "Đã chọn Node: CUAD_001 (WPPPLC)" : "Selected Node: CUAD_001 (WPPPLC)");
                   }}
                 >
                   <circle r="48" fill="#EAEDFF" stroke="#712AE2" strokeWidth="3" />
                   <circle cx="0" cy="0" r="8" fill="#712AE2" />
-                  <text y="-8" textAnchor="middle" fill="#712AE2" fontSize="12" fontWeight="bold" fontFamily="Inter">CUAD_042</text>
-                  <text y="10" textAnchor="middle" fill="#434655" fontSize="9" fontFamily="Inter">Service Agreement</text>
+                  <text y="-8" textAnchor="middle" fill="#712AE2" fontSize="12" fontWeight="bold" fontFamily="Inter">CUAD_001</text>
+                  <text y="10" textAnchor="middle" fill="#434655" fontSize="9" fontFamily="Inter">WPPPLC ($36K)</text>
                 </g>
 
-                {/* Node 3: Product / Service */}
+                {/* Node 3: Top Product (Road-150 Red) */}
                 <g
                   className="cursor-pointer group"
                   transform="translate(520, 220)"
                   onClick={() => {
                     setSelectedNode({
-                      id: "Cloud_Infra_01",
-                      name: "Cloud Enterprise Infrastructure",
-                      label: "Sản phẩm Cloud Infra",
+                      id: "PROD-751",
+                      name: "Road-150 Red, 48",
+                      label: "Sản phẩm Road-150 Red, 48",
                       type: "Product",
                       badge: "Product Node",
-                      docSource: "AdventureWorks_Sales_Q3_2026.xlsx",
-                      chunkId: "Qdrant_Chunk_#312",
-                      penaltyLimit: "99.9% Uptime SLA",
+                      docSource: "AdventureWorks Production.Product",
+                      chunkId: "Neo4j Product #751",
+                      penaltyLimit: "Standard 2-Yr Warranty",
                       isRisk: false,
-                      notes: "Hạ tầng đám mây đạt tiêu chuẩn ISO 27001.",
+                      notes: "Sản phẩm dòng xe đạp đua cao cấp nhất trong kho hàng AdventureWorks Neo4j.",
                       properties: {
-                        sla_commitment: "99.9% Uptime",
-                        monthly_fee: "85,000,000 VND"
+                        product_id: "751",
+                        list_price: "$3,578.27 USD",
+                        category: "Bikes / Road Bikes",
+                        color: "Red"
                       }
                     });
-                    showToast(isVi ? "Đã chọn Node: Cloud Infra" : "Selected Node: Cloud Infra");
+                    showToast(isVi ? "Đã chọn Node: Road-150 Red ($3,578.27 USD)" : "Selected Node: Road-150 Red ($3,578.27 USD)");
                   }}
                 >
                   <circle r="38" fill="#F2F3FF" stroke="#0074A6" strokeWidth="2" />
                   <circle cx="0" cy="0" r="5" fill="#0074A6" />
-                  <text y="-6" textAnchor="middle" fill="#0074A6" fontSize="10" fontWeight="bold" fontFamily="Inter">Cloud Infra</text>
-                  <text y="8" textAnchor="middle" fill="#434655" fontSize="8" fontFamily="Inter">Product</text>
+                  <text y="-6" textAnchor="middle" fill="#0074A6" fontSize="10" fontWeight="bold" fontFamily="Inter">Road-150</text>
+                  <text y="8" textAnchor="middle" fill="#434655" fontSize="8" fontFamily="Inter">$3,578 USD</text>
                 </g>
 
-                {/* Node 4: Selected Clause Node (Clause_12.2) with Pulse Ring */}
+                {/* Node 4: Selected Clause Node (Termination - #75) with Pulse Ring */}
                 <g
                   className="cursor-pointer group"
                   transform="translate(350, 320)"
                   onClick={() => {
                     setSelectedNode({
-                      id: "Clause_12.2",
-                      name: "Unilateral Liability Cap",
-                      label: "Mục 12.2: Giới hạn trách nhiệm bồi thường",
+                      id: "CUAD_001_Termination",
+                      name: "Termination Clause (#75)",
+                      label: "Điều khoản Chấm dứt hợp đồng (Termination)",
                       type: "Clause",
                       badge: "Clause Node",
-                      docSource: "CUAD_Service_Agreement_v4.pdf",
-                      chunkId: "Qdrant_Chunk_#402",
-                      penaltyLimit: "10% total fee in 12 months",
-                      isRisk: true,
-                      notes: "Mức trần 10% này thấp hơn tiêu chuẩn 30% của công ty. Cần lưu ý khi soạn phụ lục đàm phán lại.",
+                      docSource: "WPPPLC_04_30_2020-EX-4.28-SERVICE AGREEMENT.pdf",
+                      chunkId: "Qdrant_Chunk_#75",
+                      penaltyLimit: "Stock Plan Vesting & Bonus",
+                      isRisk: false,
+                      notes: "Điều khoản chấm dứt hợp đồng trích xuất từ CUAD_001 liên kết đối tác WPPPLC trong đồ thị Neo4j.",
                       properties: {
-                        is_unilateral: "true (Bất đối xứng)",
-                        cap_percentage: "10% (0.10)",
-                        risk_score: "0.942 (Rất cao)",
-                        contract_ref: "CUAD_042",
-                        page_number: "16"
+                        contract_ref: "CUAD_001 (WPPPLC)",
+                        clause_type: "Termination",
+                        qdrant_vector_point: "#75",
+                        neo4j_label: "Clause",
+                        neo4j_verified: "true"
                       }
                     });
-                    showToast(isVi ? "Đã chọn Node: Clause_12.2" : "Selected Node: Clause_12.2");
+                    showToast(isVi ? "Đã chọn Node: Termination (#75)" : "Selected Node: Termination (#75)");
                   }}
                 >
-                  <circle r="50" fill="#FFDAD6" stroke="#BA1A1A" strokeWidth="3" />
-                  <circle r="56" fill="none" stroke="#BA1A1A" strokeWidth="1.5" strokeDasharray="3 3" className="animate-pulse" />
-                  <circle cx="0" cy="0" r="8" fill="#BA1A1A" />
-                  <text y="-8" textAnchor="middle" fill="#BA1A1A" fontSize="11" fontWeight="bold" fontFamily="Inter">Clause_12.2</text>
-                  <text y="10" textAnchor="middle" fill="#93000A" fontSize="9" fontFamily="Inter">Liability Cap 10%</text>
+                  <circle r="50" fill="#EAEDFF" stroke="#2563EB" strokeWidth="3" />
+                  <circle r="56" fill="none" stroke="#2563EB" strokeWidth="1.5" strokeDasharray="3 3" className="animate-pulse" />
+                  <circle cx="0" cy="0" r="8" fill="#2563EB" />
+                  <text y="-8" textAnchor="middle" fill="#2563EB" fontSize="11" fontWeight="bold" fontFamily="Inter">Termination</text>
+                  <text y="10" textAnchor="middle" fill="#1D4ED8" fontSize="9" fontFamily="Inter">Clause #75</text>
                 </g>
 
                 {/* Node 5: SLA Condition */}

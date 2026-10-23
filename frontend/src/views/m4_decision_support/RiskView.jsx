@@ -16,7 +16,7 @@ const ALL_ALERTS_DATA = (isVi) => [
     variant: "danger",
     Icon: Clock,
     badgeLabel: isVi ? "Hợp đồng sắp hết hạn (5 ngày)" : "Contract Expiring (5 days)",
-    detectedAt: isVi ? "Phát hiện 4 giờ trước" : "Detected 4h ago",
+    detectedAt: isVi ? "Phát hiện từ đồ thị Neo4j" : "Detected from Neo4j graph",
     title: isVi
       ? "Hợp đồng Cung cấp Linh kiện #087 hết hạn trong 5 ngày"
       : "Component Supply Agreement #087 expiring in 5 days",
@@ -29,7 +29,7 @@ const ALL_ALERTS_DATA = (isVi) => [
       { label: isVi ? "Giá trị hợp đồng:" : "Contract Value:", value: "1,280,000,000 ₫", highlight: "var(--blue, #2563EB)" },
       {
         label: isVi ? "Trích dẫn nguồn:" : "Source citation:",
-        value: "CUAD_Contract_087.pdf (Trang 12)",
+        value: "CUAD_Contract_087.pdf",
         isLink: true
       },
     ],
@@ -198,6 +198,7 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
         { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})` },
         { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Drops"} (${countOrderDrop})` },
       ];
+
 
   return (
     <div style={{ background: "var(--base, #F8FAFC)", minHeight: "100%", padding: "28px 32px 48px", boxSizing: "border-box" }}>

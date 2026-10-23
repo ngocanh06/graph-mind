@@ -45,9 +45,22 @@ router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
 
 
+try:
+    from app.core.rbac import get_request_user, get_user_scope, ScopeContext
+except ImportError:
+    from core.rbac import get_request_user, get_user_scope, ScopeContext
+
+
 # --- Schemas ---
 class CreateSessionRequest(BaseModel):
     title: Optional[str] = "Cuộc hội thoại mới"
+
+
+class PinSessionRequest(BaseModel):
+    is_pinned: bool = True
+    notes: Optional[str] = None
+    department: Optional[str] = None
+    is_shared: Optional[bool] = True
 
 
 class CopilotAskRequest(BaseModel):
@@ -56,105 +69,98 @@ class CopilotAskRequest(BaseModel):
     session_id: Optional[str] = None
 
 
-# --- User Resolution Helper ---
-async def get_request_user(
-    auth_header: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
-    x_user_id: Optional[str] = Header(None),
-    x_user_email: Optional[str] = Header(None),
-    x_user_name: Optional[str] = Header(None),
-    user_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """
-    Xác định tài khoản người dùng gửi request:
-    1. Ưu tiên JWT Bearer token
-    2. Fallback header X-User-Id / X-User-Email / X-User-Name (cho persona switcher)
-    3. Mặc định tài khoản đầu tiên trong database nếu không có header
-    """
-    # 1. Bearer Token
-    if auth_header and auth_header.credentials:
-        try:
-            payload = decode_access_token(auth_header.credentials)
-            if payload and "sub" in payload:
-                uid = uuid.UUID(payload["sub"])
-                res = await db.execute(select(User).where(User.user_id == uid))
-                u = res.scalar_one_or_none()
-                if u:
-                    return u
-        except Exception:
-            pass
+class CitationItem(BaseModel):
+    docName: str
+    file: Optional[str] = None
+    location: Optional[str] = None
+    text: Optional[str] = None
+    sourceType: Optional[str] = None
+    match: Optional[str] = None
 
-    # 2. X-User-Id hoặc Query user_id
-    uid_candidate = x_user_id or user_id
-    if uid_candidate:
-        try:
-            uid = uuid.UUID(uid_candidate)
-            res = await db.execute(select(User).where(User.user_id == uid))
-            u = res.scalar_one_or_none()
-            if u:
-                return u
-        except (ValueError, TypeError):
-            pass
 
-    USER_ALIASES = {
-        "ceo": "exec",
-        "executive": "exec",
-        "huong.tran@graphmind.ai": "executive@graphmind.ai",
-        "knowledge_manager": "manager",
-        "it_admin": "admin",
-        "sales_ops": "ops",
+class CitationValidateRequest(BaseModel):
+    citations: List[Dict[str, Any]] = []
+
+
+# --- FR32 / BR-02 Citations Scoping Endpoint ---
+@router.get("/citations")
+@router.post("/citations")
+async def get_scoped_citations(
+    payload: Optional[CitationValidateRequest] = None,
+    doc_id: Optional[str] = Query(None),
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """
+    SRS FR32 (BR-02): Hiển thị trích dẫn nguồn dữ liệu trong phạm vi phòng ban được phép (Data Scope).
+    Tự động kiểm tra và ẩn các nội dung nhạy cảm ngoài phạm vi phân quyền của người dùng.
+    """
+    raw_citations = payload.citations if payload and payload.citations else []
+    if doc_id and not raw_citations:
+        raw_citations = [{
+            "docName": doc_id,
+            "file": doc_id,
+            "location": "Knowledge Repository",
+            "text": f"Hồ sơ tài liệu #{doc_id}",
+            "sourceType": "CUAD / Repository",
+        }]
+
+    filtered = scope.filter_citations(raw_citations)
+    return {
+        "success": True,
+        "rule": "BR-02 (FR32)",
+        "userRole": scope.role,
+        "department": scope.department_name,
+        "isUnrestricted": scope.is_unrestricted,
+        "count": len(filtered),
+        "citations": filtered,
     }
-
-    # 3. X-User-Email
-    if x_user_email:
-        clean_email = x_user_email.strip().lower()
-        clean_email = USER_ALIASES.get(clean_email, clean_email)
-        res = await db.execute(select(User).where(User.email.ilike(clean_email)))
-        u = res.scalar_one_or_none()
-        if u:
-            return u
-
-    # 4. X-User-Name
-    if x_user_name:
-        clean_name = x_user_name.strip().lower()
-        clean_name = USER_ALIASES.get(clean_name, clean_name)
-        res = await db.execute(
-            select(User).where(
-                or_(
-                    User.username.ilike(clean_name),
-                    User.email.ilike(f"%{clean_name}%"),
-                )
-            )
-        )
-        u = res.scalar_one_or_none()
-        if u:
-            return u
-
-    # 5. Default fallback to first active user (exec)
-    res = await db.execute(select(User).order_by(User.created_at.asc()).limit(1))
-    u = res.scalar_one_or_none()
-    if u:
-        return u
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Chưa xác định được tài khoản người dùng.",
-    )
 
 
 # --- Endpoints ---
 
 @router.get("/sessions")
 async def list_user_sessions(
-    user: User = Depends(get_request_user),
+    mode: Optional[str] = Query("personal"),  # "personal" (default) or "pinned" / "shared" / "department"
+    scope: ScopeContext = Depends(get_user_scope),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lấy danh sách các phiên hội thoại thuộc về tài khoản người dùng hiện tại"""
-    stmt = (
-        select(CopilotSession)
-        .where(CopilotSession.user_id == user.user_id)
-        .order_by(CopilotSession.updated_at.desc())
-    )
+    """
+    US37 · PB59 · UC.18:
+    - mode="personal": Lấy danh sách các phiên hội thoại cá nhân của tài khoản đang đăng nhập.
+    - mode="pinned" | "shared" | "department": Lấy danh sách các phiên hội thoại được ghim làm tài liệu dùng chung phòng ban.
+      Tự động lọc theo phạm vi phòng ban (Department Scope - BR-02, BR-04) của người dùng.
+    """
+    user = scope.user
+    is_shared_mode = mode in ["pinned", "shared", "department"]
+
+    if is_shared_mode:
+        # Lấy các phiên được ghim dùng chung cho phòng ban
+        stmt = (
+            select(CopilotSession)
+            .where(
+                CopilotSession.is_pinned == True,
+                CopilotSession.is_shared == True,
+            )
+        )
+        if not scope.is_unrestricted and scope.department_name:
+            # Lọc theo phòng ban của người dùng hoặc tài liệu ghim toàn công ty
+            stmt = stmt.where(
+                or_(
+                    func.lower(CopilotSession.department) == scope.department_name.lower(),
+                    CopilotSession.department == None,
+                    CopilotSession.department == "",
+                    func.lower(CopilotSession.department) == "all",
+                )
+            )
+        stmt = stmt.order_by(CopilotSession.pinned_at.desc().nullslast(), CopilotSession.updated_at.desc())
+    else:
+        # Phiên cá nhân của tài khoản
+        stmt = (
+            select(CopilotSession)
+            .where(CopilotSession.user_id == user.user_id)
+            .order_by(CopilotSession.updated_at.desc())
+        )
+
     result = await db.execute(stmt)
     sessions = result.scalars().all()
 
@@ -174,18 +180,26 @@ async def list_user_sessions(
             "messageCount": len(msgs),
             "citationCount": citation_count,
             "lastPreview": last_preview[:80],
+            "isPinned": bool(s.is_pinned),
+            "isShared": bool(s.is_shared),
+            "department": s.department,
+            "pinnedByName": s.pinned_by_name,
+            "pinnedAt": s.pinned_at.isoformat() if s.pinned_at else None,
+            "pinNotes": s.pin_notes,
             "createdAt": s.created_at.isoformat() if s.created_at else None,
             "updatedAt": s.updated_at.isoformat() if s.updated_at else None,
         })
 
     return {
         "success": True,
+        "mode": mode,
         "user": {
             "id": str(user.user_id),
             "username": user.username,
             "email": user.email,
             "fullName": user.full_name,
             "role": user.role,
+            "department": scope.department_name,
         },
         "count": len(items),
         "data": items,
@@ -218,22 +232,92 @@ async def create_session(
     }
 
 
-@router.get("/sessions/{session_id}")
-async def get_session_detail(
+@router.post("/sessions/{session_id}/pin")
+@router.patch("/sessions/{session_id}/pin")
+async def pin_session(
     session_id: str,
-    user: User = Depends(get_request_user),
+    payload: Optional[PinSessionRequest] = None,
+    scope: ScopeContext = Depends(get_user_scope),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lấy chi tiết toàn bộ tin nhắn của một phiên trò chuyện thuộc tài khoản này"""
+    """
+    US37 · PB59 · UC.18: Ghim phiên hội thoại quan trọng thành tài liệu dùng chung phòng ban.
+    Người dùng có thể ghim cuộc trò chuyện kèm ghi chú (notes) và chọn phạm vi phòng ban.
+    """
     try:
         s_uuid = uuid.UUID(session_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="ID phiên không hợp lệ.")
 
-    stmt = select(CopilotSession).where(
-        CopilotSession.id == s_uuid,
-        CopilotSession.user_id == user.user_id,
-    )
+    user = scope.user
+    stmt = select(CopilotSession).where(CopilotSession.id == s_uuid)
+    result = await db.execute(stmt)
+    s = result.scalar_one_or_none()
+
+    if not s:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiên hội thoại để ghim.")
+
+    # Quyền ghim: Chủ sở hữu của phiên, hoặc Trưởng phòng (Department Manager), hoặc Admin/Executive
+    is_owner = (s.user_id == user.user_id)
+    is_manager_or_admin = scope.role in ["department_manager", "admin", "executive"]
+    if not (is_owner or is_manager_or_admin):
+        raise HTTPException(
+            status_code=403,
+            detail="Bạn không có quyền thay đổi trạng thái ghim của phiên hội thoại này."
+        )
+
+    req_pin = payload.is_pinned if payload and payload.is_pinned is not None else True
+    req_notes = (payload.notes or "").strip() if payload and payload.notes else None
+    target_dept = (payload.department or scope.department_name or "General").strip() if (payload and payload.department) else (scope.department_name or "General")
+
+    if req_pin:
+        s.is_pinned = True
+        s.is_shared = True
+        s.department = target_dept
+        s.pinned_by_name = user.full_name or user.username or "Thành viên phòng ban"
+        s.pinned_at = datetime.now()
+        if req_notes:
+            s.pin_notes = req_notes
+    else:
+        s.is_pinned = False
+        s.is_shared = False
+        s.pinned_at = None
+        s.pin_notes = None
+
+    s.updated_at = func.now()
+    await db.commit()
+    await db.refresh(s)
+
+    return {
+        "success": True,
+        "message": "Đã ghim phiên hội thoại thành tài liệu dùng chung phòng ban." if req_pin else "Đã bỏ ghim phiên hội thoại.",
+        "sessionId": str(s.id),
+        "isPinned": s.is_pinned,
+        "isShared": s.is_shared,
+        "department": s.department,
+        "data": s.to_dict(),
+        "session": s.to_dict(),
+    }
+
+
+@router.get("/sessions/{session_id}")
+async def get_session_detail(
+    session_id: str,
+    scope: ScopeContext = Depends(get_user_scope),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    US37 · PB59 · UC.18: Lấy chi tiết toàn bộ tin nhắn của phiên trò chuyện.
+    Hỗ trợ cả phiên cá nhân của tài khoản và phiên được ghim dùng chung trong phòng ban.
+    Tuân thủ BR-02: Nếu người xem có thẩm quyền thấp hơn, tự động ẩn/lọc trích dẫn nhạy cảm ngoài Data Scope (UC.18 Exception Flow E1).
+    """
+    try:
+        s_uuid = uuid.UUID(session_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID phiên không hợp lệ.")
+
+    user = scope.user
+    stmt = select(CopilotSession).where(CopilotSession.id == s_uuid)
     result = await db.execute(stmt)
     s = result.scalar_one_or_none()
 
@@ -243,11 +327,40 @@ async def get_session_detail(
             detail="Không tìm thấy phiên hội thoại hoặc bạn không có quyền truy cập.",
         )
 
+    # 1. Nếu là chủ sở hữu: Được xem phiên
+    is_owner = (s.user_id == user.user_id)
+
+    # 2. Nếu không phải chủ sở hữu: Kiểm tra xem phiên có được ghim và chia sẻ không
+    if not is_owner:
+        if not (s.is_pinned and s.is_shared):
+            raise HTTPException(
+                status_code=404,
+                detail="Không tìm thấy phiên hội thoại hoặc phiên này chưa được chia sẻ.",
+            )
+        # Kiểm tra thẩm quyền phạm vi phòng ban (BR-02 / BR-04)
+        if not scope.is_department_allowed(s.department):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Bạn không có quyền truy cập phiên ghim của phòng ban {s.department} (BR-02).",
+            )
+
+    # 3. UC.18 Exception Flow E1 & BR-02: Lọc trích dẫn theo thẩm quyền của người xem hiện tại
+    session_data = s.to_dict()
+    if not scope.is_unrestricted:
+        filtered_messages = []
+        for msg in session_data.get("messages", []):
+            msg_copy = dict(msg)
+            if msg_copy.get("citations"):
+                msg_copy["citations"] = scope.filter_citations(msg_copy["citations"])
+            filtered_messages.append(msg_copy)
+        session_data["messages"] = filtered_messages
+
     return {
         "success": True,
-        "data": s.to_dict(),
-        "session": s.to_dict(),
+        "data": session_data,
+        "session": session_data,
     }
+
 
 
 @router.delete("/sessions/{session_id}")
@@ -288,13 +401,15 @@ async def delete_session(
 @router.post("/ask")
 async def ask_copilot(
     req: CopilotAskRequest,
-    user: User = Depends(get_request_user),
+    scope: ScopeContext = Depends(get_user_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Hỏi đáp với AI Copilot (Hybrid Vector-Graph Fusion RAG):
     Tự động lưu câu hỏi của người dùng và câu trả lời vào database PostgreSQL của tài khoản đó.
+    Tuân thủ phân quyền phạm vi phòng ban (Department Scope - BR-02, BR-04) và hiển thị trích dẫn (FR32).
     """
+    user = scope.user
     clean_query = req.query.strip()
     is_vi = (req.lang or "vi") == "vi"
 
@@ -426,16 +541,21 @@ async def ask_copilot(
             g_name = raw.get("name") or "Knowledge Graph Entity"
             g_labels = raw.get("_labels", [])
             labels_str = ", ".join(g_labels) if isinstance(g_labels, list) else str(g_labels)
+            raw_id = str(raw.get("id") or raw.get("_id") or item["id"])
+            node_clean_id = raw_id.split(":")[-1] if ":" in raw_id else raw_id
             citations_detail.append({
                 "docName": f"Đồ thị tri thức: {g_name}",
                 "file": f"Neo4j Graph ({labels_str})",
                 "match": "GRAPH VERIFIED",
-                "location": f"Node #{raw.get('_id', item['id'])} ({labels_str})",
+                "location": f"Node #{node_clean_id} ({labels_str})",
                 "text": raw.get("snippet") or f"Thực thể {g_name} thuộc nhãn {labels_str}",
-                "chunkId": str(raw.get("_id") or item["id"])[:10],
+                "chunkId": f"#{node_clean_id}",
                 "sourceType": "Neo4j Graph DB",
                 "neo4jNode": f"{labels_str}:{g_name}",
             })
+
+    # Enforce BR-02 & FR32: Filter/redact citations outside caller's Department Scope
+    citations_detail = scope.filter_citations(citations_detail)
 
     # 4. Context Synthesis & LLM Generation
     fused_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"]

@@ -13,6 +13,15 @@ try:
 except ImportError:
     QDRANT_AVAILABLE = False
 
+try:
+    from app.core.config import settings
+except ImportError:
+    try:
+        from core.config import settings
+    except ImportError:
+        settings = None
+
+
 _EMBED_MODEL = None
 
 
@@ -39,9 +48,9 @@ class QdrantClientWrapper:
     def connect(self) -> bool:
         if not QDRANT_AVAILABLE:
             return False
-        host = os.getenv("QDRANT_HOST", "localhost")
-        port = int(os.getenv("QDRANT_PORT", "6333"))
-        self._collection = os.getenv("QDRANT_COLLECTION_NAME", "cuad_contracts")
+        host = (settings.QDRANT_HOST if settings else None) or os.getenv("QDRANT_HOST", "localhost")
+        port = int((settings.QDRANT_PORT if settings else None) or os.getenv("QDRANT_PORT", "6333"))
+        self._collection = (settings.QDRANT_COLLECTION_NAME if settings else None) or os.getenv("QDRANT_COLLECTION_NAME", "cuad_contracts")
         try:
             self._client = QdrantClient(host=host, port=port, timeout=8)
             resp = self._client.get_collections()

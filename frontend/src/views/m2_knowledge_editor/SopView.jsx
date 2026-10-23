@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Icon from '../../components/ui/Icon';
+import { fetchSopList, saveSopDraft, publishSop, deleteSop } from '../../services/api';
 
 export default function SopView({ onNavigate, t, lang = "vi", initialMode = "list", role, currentUser }) {
   const isVi = lang === "vi";
@@ -77,7 +78,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
     version: "v2.2",
     tags: "#legal, #cuad, #risk",
     purpose:
-      "Quy trình này quy định các bước chuẩn hóa bắt buộc đối với chuyên viên Pháp chế và Quản lý Hợp đồng khi tiếp nhận, rà soát và đánh giá rủi ro pháp lý đối với toàn bộ các dự thảo hợp đồng mua sắm dịch vụ (CUAD Service Agreement) có giá trị từ 500,000,000 VNĐ trở lên hoặc hợp đồng có yếu tố đối tác nước ngoài.",
+      "Quy trình này quy định các bước chuẩn hóa bắt buộc đối với chuyên viên Pháp chế và Quản lý Hợp đồng khi tiếp nhận, rà soát và đánh giá rủi ro pháp lý đối với toàn bộ các dự thảo hợp đồng mua sắm dịch vụ (CUAD Service Agreement) có giá trị từ $50,000 USD trở lên hoặc hợp đồng có yếu tố đối tác nước ngoài.",
     steps: [
       {
         num: 1,
@@ -100,25 +101,45 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
   });
 
   const [activePreviewSop, setActivePreviewSop] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Nạp danh sách SOP từ cơ sở dữ liệu backend
+  const loadSopsFromApi = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchSopList({}, currentUser);
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setSopList(res.data);
+      }
+    } catch (e) {
+      console.warn("Could not load SOPs from backend API:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSopsFromApi();
+  }, [currentUser]);
 
   const showToast = (msg) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 3500);
+    setTimeout(() => setToastMsg(""), 4500);
   };
 
   const handleEditSop = (sop) => {
     setComposerData({
-      id: sop.id,
+      id: sop.code || sop.id,
       title: sop.title,
       dept: sop.dept,
       version: sop.version,
-      tags: sop.tags.join(", "),
-      purpose: composerData.purpose,
-      steps: composerData.steps,
-      governance: composerData.governance
+      tags: Array.isArray(sop.tags) ? sop.tags.join(", ") : (sop.tags || ""),
+      purpose: sop.purpose || composerData.purpose,
+      steps: Array.isArray(sop.steps) && sop.steps.length > 0 ? sop.steps : composerData.steps,
+      governance: sop.governance || composerData.governance
     });
     setMode("composer");
-    showToast(isVi ? `Đang mở trình soạn thảo cho ${sop.code}` : `Editing ${sop.code}`);
+    showToast(isVi ? `Đang mở trình soạn thảo cho ${sop.code || sop.id}` : `Editing ${sop.code || sop.id}`);
   };
 
   const handleNewSop = () => {
@@ -126,7 +147,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
     setComposerData({
       id: nextCode,
       title: isVi ? `Quy trình nghiệp vụ mới (${nextCode})` : `New Standard Procedure (${nextCode})`,
-      dept: "Pháp chế",
+      dept: currentUser?.department?.includes("Pháp chế") ? "Pháp chế" : (currentUser?.department?.includes("IT") ? "Công nghệ / IT" : "Pháp chế"),
       version: "v1.0",
       tags: "#internal, #sop, #new",
       purpose: isVi ? "Quy định mục đích và phạm vi áp dụng của quy trình chuẩn mới." : "Define purpose and scope of the standard operating procedure.",
@@ -137,60 +158,94 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
           desc: isVi ? "Kiểm tra tính hợp lệ của tài liệu và kích hoạt luồng tác nghiệp." : "Validate input data and initiate execution flow."
         }
       ],
-      governance: isVi ? "Tuân thủ phân quyền RBAC và phê duyệt cấp quản lý." : "Governed by RBAC policy and executive sign-off."
+      governance: isVi ? "Tuân thủ phân quyền RBAC (BR-04) và phê duyệt cấp quản lý." : "Governed by RBAC policy and executive sign-off."
     });
     setMode("composer");
   };
 
-  const handleDuplicateSop = (sop) => {
+  const handleDuplicateSop = async (sop) => {
+    const nextCode = `${sop.code || sop.id}-COPY`;
     const duplicated = {
-      ...sop,
-      id: `${sop.id}-COPY`,
-      code: `${sop.code}-COPY`,
+      id: nextCode,
+      code: nextCode,
       title: `${sop.title} (Bản sao)`,
+      dept: sop.dept,
+      version: "v1.0",
       status: "draft",
-      statusLabel: isVi ? "Bản nháp" : "Draft",
-      updatedAt: isVi ? "Vừa xong" : "Just now"
+      tags: Array.isArray(sop.tags) ? sop.tags : [],
+      purpose: sop.purpose || sop.desc || "",
+      steps: sop.steps || [],
+      governance: sop.governance || ""
     };
-    setSopList((prev) => [duplicated, ...prev]);
-    showToast(isVi ? `Đã nhân bản ${sop.code} thành bản nháp mới!` : `Duplicated ${sop.code} into a new draft!`);
+    const res = await saveSopDraft(duplicated, currentUser);
+    if (res && res.ok) {
+      showToast(isVi ? `Đã nhân bản ${nextCode} thành bản nháp mới vào CSDL!` : `Duplicated ${nextCode} into database!`);
+      await loadSopsFromApi();
+    } else {
+      setSopList((prev) => [duplicated, ...prev]);
+      showToast(isVi ? `Đã nhân bản ${nextCode} thành bản nháp mới!` : `Duplicated ${nextCode} into a new draft!`);
+    }
   };
 
-  const handleDeleteSop = (id) => {
-    setSopList((prev) => prev.filter((s) => s.id !== id));
-    showToast(isVi ? `Đã xóa quy trình ${id} khỏi hệ thống.` : `Deleted procedure ${id}.`);
+  const handleDeleteSop = async (id) => {
+    const res = await deleteSop(id, currentUser);
+    if (res && res.ok) {
+      showToast(isVi ? `Đã xóa quy trình ${id} khỏi cơ sở dữ liệu.` : `Deleted procedure ${id}.`);
+      await loadSopsFromApi();
+    } else {
+      const errMsg = res?.data?.detail || (isVi ? `Đã xóa quy trình ${id}.` : `Deleted ${id}.`);
+      setSopList((prev) => prev.filter((s) => s.id !== id && s.code !== id));
+      showToast(errMsg);
+    }
   };
 
-  const handlePublishSop = () => {
-    // Update or add in sopList
-    setSopList((prev) => {
-      const idx = prev.findIndex((s) => s.id === composerData.id);
-      const updatedItem = {
-        id: composerData.id,
-        code: composerData.id,
-        title: composerData.title,
-        desc: composerData.purpose.slice(0, 80) + "...",
-        dept: composerData.dept,
-        status: "published",
-        statusLabel: isVi ? "Đã xuất bản" : "Published",
-        version: composerData.version,
-        updatedAt: isVi ? "Vừa xong" : "Just now",
-        author: currentUser?.name || (isVi ? "Trưởng ban Pháp chế" : "Legal Lead"),
-        tags: composerData.tags.split(",").map((t) => t.trim())
-      };
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = updatedItem;
-        return copy;
-      }
-      return [updatedItem, ...prev];
-    });
-    showToast(isVi ? `✓ Đã xuất bản ${composerData.id} làm Ground-Truth cho AI Copilot!` : `✓ Published ${composerData.id} as Ground-Truth for AI Copilot!`);
-    setMode("list");
+  const handlePublishSop = async () => {
+    const tagList = composerData.tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const payload = {
+      id: composerData.id,
+      code: composerData.id,
+      title: composerData.title,
+      dept: composerData.dept,
+      version: composerData.version,
+      tags: tagList,
+      purpose: composerData.purpose,
+      steps: composerData.steps,
+      governance: composerData.governance
+    };
+
+    const res = await publishSop(payload, currentUser);
+    if (res && res.ok && res.data?.success) {
+      showToast(isVi ? `✓ Đã xuất bản ${composerData.id} thành công và nạp làm Ground-Truth cho AI Copilot!` : `✓ Published ${composerData.id} into Ground-Truth!`);
+      await loadSopsFromApi();
+      setMode("list");
+    } else {
+      const errDetail = res?.data?.detail || res?.error || (isVi ? "Xuất bản SOP thất bại do vi phạm kiểm tra BR-04." : "Failed to publish SOP.");
+      showToast(`⚠ ${errDetail}`);
+    }
   };
 
-  const handleSaveDraft = () => {
-    showToast(isVi ? `Đã lưu bản nháp ${composerData.id} vào Cloud Database!` : `Saved draft for ${composerData.id} into Cloud Database!`);
+  const handleSaveDraft = async () => {
+    const tagList = composerData.tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const payload = {
+      id: composerData.id,
+      code: composerData.id,
+      title: composerData.title,
+      dept: composerData.dept,
+      version: composerData.version,
+      tags: tagList,
+      purpose: composerData.purpose,
+      steps: composerData.steps,
+      governance: composerData.governance
+    };
+
+    const res = await saveSopDraft(payload, currentUser);
+    if (res && res.ok && res.data?.success) {
+      showToast(isVi ? `Đã lưu bản nháp ${composerData.id} vào PostgreSQL Database!` : `Saved draft for ${composerData.id} into PostgreSQL Database!`);
+      await loadSopsFromApi();
+    } else {
+      const errDetail = res?.data?.detail || res?.error || (isVi ? "Lưu bản nháp thất bại." : "Failed to save draft.");
+      showToast(`⚠ ${errDetail}`);
+    }
   };
 
   const handleAiCoWriter = () => {

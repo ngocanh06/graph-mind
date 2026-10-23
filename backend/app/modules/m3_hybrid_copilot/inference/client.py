@@ -28,7 +28,31 @@ class OllamaClient:
             logger.debug(f"Ollama connection check failed: {e}")
         return False
 
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """Đồng bộ tạo câu trả lời trực tiếp từ Ollama model."""
+        try:
+            with httpx.Client(timeout=httpx.Timeout(20.0, connect=3.0)) as client:
+                payload = {
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,
+                        "top_p": 0.9,
+                        "num_predict": 768
+                    }
+                }
+                if system_prompt:
+                    payload["system"] = system_prompt
+                res = client.post(f"{self.base_url}/api/generate", json=payload)
+                if res.status_code == 200:
+                    return res.json().get("response", "").strip()
+        except Exception as e:
+            logger.warning(f"Ollama synchronous generate failed: {e}")
+        return ""
+
     async def generate_rag_answer(
+
         self,
         query: str,
         evidence_chunks: Optional[List[Dict[str, Any]]] = None,
@@ -60,17 +84,26 @@ class OllamaClient:
         for e in graph_entities[:10]:
             name = e.get("name") or e.get("title") or e.get("_id")
             labels = "/".join(e.get("_labels") or ["Entity"])
+            snippet = e.get("snippet")
+            info = f"{name} ({labels})"
+            if snippet:
+                info += f": {snippet}"
             if name:
-                entities_text_list.append(f"{name} ({labels})")
-        entities_context = ", ".join(entities_text_list)
+                entities_text_list.append(info)
+        entities_context = "\n".join([f"- {it}" for it in entities_text_list])
 
         # 3. Xây dựng Prompt
         if is_vi:
             system_prompt = (
                 "Bạn là trợ lý AI thông minh GraphMind (AEGIS Enterprise Knowledge Intelligence Platform). "
                 "Bạn sử dụng kiến trúc Hybrid GraphRAG kết hợp giữa đồ thị tri thức Neo4j và tìm kiếm vector Qdrant. "
-                "Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, chính xác, khách quan dựa trên ngữ cảnh được cung cấp. "
-                "Nếu ngữ cảnh có thông tin về hợp đồng hoặc thực thể, hãy viện dẫn rõ ràng."
+                "Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, chính xác, khách quan dựa trên ngữ cảnh được cung cấp.\n"
+                "QUY TẮC BẮT BUỘC:\n"
+                "1. Tuyệt đối chỉ sử dụng dữ kiện và số liệu có thật trong ngữ cảnh. Không tự bịa đặt mã UUID ảo (như 11111111-...). \n"
+                "2. ĐỊNH DẠNG TRÌNH BÀY:\n"
+                "   - Viết một câu giới thiệu ngắn gọn ở đầu.\n"
+                "   - Các ý chính hoặc các thực thể/khách hàng BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
+                "   - Khi liệt kê chi tiết các năm hoặc các điều khoản, BẮT BUỘC phải xuống dòng cho từng năm/điều khoản với dấu gạch đầu dòng (- Năm 2011: ..., - Năm 2012: ...). Tuyệt đối không viết dồn trên cùng một dòng."
             )
             context_block = ""
             if chunks_context:
@@ -101,7 +134,7 @@ class OllamaClient:
         # 4. Gửi request sang Ollama
         start_time = time.time()
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=3.0)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=5.0)) as client:
                 res = await client.post(
                     f"{self.base_url}/api/chat",
                     json={

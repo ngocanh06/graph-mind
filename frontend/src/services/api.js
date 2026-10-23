@@ -53,13 +53,15 @@ export function getAuthHeaders(currentUser = null) {
     if (currentUser.email) headers["X-User-Email"] = currentUser.email;
     if (currentUser.username) headers["X-User-Name"] = currentUser.username;
     if (currentUser.id) headers["X-User-Id"] = currentUser.id;
+    if (currentUser.department) headers["X-User-Dept"] = encodeURIComponent(currentUser.department);
   }
   return headers;
 }
 
-export async function fetchCopilotSessions(currentUser = null) {
+export async function fetchCopilotSessions(mode = "personal", currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/copilot/sessions`, {
+    const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
+    const res = await fetch(`${API_BASE}/copilot/sessions${query}`, {
       headers: getAuthHeaders(currentUser)
     });
     if (res.ok) return await res.json();
@@ -67,6 +69,27 @@ export async function fetchCopilotSessions(currentUser = null) {
     console.warn("[Copilot] fetchCopilotSessions failed:", e);
   }
   return null;
+}
+
+export async function pinCopilotSession(sessionId, isPinned = true, notes = "", department = null, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/copilot/sessions/${encodeURIComponent(sessionId)}/pin`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({
+        is_pinned: isPinned,
+        notes: notes || undefined,
+        department: department || currentUser?.department || undefined,
+        is_shared: true,
+      })
+    });
+    if (res.ok) return await res.json();
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Không thể cập nhật trạng thái ghim phiên hội thoại");
+  } catch (e) {
+    console.warn("[Copilot] pinCopilotSession failed:", e);
+    throw e;
+  }
 }
 
 export async function createCopilotSession(title = "Cuộc hội thoại mới", currentUser = null) {
@@ -107,6 +130,7 @@ export async function deleteCopilotSession(sessionId, currentUser = null) {
   }
   return null;
 }
+
 
 export async function queryCopilot(query, lang = "vi", sessionId = null, currentUser = null) {
   try {
@@ -280,7 +304,7 @@ export async function searchKnowledgeExplorer(query, top_k = 8) {
 // REPOSITORY DOCUMENTS & ADVENTUREWORKS (REAL DATA)
 // ============================================================================
 
-export async function fetchRepositoryDocuments(params = {}) {
+export async function fetchRepositoryDocuments(params = {}, currentUser = null) {
   try {
     const sp = new URLSearchParams();
     if (params.search) sp.set("search", params.search);
@@ -291,7 +315,9 @@ export async function fetchRepositoryDocuments(params = {}) {
     if (params.limit) sp.set("limit", params.limit);
     if (params.offset !== undefined) sp.set("offset", params.offset);
 
-    const res = await fetch(`${API_BASE}/documents?${sp.toString()}`);
+    const res = await fetch(`${API_BASE}/documents?${sp.toString()}`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Repository] fetchRepositoryDocuments error:", e);
@@ -299,10 +325,16 @@ export async function fetchRepositoryDocuments(params = {}) {
   return null;
 }
 
-export async function fetchDocumentDetail(docId) {
+export async function fetchDocumentDetail(docId, currentUser = null) {
   try {
-    const res = await fetch(`${API_BASE}/documents/detail?doc_id=${encodeURIComponent(docId)}`);
+    const res = await fetch(`${API_BASE}/documents/detail?doc_id=${encodeURIComponent(docId)}`, {
+      headers: getAuthHeaders(currentUser),
+    });
     if (res.ok) return await res.json();
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, error: errData.detail || "Truy cập bị từ chối do vi phạm phạm vi phòng ban (BR-02)." };
+    }
   } catch (e) {
     console.warn("[Repository] fetchDocumentDetail error:", e);
   }
@@ -323,9 +355,13 @@ export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = 
     sp.set("limit", limit);
 
     const res = await fetch(`${API_BASE}/search?${sp.toString()}`, {
-      headers: getAuthHeaders(currentUser)
+      headers: getAuthHeaders(currentUser),
     });
     if (res.ok) return await res.json();
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, error: errData.detail || "Không có quyền tra cứu phòng ban này (BR-02)." };
+    }
   } catch (e) {
     console.warn("[Search] fetchMultiFacetSearch error:", e);
   }
@@ -347,8 +383,15 @@ export async function fetchAssignedContracts(role = "standard", dept = "Kinh doa
   return null;
 }
 
-export async function fetchRiskAlerts(role = "standard", dept = "Kinh doanh") {
+export async function fetchRiskAlerts(roleOrUser = "standard", dept = "Kinh doanh") {
   try {
+    if (arguments.length === 0 || (roleOrUser && typeof roleOrUser === "object")) {
+      const res = await fetch(`${API_BASE}/dashboard/risk-alerts`, {
+        headers: getAuthHeaders(roleOrUser || null),
+      });
+      if (res.ok) return await res.json();
+    }
+    const role = typeof roleOrUser === "string" ? roleOrUser : "standard";
     const sp = new URLSearchParams({ role, dept });
     const res = await fetch(`${API_BASE}/risk/alerts?${sp.toString()}`);
     if (res.ok) return await res.json();
@@ -402,5 +445,234 @@ export async function triggerMockWatcherDrop(fileName = "HD_CungCap_ThietBi_2026
   }
   return null;
 }
+
+// ============================================================================
+// MODULE 4: EXECUTIVE DECISION SUPPORT & ALERTS (REAL DATABASE DATA)
+// ============================================================================
+
+export async function fetchExecutiveKPIs(currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/kpis`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchExecutiveKPIs error:", e);
+  }
+  return null;
+}
+export async function fetchTopCustomers(limit = 5, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/top-customers?limit=${limit}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchTopCustomers error:", e);
+  }
+  return null;
+}
+
+export async function fetchRevenueTrend(currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/revenue-trend`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchRevenueTrend error:", e);
+  }
+  return null;
+}
+
+export async function fetchContractDistribution(currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/contract-distribution`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchContractDistribution error:", e);
+  }
+  return null;
+}
+
+
+export async function fetchRecentActivities(limit = 8, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/recent-activities?limit=${limit}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] fetchRecentActivities error:", e);
+  }
+  return null;
+}
+
+export async function generateExecutiveBriefing(timeframe = "month", focus = "executive", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/briefing`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({ timeframe, focus })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] generateExecutiveBriefing error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
+// AGGREGATED DEPARTMENT ACTIVITY REPORT (Proposal Sect. 6.1a, BR-02, BR-04)
+// ============================================================================
+
+export async function fetchDepartmentActivityReport(dept = null, timeframe = "today", currentUser = null) {
+  try {
+    const sp = new URLSearchParams();
+    if (dept && dept !== "ALL") sp.set("department", dept);
+    if (timeframe) sp.set("timeframe", timeframe);
+    const qStr = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/dashboard/department-report${qStr}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+    if (res.status === 403) {
+      const errData = await res.json().catch(() => ({}));
+      return { success: false, status: 403, detail: errData.detail || "Không có quyền truy cập phạm vi phòng ban này (BR-02/BR-04)." };
+    }
+  } catch (e) {
+    console.warn("[Dashboard] fetchDepartmentActivityReport error:", e);
+  }
+  return null;
+}
+
+export async function signoffDepartmentShiftReport(submissionId, comment = "", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/department-report/signoff`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({ submissionId, comment }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return data;
+    return { success: false, status: res.status, detail: data.detail || "Phê duyệt thất bại." };
+  } catch (e) {
+    console.warn("[Dashboard] signoffDepartmentShiftReport error:", e);
+    return { success: false, detail: e.message };
+  }
+}
+
+export async function synthesizeDepartmentReport(dept = null, timeframe = "today", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/department-report/synthesize`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({ department: dept, timeframe }),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Dashboard] synthesizeDepartmentReport error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
+// RBAC & SCOPE CHECK API (FR3, BR-02, BR-04)
+// ============================================================================
+
+export async function checkRbacPermission(params = {}, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/v1/rbac/check`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify(params),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[RBAC] checkRbacPermission error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
+// MODULE 2: SOP & KNOWLEDGE EDITOR API (FR26, UC.14, BR-04)
+// ============================================================================
+
+export async function fetchSopList(params = {}, currentUser = null) {
+  try {
+    const sp = new URLSearchParams();
+    if (params.dept && params.dept !== "ALL") sp.set("dept", params.dept);
+    if (params.status && params.status !== "ALL") sp.set("status", params.status);
+    if (params.q) sp.set("q", params.q);
+
+    const queryStr = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/sop${queryStr}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[SOP] fetchSopList error:", e);
+  }
+  return null;
+}
+
+export async function fetchSopDetail(sopId, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop/${encodeURIComponent(sopId)}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[SOP] fetchSopDetail error:", e);
+  }
+  return null;
+}
+
+export async function saveSopDraft(payload, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.warn("[SOP] saveSopDraft error:", e);
+    return { ok: false, error: e.message };
+  }
+}
+
+export async function publishSop(payload, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop/publish`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.warn("[SOP] publishSop error:", e);
+    return { ok: false, error: e.message };
+  }
+}
+
+export async function deleteSop(sopId, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/sop/${encodeURIComponent(sopId)}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(currentUser),
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.warn("[SOP] deleteSop error:", e);
+    return { ok: false, error: e.message };
+  }
+}
+
 
 

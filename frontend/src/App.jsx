@@ -39,6 +39,7 @@ const VALID_VIEWS = [
   "sop",
   "sop_composer",
   "reports",
+  "department_report",
   "admin"
 ];
 
@@ -116,6 +117,7 @@ export default function App() {
   const [demoStep, setDemoStep] = useState(1);
   const [selectedEntity, setSelectedEntity] = useState("abc");
   const [selectedDocId, setSelectedDocId] = useState(null);
+  const [initialCopilotQuery, setInitialCopilotQuery] = useState("");
 
   const {
     events: notifEvents,
@@ -133,6 +135,9 @@ export default function App() {
       setSelectedDocId(payload);
     } else if (normView === "knowledge" && payload) {
       setSelectedEntity(payload);
+    } else if (normView === "copilot" && payload) {
+      const queryStr = typeof payload === "string" ? payload : payload.query || "";
+      setInitialCopilotQuery(queryStr);
     }
     setView(normView);
   };
@@ -370,6 +375,8 @@ export default function App() {
               apiConnected={apiConnected}
               role={role}
               currentUser={currentUser}
+              initialQuery={initialCopilotQuery}
+              onClearInitialQuery={() => setInitialCopilotQuery("")}
             />
           )}
 
@@ -438,13 +445,14 @@ export default function App() {
             />
           )}
 
-          {view === "reports" && (
+          {(view === "reports" || view === "department_report") && (
             <ReportsView
               onNavigate={handleNavigate}
               t={t}
               lang={lang}
               role={role}
               currentUser={currentUser}
+              initialMode={view === "department_report" ? "department" : undefined}
             />
           )}
 

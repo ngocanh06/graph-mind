@@ -13,6 +13,14 @@ try:
 except ImportError:
     NEO4J_AVAILABLE = False
 
+try:
+    from app.core.config import settings
+except ImportError:
+    try:
+        from core.config import settings
+    except ImportError:
+        settings = None
+
 
 def _clean_val(v: Any) -> Any:
     """Helper to convert Neo4j dates/times/nodes into JSON-serializable types."""
@@ -66,9 +74,9 @@ class Neo4jClient:
     def connect(self) -> bool:
         if not NEO4J_AVAILABLE:
             return False
-        uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-        user = os.getenv("NEO4J_USER", "neo4j")
-        password = os.getenv("NEO4J_PASSWORD", "password123")
+        uri = (settings.NEO4J_URI if settings else None) or os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        user = (settings.NEO4J_USER if settings else None) or os.getenv("NEO4J_USER", "neo4j")
+        password = (settings.NEO4J_PASSWORD if settings else None) or os.getenv("NEO4J_PASSWORD", "graphmind_secret")
         try:
             self._driver = GraphDatabase.driver(uri, auth=(user, password))
             with self._driver.session() as session:

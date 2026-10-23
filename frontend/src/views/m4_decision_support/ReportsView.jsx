@@ -1,9 +1,13 @@
 import React, { useState } from "react";
 import Icon from '../../components/ui/Icon';
+import { generateExecutiveBriefing, fetchExecutiveKPIs } from '../../services/api';
+import DepartmentReportView from "./DepartmentReportView";
 
-export default function ReportsView({ onNavigate, t, lang, role = "executive", currentUser }) {
+export default function ReportsView({ onNavigate, t, lang, role = "executive", currentUser, initialMode }) {
   const isVi = lang === "vi";
   const isSalesRole = role === "standard";
+  const defaultMode = initialMode || (role === "knowledge_manager" ? "department" : (isSalesRole ? "shift" : "executive"));
+  const [reportMode, setReportMode] = useState(defaultMode);
 
   // Common State
   const [timeRange, setTimeRange] = useState("today");
@@ -11,25 +15,35 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGeneratedReport, setHasGeneratedReport] = useState(!isSalesRole);
   const [generatedDate, setGeneratedDate] = useState(
-    isSalesRole ? "" : "15 Sep 2026, 10:00"
+    isSalesRole ? "" : "Hôm nay, thời gian thực"
   );
   const [toastMsg, setToastMsg] = useState("");
   const [managerApproved, setManagerApproved] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [liveBriefing, setLiveBriefing] = useState("");
 
   const showToast = (msg) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 3500);
   };
 
-  const handleGenerateBriefing = () => {
+  const handleGenerateBriefing = async () => {
     setIsGenerating(true);
     showToast(
       isSalesRole
         ? (isVi ? "Trợ lý AI đang quét nhật ký cuộc gọi, email và dữ liệu tác nghiệp..." : "AI scanning call logs, emails, and activity data...")
-        : (isVi ? "Đang tổng hợp dữ liệu từ 247 nguồn tri thức qua Hybrid GraphRAG..." : "Synthesizing 247 knowledge sources via Hybrid GraphRAG...")
+        : (isVi ? "Đang tổng hợp dữ liệu từ 52.283 nodes đồ thị Neo4j & 40.194 điểm hợp đồng CUAD qua AI..." : "Synthesizing 52,283 Neo4j nodes & 40,194 CUAD contract points via AI...")
     );
-    setTimeout(() => {
+    try {
+      if (!isSalesRole) {
+        const res = await generateExecutiveBriefing("month", "executive");
+        if (res && res.briefing) {
+          setLiveBriefing(res.briefing);
+        }
+      }
+    } catch (err) {
+      console.warn("[ReportsView] Briefing error:", err);
+    } finally {
       setIsGenerating(false);
       setHasGeneratedReport(true);
       setGeneratedDate(
@@ -44,9 +58,9 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
       showToast(
         isSalesRole
           ? (isVi ? "Đã tái lập Báo cáo ca tác nghiệp hoàn chỉnh!" : "Shift report compiled successfully!")
-          : (isVi ? "Báo cáo Lãnh đạo đã được tạo thành công!" : "Executive Briefing synthesized and ready for review!")
+          : (isVi ? "Báo cáo Lãnh đạo đã được tạo thành công từ dữ liệu thực tế!" : "Executive Briefing synthesized from real database!")
       );
-    }, 1100);
+    }
   };
 
   const handleSubmitToManager = () => {
@@ -69,21 +83,103 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   const handleCopySummary = () => {
     const text = isSalesRole
       ? (isVi
-        ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC - CHUYÊN VIÊN NGUYỄN V. NAM (20/09/2026):\n- Hoàn tất 4/4 ca cảnh báo (100% SLA, TB 12p/ca).\n- Bảo vệ thành công 4.1 Tỷ VND doanh số tái ký (ABC Corp 1.2B chiết khấu 10%, Delta Trading 2.9B).\n- Đã phát hành 3 bộ chứng từ (BG-2026-09, EDR #8821, Phụ lục PL #44).\n- Đề xuất Trưởng phòng: Cấp quyền duyệt nhanh mức chiết khấu 12% cho hợp đồng kỳ hạn 24 tháng."
-        : "SALES SHIFT WORK REPORT - SPECIALIST NGUYEN V. NAM (20/09/2026):\n- Resolved 4/4 priority cases (100% SLA, avg 12m/case).\n- Protected $4.1B VND renewal pipeline (ABC Corp 1.2B with 10% retention, Delta Trading 2.9B).\n- 3 document packets dispatched (BG-2026-09, EDR #8821, Annex PL #44).\n- Manager escalation: Request 12% approval threshold for 24-month commitments.")
+        ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC - CHUYÊN VIÊN NGUYỄN V. NAM (20/09/2026):\n- Hoàn tất 4/4 ca cảnh báo (100% SLA, TB 12p/ca).\n- Bảo vệ thành công $4.1M USD doanh số tái ký (ABC Corp $1.2M chiết khấu 10%, Delta Trading $2.9M).\n- Đã phát hành 3 bộ chứng từ (BG-2026-09, EDR #8821, Phụ lục PL #44).\n- Đề xuất Trưởng phòng: Cấp quyền duyệt nhanh mức chiết khấu 12% cho hợp đồng kỳ hạn 24 tháng."
+        : "SALES SHIFT WORK REPORT - SPECIALIST NGUYEN V. NAM (20/09/2026):\n- Resolved 4/4 priority cases (100% SLA, avg 12m/case).\n- Protected $4.1M USD renewal pipeline (ABC Corp $1.2M with 10% retention, Delta Trading $2.9M).\n- 3 document packets dispatched (BG-2026-09, EDR #8821, Annex PL #44).\n- Manager escalation: Request 12% approval threshold for 24-month commitments.")
       : (isVi
-        ? "BÁO CÁO LÃNH ĐẠO GRAPH MIND - TỔNG HỢP CHIẾN LƯỢC:\nDoanh thu tăng 6.2% trong 30 ngày qua nhưng tần suất đơn hàng giảm 3.1% ở 2 khách hàng VIP (ABC Corp -32%, Delta Trading -44%). Cần đàm phán gia hạn hợp đồng CT-2026-18 (hết hạn 18/10) và xử lý 8.6 tỷ VND công nợ quá hạn."
-        : "GRAPH MIND EXECUTIVE BRIEFING:\nRevenue grew 6.2% over trailing 30 days while order cadence declined 3.1% in top accounts (ABC Corp -32%, Delta Trading -44%). Urgent contract renewal required for CT-2026-18 (expires 18 Oct) and reconciliation of 8.6B VND aged receivables.");
+        ? "BÁO CÁO LÃNH ĐẠO GRAPH MIND - TỔNG HỢP CHIẾN LƯỢC:\nDoanh thu tăng 6.2% trong 30 ngày qua nhưng tần suất đơn hàng giảm 3.1% ở 2 khách hàng VIP (ABC Corp -32%, Delta Trading -44%). Cần đàm phán gia hạn hợp đồng CT-2026-18 (hết hạn 18/10) và xử lý $8.6M USD công nợ quá hạn."
+        : "GRAPH MIND EXECUTIVE BRIEFING:\nRevenue grew 6.2% over trailing 30 days while order cadence declined 3.1% in top accounts (ABC Corp -32%, Delta Trading -44%). Urgent contract renewal required for CT-2026-18 (expires 18 Oct) and reconciliation of $8.6M USD aged receivables.");
     navigator.clipboard?.writeText(text);
     showToast(isVi ? "Đã sao chép tóm tắt báo cáo vào bộ nhớ tạm!" : "Summary copied to clipboard!");
   };
 
   // ----------------------------------------------------------------------
-  // RENDER FOR SALES SPECIALIST (role === 'standard')
+  // RENDER FOR DEPARTMENT MANAGER OR USERS INSPECTING DEPARTMENT REPORT
   // ----------------------------------------------------------------------
-  if (isSalesRole) {
+  if (reportMode === "department") {
     return (
       <div className="view active" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
+        {/* Scope Mode Switcher Bar */}
+        <div style={{ maxWidth: 1440, margin: "0 auto 16px auto", width: "100%", boxSizing: "border-box" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
+            <button
+              onClick={() => setReportMode("department")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+                background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
+              }}
+            >
+              {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
+            </button>
+            {role !== "standard" && (
+              <button
+                onClick={() => setReportMode("executive")}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+                  background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+                }}
+              >
+                {isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}
+              </button>
+            )}
+            {role === "standard" && (
+              <button
+                onClick={() => setReportMode("shift")}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+                  background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+                }}
+              >
+                {isVi ? "Báo Cáo Ca Chuyên Viên" : "Specialist Shift Report"}
+              </button>
+            )}
+          </div>
+        </div>
+        <DepartmentReportView
+          onNavigate={onNavigate}
+          t={t}
+          lang={lang}
+          role={role}
+          currentUser={currentUser}
+        />
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------------------------
+  // RENDER FOR SALES SPECIALIST (role === 'standard')
+  // ----------------------------------------------------------------------
+  if (isSalesRole && reportMode === "shift") {
+    return (
+      <div className="view active" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
+        {/* Switcher Bar for Specialist */}
+        <div style={{ maxWidth: 1400, margin: "0 auto 14px auto", width: "100%", boxSizing: "border-box" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
+            <button
+              onClick={() => setReportMode("shift")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+                background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
+              }}
+            >
+              {isVi ? "Báo Cáo Ca Chuyên Viên" : "Specialist Shift Report"}
+            </button>
+            <button
+              onClick={() => setReportMode("department")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+                background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+              }}
+            >
+              {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
+            </button>
+          </div>
+        </div>
+
         {/* Scoped High-End Stylesheet for Reports View */}
         <style>{`
           .sales-report-wrap {
@@ -596,7 +692,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               </div>
               <div>
                 <div className="rep-kpi-val" style={{ color: "#2563eb" }}>
-                  {hasGeneratedReport ? "4.1 Tỷ VND" : "0 đ"}
+                  {hasGeneratedReport ? "$4.1M USD" : "$0 USD"}
                   <span style={{ fontSize: "13px", fontWeight: "700", color: "#2563eb", background: "rgba(37, 99, 235, 0.08)", padding: "2px 8px", borderRadius: "12px" }}>
                     {hasGeneratedReport ? "+2.4% MoM" : "+0% MoM"}
                   </span>
@@ -606,7 +702,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 </div>
                 <div className="rep-kpi-meta">
                   <Icon name="fa-solid fa-building" size={15} style={{ fontSize: "11px", color: "var(--text-4)" }} />
-                  <span>{hasGeneratedReport ? "ABC Corp (1.2B) & Delta Trading (2.9B)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
+                  <span>{hasGeneratedReport ? "ABC Corp ($1.2M) & Delta Trading ($2.9M)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
                 </div>
               </div>
             </div>
@@ -833,7 +929,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                             {isVi ? "Nguy cơ rời bỏ dòng Sản phẩm B (-44%)" : "Churn risk on Product line B (-44%)"}
                           </div>
                           <div style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "2px" }}>
-                            {isVi ? "Tài khoản đối tác thương mại 2.9 Tỷ VND" : "2.9B VND commercial distribution account"}
+                            {isVi ? "Tài khoản đối tác thương mại $2.9M USD" : "$2.9M USD commercial distribution account"}
                           </div>
                         </td>
                         <td>
@@ -883,8 +979,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                         <td>
                           <div style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.4 }}>
                             {isVi
-                              ? "Lập bảng báo giá chính thức 450 triệu VND gửi qua email chính thức kèm chứng thư số"
-                              : "Dispatched official 450M VND quotation via verified secure email with digital certificate"}
+                              ? "Lập bảng báo giá chính thức $450K USD gửi qua email chính thức kèm chứng thư số"
+                              : "Dispatched official $450K USD quotation via verified secure email with digital certificate"}
                           </div>
                         </td>
                         <td>
@@ -1011,8 +1107,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 </div>
                 <div style={{ background: "var(--surface-2)", padding: "14px 18px", borderRadius: "10px", border: "1px solid var(--border-soft)", fontSize: "13.5px", lineHeight: "1.65", color: "var(--text-1)" }}>
                   {isVi
-                    ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản ABC Corporation (1.2 tỷ VND) và kiểm soát rủi ro phân phối tại Delta Trading Ltd (2.9 tỷ VND)."
-                    : "During today's operational shift, the specialist monitored assigned enterprise accounts. Handled and resolved priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for ABC Corporation ($1.2B VND) and mitigated distribution channel risks for Delta Trading ($2.9B VND)."}
+                    ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản ABC Corporation ($1.2M USD) và kiểm soát rủi ro phân phối tại Delta Trading Ltd ($2.9M USD)."
+                    : "During today's operational shift, the specialist monitored assigned enterprise accounts. Handled and resolved priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for ABC Corporation ($1.2M USD) and mitigated distribution channel risks for Delta Trading ($2.9M USD)."}
                 </div>
               </div>
 
@@ -1129,6 +1225,30 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           <span className="font-body-sm text-body-sm font-medium">{toastMsg}</span>
         </div>
       )}
+
+      {/* Scope Mode Switcher Bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
+        <button
+          onClick={() => setReportMode("executive")}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
+            background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
+          }}
+        >
+          {isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}
+        </button>
+        <button
+          onClick={() => setReportMode("department")}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
+            background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
+          }}
+        >
+          {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
+        </button>
+      </div>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
@@ -1254,11 +1374,14 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           <h3 className="text-sm font-bold text-primary uppercase tracking-wider mb-space-xs">
             1. {isVi ? "TÓM TẮT ĐIỀU HÀNH (EXECUTIVE SUMMARY)" : "EXECUTIVE SUMMARY"}
           </h3>
-          <p className="text-body-sm leading-relaxed text-on-surface">
-            {isVi
-              ? "Doanh thu toàn hệ thống tăng trưởng 6,2% trong 30 ngày qua, đạt 48,6 triệu USD (khoảng 1.150 tỷ VND). Tuy nhiên, khối lượng đơn hàng sụt giảm 3,1%, nguyên nhân chính xuất phát từ sự suy yếu đáng kể tại 2 khách hàng nhóm Tier-1 (Tập đoàn ABC và Công ty Thương mại Delta). Mức độ phơi nhiễm hợp đồng sắp hết hạn (1,2 tỷ VND trong 12 ngày) và công nợ quá hạn 60 ngày tăng 11,4% đòi hỏi sự can thiệp chiến lược ngay trong chu kỳ hiện tại."
-              : "Enterprise monitored valuation grew 6.2% over trailing 30 days to $48.6M. However, total order cadence declined 3.1%, driven primarily by softened purchase frequency in two top-quartile accounts (ABC Corporation and Delta Trading). Contract expiration exposure ($1.2M within 12 days) and receivables aging past 60 days (+11.4%) warrant immediate executive intervention."}
-          </p>
+          <div className="text-body-sm leading-relaxed text-on-surface" style={{ whiteSpace: "pre-line" }}>
+            {liveBriefing ? liveBriefing : (
+              isVi
+                ? "Tổng doanh thu toàn hệ thống lũy kế đạt $123.22M USD với 31.465 đơn hàng AdventureWorks trong cơ sở tri thức Neo4j. Khách hàng đóng góp lớn nhất dẫn đầu bởi Roger Harui ($989K) và Andrew Dixon ($961K). Tỷ lệ tuân thủ điều khoản hợp đồng CUAD đạt 56.7%, phát hiện 5 hợp đồng thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability) cần ban lãnh đạo phê duyệt phụ lục bổ sung."
+                : "Total enterprise monitored revenue reached $123.22M USD across 31,465 AdventureWorks orders in Neo4j. Top contributing VIP accounts led by Roger Harui ($989K) and Andrew Dixon ($961K). CUAD contract clause compliance rate is 56.7%, with 5 agreements identified lacking limitation of liability caps."
+            )}
+          </div>
+
         </div>
 
         {/* 2. CUSTOMER SIGNALS */}
@@ -1268,7 +1391,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           </h3>
           <ul className="list-disc list-inside text-body-sm leading-relaxed text-on-surface-variant flex flex-col gap-space-2xs">
             <li>
-              <b>ABC Corporation:</b> {isVi ? "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng (-32% trong 60 ngày). Mô hình đồ thị xác nhận đây là chỉ báo rời bỏ trước mắt đối với tài khoản 6,4 tỷ VND." : "Order cadence dropped from 8.0/mo to 5.4/mo (-32% over 60 days). Graph model confirms high churn probability for this 6.4B VND lifetime account."}
+              <b>ABC Corporation:</b> {isVi ? "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng (-32% trong 60 ngày). Mô hình đồ thị xác nhận đây là chỉ báo rời bỏ trước mắt đối với tài khoản $6.4M USD." : "Order cadence dropped from 8.0/mo to 5.4/mo (-32% over 60 days). Graph model confirms high churn probability for this $6.4M USD lifetime account."}
             </li>
             <li>
               <b>Delta Trading Ltd:</b> {isVi ? "Nhịp độ đặt hàng Sản phẩm B giảm 44% kể từ tháng 7. Cần rà soát lại thỏa thuận phân phối độc quyền." : "Product B order cadence fell 44% since July. Exclusive distribution terms require commercial renegotiation."}
@@ -1296,21 +1419,21 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 <tr className="border-b border-outline-variant/10">
                   <td className="p-2 font-mono font-semibold">CT-2026-18</td>
                   <td className="p-2">ABC Corporation</td>
-                  <td className="p-2 font-semibold text-primary">1.2B VND</td>
+                  <td className="p-2 font-semibold text-primary">$1.2M USD</td>
                   <td className="p-2 text-error font-bold">18/10/2026 (12d)</td>
                   <td className="p-2"><span className="pill red uppercase text-[10px] font-bold">HIGH</span></td>
                 </tr>
                 <tr className="border-b border-outline-variant/10">
                   <td className="p-2 font-mono font-semibold">CT-2026-24</td>
                   <td className="p-2">Delta Trading Ltd</td>
-                  <td className="p-2 font-semibold text-primary">2.9B VND</td>
+                  <td className="p-2 font-semibold text-primary">$2.9M USD</td>
                   <td className="p-2">24/10/2026 (18d)</td>
                   <td className="p-2"><span className="pill amber uppercase text-[10px] font-bold">MED</span></td>
                 </tr>
                 <tr>
                   <td className="p-2 font-mono font-semibold">AR Receivables &gt;60d</td>
                   <td className="p-2">Finance Department</td>
-                  <td className="p-2 font-semibold text-error">8.6B VND</td>
+                  <td className="p-2 font-semibold text-error">$8.6M USD</td>
                   <td className="p-2">End of Month</td>
                   <td className="p-2"><span className="pill amber uppercase text-[10px] font-bold">ELEVATED</span></td>
                 </tr>

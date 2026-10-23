@@ -89,7 +89,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       type: "CUSTOMER",
       clientName: "Tập đoàn ABC (ABC Corporation)",
       contactPerson: "Tran M. Anh (Procurement Dir.)",
-      contractRef: "Contract CT-2026-18 (1.2 tỷ VND)",
+      contractRef: "Contract CT-2026-18 ($1.2M USD)",
       dueDate: isVi ? "Hôm nay (Trước 17:00)" : "Today by 17:00",
       description: isVi
         ? "Tần suất đặt hàng trong 60 ngày qua giảm từ 8.0/tháng xuống 5.4/tháng. Hợp đồng CT-18 sắp hết hạn vào 18/10. Nguy cơ khách hàng chuyển dịch sang đối thủ cạnh tranh."
@@ -111,8 +111,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       contractRef: "CT-2026-18 · Linh kiện Sản phẩm A",
       dueDate: isVi ? "18/10/2026" : "18 Oct 2026",
       description: isVi
-        ? "Hợp đồng cung ứng linh kiện sản xuất chủ lực trị giá 1,2 tỷ VND. Chưa có biên bản ghi nhận thương thảo gia hạn trong hệ thống CRM hay Drive."
-        : "Manufacturing component supply agreement worth 1.2B VND. No renewal meeting logged in CRM or Drive folders.",
+        ? "Hợp đồng cung ứng linh kiện sản xuất chủ lực trị giá $1.2M USD. Chưa có biên bản ghi nhận thương thảo gia hạn trong hệ thống CRM hay Drive."
+        : "Manufacturing component supply agreement worth $1.2M USD. No renewal meeting logged in CRM or Drive folders.",
       suggestedAction: isVi ? "Rà soát điều khoản phạt trễ giao hàng và chuẩn bị phụ lục hợp đồng 2027." : "Review delay penalties and prepare 2027 contract addendum.",
       status: "PENDING"
     },
@@ -130,8 +130,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       contractRef: "SOP-04_Reconciliation.docx",
       dueDate: isVi ? "Ngày mai" : "Tomorrow",
       description: isVi
-        ? "Tài liệu quy trình đối soát 8,6 tỷ VND công nợ quý 3 còn thiếu trường người duyệt bộ phận, làm giảm độ tin cậy trích dẫn của AI."
-        : "Internal 8.6B VND receivables reconciliation file missing department owner metadata field.",
+        ? "Tài liệu quy trình đối soát $8.6M USD công nợ quý 3 còn thiếu trường người duyệt bộ phận, làm giảm độ tin cậy trích dẫn của AI."
+        : "Internal $8.6M USD receivables reconciliation file missing department owner metadata field.",
       suggestedAction: isVi ? "Cập nhật trường phòng ban và gửi xác thực vào hàng đợi HITL." : "Update department owner field and submit to HITL validation queue.",
       status: "PENDING"
     }
@@ -199,8 +199,9 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     if (filterDept !== "ALL" && item.dept !== filterDept) return false;
     if (filterStatus !== "ALL" && item.status !== filterStatus) return false;
     if (filterValue !== "ALL") {
-      if (filterValue === "500M" && (!item.numValue || item.numValue < 500000000)) return false;
-      if (filterValue === "1B" && (!item.numValue || item.numValue < 1000000000)) return false;
+      if (filterValue === "50K" && (!item.numValue || item.numValue < 50000)) return false;
+      if (filterValue === "100K" && (!item.numValue || item.numValue < 100000)) return false;
+      if (filterValue === "500K" && (!item.numValue || item.numValue < 500000)) return false;
     }
     return true;
   };
@@ -301,7 +302,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric1Sub: isVi ? "Chuyên viên Nam đang thụ lý" : "Handled by Specialist Nam",
             metric1Color: "#d97706",
             metric2Label: isVi ? "Giá trị phơi nhiễm giám sát" : "Monitored Value",
-            metric2Val: dbMetrics ? "4.8 Tỷ VND" : "4.1 Tỷ VND",
+            metric2Val: "$4.8M USD",
             metric2Sub: isVi ? "AdventureWorks ERP & CUAD" : "AdventureWorks ERP & CUAD",
             metric2Color: "#2563eb",
             metric3Label: isVi ? "Quy trình & Hợp đồng phụ trách" : "Department Documents",
@@ -332,7 +333,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric1Sub: isVi ? "Đồng bộ từ CSDL Neo4j thực tế" : "Live synced from Neo4j DB",
             metric1Color: "var(--cyan)",
             metric2Label: isVi ? "Phơi nhiễm rủi ro hợp đồng" : "Contract Risk Exposure",
-            metric2Val: "12.7 Tỷ VND",
+            metric2Val: "$12.5M USD",
             metric2Sub: isVi ? "CUAD Contracts & Sales Orders" : "CUAD Contracts & Sales Orders",
             metric2Color: "#dc2626",
             metric3Label: isVi ? "Tổng hồ sơ đã lập chỉ mục" : "Indexed Documents",
@@ -1266,8 +1267,9 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     }}
                   >
                     <option value="ALL">{isVi ? "Giá trị: Mọi mức" : "Value: Any Amount"}</option>
-                    <option value="500M">{isVi ? "Giá trị: > 500 Triệu VNĐ" : "Value: > 500M VND"}</option>
-                    <option value="1B">{isVi ? "Giá trị: > 1 Tỷ VNĐ" : "Value: > 1B VND"}</option>
+                    <option value="50K">{isVi ? "Giá trị: > $50K USD" : "Value: > $50K USD"}</option>
+                    <option value="100K">{isVi ? "Giá trị: > $100K USD" : "Value: > $100K USD"}</option>
+                    <option value="500K">{isVi ? "Giá trị: > $500K USD" : "Value: > $500K USD"}</option>
                   </select>
 
                   {/* 4. Hiệu lực / Trạng thái Dropdown */}

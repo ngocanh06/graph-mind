@@ -9,10 +9,13 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, Query, Header
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +54,18 @@ except ImportError:
 try:
     from app.api.v1.auth import router as auth_router
     from app.api.v1.copilot import router as copilot_router
+    from app.api.v1.dashboard import router as dashboard_router
+    from app.api.v1.sop import router as sop_router
+    from app.api.v1.rbac import router as rbac_router
+    from app.core.rbac import get_user_scope, ScopeContext
 except ImportError:
     from api.v1.auth import router as auth_router
     from api.v1.copilot import router as copilot_router
+    from api.v1.dashboard import router as dashboard_router
+    from api.v1.sop import router as sop_router
+    from api.v1.rbac import router as rbac_router
+    from core.rbac import get_user_scope, ScopeContext
+
 
 try:
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
@@ -153,6 +165,18 @@ except ImportError:
         app.include_router(file_watcher_router)
     except Exception as e:
         logger.warning(f"[M1 Data Sync] Could not load file_watcher_router: {e}")
+
+# Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
+
+# SOP routers (/api/sop and /api/v1/sop) — FR26, UC.14, BR-04
+app.include_router(sop_router, prefix="/api/v1/sop", tags=["sop"])
+app.include_router(sop_router, prefix="/api/sop", tags=["sop"])
+
+# RBAC & Department Scope routers (/api/rbac and /api/v1/rbac) — FR3, BR-02
+app.include_router(rbac_router, prefix="/api/v1/rbac", tags=["rbac"])
+app.include_router(rbac_router, prefix="/api/rbac", tags=["rbac"])
 
 
 # --- Pydantic Schemas ---
@@ -549,7 +573,8 @@ def multifacet_search(
     status: Optional[str] = Query(default="ALL"),
     limit: int = Query(default=12, ge=1, le=50),
     x_user_role: Optional[str] = Header(None),
-    x_user_name: Optional[str] = Header(None)
+    x_user_name: Optional[str] = Header(None),
+    scope: ScopeContext = Depends(get_user_scope),
 ):
     """
     Real database multi-facet search across:
@@ -582,8 +607,8 @@ def multifacet_search(
                         "client": cname.split("_")[0] if "_" in cname else "CUAD Partner",
                         "dept": "LEGAL",
                         "deptName": "Pháp chế & R&D",
-                        "value": f"{max(500, round(score * 1400))} Triệu VND",
-                        "numValue": max(500000000, int(score * 1400000000)),
+                        "value": f"${max(25, round(score * 120)):,}K USD",
+                        "numValue": max(25000, int(score * 120000)),
                         "date": "2026",
                         "status": "VALID",
                         "statusText": "Còn hiệu lực",
@@ -638,8 +663,8 @@ def multifacet_search(
                         "client": c.get("company") or "CUAD Enterprise Partner",
                         "dept": "LEGAL",
                         "deptName": "Pháp chế & R&D",
-                        "value": f"{max(450, cl_cnt * 350)} Triệu VND",
-                        "numValue": max(450000000, cl_cnt * 350000000),
+                        "value": f"${max(20, cl_cnt * 18):,}K USD",
+                        "numValue": max(20000, cl_cnt * 18000),
                         "date": c.get("date") or "2026",
                         "status": "VALID",
                         "statusText": "Còn hiệu lực",
@@ -675,21 +700,20 @@ def multifacet_search(
             neo_custs = neo4j_client.run_cypher(cust_query, params)
             for cust in neo_custs:
                 rev = float(cust.get("total_revenue") or 0)
-                vnd_val = int(rev * 25400)
                 customers.append({
                     "id": f"cust-{cust.get('id')}",
                     "code": f"CUST-{cust.get('id')}",
                     "type": "CUSTOMER",
                     "name": cust.get("name"),
                     "tier": "Doanh nghiệp Chiến lược (Enterprise Tier 1)" if rev > 150000 else "Khách hàng Trọng điểm",
-                    "revenue": f"{vnd_val / 1e9:.2f} Tỷ VND" if vnd_val >= 1e9 else f"{vnd_val / 1e6:.0f} Triệu VND",
+                    "revenue": f"${rev / 1e6:.2f}M USD" if rev >= 1e6 else f"${rev:,.2f} USD",
                     "orders": f"{cust.get('order_count', 0)} đơn hàng",
                     "dept": "SALES",
                     "deptName": "Bán hàng (Sales)",
                     "contact": f"Khách hàng ID #{cust.get('id')}",
                     "status": "VALID",
                     "statusText": "Đang giao dịch",
-                    "numValue": vnd_val,
+                    "numValue": rev,
                     "score": 0.94
                 })
         except Exception as e:
@@ -716,7 +740,6 @@ def multifacet_search(
             neo_prods = neo4j_client.run_cypher(prod_query, params)
             for p in neo_prods:
                 price_usd = float(p.get("price") or 0)
-                vnd_val = int(price_usd * 25400)
                 products.append({
                     "id": f"prod-{p.get('id')}",
                     "code": p.get("code") or f"PROD-{p.get('id')}",
@@ -728,8 +751,8 @@ def multifacet_search(
                     "badge": p.get("subcategory"),
                     "status": "VALID",
                     "statusText": "Hoạt động",
-                    "value": f"{vnd_val / 1e6:.1f} Triệu VND" if vnd_val >= 1e6 else f"{vnd_val:,.0f} đ",
-                    "numValue": vnd_val,
+                    "value": f"${price_usd:,.2f} USD",
+                    "numValue": price_usd,
                     "score": 0.91
                 })
         except Exception as e:
@@ -793,12 +816,26 @@ def multifacet_search(
                 "score": 0.88
             })
 
-    # Department & Status Filtering in Memory if requested
+    # Department & Status Filtering in Memory if requested (BR-02 Scope Enforcement)
     if dept and dept != "ALL":
+        if not scope.is_department_allowed(dept):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Theo quy định BR-02: Tài khoản [{scope.user.username}] thuộc phòng ban [{scope.department_name}] không có quyền tra cứu dữ liệu phòng ban '{dept}'."
+            )
         contracts = [c for c in contracts if c.get("dept") == dept]
         customers = [cu for cu in customers if cu.get("dept") == dept]
         products = [p for p in products if p.get("dept") == dept]
         documents = [d for d in documents if d.get("dept") == dept]
+    elif not scope.is_unrestricted:
+        # Filter entities by user department scope (BR-02)
+        if not scope.is_department_allowed("Pháp chế"):
+            contracts = []
+        if not scope.is_department_allowed("Kinh doanh"):
+            customers = []
+        if not (scope.is_department_allowed("R&D") or scope.is_department_allowed("Vận hành")):
+            products = []
+        documents = scope.filter_documents(documents)
 
     # Enforce RBAC & Department Data Scope (BR-02 / US20)
     effective_role = (x_user_role or "").strip().lower()
@@ -1055,9 +1092,10 @@ def get_repository_documents(
     sort_by: Optional[str] = Query(default="default"),
     new_only: Optional[bool] = Query(default=False),
     limit: int = Query(default=16, ge=1, le=200),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
+    scope: ScopeContext = Depends(get_user_scope),
 ):
-    """Returns paginated list of real CUAD documents, AdventureWorks datasets, and Local Watcher docs."""
+    """Returns paginated list of real CUAD documents, AdventureWorks datasets, and Local Watcher docs with BR-02 scope enforcement."""
     aw_items = _get_adventureworks_datasets()
     cuad_items = _get_cuad_cache()
     
@@ -1070,6 +1108,9 @@ def get_repository_documents(
         pass
 
     all_items = watcher_items + aw_items + cuad_items
+
+    # Enforce Department Scope (BR-02, BR-04)
+    all_items = scope.filter_documents(all_items)
 
     # Filtering
     filtered = all_items
@@ -1118,11 +1159,11 @@ def get_repository_documents(
         "limit": limit,
         "summary": {
             "total_items": len(all_items),
-            "cuad_contracts": len(cuad_items),
+            "cuad_contracts": len([it for it in all_items if it.get("source") == "qdrant"]),
             "watcher_docs": len(watcher_items),
             "new_docs_count": new_count,
-            "adventureworks_datasets": len(aw_items),
-            "cuad_chunks": sum(it.get("chunk_count", 0) for it in cuad_items),
+            "adventureworks_datasets": len([it for it in all_items if it.get("source") == "neo4j"]),
+            "cuad_chunks": sum(it.get("chunk_count", 0) for it in all_items if it.get("source") == "qdrant"),
             "neo4j_nodes": neo4j_client.get_node_count() if neo4j_client.is_connected else 52120
         },
         "data": page_items
@@ -1130,8 +1171,11 @@ def get_repository_documents(
 
 
 @app.get("/api/documents/detail")
-def get_document_detail(doc_id: str = Query(...)):
-    """Returns real detail, real text chunks (Qdrant) or real records/relations (Neo4j)."""
+def get_document_detail(
+    doc_id: str = Query(...),
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """Returns real detail, real text chunks (Qdrant) or real records/relations (Neo4j) with BR-02 check."""
     # 0. AEGIS Local File Watcher Document Detail (by ID, filename, or previous filename)
     try:
         from app.modules.m1_data_sync.webhook import get_watcher_ingested_docs
@@ -1160,13 +1204,15 @@ def get_document_detail(doc_id: str = Query(...)):
             }
     except Exception as e:
         logger.warning(f"[DocumentDetail] Watcher doc lookup error: {e}")
-
     # 1. AdventureWorks Dataset Detail
     if doc_id.startswith("AW_"):
         aw_datasets = {d["id"]: d for d in _get_adventureworks_datasets()}
         item = aw_datasets.get(doc_id)
         if not item:
             raise HTTPException(status_code=404, detail="Dataset not found")
+        
+        # Enforce Department Scope (BR-02)
+        scope.assert_document_access(doc_id, item.get("dept") or item.get("deptLabel"))
         
         records = []
         relationships = []
@@ -1246,11 +1292,14 @@ def get_document_detail(doc_id: str = Query(...)):
         d["name"].lower().replace(".pdf", "") == doc_id_clean.replace(".pdf", "") or
         d["raw_id"].lower().replace(".txt", "") == doc_id_clean.replace(".txt", "").replace(".pdf", "")
     )), None)
-    if not doc and cuad_items:
+    if not doc and cuad_items and scope.is_department_allowed("Pháp chế"):
         doc = cuad_items[0]
     
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    # Enforce Department Scope (BR-02)
+    scope.assert_document_access(doc["id"], doc.get("dept") or "Pháp chế")
 
     raw_cname = doc["raw_id"]
     chunks = []
