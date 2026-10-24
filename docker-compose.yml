@@ -130,7 +130,6 @@ services:
 volumes:
   graphmind_documents:
     name: graph-mind_graphmind_documents
-    external: true
 
 networks:
   graphmind-net:

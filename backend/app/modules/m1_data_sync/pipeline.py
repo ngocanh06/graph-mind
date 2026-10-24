@@ -383,12 +383,15 @@ def process_document_ingestion(
             except Exception as del_err:
                 logger.debug(f"[Pipeline] Qdrant clean old points note: {del_err}")
 
+            from app.db.qdrant.client import get_embed_model
+            _embed = get_embed_model()
             pts = []
             for idx, ch in enumerate(chunks):
                 pt_id = int(hashlib.md5(f"{final_hash}_{filename}_{idx}".encode()).hexdigest()[:15], 16)
+                vec = _embed.encode(ch[:1000]).tolist() if _embed else [0.01 * ((i + idx) % 50) for i in range(384)]
                 pts.append(models.PointStruct(
                     id=pt_id,
-                    vector=[0.01 * ((i + idx) % 50) for i in range(384)],
+                    vector=vec,
                     payload={
                         "contract_name": filename,
                         "doc_id": doc_id,

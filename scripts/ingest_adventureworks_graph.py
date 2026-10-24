@@ -16,6 +16,33 @@ if not neo4j_client.is_connected and not neo4j_client.connect():
     print("[Error] Could not connect to Neo4j")
     sys.exit(1)
 
+import argparse
+parser = argparse.ArgumentParser(description="Ingest AdventureWorks Graph into Neo4j")
+parser.add_argument("--data-dir", default=os.getenv("ADV_DATA_DIR", "D:/adventureworks"), help="Path to AdventureWorks CSV directory")
+args, _ = parser.parse_known_args()
+adv_dir = Path(args.data_dir).resolve()
+
+if not adv_dir.exists():
+    cache_dir = REPO_ROOT / ".cache_adv_csv"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[*] Local path '{adv_dir}' not found on host. Checking Docker Central Storage container...")
+    try:
+        import subprocess
+        chk = subprocess.run(["docker", "exec", "aegis_file_watcher", "sh", "-c", "test -f /data/rnd/Production_ProductCategory.csv"], capture_output=True)
+        if chk.returncode == 0:
+            print(f"[*] Extracting AdventureWorks CSVs from aegis_file_watcher:/data into {cache_dir}...")
+            subprocess.run(["docker", "cp", "aegis_file_watcher:/data/sales/.", str(cache_dir)], capture_output=True)
+            subprocess.run(["docker", "cp", "aegis_file_watcher:/data/rnd/.", str(cache_dir)], capture_output=True)
+            adv_dir = cache_dir
+    except Exception as e:
+        print(f"[*] Note: Could not auto-extract from container: {e}")
+
+if not adv_dir.exists() or not (adv_dir / "Production_ProductCategory.csv").exists():
+    print(f"[Error] AdventureWorks data directory does not exist or missing required CSVs: {adv_dir}")
+    print("Please provide the correct directory using --data-dir <path> or setting ADV_DATA_DIR environment variable.")
+    print("Or ensure Central Storage is populated first using: python scripts/populate_central_storage.py")
+    sys.exit(1)
+
 print("[1/5] Connected to Neo4j. Creating constraints...")
 neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (cat:Category) REQUIRE cat.id IS UNIQUE")
 neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (s:SubCategory) REQUIRE s.id IS UNIQUE")
@@ -23,8 +50,8 @@ neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (p:Product) REQUIRE
 neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (c:Customer) REQUIRE c.id IS UNIQUE")
 
 # 1. CATEGORIES
-print("[2/5] Ingesting Categories & Subcategories...")
-cat_df = pd.read_csv("D:/adventureworks/Production_ProductCategory.csv", sep=None, engine="python")
+print(f"[2/5] Ingesting Categories & Subcategories from {adv_dir}...")
+cat_df = pd.read_csv(adv_dir / "Production_ProductCategory.csv", sep=None, engine="python")
 cats = []
 for _, r in cat_df.iterrows():
     cats.append({
@@ -41,7 +68,7 @@ neo4j_client.run_cypher("""
 print(f"  -> Ingested {len(cats)} Categories")
 
 # 2. SUBCATEGORIES
-subcat_df = pd.read_csv("D:/adventureworks/Production_ProductSubcategory.csv", sep=None, engine="python")
+subcat_df = pd.read_csv(adv_dir / "Production_ProductSubcategory.csv", sep=None, engine="python")
 subcats = []
 for _, r in subcat_df.iterrows():
     subcats.append({
@@ -63,7 +90,7 @@ print(f"  -> Ingested {len(subcats)} SubCategories & PART_OF relationships")
 
 # 3. PRODUCTS
 print("[3/5] Ingesting Products...")
-prod_df = pd.read_csv("D:/adventureworks/Production_Product.csv", sep=None, engine="python")
+prod_df = pd.read_csv(adv_dir / "Production_Product.csv", sep=None, engine="python")
 prods = []
 for _, r in prod_df.iterrows():
     pid = int(r["ProductID"])
@@ -112,9 +139,9 @@ print(f"  -> Ingested {len(prods)} Products with BELONGS_TO & BELONGS_TO_DEPT")
 
 # 4. CUSTOMERS
 print("[4/5] Preparing Customers (Stores + Individuals)...")
-cust_df = pd.read_csv("D:/adventureworks/Sales_Customer.csv", sep=None, engine="python")
-store_df = pd.read_csv("D:/adventureworks/Sales_Store.csv", sep=None, engine="python").set_index("BusinessEntityID")["Name"].to_dict()
-person_df = pd.read_csv("D:/adventureworks/Person_Person.csv", sep=None, engine="python")
+cust_df = pd.read_csv(adv_dir / "Sales_Customer.csv", sep=None, engine="python")
+store_df = pd.read_csv(adv_dir / "Sales_Store.csv", sep=None, engine="python").set_index("BusinessEntityID")["Name"].to_dict()
+person_df = pd.read_csv(adv_dir / "Person_Person.csv", sep=None, engine="python")
 person_df["FullName"] = person_df["FirstName"].fillna("") + " " + person_df["LastName"].fillna("")
 person_dict = person_df.set_index("BusinessEntityID")["FullName"].to_dict()
 
@@ -176,8 +203,8 @@ print("  -> Linked Store & Top Customer nodes to Kinh doanh (Sales) Department")
 # 5. PURCHASES (Link Top Customer Stores to Products)
 print("[5/5] Ingesting purchase relationships between Customers and Products...")
 try:
-    soh_df = pd.read_csv("D:/adventureworks/Sales_SalesOrderHeader.csv", sep=None, engine="python", nrows=5000)
-    sod_df = pd.read_csv("D:/adventureworks/Sales_SalesOrderDetail.csv", sep=None, engine="python", nrows=10000)
+    soh_df = pd.read_csv(adv_dir / "Sales_SalesOrderHeader.csv", sep=None, engine="python", nrows=5000)
+    sod_df = pd.read_csv(adv_dir / "Sales_SalesOrderDetail.csv", sep=None, engine="python", nrows=10000)
     
     so_prod = sod_df[["SalesOrderID", "ProductID"]].drop_duplicates()
     merged = soh_df[["SalesOrderID", "CustomerID"]].merge(so_prod, on="SalesOrderID")

@@ -510,9 +510,9 @@ async def ask_copilot(
         vector_hits = []
     else:
         vector_hits = qdrant_client.vector_search(query=clean_query, limit=5)
-        # Filter out weak vector noise (< 0.58) if not explicitly a legal text query
+        # Filter out weak vector noise (< 0.30) if not explicitly a legal text query
         if not is_legal_contract_query:
-            vector_hits = [vh for vh in vector_hits if vh.get("score", 0) >= 0.58]
+            vector_hits = [vh for vh in vector_hits if vh.get("score", 0) >= 0.30]
 
     graph_hits = execute_text_to_cypher(clean_query)
     if not graph_hits:

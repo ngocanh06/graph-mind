@@ -155,15 +155,19 @@ def generate_cypher_from_query(query: str) -> str:
     # 3. AdventureWorks Customer queries (ranked by revenue for VIPs/Top accounts)
     if any(k in q_lower for k in ["khách hàng", "customer", "crm", "vip", "đối tác mua hàng"]):
         return """
-        MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
-        WITH c, count(o) AS order_count, round(sum(o.TotalDue), 2) AS totalSpent
-        RETURN coalesce(c.FirstName + ' ' + c.LastName, 'Customer #' + toString(c.CustomerID)) AS name,
-               c.CustomerID AS CustomerID,
-               order_count,
+        MATCH (c:Customer)
+        OPTIONAL MATCH (c)-[:PURCHASED]->(p:Product)
+        OPTIONAL MATCH (c)-[:PLACED_ORDER]->(o:SalesOrder)
+        WITH c, count(DISTINCT p) AS prod_count, count(DISTINCT o) AS order_count, round(coalesce(sum(o.TotalDue), 0), 2) AS totalSpent
+        WITH c, prod_count, order_count, totalSpent,
+             (CASE WHEN prod_count >= order_count THEN prod_count ELSE order_count END) AS final_count
+        RETURN coalesce(c.name, c.title, c.FirstName + ' ' + c.LastName, 'Customer #' + toString(c.id)) AS name,
+               coalesce(c.id, c.CustomerID) AS CustomerID,
+               final_count AS order_count,
                totalSpent,
-               'Khách hàng ' + coalesce(c.FirstName + ' ' + c.LastName, 'VIP #' + toString(c.CustomerID)) + ': Doanh thu $' + toString(totalSpent) + ' USD (' + toString(order_count) + ' đơn hàng)' AS snippet,
+               'Khách hàng ' + coalesce(c.name, 'Customer #' + toString(c.id)) + ' (' + coalesce(c.tier, 'Khách hàng') + '): Đã mua ' + toString(final_count) + ' sản phẩm trong hệ thống.' AS snippet,
                elementId(c) AS _id, ['Customer'] AS _labels
-        ORDER BY totalSpent DESC
+        ORDER BY final_count DESC
         LIMIT 6
         """
 
@@ -186,11 +190,12 @@ def generate_cypher_from_query(query: str) -> str:
     if any(k in q_lower for k in ["sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike"]):
         return """
         MATCH (p:Product)
-        WHERE p.ListPrice > 0
-        RETURN p.Name AS name, p.ProductID AS ProductID, p.ListPrice AS ListPrice,
-               'Sản phẩm ' + p.Name + ': Giá niêm yết $' + toString(p.ListPrice) + ' USD' AS snippet,
+        WHERE coalesce(p.listPrice, p.ListPrice, p.price, 0) > 0
+        WITH p, coalesce(p.name, p.title, p.Name) AS prod_name, coalesce(p.listPrice, p.ListPrice, p.price) AS price_val
+        RETURN prod_name AS name, coalesce(p.id, p.ProductID) AS ProductID, price_val AS ListPrice,
+               'Sản phẩm ' + prod_name + ': Giá niêm yết $' + toString(price_val) + ' USD' AS snippet,
                elementId(p) AS _id, ['Product'] AS _labels
-        ORDER BY p.ListPrice DESC
+        ORDER BY price_val DESC
         LIMIT 6
         """
 
@@ -211,7 +216,12 @@ def generate_cypher_from_query(query: str) -> str:
     term = clean_term[0] if clean_term else "Order"
     return f"""
     MATCH (n)
-    WHERE any(prop IN keys(n) WHERE toString(n[prop]) =~ '(?i).*{term}.*')
+    WHERE any(prop IN keys(n) WHERE 
+        CASE 
+            WHEN n[prop] IS :: LIST<ANY> THEN any(item IN n[prop] WHERE toString(item) =~ '(?i).*{term}.*')
+            ELSE toString(n[prop]) =~ '(?i).*{term}.*'
+        END
+    )
     RETURN n, labels(n) AS _labels, elementId(n) AS _id
     LIMIT 8
     """

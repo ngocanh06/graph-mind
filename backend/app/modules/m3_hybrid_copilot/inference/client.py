@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 
 class OllamaClient:
     def __init__(self):
-        self.base_url = settings.INFERENCE_ENGINE_URL.rstrip("/")
+        url = settings.INFERENCE_ENGINE_URL.rstrip("/")
+        if url.endswith("/v1"):
+            url = url[:-3].rstrip("/")
+        self.base_url = url
         self.model = settings.MODEL_NAME
 
     async def is_available(self) -> bool:
@@ -23,7 +26,7 @@ class OllamaClient:
                 res = await client.get(f"{self.base_url}/api/tags")
                 if res.status_code == 200:
                     models = [m.get("name", "") for m in res.json().get("models", [])]
-                    return any(self.model in m for m in models) or len(models) > 0
+                    return any(self.model in m or m.startswith(self.model) for m in models) or len(models) > 0
         except Exception as e:
             logger.debug(f"Ollama connection check failed: {e}")
         return False

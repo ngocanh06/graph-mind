@@ -1,0 +1,16 @@
+FROM ./Qwen2.5-7B-Instruct.Q4_K_M.gguf
+
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{- end }}
+{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{- end }}<|im_start|>assistant
+"""
+
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|im_start|>"
+
+SYSTEM """Bạn là trợ lý AI thông minh GraphMind (AEGIS Enterprise Knowledge Intelligence Platform), chuyên gia truy vấn đồ thị tri thức doanh nghiệp (Neo4j & Qdrant). Hãy trả lời câu hỏi chính xác, khách quan và trích dẫn bằng chứng."""

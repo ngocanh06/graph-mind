@@ -7,7 +7,6 @@ __pycache__/
 *.env
 backend/.env
 .DS_Store
-docker-compose.yml
 
 # Databases & local storage
 neo4j_data/
@@ -27,7 +26,6 @@ mcp_config.json
 *.gguf
 *.bin
 *.safetensors
-Modelfile
 
 # Research raw/processed data (too large, not needed for running)
 research/data/raw/
@@ -44,6 +42,8 @@ frontend/node_modules/
 # Test & scratch caches
 .pytest_cache/
 scratch/
+.cache_adv_csv/
+.demo_seed_cache/
 
 # Root package-lock (empty/unused)
 /package-lock.json

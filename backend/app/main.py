@@ -1482,7 +1482,7 @@ def get_repository_documents(
                 "date": dt_str,
                 "mtime": mtime,
                 "created_at": iso_str or dt_str,
-                "updated_at": neo_info.get("lastModified") or iso_str or dt_str,
+                "updated_at": (neo_info.get("lastModified") if neo_info else None) or iso_str or dt_str,
                 "status": status,
                 "statusBadge": status_badge,
                 "statusState": status_state,
