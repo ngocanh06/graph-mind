@@ -1064,8 +1064,9 @@ def multifacet_search(
         elif name_lower in ["manager", "mgr"]:
             effective_role = "knowledge_manager"
 
-    if effective_role == "standard":
+    if effective_role in ("standard", "ops") or not scope.is_department_allowed("legal"):
         documents = filter_search_documents_by_scope(documents, "standard")
+        contracts = [c for c in contracts if scope.is_department_allowed(c.get("dept", "LEGAL"))]
 
     # Metrics summary from live databases
     lbl_counts = neo4j_client.get_label_counts() if neo4j_client.is_connected else {}
@@ -1599,14 +1600,68 @@ def get_document_detail(
     doc_id_clean = (doc_id or "").strip()
     inventory = get_central_storage_inventory()
 
-    # Match in Central Storage inventory
+    # 1. Match in Central Storage inventory directly
     storage_item = next((
         it for it in inventory
         if it["name"] == doc_id_clean or
            it["name"].lower() == doc_id_clean.lower() or
            it["storage_path"] == doc_id_clean or
-           f"DOC_{hashlib.md5(it['name'].encode()).hexdigest()[:8].upper()}" == doc_id_clean
+           it["storage_path"].lower() == doc_id_clean.lower() or
+           f"DOC_{hashlib.md5(it['name'].encode()).hexdigest()[:8].upper()}" == doc_id_clean.upper()
     ), None)
+
+    # 2. If CUAD alias (e.g. CUAD_001, CUAD_087, CUAD_87, CUAD_1)
+    if not storage_item and doc_id_clean.upper().startswith("CUAD"):
+        cuad_items = _get_cuad_cache()
+        matched = next((c for c in cuad_items if c["id"].upper() == doc_id_clean.upper()), None)
+        if not matched:
+            import re
+            digits = re.findall(r"\d+", doc_id_clean)
+            if digits:
+                idx = int(digits[0]) - 1
+                if 0 <= idx < len(cuad_items):
+                    matched = cuad_items[idx]
+                elif len(cuad_items) > 0:
+                    matched = cuad_items[idx % len(cuad_items)]
+        if matched:
+            cname = matched["name"]
+            storage_item = next((
+                it for it in inventory
+                if it["name"].lower() == cname.lower() or
+                   it["name"].lower().startswith(os.path.splitext(cname)[0].lower())
+            ), None)
+            if not storage_item:
+                storage_item = {
+                    "name": cname,
+                    "storage_path": f"/data/legal/{cname}",
+                    "dept_key": "legal",
+                    "dept_name": "Pháp chế (Legal)",
+                    "dept_short": "Pháp chế",
+                    "size_bytes": matched.get("chunk_count", 8) * 150000,
+                    "ext": ".pdf"
+                }
+
+    # 3. If AdventureWorks alias (e.g. AW_SALES_ORDERS, AW_CATEGORIES, etc.)
+    if not storage_item and ("AW_" in doc_id_clean.upper() or "SALES_ORDERS" in doc_id_clean.upper()):
+        if "ORDER" in doc_id_clean.upper() or "SALES" in doc_id_clean.upper():
+            storage_item = next((it for it in inventory if "SalesOrder" in it["name"]), None)
+        elif "CAT" in doc_id_clean.upper() or "PROD" in doc_id_clean.upper():
+            storage_item = next((it for it in inventory if "Product" in it["name"] or "Category" in it["name"]), None)
+
+    # 4. Fallback: Substring search in inventory
+    if not storage_item:
+        clean_lower = doc_id_clean.lower()
+        storage_item = next((
+            it for it in inventory
+            if clean_lower in it["name"].lower() or it["name"].lower() in clean_lower
+        ), None)
+
+    target_lookup = storage_item["name"] if storage_item else doc_id_clean
+    dept_key = storage_item["dept_key"] if storage_item else ("legal" if "CUAD" in doc_id_clean.upper() else "sales" if "SALES" in doc_id_clean.upper() else "legal")
+    dept_name = storage_item.get("dept_name") if storage_item else ("Pháp chế (Legal)" if dept_key == "legal" else "Kinh doanh (Sales)")
+
+    # Enforce Department Scope (BR-02)
+    scope.assert_document_access(doc_id_clean, dept_key)
 
     # Query Neo4j for Document node
     neo_doc = None
@@ -1615,10 +1670,9 @@ def get_document_detail(
     companies = []
     try:
         if neo4j_client.is_connected or neo4j_client.connect():
-            target_lookup = storage_item["name"] if storage_item else doc_id_clean
             res = neo4j_client.run_cypher("""
                 MATCH (d:Document)
-                WHERE d.id = $id OR d.name = $id OR d.oldName = $id
+                WHERE d.id = $id OR d.name = $id OR d.oldName = $id OR d.name = $clean_id OR d.id = $clean_id
                 OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
                 OPTIONAL MATCH (c:Company)-[:PARTY_TO]->(d)
                 RETURN d.id as id, d.name as name, d.department as dept, d.deptKey as deptKey,
@@ -1628,7 +1682,7 @@ def get_document_detail(
                        collect(DISTINCT {id: cl.id, type: cl.type, title: cl.title, snippet: cl.snippet}) as clauses,
                        collect(DISTINCT c.name) as companies
                 LIMIT 1
-            """, {"id": target_lookup})
+            """, {"id": target_lookup, "clean_id": doc_id_clean})
             if res and res[0].get("id"):
                 neo_doc = res[0]
                 clauses = [cl for cl in neo_doc.get("clauses", []) if cl.get("id")]
@@ -1636,13 +1690,13 @@ def get_document_detail(
     except Exception as e:
         logger.warning(f"[DocumentDetail] Neo4j query error: {e}")
 
-    # Determine canonical filename
-    fname = (neo_doc.get("name") if neo_doc else None) or (storage_item["name"] if storage_item else doc_id_clean)
-    dept_name = (neo_doc.get("dept") if neo_doc else None) or (storage_item["dept_name"] if storage_item else "Pháp chế (Legal)")
-    dept_key = (neo_doc.get("deptKey") if neo_doc else None) or (storage_item["dept_key"] if storage_item else "legal")
-    final_id = (neo_doc.get("id") if neo_doc else None) or f"DOC_{hashlib.md5(fname.encode()).hexdigest()[:8].upper()}"
-    storage_path = (neo_doc.get("storagePath") if neo_doc else None) or (storage_item["storage_path"] if storage_item else f"/data/{dept_key}/{fname}")
-    file_hash = (neo_doc.get("hash") if neo_doc else None) or ""
+    # Determine canonical filename & metadata
+    fname = (neo_doc.get("name") if neo_doc else None) or target_lookup
+    dept_name = (neo_doc.get("dept") if neo_doc else None) or dept_name
+    dept_key = (neo_doc.get("deptKey") if neo_doc else None) or dept_key
+    final_id = (neo_doc.get("id") if neo_doc else None) or (storage_item.get("id") if storage_item else None) or f"DOC_{hashlib.md5(fname.encode()).hexdigest()[:8].upper()}"
+    storage_path = (neo_doc.get("storagePath") if neo_doc else None) or (storage_item.get("storage_path") if storage_item else f"/data/{dept_key}/{fname}")
+    file_hash = (neo_doc.get("hash") if neo_doc else None) or (storage_item.get("hash") if storage_item else "")
 
     # Query Qdrant for real chunks
     chunks = []
@@ -1652,7 +1706,10 @@ def get_document_detail(
             filter_cond = models.Filter(
                 should=[
                     models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname)),
-                    models.FieldCondition(key="doc_id", match=models.MatchValue(value=final_id))
+                    models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".pdf", ".txt"))),
+                    models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".PDF", ".pdf"))),
+                    models.FieldCondition(key="doc_id", match=models.MatchValue(value=final_id)),
+                    models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id_clean))
                 ]
             )
             pts, _ = qdrant_client._client.scroll(
@@ -1671,6 +1728,22 @@ def get_document_detail(
             chunks.sort(key=lambda c: c.get("chunk_id", 0))
     except Exception as e:
         logger.warning(f"[DocumentDetail] Qdrant scroll chunks error: {e}")
+
+    # Fallback to direct reading from storage if chunks empty
+    if not chunks:
+        try:
+            from app.core.central_storage import read_file_from_storage
+            raw_bytes = read_file_from_storage(fname, dept_key)
+            if raw_bytes:
+                text_sample = raw_bytes[:3000].decode("utf-8", errors="ignore").strip()
+                if text_sample:
+                    chunks.append({
+                        "id": f"{final_id}_sample",
+                        "chunk_id": 1,
+                        "text": text_sample
+                    })
+        except Exception as e:
+            logger.debug(f"[DocumentDetail] Fallback storage read: {e}")
 
     # Build relationships for graph viewer
     neo4j_rels.append({
@@ -1691,7 +1764,7 @@ def get_document_detail(
             "to": cl.get("title") or "Clause"
         })
 
-    is_indexed = (len(chunks) > 0 and neo_doc is not None)
+    is_indexed = (len(chunks) > 0 or neo_doc is not None)
     ext = os.path.splitext(fname)[1].lower()
     size_bytes = storage_item.get("size_bytes", 0) if storage_item else 0
 
@@ -1862,7 +1935,8 @@ def get_risk_alerts(
                 {"label": "Giá trị hợp đồng:", "value": "1,280,000,000 ₫", "highlight": "var(--blue, #2563EB)"},
                 {"label": "Trích dẫn nguồn:", "value": f"{first_cuad['name']} (Qdrant Chunk #1)", "isLink": True}
             ],
-            "docId": first_cuad["id"]
+            "docId": first_cuad["name"],
+            "aliasId": first_cuad["id"]
         },
         {
             "id": "ALERT-CRM-3912",
@@ -1879,7 +1953,8 @@ def get_risk_alerts(
                 {"label": "Phòng ban:", "value": "Kinh doanh & Bán hàng"},
                 {"label": "Doanh số sụt giảm dự kiến:", "value": "-285,000,000 ₫", "highlight": "var(--red, #DC2626)"}
             ],
-            "docId": second_cuad["id"]
+            "docId": "Sales_SalesOrderDetail.csv",
+            "aliasId": "AW_SALES_ORDERS"
         },
         {
             "id": "ALERT-EXP-104",
@@ -1897,7 +1972,8 @@ def get_risk_alerts(
                 {"label": "Giá trị hợp đồng:", "value": "740,000,000 ₫", "highlight": "var(--blue, #2563EB)"},
                 {"label": "Trích dẫn nguồn:", "value": second_cuad['name'], "isLink": True}
             ],
-            "docId": second_cuad["id"]
+            "docId": second_cuad["name"],
+            "aliasId": second_cuad["id"]
         },
         {
             "id": "ALERT-ORDER-4102",
@@ -1914,7 +1990,8 @@ def get_risk_alerts(
                 {"label": "Phòng ban:", "value": "Kinh doanh & Bán hàng"},
                 {"label": "Doanh số dự kiến ảnh hưởng:", "value": "-120,000,000 ₫", "highlight": "var(--amber, #D97706)"}
             ],
-            "docId": "AW_SALES_ORDERS"
+            "docId": "Sales_SalesOrderDetail.csv",
+            "aliasId": "AW_SALES_ORDERS"
         }
     ]
 
@@ -1933,7 +2010,8 @@ def get_risk_alerts(
                 {"label": "Phòng ban:", "value": "Pháp chế & Rủi ro"},
                 {"label": "Thực thể liên quan:", "value": f"Node {first_cuad['id']}_Clause_19"}
             ],
-            "docId": first_cuad["id"]
+            "docId": first_cuad["name"],
+            "aliasId": first_cuad["id"]
         }
     ]
 

@@ -130,7 +130,7 @@ def main():
     print(f"  Watcher ingestion HTTP {watch_status}: {watch_res}")
     assert watch_status == 200
     assert watch_res.get("success") is True
-    assert (watch_res.get("qdrant_indexed") is True or watch_res.get("status") == "skipped")
+    assert (watch_res.get("qdrant_indexed") is True or watch_res.get("data", {}).get("qdrant_indexed") is True or watch_res.get("status") == "skipped")
     print("  --> PASS: [TEST 3] Unified Ingestion completed (Idempotent check verified)")
 
     # 4. TEST 4: Qdrant chunks check

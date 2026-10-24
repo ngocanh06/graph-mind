@@ -56,6 +56,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
   const [verifiedDocs, setVerifiedDocs] = useState({});
   const [toastMsg, setToastMsg] = useState("");
   const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [drawerError, setDrawerError] = useState("");
 
   // Action Menu & Management Modal States
   const [activeMenuDocId, setActiveMenuDocId] = useState(null);
@@ -284,9 +285,12 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     setIsDrawerOpen(true);
     setIsLoadingDetail(true);
     setActiveDocDetail(null);
-    fetchDocumentDetail(docId).then((res) => {
+    setDrawerError("");
+    fetchDocumentDetail(docId, currentUser).then((res) => {
       if (res && res.success) {
         setActiveDocDetail(res.data);
+      } else if (res && res.error) {
+        setDrawerError(res.error);
       }
       setIsLoadingDetail(false);
     });
@@ -1461,8 +1465,23 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                         ))}
                       </div>
                     </div>
+                  ) : drawerError ? (
+                    /* Error / BR-02 Permission Notice */
+                    <div className="p-8 text-center text-xs space-y-3 bg-red-50/60 rounded-xl border border-red-200 m-4">
+                      <Icon name="fa-solid fa-shield-halved text-2xl text-red-600" size={24} />
+                      <div className="text-red-900 font-bold text-sm">
+                        {isVi ? "Giới hạn quyền truy cập theo phòng ban (BR-02)" : "Department Scope Access Restriction (BR-02)"}
+                      </div>
+                      <p className="text-red-800 text-xs max-w-md mx-auto leading-relaxed">{drawerError}</p>
+                    </div>
+                  ) : isLoadingDetail ? (
+                    /* Loading Detail */
+                    <div className="p-8 text-center text-xs text-outline space-y-2">
+                      <Icon name="fa-solid fa-spinner animate-spin text-2xl text-primary" size={20} />
+                      <p>{isVi ? "Đang truy xuất dữ liệu từ Central Storage, Qdrant & Neo4j..." : "Fetching document from Central Storage, Qdrant & Neo4j..."}</p>
+                    </div>
                   ) : (
-                    /* Fallback / Loading Detail */
+                    /* Fallback / Empty Detail */
                     <div className="p-8 text-center text-xs text-outline space-y-2">
                       <Icon name="fa-regular fa-file-lines text-2xl text-outline/40" size={20} />
                       <p>{isVi ? "Không có dữ liệu trích xuất hoặc đang kết nối lại dịch vụ..." : "No extraction data available or reconnecting to services..."}</p>

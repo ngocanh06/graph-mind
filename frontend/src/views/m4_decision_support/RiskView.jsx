@@ -435,9 +435,9 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                           {(alert.meta || []).map((m, mIdx) => (
                             <div key={mIdx} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                               <span>{m.label}</span>
-                              {m.isLink && alert.docId ? (
+                              {m.isLink && (alert.docId || alert.aliasId) ? (
                                 <span
-                                  onClick={() => onNavigate?.("documents", alert.docId)}
+                                  onClick={() => onNavigate?.("documents", alert.docId || alert.aliasId)}
                                   style={{
                                     color: "var(--primary, #2563EB)",
                                     cursor: "pointer",
@@ -468,12 +468,12 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                         {isVi ? "Xử lý với Copilot" : "Ask Copilot"}
                       </Button>
 
-                      {alert.docId && (
+                      {(alert.docId || alert.aliasId) && (
                         <Button
                           variant="ghost"
                           size="sm"
                           icon={FileText}
-                          onClick={() => onNavigate?.("documents", alert.docId)}
+                          onClick={() => onNavigate?.("documents", alert.docId || alert.aliasId)}
                         >
                           {isVi ? "Xem chi tiết" : "View Details"}
                         </Button>
