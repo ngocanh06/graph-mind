@@ -6,6 +6,7 @@ import { loginApi } from "../services/api";
 export default function LoginPage({
   onEnterPlatform,
   onBackToLanding,
+  onForgotPassword,
   onSelectRole,
   role = "executive",
   lang = "vi",
@@ -446,16 +447,17 @@ export default function LoginPage({
                 />
                 {isVi ? "Ghi nhớ phiên làm việc" : "Remember session"}
               </label>
-              <a
-                href="#forgot"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert(isVi ? "Vui lòng liên hệ IT Administrator để đặt lại mật khẩu hoặc cấp lại quyền qua SSO." : "Please contact IT Administrator for SSO credentials reset.");
+              <button
+                type="button"
+                onClick={() => onForgotPassword?.()}
+                style={{
+                  background: "none", border: "none", padding: 0,
+                  color: "#0284c7", fontWeight: "600", cursor: "pointer",
+                  fontSize: "12px", textDecoration: "none"
                 }}
-                style={{ color: "#0284c7", fontWeight: "600", textDecoration: "none" }}
               >
                 {isVi ? "Quên mật khẩu?" : "Forgot password?"}
-              </a>
+              </button>
             </div>
 
             {/* Nút Đăng nhập chính */}

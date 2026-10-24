@@ -146,20 +146,23 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
   const [liveAlerts, setLiveAlerts] = useState([]);
   const [isLoadingLive, setIsLoadingLive] = useState(true);
 
-  // Truy vấn dữ liệu cảnh báo thực tế từ Backend API (Neo4j & Qdrant)
-  useEffect(() => {
-    let active = true;
+  const loadAlerts = async () => {
     setIsLoadingLive(true);
-    fetchRiskAlerts(role, "Kinh doanh").then((res) => {
-      if (!active) return;
-      if (res && res.success && res.data?.length > 0) {
+    try {
+      const res = await fetchRiskAlerts(role, "Kinh doanh");
+      if (res && res.success && res.data && res.data.length > 0) {
         setLiveAlerts(res.data);
       }
+    } catch (err) {
+      console.warn("[RiskView] Failed to fetch live alerts:", err);
+    } finally {
       setIsLoadingLive(false);
-    }).catch(() => {
-      if (active) setIsLoadingLive(false);
-    });
-    return () => { active = false; };
+    }
+  };
+
+  // Truy vấn dữ liệu cảnh báo thực tế từ Backend API (Neo4j & Qdrant)
+  useEffect(() => {
+    loadAlerts();
   }, [role]);
 
   // US23, US39: PHÂN QUYỀN DATA SCOPE PHÒNG BAN
@@ -463,7 +466,24 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                         variant="secondary"
                         size="sm"
                         icon={Bot}
-                        onClick={() => onNavigate?.("copilot")}
+                        onClick={() => {
+                          const query = alert.contractId
+                            ? (isVi
+                                ? `Phân tích rủi ro pháp lý của hợp đồng ${alert.contractId} (${alert.title}) và đề xuất phương án xử lý theo dữ liệu đồ thị tri thức`
+                                : `Analyze the legal risk for contract ${alert.contractId} (${alert.title}) and recommend protective clause amendments based on knowledge graph`)
+                            : alert.orderId
+                            ? (() => {
+                                const cust = alert.meta?.find(m => m.label?.includes("Khách hàng") || m.label?.includes("Customer"))?.value || "";
+                                const val = alert.meta?.find(m => m.label?.includes("Giá trị") || m.label?.includes("Value"))?.value || "";
+                                return isVi
+                                  ? `Phân tích đơn hàng Order #${alert.orderId}${cust ? ` của khách hàng ${cust}` : ""}${val ? ` (giá trị ${val})` : ""} và kiểm tra danh mục sản phẩm, lịch sử giao dịch trên đồ thị tri thức Neo4j`
+                                  : `Analyze Order #${alert.orderId}${cust ? ` for customer ${cust}` : ""}${val ? ` (value ${val})` : ""} and review purchased products and transaction history in Neo4j`;
+                              })()
+                            : (isVi
+                                ? `Phân tích cảnh báo rủi ro: ${alert.title}`
+                                : `Analyze risk alert: ${alert.title}`);
+                          onNavigate?.("copilot", { query });
+                        }}
                       >
                         {isVi ? "Xử lý với Copilot" : "Ask Copilot"}
                       </Button>

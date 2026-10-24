@@ -24,6 +24,7 @@ import SopView from "./views/m2_knowledge_editor/SopView";
 import ReportsView from "./views/m4_decision_support/ReportsView";
 import AdminView from "./views/m6_admin_security/AdminView";
 import KnowledgeExplorerView from "./views/m5_multifacet_search/KnowledgeExplorerView";
+import ForgotPasswordPage from "./components/ForgotPasswordPage";
 
 const VALID_VIEWS = [
   "home",
@@ -283,6 +284,7 @@ export default function App() {
           setPageMode("app");
         }}
         onBackToLanding={() => setPageMode("landing")}
+        onForgotPassword={() => setPageMode("forgot_password")}
         onSelectRole={(r) => {
           if (typeof r === "string" && ENTERPRISE_ROLES[r]) {
             setRole(r);
@@ -292,6 +294,16 @@ export default function App() {
         role={role}
         lang={lang}
         t={t}
+      />
+    );
+  }
+
+  // 2b. FORGOT PASSWORD WIZARD
+  if (pageMode === "forgot_password") {
+    return (
+      <ForgotPasswordPage
+        onBackToLogin={() => setPageMode("login")}
+        lang={lang}
       />
     );
   }
