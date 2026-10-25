@@ -1343,7 +1343,7 @@ def get_central_storage_inventory() -> List[Dict[str, Any]]:
     """
     global _CENTRAL_STORAGE_CACHE, _CENTRAL_STORAGE_CACHE_TIME
     now = time.time()
-    if _CENTRAL_STORAGE_CACHE is not None and (now - _CENTRAL_STORAGE_CACHE_TIME < 15.0):
+    if _CENTRAL_STORAGE_CACHE is not None and (now - _CENTRAL_STORAGE_CACHE_TIME < 300.0):
         return _CENTRAL_STORAGE_CACHE
 
     try:
@@ -1386,7 +1386,7 @@ def get_repository_documents(
     global _DOCUMENTS_CACHE, _DOCUMENTS_CACHE_TIME
     now = time.time()
 
-    if _DOCUMENTS_CACHE is not None and (now - _DOCUMENTS_CACHE_TIME < 10.0):
+    if _DOCUMENTS_CACHE is not None and (now - _DOCUMENTS_CACHE_TIME < 300.0):
         all_items, summary = _DOCUMENTS_CACHE
     else:
         inventory = get_central_storage_inventory()

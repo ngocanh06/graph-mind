@@ -147,7 +147,7 @@ def get_verified_indexed_hashes() -> Set[str]:
 
 def get_known_hashes() -> Set[str]:
     """Returns set of all verified SHA-256 hashes currently indexed in DB."""
-    return get_verified_indexed_hashes()
+    return get_verified_indexed_hashes() | {d["hash"] for d in _WATCHER_INGESTED_DOCS if d.get("hash")}
 
 
 # ============================================================================
