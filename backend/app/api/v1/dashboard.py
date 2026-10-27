@@ -72,12 +72,12 @@ def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
         neo4j_client.connect()
         cypher = """
         MATCH (s:SalesOrder)
-        WITH count(s) AS totalOrders, sum(s.TotalDue) AS totalRevenue, avg(s.TotalDue) AS avgOrder
+        WITH count(s) AS totalOrders, sum(coalesce(s.totalDue, s.TotalDue, 0.0)) AS totalRevenue, avg(coalesce(s.totalDue, s.TotalDue, 0.0)) AS avgOrder
         MATCH (c:Customer)
         WITH totalOrders, totalRevenue, avgOrder, count(c) AS totalCustomers
-        MATCH (ct:Contract)
+        MATCH (ct:Document)
         WITH totalOrders, totalRevenue, avgOrder, totalCustomers, count(ct) AS totalContracts
-        MATCH (cl:Clause)
+        OPTIONAL MATCH (cl:Clause)
         RETURN totalOrders, totalRevenue, avgOrder, totalCustomers, totalContracts, count(cl) AS totalClauses
         """
         records = neo4j_client.run_cypher(cypher)
@@ -86,13 +86,13 @@ def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
             "totalCustomers": 0, "totalContracts": 0, "totalClauses": 0
         }
 
-        # Compliance rate: % of contracts that contain both Indemnification and Governing Law
+        # Compliance rate: % of legal documents that contain critical risk protection clauses
         compliance_cypher = """
-        MATCH (ct:Contract)
+        MATCH (ct:Document)
         OPTIONAL MATCH (ct)-[:CONTAINS_CLAUSE]->(cl:Clause)
         WITH ct, collect(cl.type) AS clauses
         WITH count(ct) AS total,
-             count(CASE WHEN 'Indemnification' IN clauses AND 'Governing Law' IN clauses THEN 1 END) AS compliant
+             count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Indemnif' OR c CONTAINS 'Governing' OR c CONTAINS 'Liability' OR c CONTAINS 'Trách nhiệm' OR c CONTAINS 'Bảo mật') THEN 1 END) AS compliant
         RETURN total, compliant,
                CASE WHEN total > 0 THEN round(100.0 * compliant / total, 1) ELSE 0.0 END AS complianceRate
         """
@@ -129,11 +129,11 @@ def get_top_customers(limit: int = Query(5, ge=1, le=50)):
         neo4j_client.connect()
         cypher = """
         MATCH (c:Customer)-[:PLACED_ORDER]->(s:SalesOrder)
-        RETURN c.CustomerID AS id,
-               coalesce(c.FirstName + ' ' + c.LastName, 'Customer #' + toString(c.CustomerID)) AS name,
+        RETURN c.id AS id,
+               coalesce(c.name, 'Customer #' + toString(c.id)) AS name,
                count(s) AS orderCount,
-               round(sum(s.TotalDue), 2) AS totalSpent,
-               toString(max(s.OrderDate)) AS latestOrder
+               round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)), 2) AS totalSpent,
+               toString(max(coalesce(s.orderDate, s.OrderDate))) AS latestOrder
         ORDER BY totalSpent DESC
         LIMIT $limit
         """
@@ -160,10 +160,11 @@ def get_revenue_trend():
         neo4j_client.connect()
         cypher = """
         MATCH (s:SalesOrder)
-        WHERE s.OrderDate IS NOT NULL
-        WITH substring(toString(s.OrderDate), 0, 4) AS year,
+        WITH s, coalesce(s.orderDate, s.OrderDate) AS oDate, coalesce(s.totalDue, s.TotalDue, 0.0) AS due
+        WHERE oDate IS NOT NULL
+        WITH substring(toString(oDate), 0, 4) AS year,
              count(s) AS orders,
-             sum(s.TotalDue) AS revenue
+             sum(due) AS revenue
         RETURN year, orders, round(revenue, 2) AS revenue
         ORDER BY year ASC
         """
@@ -193,12 +194,11 @@ def get_contract_distribution():
     """
     try:
         neo4j_client.connect()
-        # By contract type
+        # By contract/document department or category
         type_cypher = """
-        MATCH (c:Contract)
-        RETURN coalesce(c.type, 'Standard Commercial') AS type, count(*) AS count
+        MATCH (d:Document)
+        RETURN coalesce(d.department, 'Pháp chế (Legal)') AS type, count(*) AS count
         ORDER BY count DESC
-        LIMIT 10
         """
         types = neo4j_client.run_cypher(type_cypher)
 
@@ -241,11 +241,12 @@ def get_risk_alerts():
 
         # 1. Legal Risk: Contracts missing Limitation of Liability
         missing_liability_cypher = """
-        MATCH (c:Contract)
+        MATCH (c:Document)
+        WHERE c.department = 'Pháp chế (Legal)' OR c.department IS NULL
         OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
         WITH c, collect(cl.type) AS clauseTypes
-        WHERE NOT ('Limitation of Liability' IN clauseTypes)
-        RETURN c.id AS id, c.name AS name, c.type AS type, c.date AS date
+        WHERE NOT any(t IN clauseTypes WHERE t CONTAINS 'Liability' OR t CONTAINS 'Trách nhiệm')
+        RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Hợp đồng Pháp chế') AS type, c.lastModified AS date
         LIMIT 5
         """
         liability_records = neo4j_client.run_cypher(missing_liability_cypher)
@@ -268,13 +269,14 @@ def get_risk_alerts():
             })
             alert_id += 1
 
-        # 2. Legal Risk: Contracts missing Indemnification
+        # 2. Legal Risk: Contracts missing Indemnification / Confidentiality
         missing_indemnity_cypher = """
-        MATCH (c:Contract)
+        MATCH (c:Document)
+        WHERE c.department = 'Pháp chế (Legal)' OR c.department IS NULL
         OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
         WITH c, collect(cl.type) AS clauseTypes
-        WHERE NOT ('Indemnification' IN clauseTypes)
-        RETURN c.id AS id, c.name AS name, c.type AS type, c.date AS date
+        WHERE NOT any(t IN clauseTypes WHERE t CONTAINS 'Indemnif' OR t CONTAINS 'Bồi hoàn' OR t CONTAINS 'Bảo mật')
+        RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Hợp đồng Pháp chế') AS type, c.lastModified AS date
         LIMIT 4
         """
         indemnity_records = neo4j_client.run_cypher(missing_indemnity_cypher)
@@ -300,13 +302,13 @@ def get_risk_alerts():
         # 3. Financial Risk: Outlier high-value orders needing Executive sign-off
         high_value_cypher = """
         MATCH (c:Customer)-[:PLACED_ORDER]->(s:SalesOrder)
-        WHERE s.TotalDue > 25000
-        RETURN c.CustomerID AS customerId,
-               coalesce(c.FirstName + ' ' + c.LastName, 'Khách hàng #' + toString(c.CustomerID)) AS customerName,
-               s.SalesOrderID AS orderId,
-               round(s.TotalDue, 2) AS totalDue,
-               toString(s.OrderDate) AS orderDate
-        ORDER BY s.TotalDue DESC
+        WHERE coalesce(s.totalDue, s.TotalDue, 0.0) > 25000
+        RETURN c.id AS customerId,
+               coalesce(c.name, 'Khách hàng #' + toString(c.id)) AS customerName,
+               s.id AS orderId,
+               round(coalesce(s.totalDue, s.TotalDue, 0.0), 2) AS totalDue,
+               toString(coalesce(s.orderDate, s.OrderDate)) AS orderDate
+        ORDER BY totalDue DESC
         LIMIT 4
         """
         high_value_records = neo4j_client.run_cypher(high_value_cypher)
@@ -350,12 +352,13 @@ def get_recent_activities(limit: int = Query(8, ge=1, le=30)):
         neo4j_client.connect()
         cypher = """
         MATCH (c:Customer)-[:PLACED_ORDER]->(s:SalesOrder)
-        WHERE s.OrderDate IS NOT NULL
-        RETURN s.SalesOrderID AS orderId,
-               coalesce(c.FirstName + ' ' + c.LastName, 'Customer #' + toString(c.CustomerID)) AS customerName,
-               round(s.TotalDue, 2) AS amount,
-               toString(s.OrderDate) AS orderDate
-        ORDER BY s.OrderDate DESC, s.SalesOrderID DESC
+        WITH c, s, coalesce(s.orderDate, s.OrderDate) AS oDate, coalesce(s.totalDue, s.TotalDue, 0.0) AS due
+        WHERE oDate IS NOT NULL
+        RETURN s.id AS orderId,
+               coalesce(c.name, 'Customer #' + toString(c.id)) AS customerName,
+               round(due, 2) AS amount,
+               toString(oDate) AS orderDate
+        ORDER BY orderDate DESC, s.id DESC
         LIMIT $limit
         """
         orders = neo4j_client.run_cypher(cypher, {"limit": limit})
@@ -608,7 +611,7 @@ async def get_department_activity_report(
                 "casesHandled": 4,
                 "pipelineValue": "4.1 Tỷ VND",
                 "documentsDispatched": ["Báo giá #BG-2026-09", "EDR #8821", "Phụ lục PL #44"],
-                "summary": "Tiếp nhận 4/4 ca cảnh báo rủi ro khách hàng. Giữ chân thành công ABC Corporation (1.2 Tỷ) và thỏa thuận đối soát công nợ 45 ngày với Delta Trading (2.9 Tỷ).",
+                "summary": "Tiếp nhận 4/4 ca cảnh báo rủi ro khách hàng. Giữ chân thành công Brakes and Gears (Mã #29818) và thỏa thuận đối soát công nợ 45 ngày với Excellent Riding Supplies (Mã #29715).",
                 "escalation": "Đề xuất Trưởng phòng cấp hạn mức duyệt chiết khấu nhanh 10% - 12% cho hợp đồng kỳ hạn 24 tháng trước 30/09."
             },
             {
@@ -716,10 +719,10 @@ async def get_department_activity_report(
             "id": "act-dept-3",
             "type": "RISK_RESOLVED",
             "badgeColor": "blue",
-            "title": "Hóa giải nguy cơ sụt giảm đơn hàng ABC Corporation",
+            "title": "Hóa giải nguy cơ sụt giảm đơn hàng Brakes and Gears (Mã #29818)",
             "actor": "Nguyễn V. Nam (Chuyên viên)",
             "timestamp": "1 giờ trước",
-            "details": "Thiết lập thành công gói ưu đãi duy trì tài khoản 1.2 Tỷ VND qua gợi ý Copilot."
+            "details": "Thiết lập thành công gói ưu đãi duy trì tài khoản doanh thu $989k qua gợi ý Copilot."
         },
         {
             "id": "act-dept-4",
@@ -909,7 +912,7 @@ Văn phong chuyên nghiệp, quyết đoán, thể hiện vai trò Trưởng ph�
 
 **1. Đánh giá hiệu suất & kết quả tác nghiệp của đội ngũ:**
 - Toàn bộ 8/8 chuyên viên trong phòng ban đã hoàn thành ca làm việc đúng hạn, đạt **100% cam kết SLA** với tốc độ xử lý trung bình đạt **12 phút/ca**.
-- Đội ngũ đã tiếp nhận và xử lý dứt điểm **13 ca cảnh báo rủi ro khách hàng**, bảo vệ thành công **4.1 Tỷ VND** doanh số tái tục hợp đồng (tiêu biểu: ABC Corporation 1.2B và Delta Trading Ltd 2.9B).
+- Đội ngũ đã tiếp nhận và xử lý dứt điểm **13 ca cảnh báo rủi ro khách hàng**, bảo vệ thành công doanh số tái tục hợp đồng (tiêu biểu: Brakes and Gears #29818 và Excellent Riding Supplies #29715).
 - Các chứng từ quan trọng (#BG-2026-09, EDR #8821, Phụ lục PL #44) đã được phát hành và kiểm soát chặt chẽ.
 
 **2. Tuân thủ quy trình SOP & Ứng dụng Trợ lý AI Copilot:**

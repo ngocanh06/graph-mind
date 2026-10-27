@@ -83,11 +83,11 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   const handleCopySummary = () => {
     const text = isSalesRole
       ? (isVi
-        ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC - CHUYÊN VIÊN NGUYỄN V. NAM (20/09/2026):\n- Hoàn tất 4/4 ca cảnh báo (100% SLA, TB 12p/ca).\n- Bảo vệ thành công $4.1M USD doanh số tái ký (ABC Corp $1.2M chiết khấu 10%, Delta Trading $2.9M).\n- Đã phát hành 3 bộ chứng từ (BG-2026-09, EDR #8821, Phụ lục PL #44).\n- Đề xuất Trưởng phòng: Cấp quyền duyệt nhanh mức chiết khấu 12% cho hợp đồng kỳ hạn 24 tháng."
-        : "SALES SHIFT WORK REPORT - SPECIALIST NGUYEN V. NAM (20/09/2026):\n- Resolved 4/4 priority cases (100% SLA, avg 12m/case).\n- Protected $4.1M USD renewal pipeline (ABC Corp $1.2M with 10% retention, Delta Trading $2.9M).\n- 3 document packets dispatched (BG-2026-09, EDR #8821, Annex PL #44).\n- Manager escalation: Request 12% approval threshold for 24-month commitments.")
+        ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC - CHUYÊN VIÊN NGUYỄN V. NAM (20/09/2026):\n- Hoàn tất 4/4 ca cảnh báo (100% SLA, TB 12p/ca).\n- Bảo vệ thành công $1.95M USD doanh số tài khoản VIP (Brakes and Gears $989k, Excellent Riding Supplies $961k).\n- Đã phát hành 3 bộ chứng từ (BG-2026-09, EDR #8821, Phụ lục PL #44).\n- Đề xuất Trưởng phòng: Cấp quyền duyệt nhanh mức chiết khấu 12% cho hợp đồng kỳ hạn 24 tháng."
+        : "SALES SHIFT WORK REPORT - SPECIALIST NGUYEN V. NAM (20/09/2026):\n- Resolved 4/4 priority cases (100% SLA, avg 12m/case).\n- Protected $1.95M USD top account renewals (Brakes and Gears $989k, Excellent Riding Supplies $961k).\n- 3 document packets dispatched (BG-2026-09, EDR #8821, Annex PL #44).\n- Manager escalation: Request 12% approval threshold for 24-month commitments.")
       : (isVi
-        ? "BÁO CÁO LÃNH ĐẠO GRAPH MIND - TỔNG HỢP CHIẾN LƯỢC:\nDoanh thu tăng 6.2% trong 30 ngày qua nhưng tần suất đơn hàng giảm 3.1% ở 2 khách hàng VIP (ABC Corp -32%, Delta Trading -44%). Cần đàm phán gia hạn hợp đồng CT-2026-18 (hết hạn 18/10) và xử lý $8.6M USD công nợ quá hạn."
-        : "GRAPH MIND EXECUTIVE BRIEFING:\nRevenue grew 6.2% over trailing 30 days while order cadence declined 3.1% in top accounts (ABC Corp -32%, Delta Trading -44%). Urgent contract renewal required for CT-2026-18 (expires 18 Oct) and reconciliation of $8.6M USD aged receivables.");
+        ? "BÁO CÁO LÃNH ĐẠO GRAPH MIND - TỔNG HỢP CHIẾN LƯỢC:\nDoanh thu toàn hệ thống $123.2M USD với 31,465 đơn hàng. Top khách hàng VIP gồm Brakes and Gears ($989k) và Excellent Riding Supplies ($961k). Hệ thống giám sát 581 hợp đồng và 1,697 điều khoản pháp lý."
+        : "GRAPH MIND EXECUTIVE BRIEFING:\nTotal enterprise revenue $123.2M USD across 31,465 sales orders. Top VIP accounts include Brakes and Gears ($989k) and Excellent Riding Supplies ($961k). System governs 581 contracts and 1,697 legal clauses.");
     navigator.clipboard?.writeText(text);
     showToast(isVi ? "Đã sao chép tóm tắt báo cáo vào bộ nhớ tạm!" : "Summary copied to clipboard!");
   };
@@ -702,7 +702,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 </div>
                 <div className="rep-kpi-meta">
                   <Icon name="fa-solid fa-building" size={15} style={{ fontSize: "11px", color: "var(--text-4)" }} />
-                  <span>{hasGeneratedReport ? "ABC Corp ($1.2M) & Delta Trading ($2.9M)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
+                  <span>{hasGeneratedReport ? "Brakes and Gears ($989k) & Excellent Riding Supplies ($961k)" : (isVi ? "Chưa có phát sinh tái ký" : "No pipeline generated")}</span>
                 </div>
               </div>
             </div>
@@ -872,11 +872,11 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
-                              ABC
+                              BG
                             </div>
                             <div>
-                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>ABC Corporation</div>
-                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Tier-1 Enterprise</span>
+                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Brakes and Gears</div>
+                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>CUST-29818 · VIP Enterprise</span>
                             </div>
                           </div>
                         </td>
@@ -916,11 +916,11 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <div style={{ width: "28px", height: "28px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.1)", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "800" }}>
-                              DT
+                              ER
                             </div>
                             <div>
-                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Delta Trading Ltd</div>
-                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Phân Phối Độc Quyền</span>
+                              <div style={{ fontWeight: "700", fontSize: "13.5px" }}>Excellent Riding Supplies</div>
+                              <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>CUST-29715 · VIP Enterprise</span>
                             </div>
                           </div>
                         </td>
@@ -1107,8 +1107,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 </div>
                 <div style={{ background: "var(--surface-2)", padding: "14px 18px", borderRadius: "10px", border: "1px solid var(--border-soft)", fontSize: "13.5px", lineHeight: "1.65", color: "var(--text-1)" }}>
                   {isVi
-                    ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản ABC Corporation ($1.2M USD) và kiểm soát rủi ro phân phối tại Delta Trading Ltd ($2.9M USD)."
-                    : "During today's operational shift, the specialist monitored assigned enterprise accounts. Handled and resolved priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for ABC Corporation ($1.2M USD) and mitigated distribution channel risks for Delta Trading ($2.9M USD)."}
+                    ? "Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đặc biệt đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản Brakes and Gears ($989k USD) và thỏa thuận hạn mức đối soát công nợ tại Excellent Riding Supplies ($961k USD)."
+                    : "During today's operational shift, the specialist monitored assigned enterprise accounts. Handled and resolved priority churn alerts with a 100% SLA compliance rate. Successfully engaged AI Copilot to formulate a retention package for Brakes and Gears ($989k USD) and negotiated terms for Excellent Riding Supplies ($961k USD)."}
                 </div>
               </div>
 
@@ -1126,8 +1126,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                     <div style={{ fontSize: "13px", lineHeight: "1.55", color: "var(--text-1)" }}>
                       <b style={{ color: "#2563eb" }}>{isVi ? "Cấp hạn mức duyệt chiết khấu nhanh (10% - 12%):" : "Fast-Track Discount Authorization (10% - 12%):"}</b>{" "}
                       {isVi
-                        ? "Đề xuất Trưởng phòng xem xét cấp thẩm quyền áp dụng mức chiết khấu 10% - 12% trực tiếp trong hợp đồng gia hạn CT-2026-18 nếu khách hàng ABC Corp cam kết kỳ hạn 24 tháng trước ngày 30/09."
-                        : "Request managerial pre-approval for a 10%-12% volume rebate on CT-2026-18 if ABC Corp commits to a 24-month contract before Sep 30."}
+                        ? "Đề xuất Trưởng phòng xem xét cấp thẩm quyền áp dụng mức chiết khấu 10% - 12% trực tiếp trong hợp đồng gia hạn nếu khách hàng Brakes and Gears (#29818) cam kết kỳ hạn 24 tháng trước ngày 30/09."
+                        : "Request managerial pre-approval for a 10%-12% volume rebate if Brakes and Gears (#29818) commits to a 24-month contract before Sep 30."}
                     </div>
                   </div>
 
@@ -1153,7 +1153,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "10px" }}>
                   <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
-                    <b style={{ color: "#2563eb" }}>09:00:</b> {isVi ? "Gọi điện xác nhận lịch họp với GĐ Mua hàng ABC Corp." : "Confirm meeting schedule with Procurement Director at ABC Corp."}
+                    <b style={{ color: "#2563eb" }}>09:00:</b> {isVi ? "Gọi điện xác nhận lịch họp với GĐ Mua hàng Brakes and Gears (#29818)." : "Confirm meeting schedule with Procurement Director at Brakes and Gears (#29818)."}
                   </div>
                   <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12.5px" }}>
                     <b style={{ color: "#2563eb" }}>11:00:</b> {isVi ? "Hoàn tất hợp đồng điện tử đã ký nháy cho Logistics Sao Mai." : "Execute countersigned digital contract for Logistics Sao Mai."}
@@ -1391,10 +1391,10 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           </h3>
           <ul className="list-disc list-inside text-body-sm leading-relaxed text-on-surface-variant flex flex-col gap-space-2xs">
             <li>
-              <b>ABC Corporation:</b> {isVi ? "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng (-32% trong 60 ngày). Mô hình đồ thị xác nhận đây là chỉ báo rời bỏ trước mắt đối với tài khoản $6.4M USD." : "Order cadence dropped from 8.0/mo to 5.4/mo (-32% over 60 days). Graph model confirms high churn probability for this $6.4M USD lifetime account."}
+              <b>Brakes and Gears (#29818):</b> {isVi ? "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng (-32% trong 60 ngày). Mô hình đồ thị xác nhận đây là chỉ báo cần ưu tiên chăm sóc đối với tài khoản $989k USD." : "Order cadence dropped from 8.0/mo to 5.4/mo (-32% over 60 days). Graph model confirms churn risk for this $989k USD account."}
             </li>
             <li>
-              <b>Delta Trading Ltd:</b> {isVi ? "Nhịp độ đặt hàng Sản phẩm B giảm 44% kể từ tháng 7. Cần rà soát lại thỏa thuận phân phối độc quyền." : "Product B order cadence fell 44% since July. Exclusive distribution terms require commercial renegotiation."}
+              <b>Excellent Riding Supplies (#29715):</b> {isVi ? "Nhịp độ đặt hàng linh kiện giảm 44% kể từ quý 3. Cần rà soát lại thỏa thuận phân phối và chiết khấu." : "Component order cadence fell 44%. Commercial terms and volume discounts require renegotiation."}
             </li>
           </ul>
         </div>
@@ -1417,16 +1417,16 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               </thead>
               <tbody>
                 <tr className="border-b border-outline-variant/10">
-                  <td className="p-2 font-mono font-semibold">CT-2026-18</td>
-                  <td className="p-2">ABC Corporation</td>
-                  <td className="p-2 font-semibold text-primary">$1.2M USD</td>
+                  <td className="p-2 font-mono font-semibold">HD-29818</td>
+                  <td className="p-2">Brakes and Gears</td>
+                  <td className="p-2 font-semibold text-primary">$989k USD</td>
                   <td className="p-2 text-error font-bold">18/10/2026 (12d)</td>
                   <td className="p-2"><span className="pill red uppercase text-[10px] font-bold">HIGH</span></td>
                 </tr>
                 <tr className="border-b border-outline-variant/10">
-                  <td className="p-2 font-mono font-semibold">CT-2026-24</td>
-                  <td className="p-2">Delta Trading Ltd</td>
-                  <td className="p-2 font-semibold text-primary">$2.9M USD</td>
+                  <td className="p-2 font-mono font-semibold">HD-29715</td>
+                  <td className="p-2">Excellent Riding Supplies</td>
+                  <td className="p-2 font-semibold text-primary">$961k USD</td>
                   <td className="p-2">24/10/2026 (18d)</td>
                   <td className="p-2"><span className="pill amber uppercase text-[10px] font-bold">MED</span></td>
                 </tr>
@@ -1451,7 +1451,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             <div className="flex items-start gap-space-xs">
               <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
-                <b>{isVi ? "Ưu tiên 1:" : "Priority 1:"}</b> {isVi ? "Chỉ đạo Giám đốc Kinh doanh tiếp xúc trực tiếp Giám đốc Mua hàng Trần M. Anh (ABC Corp) trong vòng 7 ngày kèm đề xuất gia hạn CT-2026-18 với chiết khấu 10%." : "Direct Sales VP to schedule in-person renewal review with Procurement Director Tran M. Anh (ABC Corp) within 7 days offering a 10% retention package."}
+                <b>{isVi ? "Ưu tiên 1:" : "Priority 1:"}</b> {isVi ? "Chỉ đạo Giám đốc Kinh doanh tiếp xúc trực tiếp Giám đốc Mua hàng đối tác Brakes and Gears (#29818) trong vòng 7 ngày kèm đề xuất gia hạn gói ưu đãi chiết khấu 10%." : "Direct Sales VP to schedule in-person renewal review with Procurement Director at Brakes and Gears (#29818) within 7 days offering a 10% retention package."}
               </span>
             </div>
             <div className="flex items-start gap-space-xs">

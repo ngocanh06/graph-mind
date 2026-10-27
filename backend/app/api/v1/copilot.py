@@ -490,8 +490,7 @@ async def ask_copilot(
         return blocked_msg
 
     # 2. Hybrid Retrieval: Qdrant Vector + Neo4j Graph
-    # Differentiate between AdventureWorks ERP queries (Revenue, Orders, Customers)
-    # and CUAD Legal Contract queries (Clauses, Compliance, Addendums)
+    # Differentiate between AdventureWorks ERP queries, CUAD Legal Contract queries, or Cross-domain
     q_lower = clean_query.lower()
     is_legal_contract_query = any(k in q_lower for k in [
         "hợp đồng", "contract", "điều khoản", "clause", "tuân thủ", "compliance",
@@ -499,20 +498,29 @@ async def ask_copilot(
         "luật áp dụng", "governing law", "bảo mật", "confidential", "sop", "pháp lý"
     ])
     
-    is_erp_query = any(k in q_lower for k in [
-        "doanh thu", "revenue", "xu hướng", "trend", "tăng trưởng", "growth",
-        "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
-        "sản phẩm", "product"
-    ]) and not any(k in q_lower for k in ["hợp đồng", "điều khoản", "clause", "pháp lý"])
+    is_business_semantic_query = any(k in q_lower for k in [
+        "sản phẩm", "product", "khách hàng", "customer", "vip", "nhà cung cấp", "vendor",
+        "cửa hàng", "store", "đơn hàng", "salesorder", "order", "mountain", "road", "touring",
+        "bike", "xe đạp", "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component"
+    ])
 
-    if is_erp_query:
-        # ERP financial/customer queries should not be polluted with legal contract text from Qdrant
-        vector_hits = []
+    # Routing to Qdrant collections
+    vector_hits = []
+    if is_legal_contract_query and not is_business_semantic_query:
+        vector_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=5)
+    elif is_business_semantic_query and not is_legal_contract_query:
+        vector_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=5)
+    elif is_legal_contract_query and is_business_semantic_query:
+        hits_legal = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
+        hits_biz = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=3)
+        vector_hits = sorted(hits_legal + hits_biz, key=lambda x: x.get("score", 0), reverse=True)[:5]
     else:
-        vector_hits = qdrant_client.vector_search(query=clean_query, limit=5)
-        # Filter out weak vector noise (< 0.30) if not explicitly a legal text query
-        if not is_legal_contract_query:
-            vector_hits = [vh for vh in vector_hits if vh.get("score", 0) >= 0.30]
+        hits_biz = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
+        hits_legal = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=4)
+        vector_hits = sorted(hits_biz + hits_legal, key=lambda x: x.get("score", 0), reverse=True)[:5]
+
+    if not is_legal_contract_query:
+        vector_hits = [vh for vh in vector_hits if vh.get("score", 0) >= 0.25]
 
     graph_hits = execute_text_to_cypher(clean_query)
     if not graph_hits:
@@ -540,8 +548,9 @@ async def ask_copilot(
             "source": f"RRF ({item['rrf_score']:.4f}) · {item['sources'][0][:28]}",
         })
         if item_type == "vector":
-            c_name = raw.get("contract_name") or "CUAD Contract Document"
+            c_name = raw.get("contract_name") or raw.get("payload", {}).get("name") or "Document / Entity"
             raw_chunk = raw.get("chunk_id")
+            entity_type = raw.get("payload", {}).get("entity_type")
             try:
                 chunk_num = int(raw_chunk) if raw_chunk is not None else None
             except (ValueError, TypeError):
@@ -551,7 +560,10 @@ async def ask_copilot(
             line_count = len([l for l in c_text.splitlines() if l.strip()]) or 20
             start_line = (chunk_num * 25) + 1 if chunk_num is not None else 1
             end_line = start_line + max(line_count, 15)
-            loc_label = f"Đoạn #{chunk_num} (Dòng ~{start_line}-{end_line})" if chunk_num is not None else "Kho véc-tơ CUAD"
+            if entity_type:
+                loc_label = f"Thực thể {entity_type} (AW Vector #{str(raw.get('id', ''))[:8]})"
+            else:
+                loc_label = f"Đoạn #{chunk_num} (Dòng ~{start_line}-{end_line})" if chunk_num is not None else "Kho véc-tơ CUAD"
             citations_detail.append({
                 "docName": c_name,
                 "file": c_name,

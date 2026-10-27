@@ -1087,8 +1087,8 @@ export default function DepartmentReportView({
               {liveSynthesis ? liveSynthesis : (
                 isVi
                   ? `Trong ca làm việc hôm nay, toàn thể 8/8 chuyên viên thuộc Phòng Kinh Doanh & Khách Hàng Doanh Nghiệp đã hoàn thành ca làm việc đúng hạn, đạt 100% cam kết thời gian phản hồi SLA (trung bình 12 phút/ca).
-Đội ngũ đã tiếp nhận và giải quyết dứt điểm 13 ca cảnh báo rủi ro khách hàng phát hiện từ đồ thị tri thức Neo4j, bảo vệ thành công 4.1 Tỷ VND doanh số tái ký hợp đồng (tiêu biểu: ABC Corporation 1.2B và Delta Trading Ltd 2.9B). Toàn bộ chứng từ phát hành (#BG-2026-09, EDR #8821, Phụ lục PL #44) đều được lưu trữ và kiểm soát chặt chẽ theo phân quyền RBAC.`
-                  : `During today's operational cycle, all 8 specialists fulfilled shift requirements with 100% SLA compliance (avg 12m turnaround). Handled 13 high-priority account alerts, protecting $4.1B VND in contract renewals (ABC Corp $1.2B, Delta Trading $2.9B). All outbound transaction annexes were validated under strict RBAC governance.`
+Đội ngũ đã tiếp nhận và giải quyết dứt điểm 13 ca cảnh báo rủi ro khách hàng phát hiện từ đồ thị tri thức Neo4j, bảo vệ thành công $1.95M USD doanh số tài khoản VIP (tiêu biểu: Brakes and Gears #29818 và Excellent Riding Supplies #29715). Toàn bộ chứng từ phát hành (#BG-2026-09, EDR #8821, Phụ lục PL #44) đều được lưu trữ và kiểm soát chặt chẽ theo phân quyền RBAC.`
+                  : `During today's operational cycle, all 8 specialists fulfilled shift requirements with 100% SLA compliance (avg 12m turnaround). Handled 13 high-priority account alerts, protecting $1.95M USD in VIP account revenue (Brakes and Gears #29818, Excellent Riding Supplies #29715). All outbound transaction annexes were validated under strict RBAC governance.`
               )}
             </div>
           </div>
