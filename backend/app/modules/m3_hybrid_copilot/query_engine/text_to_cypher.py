@@ -34,7 +34,8 @@ def generate_cypher_from_query(query: str) -> str:
     if order_match:
         order_num = int(order_match.group(1))
         return f"""
-        MATCH (o:SalesOrder {{SalesOrderID: {order_num}}})
+        MATCH (o:SalesOrder)
+        WHERE o.id = {order_num} OR o.salesOrderId = {order_num} OR o.SalesOrderID = {order_num}
         OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
         OPTIONAL MATCH (o)-[:CONTAINS_PRODUCT]->(p:Product)
         WITH o, c, collect(coalesce(p.name, p.title, p.Name))[0..5] AS products
@@ -42,14 +43,14 @@ def generate_cypher_from_query(query: str) -> str:
              coalesce(c.name, c.title, c.FirstName + ' ' + c.LastName, 'Customer #' + toString(coalesce(c.id, c.CustomerID))) AS custName,
              coalesce(c.id, c.CustomerID) AS custId
         RETURN 'Đơn hàng #{order_num}' AS name,
-               o.SalesOrderID AS SalesOrderID,
-               round(o.TotalDue, 2) AS TotalDue,
-               round(coalesce(o.SubTotal, 0), 2) AS SubTotal,
-               toString(o.OrderDate) AS OrderDate,
+               coalesce(o.SalesOrderID, o.salesOrderId, o.id) AS SalesOrderID,
+               round(coalesce(o.totalDue, o.TotalDue, 0.0), 2) AS TotalDue,
+               round(coalesce(o.subTotal, o.SubTotal, 0.0), 2) AS SubTotal,
+               toString(coalesce(o.orderDate, o.OrderDate, '')) AS OrderDate,
                custName AS customerName,
                custId AS customerId,
                products,
-               'Đơn hàng #{order_num} của khách hàng ' + custName + ' (Mã KH: ' + toString(custId) + ', Tổng tiền TotalDue $' + toString(round(o.TotalDue, 2)) + ' USD, Ngày đặt: ' + toString(o.OrderDate) + '). Danh mục sản phẩm đã đặt: ' + reduce(s = '', name in products | s + (case when s = '' then '' else ', ' end) + name) AS snippet,
+               'Đơn hàng #{order_num} của khách hàng ' + custName + ' (Mã KH: ' + toString(custId) + ', Tổng tiền TotalDue $' + toString(round(coalesce(o.totalDue, o.TotalDue, 0.0), 2)) + ' USD, Ngày đặt: ' + toString(coalesce(o.orderDate, o.OrderDate, '')) + '). Danh mục sản phẩm đã đặt: ' + reduce(s = '', name in products | s + (case when s = '' then '' else ', ' end) + name) AS snippet,
                elementId(o) AS _id, ['SalesOrder', 'Customer', 'Product'] AS _labels
         LIMIT 1
         """
@@ -57,16 +58,13 @@ def generate_cypher_from_query(query: str) -> str:
     # 0.05 Contract Category Distribution & Portfolio queries
     if any(k in q_lower for k in ["cơ cấu danh mục", "phân bố danh mục", "loại hợp đồng phổ biến", "cơ cấu hợp đồng", "danh mục hợp đồng", "loại hợp đồng"]):
         return """
-        MATCH (c:Contract)
-        WITH c.type AS rawType, count(c) AS cnt
+        MATCH (d:Document)
+        WITH coalesce(d.department, 'Pháp chế (Legal)') AS rawType, count(d) AS cnt
         ORDER BY cnt DESC
         WITH collect({type: rawType, count: cnt}) AS typeList, sum(cnt) AS total
-        RETURN 'Phân bố Danh mục 30 Hợp đồng CUAD' AS name,
-               'Toàn hệ thống hiện có ' + toString(total) + ' hợp đồng CUAD đã trích xuất vào Neo4j. Cơ cấu gồm 4 nhóm chính: ' +
-               '1. Dịch vụ & Thuê ngoài (Service/Outsourcing): 7 HĐ (23.3%). ' +
-               '2. Liên minh chiến lược & SHTT (Alliance/IP): 5 HĐ (16.7%). ' +
-               '3. Phân phối & Đại lý (Reseller/Distribution): 5 HĐ (16.7%). ' +
-               '4. Hợp đồng thương mại khác (Branding, Sponsorship, Manufacturing): 13 HĐ (43.3%).' AS snippet,
+        RETURN 'Phân bố Danh mục ' + toString(total) + ' Văn bản trong Hệ thống' AS name,
+               'Toàn hệ thống hiện có ' + toString(total) + ' văn bản/hợp đồng đã lập chỉ mục vào Neo4j & Qdrant, phân bổ theo các phòng ban chính: ' +
+               reduce(s = '', item in typeList | s + (case when s = '' then '' else '; ' end) + item.type + ': ' + toString(item.count) + ' tài liệu') AS snippet,
                'portfolio-breakdown' AS _id, ['ContractPortfolio', 'CUAD'] AS _labels
         """
 
@@ -75,22 +73,21 @@ def generate_cypher_from_query(query: str) -> str:
         any(k in q_lower for k in ["an toàn pháp lý", "thiếu điều khoản bảo vệ"])
     ):
         return """
-        MATCH (c:Contract)
-        OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
-        WITH c, collect(DISTINCT cl.type) AS clauses
-        WITH count(c) AS total,
-             count(CASE WHEN 'Limitation of Liability' IN clauses THEN 1 END) AS liability_cnt,
-             count(CASE WHEN 'Governing Law' IN clauses THEN 1 END) AS governing_cnt,
-             count(CASE WHEN 'Indemnification' IN clauses THEN 1 END) AS indemnity_cnt,
-             count(CASE WHEN 'Termination' IN clauses THEN 1 END) AS termination_cnt
+        MATCH (d:Document)
+        OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
+        WITH d, collect(DISTINCT cl.type) AS clauses
+        WITH count(d) AS total,
+             count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Liability' OR c CONTAINS 'Trách nhiệm') THEN 1 END) AS liability_cnt,
+             count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Governing' OR c CONTAINS 'Luật') THEN 1 END) AS governing_cnt,
+             count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Indemnif' OR c CONTAINS 'Bồi thường') THEN 1 END) AS indemnity_cnt,
+             count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Termination' OR c CONTAINS 'Chấm dứt') THEN 1 END) AS termination_cnt
         RETURN 'Báo cáo Tuân thủ & An toàn Pháp lý (CUAD Clauses)' AS name,
                total, liability_cnt, governing_cnt, indemnity_cnt, termination_cnt,
-               'Báo cáo an toàn pháp lý trên tổng số ' + toString(total) + ' hợp đồng CUAD trong đồ thị Neo4j: ' +
-               '1. Điều khoản Luật áp dụng (Governing Law): ' + toString(governing_cnt) + '/' + toString(total) + ' đạt chuẩn quy định (80.0%). ' +
-               '2. Điều khoản Chấm dứt hợp đồng (Termination): ' + toString(termination_cnt) + '/' + toString(total) + ' điều khoản bảo vệ hiệu lực (86.7%). ' +
-               '3. Điều khoản Bồi thường thiệt hại (Indemnification): ' + toString(indemnity_cnt) + '/' + toString(total) + ' (cần rà soát 10 hợp đồng, 66.7%). ' +
-               '4. Điều khoản Giới hạn Trách nhiệm (Liability Cap): ' + toString(liability_cnt) + '/' + toString(total) + ' có điều khoản (Cần bổ sung gấp cho 24 hợp đồng, chỉ đạt 20.0%). ' +
-               'Đánh giá rủi ro danh mục: THẤP (A-).' AS snippet,
+               'Báo cáo an toàn pháp lý trên tổng số ' + toString(total) + ' văn bản trong đồ thị tri thức Neo4j: ' +
+               '1. Điều khoản Luật áp dụng (Governing Law): ' + toString(governing_cnt) + '/' + toString(total) + ' văn bản. ' +
+               '2. Điều khoản Chấm dứt hợp đồng (Termination): ' + toString(termination_cnt) + '/' + toString(total) + ' văn bản. ' +
+               '3. Điều khoản Bồi thường thiệt hại (Indemnification): ' + toString(indemnity_cnt) + '/' + toString(total) + ' văn bản. ' +
+               '4. Điều khoản Giới hạn Trách nhiệm (Liability): ' + toString(liability_cnt) + '/' + toString(total) + ' văn bản.' AS snippet,
                'compliance-stats' AS _id, ['ComplianceReport', 'CUAD'] AS _labels
         """
 
@@ -110,13 +107,13 @@ def generate_cypher_from_query(query: str) -> str:
             target_clause = "Governing Law"
 
         return f"""
-        MATCH (c:Contract)
+        MATCH (c:Document)
         OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
         WITH c, collect(cl.type) AS clauseTypes
-        WHERE NOT ('{target_clause}' IN clauseTypes)
-        RETURN c.id AS id, c.name AS name, c.type AS contract_type,
-               'Hợp đồng ' + c.name + ' (Mã ' + c.id + ') thiếu điều khoản bảo vệ ' + '{target_clause}' AS snippet,
-               elementId(c) AS _id, ['Contract', 'CUAD'] AS _labels
+        WHERE NOT any(t IN clauseTypes WHERE t =~ '(?i).*{target_clause}.*')
+        RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Pháp chế (Legal)') AS contract_type,
+               'Văn bản ' + c.name + ' thiếu điều khoản bảo vệ {target_clause}' AS snippet,
+               elementId(c) AS _id, ['Document', 'CUAD'] AS _labels
         LIMIT 5
         """
 
@@ -132,27 +129,27 @@ def generate_cypher_from_query(query: str) -> str:
         )
         if matched:
             return f"""
-            MATCH (comp:Company)-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause)
+            MATCH (ctr:Document)-[:CONTAINS_CLAUSE]->(cls:Clause)
             WHERE cls.type =~ '(?i).*{clause_type}.*'
-            RETURN comp.name AS company, ctr.name AS contract_name, ctr.type AS contract_type, 
-                   cls.type AS clause_type, cls.snippet AS snippet, elementId(cls) AS _id, ['Clause', 'Contract'] AS _labels
+            RETURN ctr.name AS contract_name, coalesce(ctr.department, 'Pháp chế (Legal)') AS contract_type,
+                   cls.type AS clause_type, cls.snippet AS snippet, elementId(cls) AS _id, ['Clause', 'Document'] AS _labels
             LIMIT 10
             """
 
-    # 2. CUAD Company / Contract general queries
+    # 2. CUAD Document / Contract general queries
     if any(k in q_lower for k in ["hợp đồng", "contract", "thỏa thuận", "agreement", "công ty", "company"]):
         terms = [w for w in re.findall(r"\w+", query) if len(w) >= 3 and w.lower() not in {"hợp", "đồng", "the", "and", "cho", "các", "tìm"}]
         search_term = terms[0] if terms else ""
         if search_term:
             return f"""
-            MATCH (comp:Company)-[:PARTY_TO]->(ctr:Contract)
-            WHERE toLower(comp.name) CONTAINS toLower('{search_term}') OR toLower(ctr.name) CONTAINS toLower('{search_term}')
-            RETURN comp.name AS company, ctr.name AS name, ctr.type AS contract_type, elementId(ctr) AS _id, ['Contract'] AS _labels
+            MATCH (ctr:Document)
+            WHERE toLower(ctr.name) CONTAINS toLower('{search_term}')
+            RETURN ctr.name AS name, coalesce(ctr.department, 'Pháp chế (Legal)') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
             LIMIT 8
             """
         return """
-        MATCH (comp:Company)-[:PARTY_TO]->(ctr:Contract)
-        RETURN comp.name AS company, ctr.name AS name, ctr.type AS contract_type, elementId(ctr) AS _id, ['Contract'] AS _labels
+        MATCH (ctr:Document)
+        RETURN ctr.name AS name, coalesce(ctr.department, 'Pháp chế (Legal)') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
         LIMIT 8
         """
 
@@ -162,16 +159,16 @@ def generate_cypher_from_query(query: str) -> str:
         MATCH (c:Customer)
         OPTIONAL MATCH (c)-[:PURCHASED]->(p:Product)
         OPTIONAL MATCH (c)-[:PLACED_ORDER]->(o:SalesOrder)
-        WITH c, count(DISTINCT p) AS prod_count, count(DISTINCT o) AS order_count, round(coalesce(sum(o.TotalDue), 0), 2) AS totalSpent
+        WITH c, count(DISTINCT p) AS prod_count, count(DISTINCT o) AS order_count, round(coalesce(sum(coalesce(o.totalDue, 0.0)), 0), 2) AS totalSpent
         WITH c, prod_count, order_count, totalSpent,
              (CASE WHEN prod_count >= order_count THEN prod_count ELSE order_count END) AS final_count
-        RETURN coalesce(c.name, c.title, c.FirstName + ' ' + c.LastName, 'Customer #' + toString(c.id)) AS name,
-               coalesce(c.id, c.CustomerID) AS CustomerID,
+        RETURN coalesce(c.name, c.title, 'Customer #' + toString(c.id)) AS name,
+               c.id AS CustomerID,
                final_count AS order_count,
                totalSpent,
-               'Khách hàng ' + coalesce(c.name, 'Customer #' + toString(c.id)) + ' (' + coalesce(c.tier, 'Khách hàng') + '): Đã mua ' + toString(final_count) + ' sản phẩm trong hệ thống.' AS snippet,
+               'Khách hàng ' + coalesce(c.name, 'Customer #' + toString(c.id)) + ' (' + coalesce(c.tier, 'Khách hàng') + '): Tổng chi tiêu $' + toString(totalSpent) + ' USD với ' + toString(final_count) + ' giao dịch.' AS snippet,
                elementId(c) AS _id, ['Customer'] AS _labels
-        ORDER BY final_count DESC
+        ORDER BY totalSpent DESC
         LIMIT 6
         """
 
@@ -179,14 +176,15 @@ def generate_cypher_from_query(query: str) -> str:
     if any(k in q_lower for k in ["doanh thu", "xu hướng", "revenue", "tăng trưởng", "giao dịch", "tài chính", "trend"]):
         return """
         MATCH (s:SalesOrder)
-        WHERE s.OrderDate IS NOT NULL
-        WITH substring(toString(s.OrderDate), 0, 4) AS year,
+        WHERE s.orderDate IS NOT NULL OR s.OrderDate IS NOT NULL
+        WITH substring(toString(coalesce(s.orderDate, s.OrderDate)), 0, 4) AS year,
               count(s) AS totalOrders,
-              round(sum(s.TotalDue), 2) AS totalDueExact,
-              round(sum(s.SubTotal), 2) AS subTotalExact
+              round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)), 2) AS totalDueExact,
+              round(sum(coalesce(s.subTotal, s.SubTotal, 0.0)), 2) AS subTotalExact,
+              round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)) / 1000000.0, 2) AS totalMillions
         RETURN 'Doanh thu năm ' + year AS name,
-               'Năm ' + year + ': Doanh thu gộp (TotalDue) đạt $' + toString(totalDueExact) + ' USD, doanh thu thuần sản phẩm (SubTotal) đạt $' + toString(subTotalExact) + ' USD qua ' + toString(totalOrders) + ' đơn hàng.' AS snippet,
-               year, totalDueExact, subTotalExact, totalOrders,
+               'Năm ' + year + ': Doanh thu gộp (TotalDue) đạt $' + toString(totalDueExact) + ' USD (~$' + toString(totalMillions) + 'M), doanh thu thuần sản phẩm (SubTotal) đạt $' + toString(subTotalExact) + ' USD qua ' + toString(totalOrders) + ' đơn hàng.' AS snippet,
+               year, totalDueExact, subTotalExact, totalMillions, totalOrders,
                'trend-' + year AS _id, ['FinancialTrend', 'SalesOrder'] AS _labels
         ORDER BY year ASC
         """
@@ -208,11 +206,12 @@ def generate_cypher_from_query(query: str) -> str:
     if any(k in q_lower for k in ["đơn hàng", "order", "sales"]):
         return """
         MATCH (o:SalesOrder)
-        RETURN 'Đơn hàng #' + toString(o.SalesOrderID) AS name,
-               o.SalesOrderID AS SalesOrderID, round(o.TotalDue, 2) AS TotalDue, toString(o.OrderDate) AS OrderDate,
-               'Đơn hàng #' + toString(o.SalesOrderID) + ': Giá trị $' + toString(round(o.TotalDue, 2)) + ' USD, ngày đặt ' + toString(o.OrderDate) AS snippet,
+        WITH o, coalesce(o.salesOrderId, o.id) AS oid, coalesce(o.totalDue, 0.0) AS due, toString(coalesce(o.orderDate, '')) AS oDate
+        RETURN 'Đơn hàng #' + toString(oid) AS name,
+               oid AS SalesOrderID, round(due, 2) AS TotalDue, oDate AS OrderDate,
+               'Đơn hàng #' + toString(oid) + ': Giá trị $' + toString(round(due, 2)) + ' USD, ngày đặt ' + oDate AS snippet,
                elementId(o) AS _id, ['SalesOrder'] AS _labels
-        ORDER BY o.TotalDue DESC
+        ORDER BY due DESC
         LIMIT 6
         """
 

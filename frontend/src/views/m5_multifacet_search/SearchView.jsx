@@ -117,16 +117,16 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       badgeBg: "#fee2e2",
       badgeColor: "#dc2626",
       badgeBorder: "#fca5a5",
-      title: isVi ? "Khách hàng VIP ABC Corp — Đơn hàng sụt giảm 32%" : "VIP Account ABC Corp — Order Cadence Down 32%",
-      entityId: "abc",
+      title: isVi ? "Khách hàng VIP Brakes and Gears (#29818) — Đơn hàng sụt giảm 32%" : "VIP Account Brakes and Gears (#29818) — Order Cadence Down 32%",
+      entityId: "29818",
       type: "CUSTOMER",
-      clientName: "Tập đoàn ABC (ABC Corporation)",
-      contactPerson: "Tran M. Anh (Procurement Dir.)",
-      contractRef: "Contract CT-2026-18 ($1.2M USD)",
+      clientName: "Brakes and Gears (CUST-29818)",
+      contactPerson: "Executive Procurement Team",
+      contractRef: "Hợp đồng Khung #HD-29818 ($989k USD)",
       dueDate: isVi ? "Hôm nay (Trước 17:00)" : "Today by 17:00",
       description: isVi
-        ? "Tần suất đặt hàng trong 60 ngày qua giảm từ 8.0/tháng xuống 5.4/tháng. Hợp đồng CT-18 sắp hết hạn vào 18/10. Nguy cơ khách hàng chuyển dịch sang đối thủ cạnh tranh."
-        : "Order cadence fell from 8.0/mo to 5.4/mo over trailing 60 days. Linked contract CT-18 expires in 12 days.",
+        ? "Tần suất đặt hàng trong 60 ngày qua giảm từ 8.0/tháng xuống 5.4/tháng. Cần chủ động liên hệ rà soát tái ký hạn mức tín dụng và phân phối linh kiện."
+        : "Order cadence fell from 8.0/mo to 5.4/mo over trailing 60 days. Linked customer #29818 requires outreach.",
       suggestedAction: isVi ? "Gửi thư đề xuất ưu đãi chiết khấu 5% & mời họp gia hạn trực tiếp." : "Send 5% retention discount proposal & schedule renewal sync.",
       status: "PENDING"
     },
@@ -136,16 +136,16 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       badgeBg: "#fef3c7",
       badgeColor: "#b45309",
       badgeBorder: "#fcd34d",
-      title: isVi ? "Hợp đồng CT-2026-18 — Cần chuẩn bị hồ sơ tái ký (Hết hạn 12 ngày)" : "Contract CT-2026-18 — Renewal Dossier Needed (12d)",
-      entityId: "ct18",
+      title: isVi ? "Hợp đồng Cung cấp #HD-29818 — Cần chuẩn bị hồ sơ tái ký (Hết hạn 12 ngày)" : "Contract #HD-29818 — Renewal Dossier Needed (12d)",
+      entityId: "29818",
       type: "CONTRACT",
-      clientName: "ABC Corporation",
-      contactPerson: "Phòng Mua hàng & Pháp chế ABC",
-      contractRef: "CT-2026-18 · Linh kiện Sản phẩm A",
+      clientName: "Brakes and Gears",
+      contactPerson: "Phòng Mua hàng Brakes and Gears",
+      contractRef: "HD-29818 · Phụ tùng xe đạp AdventureWorks",
       dueDate: isVi ? "18/10/2026" : "18 Oct 2026",
       description: isVi
-        ? "Hợp đồng cung ứng linh kiện sản xuất chủ lực trị giá $1.2M USD. Chưa có biên bản ghi nhận thương thảo gia hạn trong hệ thống CRM hay Drive."
-        : "Manufacturing component supply agreement worth $1.2M USD. No renewal meeting logged in CRM or Drive folders.",
+        ? "Hợp đồng cung ứng linh kiện sản xuất chủ lực trị giá $989k USD. Cần chủ động gửi phương án gia hạn."
+        : "Manufacturing component supply agreement worth $989k USD. Renewal meeting needs scheduling.",
       suggestedAction: isVi ? "Rà soát điều khoản phạt trễ giao hàng và chuẩn bị phụ lục hợp đồng 2027." : "Review delay penalties and prepare 2027 contract addendum.",
       status: "PENDING"
     },
@@ -175,8 +175,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
     if (task.id === "task-1" || task.id === "task-2") {
       setEmailContent(
         isVi
-          ? `Kính gửi Ông/Bà Tran M. Anh - Giám đốc Mua sắm Tập đoàn ABC,\n\nTôi là Nguyễn V. Nam, đại diện Bộ phận Quản lý Khách hàng Doanh nghiệp tại Graph Mind.\n\nTheo dữ liệu rà soát định kỳ đối với Hợp đồng cung ứng CT-2026-18 (sắp kết thúc thời hạn vào ngày 18/10/2026), chúng tôi nhận thấy tần suất giao dịch trong 60 ngày gần đây có dấu hiệu biến động. Nhằm đảm bảo tiến độ chuỗi cung ứng sản xuất của Quý Tập đoàn không bị gián đoạn, chúng tôi trân trọng đề xuất:\n\n1. Áp dụng chính sách ưu đãi chiết khấu 5.5% cho gói gia hạn hợp đồng năm 2027.\n2. Ưu tiên cam kết SLA giao hàng 24/7 đối với linh kiện Sản phẩm A.\n3. Buổi trao đổi trực tiếp hoặc qua video call vào 10:00 sáng Thứ Năm tuần này.\n\nRất mong nhận được phản hồi từ Quý công ty.\n\nTrân trọng,\nNguyễn V. Nam | Chuyên viên Nghiệp vụ & Vận hành\nGraph Mind Enterprise Platform`
-          : `Dear Tran M. Anh - Procurement Director, ABC Corporation,\n\nMy name is Nguyen V. Nam representing the Enterprise Accounts Operations team at Graph Mind.\n\nRegarding our core supply agreement CT-2026-18 expiring on 18 Oct 2026, we would like to present an exclusive renewal package with a 5.5% volume discount and 24/7 priority SLA.\n\nLooking forward to scheduling a quick sync this Thursday.\n\nSincerely,\nNguyen V. Nam | Frontline Operations Specialist`
+          ? `Kính gửi Ban Giám đốc Mua sắm Brakes and Gears,\n\nTôi là Nguyễn V. Nam, đại diện Bộ phận Quản lý Khách hàng Doanh nghiệp tại Graph Mind.\n\nTheo dữ liệu rà soát định kỳ đối với Hợp đồng cung ứng linh kiện xe đạp (Mã KH: CUST-29818), chúng tôi nhận thấy tần suất giao dịch trong 60 ngày gần đây có dấu hiệu biến động. Nhằm đảm bảo tiến độ chuỗi cung ứng sản xuất của Quý Công ty không bị gián đoạn, chúng tôi trân trọng đề xuất:\n\n1. Áp dụng chính sách ưu đãi chiết khấu 5.5% cho gói gia hạn hợp đồng năm 2027.\n2. Ưu tiên cam kết SLA giao hàng 24/7 đối với linh kiện phụ tùng AdventureWorks chính hãng.\n3. Buổi trao đổi trực tiếp hoặc qua video call vào 10:00 sáng Thứ Năm tuần này.\n\nRất mong nhận được phản hồi từ Quý công ty.\n\nTrân trọng,\nNguyễn V. Nam | Chuyên viên Nghiệp vụ & Vận hành\nGraph Mind Enterprise Platform`
+          : `Dear Procurement Team, Brakes and Gears (CUST-29818),\n\nMy name is Nguyen V. Nam representing the Enterprise Accounts Operations team at Graph Mind.\n\nRegarding our core supply agreement for AdventureWorks components, we would like to present an exclusive renewal package with a 5.5% volume discount and 24/7 priority SLA.\n\nLooking forward to scheduling a quick sync this Thursday.\n\nSincerely,\nNguyen V. Nam | Frontline Operations Specialist`
       );
     } else {
       setEmailContent(
@@ -209,7 +209,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
           : "Nguyen V. Nam (Sales Executive & Contract Governance — sales@graphmind.ai)",
         recipient: currentTask
           ? `${currentTask.contactPerson} · ${currentTask.clientName}`
-          : "Tran M. Anh (Procurement Dir. ABC Corp)",
+          : "Brakes and Gears Procurement (CUST-29818)",
         contractRef: currentTask?.contractRef || "Contract CT-2026-18",
         gateway: "Enterprise SMTP Dispatch Gateway (TLS 1.3 · DKIM Signed · SPF Passed)",
         auditHash: "SHA256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
@@ -323,7 +323,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric2Color: assignedTasks.length > 0 ? "#059669" : "var(--text-3)",
             metric3Label: isVi ? "Khách hàng & Hợp đồng phụ trách" : "Assigned Accounts",
             metric3Val: assignedTasks.length > 0 ? "18 đơn vị" : "0 đơn vị",
-            metric3Sub: assignedTasks.length > 0 ? (isVi ? "Bao gồm VIP ABC Corporation" : "Including VIP ABC Corp") : (isVi ? "Chưa gán tài khoản phụ trách" : "No accounts assigned"),
+            metric3Sub: assignedTasks.length > 0 ? (isVi ? "Bao gồm VIP Brakes and Gears (#29818)" : "Including VIP Brakes and Gears (#29818)") : (isVi ? "Chưa gán tài khoản phụ trách" : "No accounts assigned"),
             metric3Color: assignedTasks.length > 0 ? "var(--cyan)" : "var(--text-3)",
             metric4Label: isVi ? "Trợ lực bởi AI Copilot" : "AI Copilot Assistance",
             metric4Val: assignedTasks.length > 0 ? "89.4%" : "--",

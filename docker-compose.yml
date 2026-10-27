@@ -62,6 +62,7 @@ services:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - QDRANT_COLLECTION_NAME=cuad_contracts
+      - POSTGRES_SERVER=host.docker.internal
       - AEGIS_AGENT_API_KEY=dev-agent-key
       - PYTHONUNBUFFERED=1
     volumes:

@@ -48,7 +48,7 @@ export const I18N = {
     sources_title: "Sources",
     input_placeholder: "Ask anything across your enterprise knowledge…",
     suggest_1: "Which high-value customers are at risk?",
-    suggest_2: "Draft outreach for ABC Corporation",
+    suggest_2: "Draft outreach for Brakes and Gears (#29818)",
     suggest_3: "Compare against last quarter",
 
     // Knowledge Workspace
@@ -146,7 +146,7 @@ export const I18N = {
     sources_title: "Nguồn Dữ liệu",
     input_placeholder: "Hỏi bất cứ điều gì từ kho tri thức doanh nghiệp của bạn…",
     suggest_1: "Những khách hàng giá trị cao nào đang có nguy cơ sụt giảm?",
-    suggest_2: "Soạn thảo kế hoạch chăm sóc cho Tập đoàn ABC",
+    suggest_2: "Soạn thảo kế hoạch chăm sóc cho Brakes and Gears (#29818)",
     suggest_3: "So sánh với quý trước",
 
     // Knowledge Workspace

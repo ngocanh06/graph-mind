@@ -499,15 +499,17 @@ async def ask_copilot(
         "luật áp dụng", "governing law", "bảo mật", "confidential", "sop", "pháp lý"
     ])
     
-    is_erp_query = any(k in q_lower for k in [
+    is_business_semantic_query = any(k in q_lower for k in [
         "doanh thu", "revenue", "xu hướng", "trend", "tăng trưởng", "growth",
         "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
-        "sản phẩm", "product", "xe đạp", "bike", "nhà cung cấp", "vendor", "đại lý", "store"
+        "sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike", "nhà cung cấp", "vendor",
+        "cửa hàng", "store", "đại lý", "mountain", "road", "touring",
+        "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component"
     ])
 
     vector_hits = []
     # 2.1 Route to relevant Qdrant vector collections
-    if is_legal_contract_query and is_erp_query:
+    if is_legal_contract_query and is_business_semantic_query:
         # Cross-domain query: search both collections
         cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
         aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=3)

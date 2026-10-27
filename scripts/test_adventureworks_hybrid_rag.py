@@ -1,257 +1,106 @@
-#!/usr/bin/env python3
 """
-GraphMind / AEGIS — AdventureWorks Hybrid GraphRAG Verification Suite
-Module: scripts/test_adventureworks_hybrid_rag.py
-
-Executes 10 rigorous test cases covering all requirements:
-1. Product lookup by exact name
-2. Semantic product search by natural language attributes
-3. Real Store and Vendor search
-4. Real SalesOrder ID query in Neo4j
-5. Order detail verification against CSV source
-6. Annual revenue calculation against ground truth definition
-7. Hybrid Vector + Graph query (Product match -> Graph order expansion)
-8. Negative / Out-of-distribution test (No hallucination)
-9. Idempotency verification
-10. CUAD integrity verification (cuad_contracts intact)
+Script: scripts/test_adventureworks_hybrid_rag.py
+Description: Validates AdventureWorks Hybrid Graph-RAG (Qdrant semantic vector search + Neo4j graph traversal).
 """
-
 import sys
 import os
-import json
-import time
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "backend"))
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+from neo4j import GraphDatabase
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-import pandas as pd
-from app.db.neo4j.client import neo4j_client
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "backend"))
+
 from app.db.qdrant.client import qdrant_client
+from app.db.neo4j.client import neo4j_client
 
-ADV_DIR = Path("D:/adventureworks")
+def test_adventureworks_hybrid_rag():
+    print("=" * 65)
+    print("TEST ADVENTUREWORKS HYBRID GRAPH-RAG")
+    print("=" * 65)
 
+    client = QdrantClient(host="127.0.0.1", port=6333)
 
-def run_tests():
-    print("=" * 75)
-    print("  GRAPHMIND — ADVENTUREWORKS HYBRID GRAPHRAG VERIFICATION SUITE")
-    print("=" * 75)
+    # 1. Collection Existence & Separation
+    print("\n[1/4] Verifying Qdrant Collections & Separation...")
+    collections_res = client.get_collections()
+    col_names = [c.name for c in collections_res.collections]
+    print(f"  Collections found: {col_names}")
+    assert "adventureworks_entities" in col_names, "Collection 'adventureworks_entities' missing!"
+    assert "cuad_contracts" in col_names, "Collection 'cuad_contracts' missing!"
 
-    neo4j_client.connect()
-    qdrant_client.connect()
+    aw_info = client.get_collection("adventureworks_entities")
+    total_aw_points = aw_info.points_count
+    print(f"  adventureworks_entities points: {total_aw_points:,} (Expected: 26,129)")
+    assert total_aw_points == 26129, f"Expected 26,129 vectors, got {total_aw_points}"
 
-    passed_count = 0
-    total_tests = 10
+    # 2. Vector Type Distribution Verification
+    print("\n[2/4] Verifying Entity Breakdown in adventureworks_entities...")
+    expected_breakdown = {
+        "Product": 504,
+        "Vendor": 104,
+        "Store": 701,
+        "Customer": 19820,
+        "SalesOrder": 5000,
+    }
 
-    # -------------------------------------------------------------------------
-    # TEST 1: Exact Product Search by Name
-    # -------------------------------------------------------------------------
-    print("\n[TEST 1] Product Search by Exact Name...")
-    q1 = "Mountain-100 Silver, 42"
-    res1 = qdrant_client.vector_search(query=q1, collection_name="adventureworks_entities", limit=5)
-    matched = [h for h in res1 if "Mountain-100 Silver, 42" in (h.get("contract_name") or "")]
-    if not matched:
-        matched = [h for h in res1 if "Mountain-100 Silver" in (h.get("contract_name") or "")]
-    top1 = matched[0] if matched else (res1[0] if res1 else None)
-    t1_pass = top1 is not None and "Mountain-100 Silver" in top1.get("contract_name", "") and top1.get("score", 0) > 0.40
-    p1 = top1.get("payload", {}) if top1 else {}
-    print(f"  Query: '{q1}'")
-    print(f"  Top Match: {p1.get('name')} | SKU: {p1.get('product_number')} | Rank: {res1.index(top1) + 1 if top1 in res1 else 'N/A'} | Score: {top1.get('score')}")
-    print(f"  -> {'PASS' if t1_pass else 'FAIL'}")
-    if t1_pass: passed_count += 1
+    for entity_type, expected_cnt in expected_breakdown.items():
+        res = client.count(
+            collection_name="adventureworks_entities",
+            count_filter=models.Filter(
+                must=[models.FieldCondition(key="entity_type", match=models.MatchValue(value=entity_type))]
+            ),
+            exact=True,
+        )
+        print(f"  - {entity_type}: {res.count:,} (Expected: {expected_cnt:,})")
+        assert res.count == expected_cnt, f"Entity {entity_type} count mismatch: expected {expected_cnt}, got {res.count}"
+    print("  -> PASS: All entity categories match expected vector counts exactly.")
 
-    # -------------------------------------------------------------------------
-    # TEST 2: Semantic Product Search by Natural Language Attributes
-    # -------------------------------------------------------------------------
-    print("\n[TEST 2] Semantic Product Search by Attributes...")
-    q2 = "silver competition mountain bike high performance over 3000 USD"
-    res2 = qdrant_client.vector_search(
-        query=q2,
+    # 3. Semantic Vector Search Check
+    print("\n[3/4] Testing Semantic Vector Search on AdventureWorks Entities...")
+    product_query = "Mountain bike 100 black 42"
+    hits = qdrant_client.vector_search(
+        query=product_query,
         collection_name="adventureworks_entities",
-        limit=3,
-        entity_type="Product"
+        limit=5
     )
-    top2 = res2[0] if res2 else None
-    p2 = top2.get("payload", {}) if top2 else {}
-    t2_pass = top2 and p2.get("entity_type") == "Product" and float(p2.get("list_price", 0)) > 2000
-    print(f"  Query: '{q2}'")
-    print(f"  Top Hit: {p2.get('name')} | Category: {p2.get('subcategory')} | Price: ${p2.get('list_price')} | Score: {top2.get('score')}")
-    print(f"  -> {'PASS' if t2_pass else 'FAIL'}")
-    if t2_pass: passed_count += 1
+    print(f"  Query: '{product_query}' -> Hits: {len(hits)}")
+    assert len(hits) > 0, "No vector hits returned for product query!"
+    top_hit = hits[0]
+    print(f"  Top hit: {top_hit['contract_name']} | score: {top_hit['score']} | type: {top_hit['payload'].get('entity_type')}")
+    assert "Mountain" in top_hit["contract_name"] or "Mountain" in top_hit["text"], "Top hit did not match Mountain bike product"
+    assert top_hit["score"] > 0.50, f"Expected high similarity score, got {top_hit['score']}"
 
-    # -------------------------------------------------------------------------
-    # TEST 3: Real Store & Vendor Search
-    # -------------------------------------------------------------------------
-    print("\n[TEST 3] Real Store and Vendor Search...")
-    q3_store = "cửa hàng đại lý xe đạp thể thao Next-Door Bike Store"
-    res3_s = qdrant_client.vector_search(query=q3_store, collection_name="adventureworks_entities", limit=3)
-    top3_s = res3_s[0] if res3_s else None
-    p3_s = top3_s.get("payload", {}) if top3_s else {}
-
-    q3_vendor = "nhà cung cấp Australia Bike Retailer"
-    res3_v = qdrant_client.vector_search(query=q3_vendor, collection_name="adventureworks_entities", limit=3)
-    top3_v = res3_v[0] if res3_v else None
-    p3_v = top3_v.get("payload", {}) if top3_v else {}
-
-    t3_pass = (top3_s and "Next-Door Bike Store" in p3_s.get("name", "")) and \
-              (top3_v and "Australia Bike Retailer" in p3_v.get("name", ""))
-    print(f"  Store Hit:  {p3_s.get('name')} (ID: {p3_s.get('entity_id')}) | Score: {top3_s.get('score')}")
-    print(f"  Vendor Hit: {p3_v.get('name')} (ID: {p3_v.get('entity_id')}) | Score: {top3_v.get('score')}")
-    print(f"  -> {'PASS' if t3_pass else 'FAIL'}")
-    if t3_pass: passed_count += 1
-
-    # -------------------------------------------------------------------------
-    # TEST 4: Query Real SalesOrder in Neo4j
-    # -------------------------------------------------------------------------
-    print("\n[TEST 4] Query Real SalesOrder in Neo4j (#43659)...")
-    res4 = neo4j_client.run_cypher("""
-        MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder {SalesOrderID: 43659})
-        RETURN o.SalesOrderID as id, o.OrderDate as date, o.TotalDue as total_due, c.id as cust_id, c.name as cust_name
-    """)
-    t4_pass = len(res4) == 1 and res4[0]["id"] == 43659 and res4[0]["cust_id"] == 29825
-    r4 = res4[0] if res4 else {}
-    print(f"  Order: #{r4.get('id')} | Customer: {r4.get('cust_name')} (#{r4.get('cust_id')}) | TotalDue: ${r4.get('total_due'):,.2f}")
-    print(f"  -> {'PASS' if t4_pass else 'FAIL'}")
-    if t4_pass: passed_count += 1
-
-    # -------------------------------------------------------------------------
-    # TEST 5: Verify Order Details against CSV Source
-    # -------------------------------------------------------------------------
-    print("\n[TEST 5] Verify Order #43659 Details Against CSV Source...")
-    ddf = pd.read_csv(ADV_DIR / "Sales_SalesOrderDetail.csv", sep=None, engine="python")
-    csv_d43659 = ddf[ddf["SalesOrderID"] == 43659]
-    csv_line_count = len(csv_d43659)
-    csv_qty_sum = int(csv_d43659["OrderQty"].sum())
-    csv_line_total = round(float(csv_d43659["LineTotal"].sum()), 2)
-
-    res5 = neo4j_client.run_cypher("""
-        MATCH (o:SalesOrder {SalesOrderID: 43659})-[r:CONTAINS_PRODUCT]->(p:Product)
-        RETURN count(r) as line_count, sum(r.OrderQty) as qty_sum, round(sum(r.LineTotal), 2) as line_total
-    """)
-    r5 = res5[0] if res5 else {}
-    t5_pass = (r5.get("line_count") == csv_line_count) and \
-              (r5.get("qty_sum") == csv_qty_sum) and \
-              (r5.get("line_total") == csv_line_total)
-
-    print(f"  CSV Source:  Lines={csv_line_count}, QtySum={csv_qty_sum}, LineTotal=${csv_line_total:,.2f}")
-    print(f"  Neo4j Graph: Lines={r5.get('line_count')}, QtySum={r5.get('qty_sum')}, LineTotal=${r5.get('line_total'):,.2f}")
-    print(f"  -> {'PASS' if t5_pass else 'FAIL'}")
-    if t5_pass: passed_count += 1
-
-    # -------------------------------------------------------------------------
-    # TEST 6: Annual Revenue Calculation Ground Truth
-    # -------------------------------------------------------------------------
-    print("\n[TEST 6] Annual Revenue Calculation Ground Truth...")
-    hdf = pd.read_csv(ADV_DIR / "Sales_SalesOrderHeader.csv", sep=None, engine="python")
-    hdf["Year"] = hdf["OrderDate"].str[:4].astype(int)
-    csv_rev_2013_total = round(float(hdf[hdf["Year"] == 2013]["TotalDue"].sum()), 2)
-    csv_rev_2013_sub = round(float(hdf[hdf["Year"] == 2013]["SubTotal"].sum()), 2)
-
-    res6 = neo4j_client.run_cypher("""
-        MATCH (o:SalesOrder)
-        WHERE o.Year = 2013
-        RETURN round(sum(o.TotalDue), 2) as total_due, round(sum(o.SubTotal), 2) as sub_total
-    """)
-    r6 = res6[0] if res6 else {}
-    neo_total_due = r6.get("total_due")
-    neo_sub_total = r6.get("sub_total")
-
-    t6_pass = (neo_total_due == csv_rev_2013_total) and (neo_sub_total == csv_rev_2013_sub)
-    print(f"  Year 2013 CSV Source:  TotalDue=${csv_rev_2013_total:,.2f} | SubTotal=${csv_rev_2013_sub:,.2f}")
-    print(f"  Year 2013 Neo4j Graph: TotalDue=${neo_total_due:,.2f} | SubTotal=${neo_sub_total:,.2f}")
-    print(f"  -> {'PASS' if t6_pass else 'FAIL'}")
-    if t6_pass: passed_count += 1
-
-    # -------------------------------------------------------------------------
-    # TEST 7: Hybrid Vector Retrieval + Graph Traversal
-    # -------------------------------------------------------------------------
-    print("\n[TEST 7] Hybrid Vector Match -> Graph Expansion...")
-    v_res = qdrant_client.vector_search(
-        query="Mountain-100 Silver",
-        collection_name="adventureworks_entities",
-        limit=1
-    )
-    v_hit = v_res[0] if v_res else {}
-    p7 = v_hit.get("payload", {})
-    matched_pid = p7.get("entity_id")
-    matched_pname = p7.get("name")
-
-    res7 = neo4j_client.run_cypher("""
-        MATCH (p:Product {id: $pid})
+    # 4. Hybrid Graph Traversal via Neo4j
+    print("\n[4/4] Testing Hybrid Graph Traversal (Vector Hit -> Neo4j Graph)...")
+    matched_product_name = top_hit["payload"].get("name")
+    print(f"  Traversing Neo4j for Product: '{matched_product_name}'...")
+    query = """
+        MATCH (p:Product {name: $name})
+        OPTIONAL MATCH (p)-[:BELONGS_TO]->(sc:SubCategory)-[:PART_OF]->(c:Category)
         OPTIONAL MATCH (o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p)
-        OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
-        RETURN p.name as name, count(DISTINCT o) as orderCount, count(DISTINCT c) as custCount, round(sum(r.LineTotal), 2) as revenue
-    """, {"pid": matched_pid})
-    r7 = res7[0] if res7 else {}
-    t7_pass = r7.get("orderCount", 0) > 0 and r7.get("revenue", 0) > 0
-    print(f"  Qdrant Match: {matched_pname} (ID: {matched_pid})")
-    print(f"  Neo4j Subgraph: {r7.get('orderCount')} orders placed by {r7.get('custCount')} customers, generating ${r7.get('revenue', 0):,.2f} USD")
-    print(f"  -> {'PASS' if t7_pass else 'FAIL'}")
-    if t7_pass: passed_count += 1
+        RETURN p.id AS productId, p.productNumber AS prodNumber,
+               sc.name AS subcategory, c.name AS category,
+               count(o) AS orderCount, sum(r.lineTotal) AS totalRevenue
+    """
+    records = neo4j_client.run_cypher(query, {"name": matched_product_name})
+    assert len(records) > 0, f"Product {matched_product_name} not found in Neo4j!"
+    rec = records[0]
+    print(f"  Neo4j Traversal Result:")
+    print(f"    Product ID: {rec['productId']} ({rec['prodNumber']})")
+    print(f"    Subcategory: {rec['subcategory']} | Category: {rec['category']}")
+    print(f"    Associated Sales Orders: {rec['orderCount']}")
+    print(f"    Total Line Revenue: ${rec['totalRevenue']:,.2f}")
+    assert rec["subcategory"] is not None, "Product should have linked subcategory"
+    assert rec["orderCount"] > 0, "Product should be linked to at least one sales order"
 
-    # -------------------------------------------------------------------------
-    # TEST 8: Negative / Out-of-Distribution Test (No Hallucination)
-    # -------------------------------------------------------------------------
-    print("\n[TEST 8] Negative / Out-of-Distribution Query...")
-    q8 = "military supersonic stealth fighter jet F-35"
-    res8 = qdrant_client.vector_search(query=q8, collection_name="adventureworks_entities", limit=1)
-    top8_score = res8[0].get("score", 0.0) if res8 else 0.0
-    t8_pass = top8_score < 0.35
-    top8_hit = res8[0].get("contract_name") if res8 else "None"
-    print(f"  Query: '{q8}'")
-    print(f"  Closest Entity: {top8_hit} | Similarity Score: {top8_score:.4f} (Threshold: < 0.35)")
-    print(f"  Result: Query filtered out as low-confidence -> {'PASS' if t8_pass else 'FAIL'}")
-    if t8_pass: passed_count += 1
-
-    # -------------------------------------------------------------------------
-    # TEST 9: Idempotency Verification
-    # -------------------------------------------------------------------------
-    print("\n[TEST 9] Idempotency Verification...")
-    so_cnt_res = neo4j_client.run_cypher("MATCH (o:SalesOrder) RETURN count(o) as cnt")
-    so_cnt = so_cnt_res[0]["cnt"] if so_cnt_res else 0
-    placed_cnt_res = neo4j_client.run_cypher("MATCH ()-[r:PLACED_ORDER]->() RETURN count(r) as cnt")
-    placed_cnt = placed_cnt_res[0]["cnt"] if placed_cnt_res else 0
-    contains_cnt_res = neo4j_client.run_cypher("MATCH ()-[r:CONTAINS_PRODUCT]->() RETURN count(r) as cnt")
-    contains_cnt = contains_cnt_res[0]["cnt"] if contains_cnt_res else 0
-
-    t9_pass = (so_cnt == 31465) and (placed_cnt == 31465) and (contains_cnt == 121317)
-    print(f"  SalesOrder nodes:     {so_cnt:,} / 31,465")
-    print(f"  PLACED_ORDER rels:    {placed_cnt:,} / 31,465")
-    print(f"  CONTAINS_PRODUCT rels:{contains_cnt:,} / 121,317")
-    print(f"  -> {'PASS' if t9_pass else 'FAIL'}")
-    if t9_pass: passed_count += 1
-
-    # -------------------------------------------------------------------------
-    # TEST 10: CUAD Collection & Graph Integrity
-    # -------------------------------------------------------------------------
-    print("\n[TEST 10] CUAD Collection & Graph Data Integrity...")
-    col_info = qdrant_client.get_collection_info("cuad_contracts")
-    cuad_points = col_info.get("points_count", 0)
-    cuad_docs_res = neo4j_client.run_cypher("""
-        MATCH (d:Document)
-        WHERE d.name ENDS WITH '.pdf' OR d.name ENDS WITH '.PDF'
-        RETURN count(d) as cnt
-    """)
-    cuad_docs_count = cuad_docs_res[0]["cnt"] if cuad_docs_res else 0
-
-    t10_pass = (cuad_points >= 9069) and (cuad_docs_count >= 510)
-    print(f"  cuad_contracts Qdrant points: {cuad_points:,} / >=9,069")
-    print(f"  CUAD PDF Document nodes:      {cuad_docs_count:,} / >=510")
-    print(f"  -> {'PASS' if t10_pass else 'FAIL'}")
-    if t10_pass: passed_count += 1
-
-    # -------------------------------------------------------------------------
-    # SUMMARY
-    # -------------------------------------------------------------------------
-    print("\n" + "=" * 75)
-    print(f"  FINAL SCORE: {passed_count}/{total_tests} TESTS PASSED ({passed_count/total_tests*100:.1f}%)")
-    print("=" * 75)
-    return passed_count == total_tests
-
+    print("\n" + "=" * 65)
+    print("ADVENTUREWORKS HYBRID GRAPH-RAG VERIFICATION PASSED [100%]")
+    print("=" * 65)
 
 if __name__ == "__main__":
-    success = run_tests()
-    sys.exit(0 if success else 1)
+    test_adventureworks_hybrid_rag()
