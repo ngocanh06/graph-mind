@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ShieldCheck, Users, ClipboardList, TrendingUp, UserPlus,
   Check, Ban, AlertTriangle,
-  Lock, Unlock, KeyRound, Trash2, RefreshCw
+  Lock, Unlock, KeyRound, Trash2, RefreshCw, Sliders
 } from "lucide-react";
+import GranularRbacMatrix from "./GranularRbacMatrix";
 import {
   PageHeader, Tabs, Badge, Button, SearchInput, Card, StatCard, Alert
 } from "../../components/ui";
@@ -91,7 +92,9 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersForbidden, setUsersForbidden] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showLockConfirm, setShowLockConfirm] = useState(null);
   const [showResetModal, setShowResetModal] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [addForm, setAddForm] = useState({ email: "", password: "", full_name: "", role: "standard" });
@@ -194,12 +197,20 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
     }
   };
 
-  const handleLock = async (user) => {
+  const handleLock = (user) => {
+    setShowLockConfirm(user);
+  };
+
+  const confirmLock = async () => {
+    if (!showLockConfirm) return;
     try {
-      await lockAdminUser(user.user_id);
+      await lockAdminUser(showLockConfirm.user_id);
       showToast("Đã khóa tài khoản");
+      setShowLockConfirm(null);
       loadUsers();
-    } catch (e) { showToast(errorText(e), "err"); }
+    } catch (e) {
+      showToast(errorText(e), "err");
+    }
   };
 
   const handleUnlock = async (user) => {
@@ -209,6 +220,41 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
       loadUsers();
     } catch (e) { showToast(errorText(e), "err"); }
   };
+
+  const formatLastActivity = (dtStr) => {
+    if (!dtStr) return "Chưa từng hoạt động";
+    try {
+      const dt = new Date(dtStr);
+      const diffSec = Math.floor((Date.now() - dt.getTime()) / 1000);
+      if (diffSec < 60) return "Hoạt động vừa xong";
+      if (diffSec < 3600) return `Hoạt động ${Math.floor(diffSec / 60)} phút trước`;
+      if (diffSec < 86400) return `Hoạt động ${Math.floor(diffSec / 3600)} giờ trước`;
+      const diffDays = Math.floor(diffSec / 86400);
+      if (diffDays < 30) return `Hoạt động ${diffDays} ngày trước`;
+      return `Hoạt động ngày ${dt.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })}`;
+    } catch {
+      return "Chưa từng hoạt động";
+    }
+  };
+
+  const activeAdminCount = useMemo(() => {
+    return users.filter(
+      (u) =>
+        canonicalRole(u.role) === "it_admin" &&
+        (u.status || (u.is_active ? "active" : "locked")) === "active"
+    ).length;
+  }, [users]);
+
+  const filteredUsers = useMemo(() => {
+    if (statusFilter === "ALL") return users;
+    return users.filter(
+      (u) => (u.status || (u.is_active ? "active" : "locked")) === statusFilter
+    );
+  }, [users, statusFilter]);
 
   const handleResetPwd = async () => {
     try {
@@ -247,7 +293,8 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
   };
 
   const adminTabs = [
-    { id: "perms", label: isVi ? "Phân quyền Tri thức" : "Knowledge Permissions", icon: ShieldCheck },
+    { id: "granular_rbac", label: isVi ? "Ma trận Phân quyền Tri thức" : "Granular RBAC Matrix", icon: Sliders },
+    { id: "perms", label: isVi ? "Phân quyền Miền (Cơ bản)" : "Knowledge Domains", icon: ShieldCheck },
     { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: Users },
     { id: "audit", label: isVi ? "Nhật ký Kiểm toán" : "Audit Trail", icon: ClipboardList },
     { id: "cost", label: isVi ? "Sử dụng AI & Chi phí" : "LLMOps & Cost", icon: TrendingUp },
@@ -337,6 +384,35 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
           </Modal>
         )}
 
+        {showLockConfirm && (
+          <Modal title="Xác nhận khóa tài khoản" onClose={() => setShowLockConfirm(null)}>
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ color: "var(--text-2)", fontSize: 14, marginBottom: 12 }}>
+                Người dùng <strong style={{ color: "var(--text-1)" }}>{showLockConfirm.full_name || showLockConfirm.username || showLockConfirm.email}</strong> sẽ bị đăng xuất và không thể đăng nhập.
+              </p>
+              {canonicalRole(showLockConfirm.role) === "it_admin" && (
+                <div style={{
+                  padding: "10px 14px",
+                  borderRadius: "var(--r-sm)",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  color: "var(--red)",
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  fontWeight: 500,
+                  marginBottom: 12
+                }}>
+                  <strong>CẢNH BÁO NGUY HIỂM:</strong> Bạn đang thực hiện khóa tài khoản Admin hệ thống. Hãy đảm bảo vẫn còn tài khoản quản trị khác hoạt động.
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <Button variant="ghost" size="sm" onClick={() => setShowLockConfirm(null)}>Hủy</Button>
+              <Button variant="danger" size="sm" onClick={confirmLock}>Xác nhận khóa</Button>
+            </div>
+          </Modal>
+        )}
+
         {showDeleteConfirm && (
           <Modal title="Xác nhận xóa tài khoản" onClose={() => setShowDeleteConfirm(null)}>
             <p style={{ color: "var(--text-2)", fontSize: 14, marginBottom: 20 }}>
@@ -361,7 +437,6 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
           ]}
           role="SecOps / Admin"
           roleVariant="amber"
-          actions={<Badge variant="success" dot={true}>HEALTH: 100% SECURE</Badge>}
         />
 
         <div style={{
@@ -370,6 +445,10 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
         }}>
           <Tabs tabs={adminTabs} activeTab={activeTab} onChange={setActiveTab} variant="pills" />
         </div>
+
+        {activeTab === "granular_rbac" && (
+          <GranularRbacMatrix />
+        )}
 
         {activeTab === "perms" && (
           <Card
@@ -429,7 +508,44 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
             subtitle={isVi ? "Dữ liệu lấy từ API PostgreSQL / RBAC thật" : "Live PostgreSQL RBAC directory"}
             icon={Users}
             actions={
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{
+                  display: "inline-flex",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r-sm)",
+                  padding: 2,
+                  gap: 2
+                }}>
+                  {[
+                    { id: "ALL", label: isVi ? "Tất cả" : "All" },
+                    { id: "active", label: isVi ? "Hoạt động" : "Active" },
+                    { id: "locked", label: isVi ? "Đã khóa" : "Locked" },
+                  ].map((btn) => {
+                    const isSelected = statusFilter === btn.id;
+                    return (
+                      <button
+                        key={btn.id}
+                        type="button"
+                        onClick={() => setStatusFilter(btn.id)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "var(--r-xs)",
+                          fontSize: 12,
+                          fontWeight: isSelected ? 700 : 500,
+                          background: isSelected ? "var(--surface)" : "transparent",
+                          color: isSelected ? "var(--text-1)" : "var(--text-3)",
+                          border: isSelected ? "1px solid var(--border)" : "none",
+                          boxShadow: isSelected ? "var(--shadow-xs)" : "none",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {btn.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <Button variant="ghost" size="sm" icon={RefreshCw} onClick={loadUsers}>
                   {isVi ? "Tải lại" : "Refresh"}
                 </Button>
@@ -457,28 +573,77 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((u) => {
+                    {filteredUsers.map((u) => {
                       const role = canonicalRole(u.role);
                       const isSelf = String(u.user_id) === String(session.userId);
+                      const isAdministrator = u.email === "admin@graphmind.ai" || u.username === "admin" || u.full_name === "Administrator";
+                      const isLocked = (u.status || (u.is_active ? "active" : "locked")) === "locked";
+                      const isSystemAdmin = role === "it_admin";
+                      const isLastAdmin = isSystemAdmin && !isLocked && activeAdminCount <= 1;
+
+                      // Online indicator calculation (within 5 minutes AND status === 'active')
+                      const lastActivity = u.last_active_at || u.last_login_at;
+                      const isOnline = Boolean(
+                        !isLocked &&
+                        (u.status || (u.is_active ? "active" : "locked")) === "active" &&
+                        lastActivity &&
+                        (Date.now() - new Date(lastActivity).getTime()) <= 5 * 60 * 1000
+                      );
+
                       return (
-                        <tr key={u.user_id} style={{ borderBottom: "1px solid var(--border-soft)" }}>
-                          <td style={{ padding: "12px 16px", fontWeight: 600, color: "var(--text-1)" }}>
-                            {u.full_name || u.username || "—"}
+                        <tr
+                          key={u.user_id}
+                          style={{
+                            borderBottom: "1px solid var(--border-soft)",
+                            opacity: isLocked ? 0.65 : 1,
+                            transition: "opacity 0.2s ease",
+                          }}
+                        >
+                          <td style={{ padding: "12px 16px", color: "var(--text-1)" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span
+                                title={isOnline ? "Đang hoạt động" : (lastActivity ? formatLastActivity(lastActivity) : "Chưa từng hoạt động")}
+                                style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  background: isOnline ? "#10b981" : "#9ca3af",
+                                  boxShadow: isOnline ? "0 0 6px rgba(16, 185, 129, 0.6)" : "none",
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{u.full_name || u.username || "—"}</div>
+                                <div
+                                  title={isOnline ? "Đang hoạt động" : (lastActivity ? formatLastActivity(lastActivity) : "Chưa từng hoạt động")}
+                                  style={{
+                                    fontSize: 11,
+                                    marginTop: 2,
+                                    whiteSpace: "nowrap",
+                                    color: isOnline ? "#10b981" : "#9ca3af",
+                                    fontWeight: isOnline ? 600 : 400,
+                                  }}
+                                >
+                                  {isOnline ? "Đang hoạt động" : formatLastActivity(lastActivity)}
+                                </div>
+                              </div>
+                            </div>
                           </td>
                           <td style={{ padding: "12px 16px", color: "var(--text-3)", fontFamily: "var(--f-mono)", fontSize: 12 }}>
                             {u.email}
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <select
-                              disabled={isSelf}
+                              disabled={isSelf || isAdministrator}
                               value={role}
                               onChange={(e) => handleRoleChange(u, e.target.value)}
-                              title={isSelf ? "Không thể đổi role của chính mình" : ""}
+                              title={isSelf ? "Không thể đổi role của chính mình" : (isAdministrator ? "Không thể đổi role của Administrator" : "")}
                               style={{
                                 padding: "5px 8px", borderRadius: "var(--r-xs)", fontSize: 12, fontWeight: 600,
                                 background: "var(--surface-2)", border: "1px solid var(--border)",
-                                color: "var(--text-1)", cursor: isSelf ? "not-allowed" : "pointer",
-                                opacity: isSelf ? 0.5 : 1
+                                color: "var(--text-1)",
+                                cursor: (isSelf || isAdministrator) ? "not-allowed" : "pointer",
+                                opacity: (isSelf || isAdministrator) ? 0.5 : 1,
                               }}
                             >
                               {ROLE_OPTIONS.map(({ value, label }) => (
@@ -487,37 +652,101 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                             </select>
                           </td>
                           <td style={{ padding: "12px 16px" }}>
-                            <Badge variant={u.is_active ? "success" : "danger"} size="sm">
-                              {u.is_active ? "Hoạt động" : "Đã khóa"}
+                            <Badge variant={isLocked ? "danger" : "success"} size="sm">
+                              {isLocked ? "Đã khóa" : "Hoạt động"}
                             </Badge>
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <div style={{ display: "flex", gap: 6 }}>
-                              {u.is_active ? (
+                              {!isLocked ? (
                                 <button
-                                  title="Khóa tài khoản" onClick={() => handleLock(u)}
-                                  style={{ padding: "5px 8px", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: "var(--r-xs)", cursor: "pointer", color: "var(--red)", display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600 }}
+                                  type="button"
+                                  title={
+                                    isSelf
+                                      ? "Không thể tự khóa tài khoản của chính mình"
+                                      : isLastAdmin
+                                      ? "Không thể khóa Admin hệ thống duy nhất đang hoạt động"
+                                      : "Khóa tài khoản"
+                                  }
+                                  disabled={isSelf || isLastAdmin}
+                                  onClick={() => handleLock(u)}
+                                  style={{
+                                    padding: "5px 8px",
+                                    background: "var(--surface-3)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "var(--r-xs)",
+                                    cursor: (isSelf || isLastAdmin) ? "not-allowed" : "pointer",
+                                    color: (isSelf || isLastAdmin) ? "var(--text-4)" : "var(--red)",
+                                    opacity: (isSelf || isLastAdmin) ? 0.5 : 1,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                  }}
                                 >
                                   <Lock size={12} /> Khóa
                                 </button>
                               ) : (
                                 <button
-                                  title="Mở khóa" onClick={() => handleUnlock(u)}
-                                  style={{ padding: "5px 8px", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: "var(--r-xs)", cursor: "pointer", color: "var(--green)", display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600 }}
+                                  type="button"
+                                  title="Mở khóa tài khoản"
+                                  onClick={() => handleUnlock(u)}
+                                  style={{
+                                    padding: "5px 8px",
+                                    background: "var(--surface-3)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "var(--r-xs)",
+                                    cursor: "pointer",
+                                    color: "var(--text-1)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                  }}
                                 >
                                   <Unlock size={12} /> Mở khóa
                                 </button>
                               )}
                               <button
-                                title="Đặt lại mật khẩu" onClick={() => setShowResetModal(u)}
-                                style={{ padding: "5px 8px", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: "var(--r-xs)", cursor: "pointer", color: "var(--blue)", display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600 }}
+                                type="button"
+                                title="Đặt lại mật khẩu"
+                                onClick={() => setShowResetModal(u)}
+                                style={{
+                                  padding: "5px 8px",
+                                  background: "var(--surface-3)",
+                                  border: "1px solid var(--border)",
+                                  borderRadius: "var(--r-xs)",
+                                  cursor: "pointer",
+                                  color: "var(--blue)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                }}
                               >
                                 <KeyRound size={12} /> Đặt lại mật khẩu
                               </button>
-                              {!isSelf && (
+                              {!isSelf && !isAdministrator && (
                                 <button
-                                  title="Xóa tài khoản" onClick={() => setShowDeleteConfirm(u)}
-                                  style={{ padding: "5px 8px", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: "var(--r-xs)", cursor: "pointer", color: "var(--red)", display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600 }}
+                                  type="button"
+                                  title="Xóa tài khoản"
+                                  onClick={() => setShowDeleteConfirm(u)}
+                                  style={{
+                                    padding: "5px 8px",
+                                    background: "var(--surface-3)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "var(--r-xs)",
+                                    cursor: "pointer",
+                                    color: "var(--red)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                  }}
                                 >
                                   <Trash2 size={12} /> Xóa
                                 </button>
@@ -527,10 +756,10 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                         </tr>
                       );
                     })}
-                    {users.length === 0 && (
+                    {filteredUsers.length === 0 && (
                       <tr>
                         <td colSpan={5} style={{ padding: "32px 16px", textAlign: "center", color: "var(--text-4)", fontSize: 13 }}>
-                          Chưa có người dùng nào.
+                          {statusFilter !== "ALL" ? "Không có người dùng nào phù hợp với bộ lọc." : "Chưa có người dùng nào."}
                         </td>
                       </tr>
                     )}

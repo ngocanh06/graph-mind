@@ -5,6 +5,7 @@ Endpoints:
 - GET  /api/v1/auth/me: Lấy thông tin tài khoản hiện tại từ JWT token
 """
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -66,16 +67,16 @@ async def login(
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if not user:
+    if not user or user.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Tài khoản không tồn tại trong hệ thống.",
         )
 
-    if not user.is_active:
+    if not user.is_active or getattr(user, "status", "active") == "locked":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản này đã bị khóa",
+            detail="Tài khoản đã bị khóa, liên hệ quản trị viên",
         )
 
     if not verify_password(payload.password, user.password_hash):
@@ -85,6 +86,13 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Mật khẩu không chính xác.",
         )
+
+    # Cập nhật thời điểm đăng nhập & hoạt động
+    now = datetime.now(timezone.utc)
+    user.last_login_at = now
+    user.last_active_at = now
+    await db.commit()
+    await db.refresh(user)
 
     # Role JWT lấy từ cột users.role (canonical), không còn ánh xạ cứng theo username
     role = canonical_role(user)
@@ -104,6 +112,7 @@ async def login(
         username=user.username or "",
         full_name=user.full_name,
         role=role,
+        status=getattr(user, "status", "active"),
         is_active=user.is_active,
         is_superuser=user.is_superuser,
     )
@@ -148,8 +157,11 @@ async def get_current_user(
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if not user:
+    if not user or user.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
+
+    if not user.is_active or getattr(user, "status", "active") == "locked":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tài khoản đã bị khóa, liên hệ quản trị viên")
 
     role = canonical_role(user)
 
@@ -159,6 +171,7 @@ async def get_current_user(
         username=user.username or "",
         full_name=user.full_name,
         role=role,
+        status=getattr(user, "status", "active"),
         is_active=user.is_active,
         is_superuser=user.is_superuser,
     )

@@ -126,7 +126,7 @@ subprocess.run(["docker", "cp", str(order_dtl_file), f"{CONTAINER_NAME}:/data/sa
 subprocess.run(["docker", "cp", str(proc_file), f"{CONTAINER_NAME}:/data/accounting_procurement/"], check=True)
 subprocess.run(["docker", "cp", str(it_file), f"{CONTAINER_NAME}:/data/it/"], check=True)
 
-print("[✓] Sample files copied to Central Storage!")
+print("[OK] Sample files copied to Central Storage!")
 print("[*] Waiting 3 seconds for File Watcher daemon to detect and index files...")
 time.sleep(3)
 
@@ -138,7 +138,7 @@ except Exception as e:
     print(f"[!] Graph ingestion warning: {e}")
 
 print("\n" + "=" * 65)
-print(" [✓] DEMO DATA SEEDING COMPLETE!")
+print(" [OK] DEMO DATA SEEDING COMPLETE!")
 print(" Central Storage, Qdrant Vector DB, and Neo4j Graph DB now have live data.")
 print(" You can now test AI Copilot at: http://localhost:5173")
 print("=" * 65 + "\n")

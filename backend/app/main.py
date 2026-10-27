@@ -224,6 +224,14 @@ except ImportError:
     from modules.m6_admin_security.forgot_password_router import router as forgot_router
 app.include_router(forgot_router, prefix="/api/v1/auth")
 
+# M6 Granular RBAC Matrix router (PB02 - Mục 6.2.1)
+try:
+    from app.modules.m6_admin_security.rbac_matrix_router import router as rbac_matrix_router
+except ImportError:
+    from modules.m6_admin_security.rbac_matrix_router import router as rbac_matrix_router
+app.include_router(rbac_matrix_router, prefix="/api/v1")
+app.include_router(rbac_matrix_router, prefix="/api")
+
 # --- Pydantic Schemas ---
 class CopilotQueryRequest(BaseModel):
     query: str

@@ -254,7 +254,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       new_only: filterNewest === "NEW_ONLY",
       limit: pageSize,
       offset: (currentPage - 1) * pageSize
-    }).then((res) => {
+    }, currentUser).then((res) => {
       if (!active) return;
       if (res && res.success) {
         setDocsList(res.data || []);
@@ -264,7 +264,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       setIsLoading(false);
     });
     return () => { active = false; };
-  }, [searchQuery, docFilter, deptFilter, filterNewest, currentPage, pageSize, reloadTrigger]);
+  }, [searchQuery, docFilter, deptFilter, filterNewest, currentPage, pageSize, reloadTrigger, currentUser]);
 
   const accessibleDocs = useMemo(() => {
     return docsList || [];
@@ -836,7 +836,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* ========================================================================= */}
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filteredDocs.length === 0 ? (
+          {isLoading ? (
+            <div className="col-span-full p-12 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 text-outline">
+              <Icon name="fa-solid fa-spinner animate-spin text-3xl mb-3 text-primary" size={24} />
+              <div className="font-semibold text-on-surface">
+                {isVi ? "Đang tải danh sách tài liệu..." : "Loading documents..."}
+              </div>
+            </div>
+          ) : filteredDocs.length === 0 ? (
             <div className="col-span-full p-12 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 text-outline">
               <Icon name="fa-regular fa-folder-open text-3xl mb-2 text-outline/40" size={15} />
               <div className="font-semibold text-on-surface">
@@ -1057,7 +1064,16 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                 </tr>
               </thead>
               <tbody>
-                {filteredDocs.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="p-12 text-center text-outline">
+                      <Icon name="fa-solid fa-spinner animate-spin text-2xl mb-2 text-primary" size={20} />
+                      <div className="font-semibold text-on-surface">
+                        {isVi ? "Đang tải danh sách tài liệu..." : "Loading documents..."}
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredDocs.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-12 text-center text-outline">
                       <div className="font-semibold text-on-surface">

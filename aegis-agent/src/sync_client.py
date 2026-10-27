@@ -51,7 +51,7 @@ class SyncClient:
                         "file_name": file_name,
                         "event_type": event_type
                     }
-                    response = requests.post(ep, headers=headers, data=data, files=files, timeout=30)
+                    response = requests.post(ep, headers=headers, data=data, files=files, timeout=120)
                     if response.status_code in (200, 201):
                         self.endpoint = ep  # Remember working endpoint
                         return {

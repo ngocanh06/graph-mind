@@ -54,6 +54,7 @@ export function getAuthHeaders(currentUser = null) {
     if (currentUser.username) headers["X-User-Name"] = currentUser.username;
     if (currentUser.id) headers["X-User-Id"] = currentUser.id;
     if (currentUser.department) headers["X-User-Dept"] = encodeURIComponent(currentUser.department);
+    if (currentUser.role || currentUser.roleKey) headers["X-User-Role"] = currentUser.roleKey || currentUser.role;
   }
   return headers;
 }

@@ -26,15 +26,16 @@ _EMBED_MODEL = None
 
 
 def get_embed_model():
-    """Lazy load SentenceTransformer model from local cache."""
+    """Lazy load SentenceTransformer model with graceful fallback."""
     global _EMBED_MODEL
     if _EMBED_MODEL is None:
         try:
-            from sentence_transformers import SentenceTransformer
+            import importlib
+            st_module = importlib.import_module("sentence_transformers")
+            SentenceTransformer = getattr(st_module, "SentenceTransformer")
             _EMBED_MODEL = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
             print("[Qdrant] SentenceTransformer 'all-MiniLM-L6-v2' loaded successfully")
-        except Exception as e:
-            print(f"[Qdrant] Warning: Could not load SentenceTransformer locally: {e}")
+        except Exception:
             _EMBED_MODEL = False
     return _EMBED_MODEL if _EMBED_MODEL is not False else None
 
@@ -56,11 +57,21 @@ class QdrantClientWrapper:
         self._port = port
         self._collection = (settings.QDRANT_COLLECTION_NAME if settings else None) or os.getenv("QDRANT_COLLECTION_NAME", "cuad_contracts")
         try:
-            self._client = QdrantClient(host=host, port=port, timeout=8)
+            self._client = QdrantClient(host=host, port=port, timeout=8, check_compatibility=False)
             resp = self._client.get_collections()
             col_names = [c.name for c in resp.collections]
-            if self._collection not in col_names and col_names:
-                self._collection = col_names[0]
+            if self._collection not in col_names:
+                try:
+                    from qdrant_client.http import models
+                    self._client.create_collection(
+                        collection_name=self._collection,
+                        vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
+                    )
+                    print(f"[Qdrant] Created collection '{self._collection}' (size=384, distance=Cosine)")
+                except Exception as col_err:
+                    if col_names:
+                        self._collection = col_names[0]
+                    print(f"[Qdrant] Collection notice: {col_err}")
             self._connected = True
             print(f"[Qdrant] Connected to {host}:{port}, active collection={self._collection}")
             return True

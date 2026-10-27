@@ -4,6 +4,7 @@ Router prefix: /api/v1/admin
 Yêu cầu: Bearer token + role it_admin hoặc is_superuser
 """
 import uuid
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, or_
@@ -16,7 +17,7 @@ from app.db.postgres.models.user import User
 from app.db.postgres.models.audit_log import AuditLog
 from app.modules.m6_admin_security.audit_service import log_action
 from app.modules.m6_admin_security.deps import get_admin_user
-from app.modules.m6_admin_security.rbac import is_superuser_for_role
+from app.modules.m6_admin_security.rbac import is_superuser_for_role, is_system_admin
 from app.schemas.user_admin import (
     UserCreateRequest,
     UserRoleUpdateRequest,
@@ -29,6 +30,19 @@ from app.schemas.user_admin import (
 router = APIRouter(prefix="/admin", tags=["M6 Admin"])
 
 
+async def count_active_admins(db: AsyncSession) -> int:
+    """Đếm số lượng Admin hệ thống đang ở trạng thái hoạt động."""
+    result = await db.execute(
+        select(User).where(
+            User.deleted_at.is_(None),
+            User.is_active == True,
+            User.status == "active",
+        )
+    )
+    users = result.scalars().all()
+    return sum(1 for u in users if is_system_admin(u))
+
+
 # ── GET /admin/users ──────────────────────────────────────────────────────────
 
 @router.get("/users", response_model=List[UserAdminOut])
@@ -36,8 +50,10 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(get_admin_user),
 ):
-    """Trả về toàn bộ danh sách tài khoản."""
-    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    """Trả về toàn bộ danh sách tài khoản chưa bị xóa mềm."""
+    result = await db.execute(
+        select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.desc())
+    )
     return result.scalars().all()
 
 
@@ -93,14 +109,22 @@ async def change_role(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(get_admin_user),
 ):
-    """Đổi role. Admin không thể đổi role của chính mình."""
+    """Đổi role. Admin không thể đổi role của chính mình. Bảo vệ Admin duy nhất."""
     if user_id == actor.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Không thể đổi role của chính mình.")
 
-    result = await db.execute(select(User).where(User.user_id == user_id))
+    result = await db.execute(select(User).where(User.user_id == user_id, User.deleted_at.is_(None)))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
+
+    # Nếu hạ quyền một Admin hệ thống đang active xuống role khác
+    if is_system_admin(target) and target.is_active and getattr(target, "status", "active") == "active" and body.role != "it_admin":
+        if await count_active_admins(db) <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Hệ thống phải có ít nhất 1 Admin hệ thống ở trạng thái hoạt động",
+            )
 
     old_role = target.role
     target.role = body.role
@@ -114,7 +138,7 @@ async def change_role(
         resource_id=str(target.user_id),
         detail=f"{old_role} → {body.role}",
     )
-    await db.flush()
+    await db.commit()
     await db.refresh(target)
     return target
 
@@ -127,22 +151,32 @@ async def lock_user(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(get_admin_user),
 ):
-    """Khóa tài khoản (is_active = False)."""
-    result = await db.execute(select(User).where(User.user_id == user_id))
+    """Khóa tài khoản (status = 'locked', is_active = False)."""
+    if user_id == actor.user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Không thể tự khóa tài khoản của chính mình.")
+
+    result = await db.execute(select(User).where(User.user_id == user_id, User.deleted_at.is_(None)))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
 
-    target.is_active = False
+    if is_system_admin(target) and target.is_active and getattr(target, "status", "active") == "active":
+        if await count_active_admins(db) <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Hệ thống phải có ít nhất 1 Admin hệ thống ở trạng thái hoạt động",
+            )
+
+    target.set_status("locked")
     await log_action(
         db,
         action="USER_LOCK",
         actor_id=actor.user_id,
         resource_type="user",
         resource_id=str(target.user_id),
-        detail=f"email={target.email}",
+        detail=f"email={target.email} role={target.role}",
     )
-    await db.flush()
+    await db.commit()
     await db.refresh(target)
     return target
 
@@ -155,22 +189,22 @@ async def unlock_user(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(get_admin_user),
 ):
-    """Mở khóa tài khoản (is_active = True)."""
-    result = await db.execute(select(User).where(User.user_id == user_id))
+    """Mở khóa tài khoản (status = 'active', is_active = True)."""
+    result = await db.execute(select(User).where(User.user_id == user_id, User.deleted_at.is_(None)))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
 
-    target.is_active = True
+    target.set_status("active")
     await log_action(
         db,
         action="USER_UNLOCK",
         actor_id=actor.user_id,
         resource_type="user",
         resource_id=str(target.user_id),
-        detail=f"email={target.email}",
+        detail=f"email={target.email} role={target.role}",
     )
-    await db.flush()
+    await db.commit()
     await db.refresh(target)
     return target
 
@@ -185,7 +219,7 @@ async def reset_password(
     actor: User = Depends(get_admin_user),
 ):
     """Đặt lại mật khẩu người dùng."""
-    result = await db.execute(select(User).where(User.user_id == user_id))
+    result = await db.execute(select(User).where(User.user_id == user_id, User.deleted_at.is_(None)))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
@@ -199,7 +233,7 @@ async def reset_password(
         resource_id=str(target.user_id),
         detail=f"email={target.email}",
     )
-    await db.flush()
+    await db.commit()
     await db.refresh(target)
     return target
 
@@ -212,25 +246,61 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(get_admin_user),
 ):
-    """Xóa tài khoản vĩnh viễn."""
+    """Xóa tài khoản: xóa mềm nếu có dữ liệu liên quan, xóa cứng nếu chưa có dữ liệu."""
     if user_id == actor.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Không thể tự xóa chính mình.")
 
-    result = await db.execute(select(User).where(User.user_id == user_id))
+    result = await db.execute(select(User).where(User.user_id == user_id, User.deleted_at.is_(None)))
     target = result.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
 
+    if target.username == "admin" or target.email == "admin@graphmind.ai" or target.full_name == "Administrator":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Không thể xóa tài khoản Administrator gốc.")
+
+    if is_system_admin(target) and target.is_active and getattr(target, "status", "active") == "active":
+        if await count_active_admins(db) <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Hệ thống phải có ít nhất 1 Admin hệ thống ở trạng thái hoạt động",
+            )
+
+    from app.db.postgres.models.copilot_session import CopilotSession
+    sessions_res = await db.execute(select(func.count()).select_from(CopilotSession).where(CopilotSession.user_id == user_id))
+    sessions_cnt = sessions_res.scalar_one() or 0
+
+    audit_res = await db.execute(select(func.count()).select_from(AuditLog).where(AuditLog.actor_id == user_id))
+    audit_cnt = audit_res.scalar_one() or 0
+
     email_snapshot = target.email
-    await db.delete(target)
-    await log_action(
-        db,
-        action="USER_DELETE",
-        actor_id=actor.user_id,
-        resource_type="user",
-        resource_id=str(user_id),
-        detail=f"email={email_snapshot}",
-    )
+    now = datetime.now(timezone.utc)
+
+    if (sessions_cnt + audit_cnt) > 0:
+        # Soft delete: lưu dấu thời điểm xóa, khóa tài khoản, giải phóng email
+        target.deleted_at = now
+        target.set_status("locked")
+        target.email = f"{target.email}__deleted_{int(now.timestamp())}"
+        await log_action(
+            db,
+            action="USER_DELETE",
+            actor_id=actor.user_id,
+            resource_type="user",
+            resource_id=str(user_id),
+            detail=f"delete_type=soft email={email_snapshot}",
+        )
+        await db.commit()
+    else:
+        # Hard delete
+        await db.delete(target)
+        await log_action(
+            db,
+            action="USER_DELETE",
+            actor_id=actor.user_id,
+            resource_type="user",
+            resource_id=str(user_id),
+            detail=f"delete_type=hard email={email_snapshot}",
+        )
+        await db.commit()
 
 
 # ── GET /admin/audit-logs ─────────────────────────────────────────────────────

@@ -5,6 +5,9 @@ import io
 import subprocess
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import argparse
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -49,13 +52,13 @@ if PREPACKED_TAR.exists():
     if proc.returncode != 0:
         print(f"ERROR extracting tar: {stderr.decode()}")
         sys.exit(1)
-    print("[✓] Extraction from pre-packaged archive completed successfully!")
+    print("[OK] Extraction from pre-packaged archive completed successfully!")
     # Verify and exit
     total_res = subprocess.run(
         ["docker", "exec", CONTAINER_NAME, "sh", "-c", "find /data -type f | wc -l"],
         capture_output=True, text=True, check=True
     )
-    print(f"[✓] TOTAL FILES IN CENTRAL DOCUMENT STORAGE: {total_res.stdout.strip()} files")
+    print(f"[OK] TOTAL FILES IN CENTRAL DOCUMENT STORAGE: {total_res.stdout.strip()} files")
     sys.exit(0)
 
 if not CUAD_DIR.exists():
@@ -121,7 +124,7 @@ if proc.returncode != 0:
     print(f"ERROR extracting tar: {stderr.decode()}")
     sys.exit(1)
 
-print("[✓] Extraction into Docker Named Volume completed successfully!")
+print("[OK] Extraction into Docker Named Volume completed successfully!")
 
 # Remove local tar package
 if tar_stream_path.exists():
@@ -139,4 +142,4 @@ total_res = subprocess.run(
     ["docker", "exec", CONTAINER_NAME, "sh", "-c", "find /data -type f | wc -l"],
     capture_output=True, text=True, check=True
 )
-print(f"\n[✓] TOTAL FILES IN CENTRAL DOCUMENT STORAGE: {total_res.stdout.strip()} files")
+print(f"\n[OK] TOTAL FILES IN CENTRAL DOCUMENT STORAGE: {total_res.stdout.strip()} files")

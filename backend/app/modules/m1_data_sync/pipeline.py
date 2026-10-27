@@ -137,12 +137,10 @@ def get_verified_indexed_hashes() -> Set[str]:
     except Exception as e:
         logger.debug(f"[Pipeline] Qdrant hash verification error: {e}")
 
-    # A document is verified indexed if it exists in Neo4j and Qdrant
+    # A document is verified indexed ONLY if it exists in both Neo4j and Qdrant
     if neo_hashes and qdrant_hashes:
         return neo_hashes.intersection(qdrant_hashes)
-    elif neo_hashes:
-        return neo_hashes
-    return qdrant_hashes
+    return set()
 
 
 def get_known_hashes() -> Set[str]:
@@ -165,8 +163,18 @@ def extract_text_from_bytes(filename: str, content_bytes: bytes) -> str:
         except UnicodeDecodeError:
             return content_bytes.decode("latin-1", errors="ignore")
 
-    # 2. PDF extraction (pdfplumber + compressed stream fallback)
+    # 2. PDF extraction (pypdfium2 fast C++ engine, pdfplumber fallback)
     if ext == ".pdf":
+        try:
+            import pypdfium2 as pdfium
+            pdf = pdfium.PdfDocument(content_bytes)
+            pages_text = [page.get_textpage().get_text_range().strip() for page in pdf]
+            text = "\n\n".join(t for t in pages_text if t)
+            if text:
+                return text
+        except Exception as e:
+            logger.debug(f"[Pipeline] pypdfium2 parser note: {e}")
+
         try:
             import pdfplumber
             with pdfplumber.open(io.BytesIO(content_bytes)) as pdf:

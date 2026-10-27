@@ -12,6 +12,7 @@ Roles:
 import re
 import uuid
 import urllib.parse
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Optional, Set, List, Dict, Any, Tuple
 from fastapi import Depends, Header, HTTPException, Query, status
@@ -355,6 +356,8 @@ async def get_request_user(
     4. X-User-Name
     5. Default fallback to executive user
     """
+    u = None
+
     # 1. Bearer Token
     if auth_header and auth_header.credentials:
         try:
@@ -363,34 +366,29 @@ async def get_request_user(
                 uid = uuid.UUID(payload["sub"])
                 res = await db.execute(select(User).where(User.user_id == uid))
                 u = res.scalar_one_or_none()
-                if u:
-                    return u
         except Exception:
             pass
 
     # 2. X-User-Id / Query user_id
-    uid_candidate = x_user_id or user_id
-    if uid_candidate:
-        try:
-            uid = uuid.UUID(uid_candidate)
-            res = await db.execute(select(User).where(User.user_id == uid))
-            u = res.scalar_one_or_none()
-            if u:
-                return u
-        except (ValueError, TypeError):
-            pass
+    if not u:
+        uid_candidate = x_user_id or user_id
+        if uid_candidate:
+            try:
+                uid = uuid.UUID(uid_candidate)
+                res = await db.execute(select(User).where(User.user_id == uid))
+                u = res.scalar_one_or_none()
+            except (ValueError, TypeError):
+                pass
 
     # 3. X-User-Email
-    if x_user_email:
+    if not u and x_user_email:
         clean_email = x_user_email.strip().lower()
         clean_email = USER_ALIASES.get(clean_email, clean_email)
         res = await db.execute(select(User).where(User.email.ilike(clean_email)))
         u = res.scalar_one_or_none()
-        if u:
-            return u
 
     # 4. X-User-Name
-    if x_user_name:
+    if not u and x_user_name:
         clean_name = x_user_name.strip().lower()
         clean_name = USER_ALIASES.get(clean_name, clean_name)
         res = await db.execute(
@@ -402,19 +400,40 @@ async def get_request_user(
             )
         )
         u = res.scalar_one_or_none()
-        if u:
-            return u
 
     # 5. Default fallback to first active user (exec)
-    res = await db.execute(select(User).order_by(User.created_at.asc()).limit(1))
-    u = res.scalar_one_or_none()
-    if u:
-        return u
+    if not u:
+        res = await db.execute(select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.asc()).limit(1))
+        u = res.scalar_one_or_none()
 
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Chưa xác định được tài khoản người dùng.",
-    )
+    if not u:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chưa xác định được tài khoản người dùng.",
+        )
+
+    if u.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tài khoản không tồn tại trong hệ thống.",
+        )
+
+    if not u.is_active or getattr(u, "status", "active") == "locked":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tài khoản đã bị khóa, liên hệ quản trị viên",
+        )
+
+    # Cập nhật Online (Throttled 2 phút)
+    now = datetime.now(timezone.utc)
+    if u.last_active_at is None or (now - u.last_active_at).total_seconds() > 120:
+        u.last_active_at = now
+        try:
+            await db.commit()
+        except Exception:
+            pass
+
+    return u
 
 
 # ── Scope Context Dependency ─────────────────────────────────────────────────

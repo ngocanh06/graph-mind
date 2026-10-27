@@ -57,6 +57,7 @@ async def get_db() -> AsyncSession:
 async def create_all_tables():
     """Tạo tất cả tables từ ORM models. Chỉ dùng trong dev/test."""
     from app.db.postgres.models import user, copilot_session, sop_document, audit_log, knowledge_permission, otp  # noqa: F401
+    from app.modules.m6_admin_security import rbac_matrix_model  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -80,6 +81,13 @@ async def create_all_tables():
         await conn.execute(text("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS resource_id varchar(150);"))
         await conn.execute(text("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS status varchar(20) DEFAULT 'OK';"))
         await conn.execute(text("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS detail varchar(500);"))
+
+        # Migrate users status, deleted_at, last_login_at, last_active_at
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active';"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ NULL;"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ NULL;"))
+        await conn.execute(text("UPDATE users SET status = CASE WHEN is_active = true THEN 'active' ELSE 'locked' END WHERE status IS NULL;"))
 
 
 async def drop_all_tables():

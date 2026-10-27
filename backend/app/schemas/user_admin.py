@@ -68,13 +68,16 @@ class PasswordResetRequest(BaseModel):
 class UserAdminOut(BaseModel):
     user_id: uuid.UUID
     email: str
-    username: Optional[str]
-    full_name: Optional[str]
+    username: Optional[str] = None
+    full_name: Optional[str] = None
     role: str
+    status: str = "active"
     is_active: bool
     is_superuser: bool
     created_at: datetime
-    last_login_at: Optional[datetime]
+    last_login_at: Optional[datetime] = None
+    last_active_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
