@@ -490,8 +490,8 @@ async def ask_copilot(
         return blocked_msg
 
     # 2. Hybrid Retrieval: Qdrant Vector + Neo4j Graph
-    # Differentiate between AdventureWorks ERP queries (Revenue, Orders, Customers)
-    # and CUAD Legal Contract queries (Clauses, Compliance, Addendums)
+    # Intelligently route queries between AdventureWorks ERP (Products, Stores, Vendors, Customers, Orders)
+    # and CUAD Legal Contracts (Clauses, Compliance, NDAs, Liability)
     q_lower = clean_query.lower()
     is_legal_contract_query = any(k in q_lower for k in [
         "hợp đồng", "contract", "điều khoản", "clause", "tuân thủ", "compliance",
@@ -502,17 +502,27 @@ async def ask_copilot(
     is_erp_query = any(k in q_lower for k in [
         "doanh thu", "revenue", "xu hướng", "trend", "tăng trưởng", "growth",
         "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
-        "sản phẩm", "product"
-    ]) and not any(k in q_lower for k in ["hợp đồng", "điều khoản", "clause", "pháp lý"])
+        "sản phẩm", "product", "xe đạp", "bike", "nhà cung cấp", "vendor", "đại lý", "store"
+    ])
 
-    if is_erp_query:
-        # ERP financial/customer queries should not be polluted with legal contract text from Qdrant
-        vector_hits = []
+    vector_hits = []
+    # 2.1 Route to relevant Qdrant vector collections
+    if is_legal_contract_query and is_erp_query:
+        # Cross-domain query: search both collections
+        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
+        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=3)
+        vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.25] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
+    elif is_legal_contract_query:
+        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=5)
+        vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.25]
     else:
-        vector_hits = qdrant_client.vector_search(query=clean_query, limit=5)
-        # Filter out weak vector noise (< 0.30) if not explicitly a legal text query
-        if not is_legal_contract_query:
-            vector_hits = [vh for vh in vector_hits if vh.get("score", 0) >= 0.30]
+        # Business/Product/ERP query or general search: prioritize adventureworks_entities
+        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=5)
+        vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
+        # If no business entity matches and not an ERP financial calculation, check cuad_contracts
+        if not vector_hits and not any(k in q_lower for k in ["doanh thu", "revenue", "đơn hàng", "order"]):
+            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
+            vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.35]
 
     graph_hits = execute_text_to_cypher(clean_query)
     if not graph_hits:
@@ -522,6 +532,32 @@ async def ask_copilot(
             if matches:
                 graph_hits.extend(matches)
                 break
+
+    # 2.2 Graph expansion from top Qdrant Product hits (Bridge Vector -> Graph)
+    for vh in vector_hits:
+        pl = vh.get("payload") or {}
+        if pl.get("entity_type") == "Product" and pl.get("entity_id"):
+            pid = pl.get("entity_id")
+            p_name = pl.get("name")
+            try:
+                sub_res = neo4j_client.run_cypher("""
+                    MATCH (p:Product {id: $pid})
+                    OPTIONAL MATCH (o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p)
+                    OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
+                    WITH p, count(DISTINCT o) as orderCount, count(DISTINCT c) as custCount, round(sum(r.LineTotal), 2) as revenue
+                    RETURN p.name as name, orderCount, custCount, revenue
+                """, {"pid": pid})
+                if sub_res and sub_res[0].get("orderCount", 0) > 0:
+                    r0 = sub_res[0]
+                    graph_hits.append({
+                        "_id": f"product_subgraph_{pid}",
+                        "_labels": ["Product", "SalesHistory"],
+                        "name": f"Lịch sử bán hàng: {p_name}",
+                        "snippet": f"Sản phẩm {p_name} (Mã #{pid}): Đã bán trong {r0['orderCount']} đơn hàng cho {r0['custCount']} khách hàng, mang lại tổng doanh thu thuần ${r0['revenue']:,.2f} USD."
+                    })
+            except Exception:
+                pass
+            break  # Enrich top matched product
 
     # Lọc node thực thể theo Data Scope của vai trò (ví dụ: loại bỏ Employee/nhân sự khỏi kết quả của Standard User)
     graph_hits = filter_graph_entities_by_scope(graph_hits, user_role)
@@ -540,30 +576,51 @@ async def ask_copilot(
             "source": f"RRF ({item['rrf_score']:.4f}) · {item['sources'][0][:28]}",
         })
         if item_type == "vector":
-            c_name = raw.get("contract_name") or "CUAD Contract Document"
-            raw_chunk = raw.get("chunk_id")
-            try:
-                chunk_num = int(raw_chunk) if raw_chunk is not None else None
-            except (ValueError, TypeError):
-                chunk_num = None
-            c_text = raw.get("text") or ""
-            score_val = min(99.6, item['rrf_score'] * 3500) if item.get("rrf_score") else 95.0
-            line_count = len([l for l in c_text.splitlines() if l.strip()]) or 20
-            start_line = (chunk_num * 25) + 1 if chunk_num is not None else 1
-            end_line = start_line + max(line_count, 15)
-            loc_label = f"Đoạn #{chunk_num} (Dòng ~{start_line}-{end_line})" if chunk_num is not None else "Kho véc-tơ CUAD"
-            citations_detail.append({
-                "docName": c_name,
-                "file": c_name,
-                "match": f"{score_val:.1f}% MATCH",
-                "location": loc_label,
-                "startLine": start_line,
-                "endLine": end_line,
-                "text": c_text,
-                "chunkId": f"#VEC-{chunk_num}" if chunk_num is not None else str(item["id"])[:8],
-                "sourceType": "Qdrant Vector DB",
-                "score": score_val,
-            })
+            pl = raw.get("payload") or {}
+            is_aw = (pl.get("source") == "adventureworks") or ("entity_type" in pl)
+            if is_aw:
+                e_type = pl.get("entity_type", "Entity")
+                e_id = pl.get("entity_id", "")
+                e_name = pl.get("name") or raw.get("contract_name") or "AdventureWorks Entity"
+                c_text = pl.get("searchable_text") or raw.get("text") or ""
+                score_val = min(99.6, item['rrf_score'] * 3500) if item.get("rrf_score") else 95.0
+                citations_detail.append({
+                    "docName": f"AdventureWorks: {e_name}",
+                    "file": f"AdventureWorks ({e_type})",
+                    "match": f"{score_val:.1f}% MATCH",
+                    "location": f"Bản ghi #{e_id} ({e_type})",
+                    "startLine": 1,
+                    "endLine": 1,
+                    "text": c_text,
+                    "chunkId": f"#AW-{e_type.upper()}-{e_id}",
+                    "sourceType": "Qdrant Vector DB (AdventureWorks)",
+                    "score": score_val,
+                })
+            else:
+                c_name = raw.get("contract_name") or "CUAD Contract Document"
+                raw_chunk = raw.get("chunk_id")
+                try:
+                    chunk_num = int(raw_chunk) if raw_chunk is not None else None
+                except (ValueError, TypeError):
+                    chunk_num = None
+                c_text = raw.get("text") or ""
+                score_val = min(99.6, item['rrf_score'] * 3500) if item.get("rrf_score") else 95.0
+                line_count = len([l for l in c_text.splitlines() if l.strip()]) or 20
+                start_line = (chunk_num * 25) + 1 if chunk_num is not None else 1
+                end_line = start_line + max(line_count, 15)
+                loc_label = f"Đoạn #{chunk_num} (Dòng ~{start_line}-{end_line})" if chunk_num is not None else "Kho véc-tơ CUAD"
+                citations_detail.append({
+                    "docName": c_name,
+                    "file": c_name,
+                    "match": f"{score_val:.1f}% MATCH",
+                    "location": loc_label,
+                    "startLine": start_line,
+                    "endLine": end_line,
+                    "text": c_text,
+                    "chunkId": f"#VEC-{chunk_num}" if chunk_num is not None else str(item["id"])[:8],
+                    "sourceType": "Qdrant Vector DB (CUAD)",
+                    "score": score_val,
+                })
         elif item_type == "graph":
             g_name = raw.get("name") or "Knowledge Graph Entity"
             g_labels = raw.get("_labels", [])

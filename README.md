@@ -753,11 +753,54 @@ python scripts\verify_three_layers.py
 
 ---
 
-## 20. Vấn đề Tồn đọng & Kế hoạch Tiếp theo (Known Issues / TODO)
+## 21. Nâng cấp Hybrid GraphRAG cho AdventureWorks (Record-Level Vectors & SalesOrder Graph)
 
-1. **Cơ chế nhúng SentenceTransformer trong Container**: Hiện tại script `bulk_ingest.py` gọi mô hình embedding `all-MiniLM-L6-v2` cục bộ trên host. Khi chạy hoàn toàn trong container backend độc lập, cần đảm bảo container có quyền tải hoặc cache trọng số embedding vào volume.
-2. **PostgreSQL Relational DB Service trong Compose**: Hiện tại PostgreSQL quan hệ chủ yếu quản lý tài khoản người dùng và nhật ký audit log. Trong phiên bản tới, service postgres sẽ được tích hợp chính thức vào file `docker-compose.yml` để tự động hóa migration Alembic khi triển khai production.
-3. **Tối ưu hóa GPU cho Ollama**: Chạy suy luận Qwen2.5-7B trên CPU thuần túy có độ trễ khoảng 10-12s/câu trả lời. Thành viên có card đồ họa rời NVIDIA nên bật GPU acceleration (CUDA) trong Docker/Ollama để đạt tốc độ suy luận dưới 2 giây.
+Hệ thống đã được nâng cấp kiến trúc **Hybrid GraphRAG** chuyên sâu cho toàn bộ dữ liệu nghiệp vụ AdventureWorks (ERP/CRM/Production):
+
+### 21.1. Kiến trúc Hai Tầng (Two-Tier Hybrid Architecture)
+1. **Tầng Đồ thị Tri thức (Neo4j Graph Database):**
+   - **SalesOrder:** 31,465 nodes `(:SalesOrder)` lưu trữ đầy đủ thuộc tính `SalesOrderID`, `OrderDate`, `DueDate`, `ShipDate`, `Status`, `TotalDue`, `SubTotal`, `TaxAmt`, `Freight`, `Year`.
+   - **Khách hàng đặt hàng:** 31,465 quan hệ `(:Customer)-[:PLACED_ORDER]->(:SalesOrder)` ánh xạ chính xác 100% khóa ngoại `CustomerID`.
+   - **Chi tiết dòng đơn hàng:** 121,317 quan hệ `(:SalesOrder)-[:CONTAINS_PRODUCT]->(:Product)` lưu trữ đầy đủ `SalesOrderDetailID`, `OrderQty`, `UnitPrice`, `UnitPriceDiscount`, `LineTotal`, `CarrierTrackingNumber`.
+   - **Khách hàng & Sản phẩm:** 19,820 Customer nodes, 504 Product nodes thực tế (+ 3 demo products), 37 SubCategory nodes, 4 Category nodes.
+2. **Tầng Véc-tơ Ngữ nghĩa (Qdrant Vector Database):**
+   - **Collection độc lập:** `adventureworks_entities` (384 chiều, Cosine distance), hoàn toàn tách biệt và không ảnh hưởng đến collection hợp đồng pháp lý `cuad_contracts` (9,069 points).
+   - **Điểm dữ liệu (Points):** ~26,129 véc-tơ thực thể cấp bản ghi:
+     - **504 Products:** Được làm giàu ngữ nghĩa bằng cách ghép tên, mã SKU, danh mục, phân loại con, màu sắc, giá bán, chi phí tiêu chuẩn và mô tả kỹ thuật tiếng Anh từ `ProductModel`.
+     - **104 Vendors:** Nhà cung cấp kèm mã đối tác, xếp hạng tín dụng, tình trạng ưu tiên.
+     - **701 Stores:** Đại lý doanh nghiệp B2B kèm thông số giải mã từ XML Demographics (doanh số năm, loại hình BM, chuyên môn phân phối, quy mô diện tích & nhân viên).
+     - **19,820 Customers:** Khách hàng cá nhân và doanh nghiệp kèm tên định danh từ Person/Store và vùng thị trường Territory.
+     - **5,000 Top SalesOrders:** Đơn hàng trọng điểm kèm thông tin khách hàng và danh sách sản phẩm đặt mua.
+   - **Định danh Point ID:** Sinh bằng chuẩn `UUIDv5` từ `table + entity_id`, đảm bảo tính Idempotent 100% (chạy lại script không tạo trùng lặp).
+
+### 21.2. Quy trình Thực thi Scripts
+```powershell
+# 1. Nạp toàn bộ 31,465 SalesOrder và 121,317 chi tiết đơn hàng vào Neo4j:
+python scripts\ingest_adventureworks_orders.py --data-dir "D:/adventureworks"
+
+# 2. Sinh véc-tơ ngữ nghĩa và nạp vào Qdrant collection adventureworks_entities:
+python scripts\ingest_adventureworks_vectors.py --data-dir "D:/adventureworks"
+
+# 3. Chạy bộ kiểm thử nghiệm thu 10 ca kiểm thử chuyên sâu (Ground Truth Suite):
+python scripts\test_adventureworks_hybrid_rag.py
+```
+
+### 21.3. Định nghĩa Quy tắc Tính toán Doanh thu
+Hệ thống phân định rõ ràng 2 chỉ tiêu tài chính để đảm bảo tính chính xác kế toán:
+- **Doanh thu gộp (TotalDue):** Tổng số tiền khách hàng thanh toán thực tế (bao gồm tiền hàng `SubTotal` + thuế `TaxAmt` + phí vận chuyển `Freight`).
+- **Doanh thu thuần sản phẩm (SubTotal):** Bằng chính xác tổng `LineTotal` của toàn bộ các dòng chi tiết trong `SalesOrderDetail` (`SubTotal = sum(LineTotal)`).
+
+### 21.4. Tích hợp Backend Copilot & Hybrid Routing
+- Module `copilot.py` tự động định tuyến thông minh:
+  - Câu hỏi pháp lý/hợp đồng -> Truy xuất `cuad_contracts`.
+  - Tìm kiếm sản phẩm, nhà cung cấp, đại lý theo ngữ nghĩa tiếng Việt/tiếng Anh -> Truy xuất `adventureworks_entities`.
+  - Tra cứu đơn hàng, tính toán doanh thu, lịch sử mua hàng -> Truy vấn chính xác qua Neo4j Cypher.
+  - Tìm kiếm kết hợp (Hybrid): Qdrant tìm thực thể sản phẩm -> Neo4j tự động mở rộng đồ thị (Graph Expansion) lấy lịch sử giao dịch và doanh thu mang lại.
+  - Thuật toán **Reciprocal Rank Fusion (RRF k=60)** hợp nhất các kết quả và sinh Citation trỏ đúng về bản ghi thực tế.
+
+### 21.5. Giới hạn Còn tồn tại
+- Quá trình mã hóa véc-tơ trên CPU thuần túy cho 26,000+ bản ghi mất khoảng 4-5 phút.
+- Các bảng nhật ký hệ thống (`dbo_DatabaseLog.csv`, `dbo_ErrorLog.csv`) không tham gia vào véc-tơ hóa vì không chứa dữ liệu tìm kiếm ngữ nghĩa kinh doanh.
 
 ---
 *GraphMind Engineering Team — Capstone Project 2026.*

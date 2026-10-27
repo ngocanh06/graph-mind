@@ -37,15 +37,19 @@ def generate_cypher_from_query(query: str) -> str:
         MATCH (o:SalesOrder {{SalesOrderID: {order_num}}})
         OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
         OPTIONAL MATCH (o)-[:CONTAINS_PRODUCT]->(p:Product)
-        WITH o, c, collect(p.Name)[0..5] AS products
+        WITH o, c, collect(coalesce(p.name, p.title, p.Name))[0..5] AS products
+        WITH o, c, products,
+             coalesce(c.name, c.title, c.FirstName + ' ' + c.LastName, 'Customer #' + toString(coalesce(c.id, c.CustomerID))) AS custName,
+             coalesce(c.id, c.CustomerID) AS custId
         RETURN 'Đơn hàng #{order_num}' AS name,
                o.SalesOrderID AS SalesOrderID,
                round(o.TotalDue, 2) AS TotalDue,
+               round(coalesce(o.SubTotal, 0), 2) AS SubTotal,
                toString(o.OrderDate) AS OrderDate,
-               coalesce(c.FirstName + ' ' + c.LastName, 'Customer #' + toString(c.CustomerID)) AS customerName,
-               c.CustomerID AS customerId,
+               custName AS customerName,
+               custId AS customerId,
                products,
-               'Đơn hàng #{order_num} của khách hàng ' + coalesce(c.FirstName + ' ' + c.LastName, 'Khách hàng #' + toString(c.CustomerID)) + ' (Mã KH: ' + toString(c.CustomerID) + ', Giá trị $' + toString(round(o.TotalDue, 2)) + ' USD, Ngày đặt: ' + toString(o.OrderDate) + '). Danh mục sản phẩm đã đặt: ' + reduce(s = '', name in products | s + (case when s = '' then '' else ', ' end) + name) AS snippet,
+               'Đơn hàng #{order_num} của khách hàng ' + custName + ' (Mã KH: ' + toString(custId) + ', Tổng tiền TotalDue $' + toString(round(o.TotalDue, 2)) + ' USD, Ngày đặt: ' + toString(o.OrderDate) + '). Danh mục sản phẩm đã đặt: ' + reduce(s = '', name in products | s + (case when s = '' then '' else ', ' end) + name) AS snippet,
                elementId(o) AS _id, ['SalesOrder', 'Customer', 'Product'] AS _labels
         LIMIT 1
         """
@@ -178,10 +182,11 @@ def generate_cypher_from_query(query: str) -> str:
         WHERE s.OrderDate IS NOT NULL
         WITH substring(toString(s.OrderDate), 0, 4) AS year,
               count(s) AS totalOrders,
-              round(sum(s.TotalDue) / 1000000.0, 2) AS totalMillions
+              round(sum(s.TotalDue), 2) AS totalDueExact,
+              round(sum(s.SubTotal), 2) AS subTotalExact
         RETURN 'Doanh thu năm ' + year AS name,
-               'Năm ' + year + ': Doanh thu đạt $' + toString(totalMillions) + ' triệu USD với ' + toString(totalOrders) + ' đơn hàng' AS snippet,
-               year, totalMillions, totalOrders,
+               'Năm ' + year + ': Doanh thu gộp (TotalDue) đạt $' + toString(totalDueExact) + ' USD, doanh thu thuần sản phẩm (SubTotal) đạt $' + toString(subTotalExact) + ' USD qua ' + toString(totalOrders) + ' đơn hàng.' AS snippet,
+               year, totalDueExact, subTotalExact, totalOrders,
                'trend-' + year AS _id, ['FinancialTrend', 'SalesOrder'] AS _labels
         ORDER BY year ASC
         """

@@ -157,16 +157,28 @@ class QdrantClientWrapper:
         query: str,
         collection_name: str = None,
         limit: int = 10,
+        query_filter: Optional[Dict[str, Any]] = None,
+        entity_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Semantic vector search using SentenceTransformer embedding.
         Falls back to keyword search if model is unavailable.
+        Supports Qdrant payload filtering by entity_type or custom query_filter.
         """
         if not self._connected and not self.connect():
             return []
         col = collection_name or self._collection
         if not col or not query.strip():
             return []
+
+        # Build filter if entity_type is provided
+        effective_filter = query_filter
+        if entity_type and not effective_filter:
+            effective_filter = {
+                "must": [
+                    {"key": "entity_type", "match": {"value": entity_type}}
+                ]
+            }
 
         model = get_embed_model()
         if model:
@@ -176,12 +188,16 @@ class QdrantClientWrapper:
 
                 query_vec = model.encode(query.strip()).tolist()
                 url = f"http://{self._host}:{self._port}/collections/{col}/points/search"
-                req_data = json.dumps({
+                search_payload = {
                     "vector": query_vec,
                     "limit": limit,
                     "with_payload": True,
                     "with_vector": False
-                }).encode("utf-8")
+                }
+                if effective_filter:
+                    search_payload["filter"] = effective_filter
+
+                req_data = json.dumps(search_payload).encode("utf-8")
                 req = urllib.request.Request(
                     url,
                     data=req_data,
@@ -196,9 +212,9 @@ class QdrantClientWrapper:
                         results.append({
                             "id": str(h.get("id")),
                             "score": round(float(h.get("score", 0)), 4),
-                            "contract_name": payload.get("contract_name", "Contract Document"),
+                            "contract_name": payload.get("contract_name") or payload.get("name") or "Document",
                             "chunk_id": payload.get("chunk_id"),
-                            "text": payload.get("text", ""),
+                            "text": payload.get("text") or payload.get("searchable_text", ""),
                             "payload": payload,
                         })
                     return results
