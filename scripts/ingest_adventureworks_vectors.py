@@ -29,20 +29,33 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from sentence_transformers import SentenceTransformer
+
+try:
+    from fastembed import TextEmbedding
+    HAS_FASTEMBED = True
+except ImportError:
+    HAS_FASTEMBED = False
+
+try:
+    from sentence_transformers import SentenceTransformer
+    HAS_SENTENCE_TRANSFORMERS = True
+except ImportError:
+    HAS_SENTENCE_TRANSFORMERS = False
 
 parser = argparse.ArgumentParser(description="Ingest AdventureWorks record-level vectors into Qdrant")
-parser.add_argument("--data-dir", default=os.getenv("ADV_DATA_DIR", str(REPO_ROOT / ".cache_adv_csv")), help="Path to AdventureWorks CSV directory")
+parser.add_argument("--data-dir", default=os.getenv("ADV_DATA_DIR", str(REPO_ROOT)), help="Path to AdventureWorks CSV directory")
 parser.add_argument("--qdrant-host", default=os.getenv("QDRANT_HOST", "localhost"), help="Qdrant host")
 parser.add_argument("--qdrant-port", type=int, default=int(os.getenv("QDRANT_PORT", 6333)), help="Qdrant port")
 parser.add_argument("--collection", default="adventureworks_entities", help="Collection name")
 args, _ = parser.parse_known_args()
 
 adv_dir = Path(args.data_dir).resolve()
-if not adv_dir.exists() or not (adv_dir / "Production_Product.csv").exists():
+if not adv_dir.exists() or not any(adv_dir.rglob("Production_Product.csv")):
     fallback_dir = REPO_ROOT / "central_storage_restore"
     if fallback_dir.exists():
         adv_dir = fallback_dir
+    else:
+        adv_dir = REPO_ROOT
 
 print("=" * 65)
 print("  ADVENTUREWORKS RECORD-LEVEL VECTOR INGESTION (QDRANT)")
@@ -67,8 +80,16 @@ client.create_collection(
 print(f"[✓] Collection '{col_name}' created (dim: 384, metric: Cosine)")
 
 # 2. Load Embedding Model
-print("[*] Loading SentenceTransformer 'all-MiniLM-L6-v2'...")
-model = SentenceTransformer("all-MiniLM-L6-v2")
+if HAS_FASTEMBED:
+    print("[*] Loading FastEmbed TextEmbedding 'sentence-transformers/all-MiniLM-L6-v2'...")
+    model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
+    embed_fn = lambda batch_texts: [e.tolist() for e in model.embed(batch_texts)]
+elif HAS_SENTENCE_TRANSFORMERS:
+    print("[*] Loading SentenceTransformer 'all-MiniLM-L6-v2'...")
+    _st = SentenceTransformer("all-MiniLM-L6-v2")
+    embed_fn = lambda batch_texts: _st.encode(batch_texts, batch_size=256, show_progress_bar=False).tolist()
+else:
+    raise RuntimeError("Neither fastembed nor sentence-transformers is installed.")
 
 # Helper to find file in adv_dir or subfolders
 def get_csv_path(filename: str) -> Path:
@@ -78,7 +99,10 @@ def get_csv_path(filename: str) -> Path:
     matches = list(adv_dir.rglob(filename))
     if matches:
         return matches[0]
-    raise FileNotFoundError(f"Could not find {filename} in {adv_dir}")
+    matches_root = list(REPO_ROOT.rglob(filename))
+    if matches_root:
+        return matches_root[0]
+    raise FileNotFoundError(f"Could not find {filename} in {adv_dir} or {REPO_ROOT}")
 
 # 3. Collect Entity Records
 records = []  # list of dicts: id, text, payload
@@ -280,7 +304,7 @@ t0 = time.time()
 for i in range(0, len(records), batch_size):
     batch = records[i:i + batch_size]
     texts = [r["text"] for r in batch]
-    embeddings = model.encode(texts, batch_size=256, show_progress_bar=False).tolist()
+    embeddings = embed_fn(texts)
     
     points = [
         models.PointStruct(
