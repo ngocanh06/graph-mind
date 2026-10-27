@@ -59,8 +59,19 @@ class QdrantClientWrapper:
             self._client = QdrantClient(host=host, port=port, timeout=8)
             resp = self._client.get_collections()
             col_names = [c.name for c in resp.collections]
-            if self._collection not in col_names and col_names:
-                self._collection = col_names[0]
+            if self._collection not in col_names:
+                if "cuad_contracts" in col_names:
+                    self._collection = "cuad_contracts"
+                else:
+                    try:
+                        from qdrant_client.http import models
+                        self._client.create_collection(
+                            collection_name=self._collection,
+                            vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
+                        )
+                    except Exception as col_err:
+                        if col_names:
+                            self._collection = col_names[0]
             self._connected = True
             print(f"[Qdrant] Connected to {host}:{port}, active collection={self._collection}")
             return True
@@ -141,7 +152,7 @@ class QdrantClientWrapper:
                 payload = r.payload or {}
                 points.append({
                     "id": str(r.id),
-                    "contract_name": payload.get("contract_name", "Contract Document"),
+                    "contract_name": payload.get("contract_name") or payload.get("name") or "Contract Document",
                     "chunk_id": payload.get("chunk_id"),
                     "text": payload.get("text", ""),
                     "payload": payload,
@@ -196,10 +207,11 @@ class QdrantClientWrapper:
                         results.append({
                             "id": str(h.get("id")),
                             "score": round(float(h.get("score", 0)), 4),
-                            "contract_name": payload.get("contract_name", "Contract Document"),
+                            "contract_name": payload.get("contract_name") or payload.get("name") or "Contract Document",
                             "chunk_id": payload.get("chunk_id"),
                             "text": payload.get("text", ""),
                             "payload": payload,
+                            "collection": col,
                         })
                     return results
             except Exception as e:
@@ -244,10 +256,11 @@ class QdrantClientWrapper:
                     matched.append({
                         "id": str(r.id),
                         "score": score,
-                        "contract_name": payload.get("contract_name", "Contract Document"),
+                        "contract_name": payload.get("contract_name") or payload.get("name") or "Contract Document",
                         "chunk_id": payload.get("chunk_id"),
                         "text": payload.get("text", ""),
                         "payload": payload,
+                        "collection": col,
                     })
             matched.sort(key=lambda x: x["score"], reverse=True)
             return matched[:limit]

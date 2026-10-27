@@ -96,7 +96,7 @@ async def run_department_report_tests():
         res = await client.post(
             "/api/dashboard/department-report/signoff",
             headers=mgr_headers,
-            json={"submissionId": "shift-sales-01", "comment": "Đã xem và phê duyệt. Khen ngợi giải pháp giữ chân ABC Corp."}
+            json={"submissionId": "shift-sales-01", "comment": "Đã xem và phê duyệt. Khen ngợi giải pháp giữ chân Brakes and Gears."}
         )
         assert res.status_code == 200, f"Expected 200 for Manager signoff, got {res.status_code}: {res.text}"
         sign_data = res.json()

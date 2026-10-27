@@ -116,7 +116,7 @@ export default function App() {
   const [pageMode, setPageMode] = useState(initialRoute.mode); // "app" | "landing" | "login"
   const [isRailOpen, setIsRailOpen] = useState(true);
   const [demoStep, setDemoStep] = useState(1);
-  const [selectedEntity, setSelectedEntity] = useState("abc");
+  const [selectedEntity, setSelectedEntity] = useState("29818");
   const [selectedDocId, setSelectedDocId] = useState(null);
   const [initialCopilotQuery, setInitialCopilotQuery] = useState("");
 
