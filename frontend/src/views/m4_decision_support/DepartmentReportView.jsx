@@ -466,6 +466,10 @@ export default function DepartmentReportView({
                 <Award size={14} />
                 {isVi ? "SLA Hoàn tất 100%" : "100% SLA"}
               </span>
+              <span className="dept-tag dept-tag-green">
+                <CheckCircle2 size={14} />
+                {isVi ? "Hiệu suất: 8/8 Đạt A+ · 0 Ca tồn đọng" : "Staff Performance: 8/8 Grade A+ · 0 Backlog"}
+              </span>
             </div>
 
             <h1 style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0", letterSpacing: "-0.02em" }}>
@@ -530,27 +534,52 @@ export default function DepartmentReportView({
               {isVi ? "PHÒNG BAN:" : "DEPARTMENT:"}
             </span>
             {isExecOrAdmin ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                {DEPT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => handleSelectDept(opt.id)}
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: "6px",
-                      fontSize: "12.5px",
-                      fontWeight: activeDept === opt.id ? "700" : "500",
-                      border: "1px solid",
-                      borderColor: activeDept === opt.id ? opt.color : "var(--border)",
-                      background: activeDept === opt.id ? `${opt.color}15` : "var(--surface)",
-                      color: activeDept === opt.id ? opt.color : "var(--text-3)",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease"
-                    }}
-                  >
-                    {isVi ? opt.labelVi : opt.labelEn}
-                  </button>
-                ))}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {/* Dropdown Menu Selector per Spec: "chọn lọc báo cáo của bất kỳ phòng ban nào từ menu dropdown" */}
+                <select
+                  value={activeDept}
+                  onChange={(e) => handleSelectDept(e.target.value)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "6px",
+                    fontSize: "12.5px",
+                    fontWeight: "700",
+                    border: "1px solid #2563eb",
+                    background: "var(--surface)",
+                    color: "#2563eb",
+                    cursor: "pointer",
+                  }}
+                  title={isVi ? "Menu dropdown chọn lọc phòng ban" : "Dropdown department selector"}
+                >
+                  {DEPT_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {isVi ? opt.labelVi : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                  {DEPT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => handleSelectDept(opt.id)}
+                      style={{
+                        padding: "5px 12px",
+                        borderRadius: "6px",
+                        fontSize: "12.5px",
+                        fontWeight: activeDept === opt.id ? "700" : "500",
+                        border: "1px solid",
+                        borderColor: activeDept === opt.id ? opt.color : "var(--border)",
+                        background: activeDept === opt.id ? `${opt.color}15` : "var(--surface)",
+                        color: activeDept === opt.id ? opt.color : "var(--text-3)",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      {isVi ? opt.labelVi : opt.labelEn}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -636,9 +665,14 @@ export default function DepartmentReportView({
             <div style={{ height: 4, background: "var(--border)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
               <div style={{ width: "100%", height: "100%", background: "linear-gradient(90deg, #10b981, #059669)" }}></div>
             </div>
-            <div style={{ fontSize: "12px", color: "var(--text-4)", marginTop: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Clock size={12} />
-              <span>{isVi ? `Xử lý TB: ${kpis.avgTurnaroundMinutes || 12} phút/ca · 8/8 chuyên viên hoàn tất` : `Avg turnaround: ${kpis.avgTurnaroundMinutes || 12}m/case · 8/8 filed`}</span>
+            <div style={{ fontSize: "12px", color: "var(--text-4)", marginTop: "6px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Clock size={12} />
+                <span>{isVi ? `Xử lý TB: ${kpis.avgTurnaroundMinutes || 12} phút/ca · 8/8 chuyên viên hoàn tất` : `Avg turnaround: ${kpis.avgTurnaroundMinutes || 12}m/case · 8/8 filed`}</span>
+              </div>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "1px 7px", borderRadius: "8px" }}>
+                {isVi ? "0 ca tồn đọng (0 backlog)" : "0 backlog"}
+              </span>
             </div>
           </div>
         </div>
