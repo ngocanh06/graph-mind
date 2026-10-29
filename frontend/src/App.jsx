@@ -376,6 +376,8 @@ export default function App() {
               onNavigate={handleNavigate}
               t={t}
               lang={lang}
+              role={role}
+              currentUser={currentUser}
             />
           )}
 

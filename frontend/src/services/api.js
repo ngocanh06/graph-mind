@@ -49,11 +49,22 @@ export function getAuthHeaders(currentUser = null) {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  if (currentUser) {
-    if (currentUser.email) headers["X-User-Email"] = currentUser.email;
-    if (currentUser.username) headers["X-User-Name"] = currentUser.username;
-    if (currentUser.id) headers["X-User-Id"] = currentUser.id;
-    if (currentUser.department) headers["X-User-Dept"] = encodeURIComponent(currentUser.department);
+  let user = currentUser;
+  if (!user) {
+    try {
+      const saved = localStorage.getItem("aegis_user");
+      if (saved) user = JSON.parse(saved);
+    } catch (e) {}
+  }
+  if (user) {
+    if (user.email) headers["X-User-Email"] = user.email;
+    if (user.username) headers["X-User-Name"] = user.username;
+    if (user.id) {
+      headers["X-User-Id"] = user.id;
+      headers["X-User-Role"] = user.id;
+    }
+    if (user.roleKey) headers["X-User-RoleKey"] = user.roleKey;
+    if (user.department) headers["X-User-Dept"] = encodeURIComponent(user.department);
   }
   return headers;
 }
