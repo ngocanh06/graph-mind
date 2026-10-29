@@ -223,117 +223,138 @@ def get_contract_distribution():
 
 
 # ---------------------------------------------------------------------------
-# 5. Smart Risk & Alert Center (US34 / PB58 / FR42)
+# 5. Smart Risk & Alert Center (US34 / PB58 / FR42 / BR-02 / BR-05)
 # ---------------------------------------------------------------------------
 @router.get("/risk-alerts")
-def get_risk_alerts():
+def get_risk_alerts(
+    role: Optional[str] = Query(None),
+    dept: Optional[str] = Query(None),
+    scope: Optional[ScopeContext] = Depends(get_user_scope),
+):
     """
-    Identifies proactive legal & business risks directly from Neo4j:
-    - Contracts missing 'Limitation of Liability' (High Legal Exposure)
-    - Contracts missing 'Indemnification'
-    - High-value outlier orders (> $25,000) requiring CEO audit
-    - Contracts with aggressive Termination clauses
+    Identifies proactive legal & business risks directly from Neo4j (BR-02, BR-05, UC.20):
+    - Executive & Admin: Full enterprise access to all Legal & Financial risks (BR-05).
+    - Department Manager: Scoped to assigned department risks (BR-02 / BR-04).
+    - Standard User: Scoped only to operational financial/order anomalies (US23 / FR43 / E2).
     """
     try:
         neo4j_client.connect()
         alerts = []
         alert_id = 1
 
+        effective_role = (scope.role if scope else role or "standard").strip().lower()
+        effective_dept = (scope.department_name if scope else dept or "Kinh doanh").strip()
+        is_unrestricted = (scope.is_unrestricted if scope else False) or (effective_role in ["executive", "it_admin", "admin", "ceo", "cfo"])
+        is_manager = effective_role in ["knowledge_manager", "manager", "lead", "tp"]
+
         # 1. Legal Risk: Contracts missing Limitation of Liability
-        missing_liability_cypher = """
-        MATCH (c:Document)
-        WHERE c.department = 'Pháp chế (Legal)' OR c.department IS NULL
-        OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
-        WITH c, collect(cl.type) AS clauseTypes
-        WHERE NOT any(t IN clauseTypes WHERE t CONTAINS 'Liability' OR t CONTAINS 'Trách nhiệm')
-        RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Hợp đồng Pháp chế') AS type, c.lastModified AS date
-        LIMIT 5
-        """
-        liability_records = neo4j_client.run_cypher(missing_liability_cypher)
-        for rec in liability_records:
-            alerts.append({
-                "id": f"risk-legal-{alert_id}",
-                "title": f"Thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability)",
-                "description": f"Hợp đồng '{rec.get('name')}' ({rec.get('type')}) không có điều khoản giới hạn trách nhiệm pháp lý. Doanh nghiệp đối mặt với rủi ro bồi thường vô hạn khi có tranh chấp.",
-                "severity": "CRITICAL",
-                "variant": "critical",
-                "category": "LEGAL_COMPLIANCE",
-                "source": "CUAD_NEO4J",
-                "contractId": rec.get("id"),
-                "date": rec.get("date"),
-                "meta": [
-                    {"label": "Contract ID", "value": rec.get("id")},
-                    {"label": "Phân loại", "value": rec.get("type")},
-                    {"label": "Mức độ rủi ro", "value": "Nghiêm trọng (Vô hạn trách nhiệm)"}
-                ]
-            })
-            alert_id += 1
+        # Permitted for Executive/Admin or Legal Department Managers
+        allow_legal = is_unrestricted or (is_manager and any(k in effective_dept.lower() for k in ["pháp chế", "legal"]))
+        allow_financial = is_unrestricted or is_manager or any(k in effective_dept.lower() for k in ["kinh doanh", "sales", "operations", "tài chính", "accounting"])
 
-        # 2. Legal Risk: Contracts missing Indemnification / Confidentiality
-        missing_indemnity_cypher = """
-        MATCH (c:Document)
-        WHERE c.department = 'Pháp chế (Legal)' OR c.department IS NULL
-        OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
-        WITH c, collect(cl.type) AS clauseTypes
-        WHERE NOT any(t IN clauseTypes WHERE t CONTAINS 'Indemnif' OR t CONTAINS 'Bồi hoàn' OR t CONTAINS 'Bảo mật')
-        RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Hợp đồng Pháp chế') AS type, c.lastModified AS date
-        LIMIT 4
-        """
-        indemnity_records = neo4j_client.run_cypher(missing_indemnity_cypher)
-        for rec in indemnity_records:
-            alerts.append({
-                "id": f"risk-legal-{alert_id}",
-                "title": f"Không có điều khoản bồi hoàn thiệt hại (Indemnification)",
-                "description": f"Hợp đồng '{rec.get('name')}' thiếu cam kết bồi hoàn thiệt hại phát sinh từ bên thứ ba. Cần bổ sung phụ lục bảo vệ tài sản doanh nghiệp.",
-                "severity": "HIGH",
-                "variant": "high",
-                "category": "LEGAL_COMPLIANCE",
-                "source": "CUAD_NEO4J",
-                "contractId": rec.get("id"),
-                "date": rec.get("date"),
-                "meta": [
-                    {"label": "Contract ID", "value": rec.get("id")},
-                    {"label": "Loại văn bản", "value": rec.get("type")},
-                    {"label": "Khuyến nghị", "value": "Bổ sung phụ lục bảo vệ sở hữu trí tuệ/trách nhiệm"}
-                ]
-            })
-            alert_id += 1
+        if allow_legal:
+            missing_liability_cypher = """
+            MATCH (c:Document)
+            WHERE c.department = 'Pháp chế (Legal)' OR c.department IS NULL
+            OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
+            WITH c, collect(cl.type) AS clauseTypes
+            WHERE NOT any(t IN clauseTypes WHERE t CONTAINS 'Liability' OR t CONTAINS 'Trách nhiệm')
+            RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Hợp đồng Pháp chế') AS type, c.lastModified AS date
+            LIMIT 5
+            """
+            liability_records = neo4j_client.run_cypher(missing_liability_cypher)
+            for rec in liability_records:
+                alerts.append({
+                    "id": f"risk-legal-{alert_id}",
+                    "title": f"Thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability)",
+                    "description": f"Hợp đồng '{rec.get('name')}' ({rec.get('type')}) không có điều khoản giới hạn trách nhiệm pháp lý. Doanh nghiệp đối mặt với rủi ro bồi thường vô hạn khi có tranh chấp.",
+                    "severity": "CRITICAL",
+                    "variant": "critical",
+                    "category": "LEGAL_COMPLIANCE",
+                    "source": "CUAD_NEO4J",
+                    "contractId": rec.get("id"),
+                    "date": rec.get("date"),
+                    "meta": [
+                        {"label": "Contract ID", "value": rec.get("id")},
+                        {"label": "Phân loại", "value": rec.get("type")},
+                        {"label": "Mức độ rủi ro", "value": "Nghiêm trọng (Vô hạn trách nhiệm)"}
+                    ]
+                })
+                alert_id += 1
 
-        # 3. Financial Risk: Outlier high-value orders needing Executive sign-off
-        high_value_cypher = """
-        MATCH (c:Customer)-[:PLACED_ORDER]->(s:SalesOrder)
-        WHERE coalesce(s.totalDue, s.TotalDue, 0.0) > 25000
-        RETURN c.id AS customerId,
-               coalesce(c.name, 'Khách hàng #' + toString(c.id)) AS customerName,
-               s.id AS orderId,
-               round(coalesce(s.totalDue, s.TotalDue, 0.0), 2) AS totalDue,
-               toString(coalesce(s.orderDate, s.OrderDate)) AS orderDate
-        ORDER BY totalDue DESC
-        LIMIT 4
-        """
-        high_value_records = neo4j_client.run_cypher(high_value_cypher)
-        for rec in high_value_records:
-            alerts.append({
-                "id": f"risk-fin-{alert_id}",
-                "title": f"Giao dịch giá trị lớn cần phê duyệt điều hành (Order #{rec.get('orderId')})",
-                "description": f"Khách hàng {rec.get('customerName')} phát sinh đơn hàng đạt ${rec.get('totalDue'):,.2f} vào ngày {rec.get('orderDate')}. Vượt ngưỡng tự động của hệ thống, yêu cầu rà soát hạn mức tín dụng.",
-                "severity": "MEDIUM",
-                "variant": "medium",
-                "category": "FINANCIAL_RISK",
-                "source": "ADVENTUREWORKS_NEO4J",
-                "orderId": rec.get("orderId"),
-                "meta": [
-                    {"label": "Khách hàng", "value": rec.get("customerName")},
-                    {"label": "Giá trị đơn", "value": f"${rec.get('totalDue'):,.2f}"},
-                    {"label": "Trạng thái", "value": "Chờ xác nhận bảo lãnh công nợ"}
-                ]
-            })
-            alert_id += 1
+            # 2. Legal Risk: Contracts missing Indemnification / Confidentiality
+            missing_indemnity_cypher = """
+            MATCH (c:Document)
+            WHERE c.department = 'Pháp chế (Legal)' OR c.department IS NULL
+            OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
+            WITH c, collect(cl.type) AS clauseTypes
+            WHERE NOT any(t IN clauseTypes WHERE t CONTAINS 'Indemnif' OR t CONTAINS 'Bồi hoàn' OR t CONTAINS 'Bảo mật')
+            RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Hợp đồng Pháp chế') AS type, c.lastModified AS date
+            LIMIT 4
+            """
+            indemnity_records = neo4j_client.run_cypher(missing_indemnity_cypher)
+            for rec in indemnity_records:
+                alerts.append({
+                    "id": f"risk-legal-{alert_id}",
+                    "title": f"Không có điều khoản bồi hoàn thiệt hại (Indemnification)",
+                    "description": f"Hợp đồng '{rec.get('name')}' thiếu cam kết bồi hoàn thiệt hại phát sinh từ bên thứ ba. Cần bổ sung phụ lục bảo vệ tài sản doanh nghiệp.",
+                    "severity": "HIGH",
+                    "variant": "high",
+                    "category": "LEGAL_COMPLIANCE",
+                    "source": "CUAD_NEO4J",
+                    "contractId": rec.get("id"),
+                    "date": rec.get("date"),
+                    "meta": [
+                        {"label": "Contract ID", "value": rec.get("id")},
+                        {"label": "Loại văn bản", "value": rec.get("type")},
+                        {"label": "Khuyến nghị", "value": "Bổ sung phụ lục bảo vệ sở hữu trí tuệ/trách nhiệm"}
+                    ]
+                })
+                alert_id += 1
+
+        # 3. Financial Risk: Outlier high-value orders needing review
+        if allow_financial:
+            high_value_cypher = """
+            MATCH (c:Customer)-[:PLACED_ORDER]->(s:SalesOrder)
+            WHERE coalesce(s.totalDue, s.TotalDue, 0.0) > 25000
+            RETURN c.id AS customerId,
+                   coalesce(c.name, 'Khách hàng #' + toString(c.id)) AS customerName,
+                   s.id AS orderId,
+                   round(coalesce(s.totalDue, s.TotalDue, 0.0), 2) AS totalDue,
+                   toString(coalesce(s.orderDate, s.OrderDate)) AS orderDate
+            ORDER BY totalDue DESC
+            LIMIT 4
+            """
+            high_value_records = neo4j_client.run_cypher(high_value_cypher)
+            for rec in high_value_records:
+                alerts.append({
+                    "id": f"risk-fin-{alert_id}",
+                    "title": f"Giao dịch giá trị lớn cần phê duyệt điều hành (Order #{rec.get('orderId')})",
+                    "description": f"Khách hàng {rec.get('customerName')} phát sinh đơn hàng đạt ${rec.get('totalDue'):,.2f} vào ngày {rec.get('orderDate')}. Vượt ngưỡng tự động của hệ thống, yêu cầu rà soát hạn mức tín dụng.",
+                    "severity": "MEDIUM",
+                    "variant": "medium",
+                    "category": "FINANCIAL_RISK",
+                    "source": "ADVENTUREWORKS_NEO4J",
+                    "orderId": rec.get("orderId"),
+                    "meta": [
+                        {"label": "Khách hàng", "value": rec.get("customerName")},
+                        {"label": "Giá trị đơn", "value": f"${rec.get('totalDue'):,.2f}"},
+                        {"label": "Trạng thái", "value": "Chờ xác nhận bảo lãnh công nợ"}
+                    ]
+                })
+                alert_id += 1
 
         return {
             "success": True,
             "totalAlerts": len(alerts),
-            "data": alerts
+            "data": alerts,
+            "rbac": {
+                "role": effective_role,
+                "department": effective_dept,
+                "isUnrestricted": is_unrestricted,
+                "allowLegal": allow_legal,
+                "allowFinancial": allow_financial
+            }
         }
     except Exception as e:
         logger.error(f"Error fetching risk alerts: {e}")

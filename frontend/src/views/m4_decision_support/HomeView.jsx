@@ -4,7 +4,7 @@ import {
   MessageSquare, AlertTriangle, RefreshCw, FileEdit,
   ShieldAlert, Inbox, Sparkles, Wand2, Download, FileText,
   Activity, ArrowRight, DollarSign, Clock, TrendingDown, CheckCircle2,
-  ExternalLink, Building2, ChevronRight, Check, Database
+  ExternalLink, Building2, ChevronRight, Check, Database, BarChart2
 } from "lucide-react";
 import { Button, Badge, Card, Modal, PageHeader } from "../../components/ui";
 import {
@@ -221,6 +221,20 @@ const EXECUTIVE_CARDS = [
     ctaEn: "View KPIs",
     descVi: "Theo dõi doanh thu, đối tác chiến lược và chỉ số rủi ro điều khoản tự động.",
     descEn: "Track revenue, strategic partners and automated clause risk indicators.",
+    roles: ["executive", "it_admin"],
+  },
+  {
+    id: "reports",
+    Icon: BarChart2,
+    iconColor: "#7c3aed",
+    iconBg: "rgba(124, 58, 237, 0.08)",
+    labelVi: "Báo cáo phòng ban",
+    labelEn: "Department Reports",
+    ctaVi: "Xem báo cáo",
+    ctaEn: "View Reports",
+    descVi: "Theo dõi các chỉ số hoạt động, rà soát văn bản và ký duyệt báo cáo phòng ban.",
+    descEn: "Track departmental metrics, review documents and sign off reports.",
+    roles: ["knowledge_manager"],
   },
   {
     id: "risk",
@@ -231,8 +245,22 @@ const EXECUTIVE_CARDS = [
     labelEn: "Enterprise Risk Center",
     ctaVi: "Xem rủi ro",
     ctaEn: "View risks",
-    descVi: "Phát hiện sớm các bất thường pháp lý và suy giảm doanh thu toàn doanh nghiệp.",
-    descEn: "Early detection of legal anomalies and enterprise-wide revenue dips.",
+    descVi: "Phát hiện sớm các bất thường pháp lý và suy giảm doanh thu toàn doanh nghiệp (BR-05).",
+    descEn: "Early detection of legal anomalies and enterprise-wide revenue dips (BR-05).",
+    roles: ["executive", "it_admin"],
+  },
+  {
+    id: "risk",
+    Icon: AlertTriangle,
+    iconColor: "#D97706",
+    iconBg: "rgba(217,119,6,0.08)",
+    labelVi: "Cảnh báo rủi ro phòng ban",
+    labelEn: "Department Risk Alerts",
+    ctaVi: "Xem rủi ro",
+    ctaEn: "View risks",
+    descVi: "Giám sát hợp đồng sắp mãn hạn và biến động đơn hàng trong phạm vi phòng ban (BR-02/BR-04).",
+    descEn: "Track expiring contracts and order cadence dips within assigned department scope (BR-02/BR-04).",
+    roles: ["knowledge_manager"],
   },
   {
     id: "knowledge",
@@ -245,6 +273,7 @@ const EXECUTIVE_CARDS = [
     ctaEn: "Explore",
     descVi: "Khám phá mạng lưới liên kết thực thể, quan hệ pháp lý và đồ thị bằng chứng RAG.",
     descEn: "Explore entity network, legal relationships and GraphRAG evidence graph.",
+    roles: ["executive", "knowledge_manager", "it_admin"],
   },
   {
     id: "copilot",
@@ -257,12 +286,15 @@ const EXECUTIVE_CARDS = [
     ctaEn: "Ask AI",
     descVi: "Hỏi đáp ngôn ngữ tự nhiên Hybrid GraphRAG, trích dẫn nguồn xác thực hợp đồng & CRM.",
     descEn: "Natural language Q&A with Hybrid GraphRAG, citing verified contract & CRM sources.",
+    roles: ["executive", "knowledge_manager", "it_admin", "standard"],
   },
 ];
 
 export default function HomeView({ onNavigate, role = "executive", currentUser, lang = "vi", t = {} }) {
   const isVi = lang === "vi";
   const isStandardSales = role === "standard" || role === "sales" || currentUser?.roleKey === "SALES_OPS" || currentUser?.id === "standard";
+  const isExec = role === "executive" || role === "it_admin" || currentUser?.id === "executive" || currentUser?.id === "it_admin";
+  const isManager = role === "knowledge_manager" || currentUser?.id === "knowledge_manager";
   const [showBriefing, setShowBriefing] = useState(false);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
   const [briefingText, setBriefingText] = useState("");
@@ -901,14 +933,25 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
         }
         badge={isVi ? (currentUser?.badge || "Executive Director") : (currentUser?.badgeEn || "Executive Director")}
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            icon={FileText}
-            onClick={() => setShowBriefing(true)}
-          >
-            {isVi ? "Tạo tóm tắt điều hành" : "Create executive briefing"}
-          </Button>
+          isExec ? (
+            <Button
+              variant="primary"
+              size="md"
+              icon={FileText}
+              onClick={() => setShowBriefing(true)}
+            >
+              {isVi ? "Tạo tóm tắt điều hành" : "Create executive briefing"}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="md"
+              icon={BarChart2}
+              onClick={() => onNavigate("reports")}
+            >
+              {isVi ? "Xem báo cáo phòng ban" : "View Department Reports"}
+            </Button>
+          )
         }
       />
 
@@ -934,7 +977,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
             gap: "16px",
           }}
         >
-          {EXECUTIVE_CARDS.map((card) => {
+          {EXECUTIVE_CARDS.filter(card => !card.roles || card.roles.includes(role)).map((card) => {
             const IconComp = card.Icon;
             return (
               <Card

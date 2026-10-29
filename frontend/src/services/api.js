@@ -49,12 +49,20 @@ export function getAuthHeaders(currentUser = null) {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  if (currentUser) {
-    if (currentUser.email) headers["X-User-Email"] = currentUser.email;
-    if (currentUser.username) headers["X-User-Name"] = currentUser.username;
-    if (currentUser.id) headers["X-User-Id"] = currentUser.id;
-    if (currentUser.department) headers["X-User-Dept"] = encodeURIComponent(currentUser.department);
-    if (currentUser.role || currentUser.roleKey) headers["X-User-Role"] = currentUser.roleKey || currentUser.role;
+  let user = currentUser;
+  if (!user) {
+    try {
+      const saved = localStorage.getItem("aegis_user");
+      if (saved) user = JSON.parse(saved);
+    } catch (e) {}
+  }
+  if (user) {
+    if (user.email) headers["X-User-Email"] = user.email;
+    if (user.username) headers["X-User-Name"] = user.username;
+    if (user.id) headers["X-User-Id"] = user.id;
+    if (user.department) headers["X-User-Dept"] = encodeURIComponent(user.department);
+    if (user.role || user.roleKey) headers["X-User-Role"] = user.roleKey || user.role;
+    if (user.roleKey) headers["X-User-RoleKey"] = user.roleKey;
   }
   return headers;
 }
@@ -482,16 +490,17 @@ export async function fetchAssignedContracts(role = "standard", dept = "Kinh doa
 
 export async function fetchRiskAlerts(roleOrUser = "standard", dept = "Kinh doanh") {
   try {
-    if (arguments.length === 0 || (roleOrUser && typeof roleOrUser === "object")) {
-      const res = await fetch(`${API_BASE}/dashboard/risk-alerts`, {
-        headers: getAuthHeaders(roleOrUser || null),
-      });
-      if (res.ok) return await res.json();
-    }
-    const role = typeof roleOrUser === "string" ? roleOrUser : "standard";
-    const sp = new URLSearchParams({ role, dept });
-    const res = await fetch(`${API_BASE}/risk/alerts?${sp.toString()}`);
+    const isUserObj = roleOrUser && typeof roleOrUser === "object";
+    const userRole = isUserObj ? (roleOrUser.id || roleOrUser.role || "standard") : roleOrUser;
+    const userDept = isUserObj ? (roleOrUser.department || dept) : dept;
+    const headers = getAuthHeaders(isUserObj ? roleOrUser : null);
+
+    const sp = new URLSearchParams({ role: userRole, dept: userDept });
+    const res = await fetch(`${API_BASE}/risk/alerts?${sp.toString()}`, { headers });
     if (res.ok) return await res.json();
+
+    const resFallback = await fetch(`${API_BASE}/dashboard/risk-alerts?${sp.toString()}`, { headers });
+    if (resFallback.ok) return await resFallback.json();
   } catch (e) {
     console.warn("[Risk] fetchRiskAlerts error:", e);
   }
