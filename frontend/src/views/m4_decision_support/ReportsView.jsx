@@ -6,12 +6,17 @@ import DepartmentReportView from "./DepartmentReportView";
 export default function ReportsView({ onNavigate, t, lang, role = "executive", currentUser, initialMode }) {
   const isVi = lang === "vi";
   const isSalesRole = role === "standard";
-  const defaultMode = initialMode || (role === "knowledge_manager" ? "department" : (isSalesRole ? "shift" : "executive"));
+  const isManagerRole = role === "knowledge_manager";
+  const isAdminRole = role === "it_admin";
+  const isExecRole = role === "executive";
+
+  const defaultMode = initialMode || (isManagerRole ? "department" : (isSalesRole ? "shift" : "executive"));
   const [reportMode, setReportMode] = useState(defaultMode);
 
   // Common State
   const [timeRange, setTimeRange] = useState("today");
   const [depth, setDepth] = useState("comprehensive");
+  const [businessArea, setBusinessArea] = useState("all");
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGeneratedReport, setHasGeneratedReport] = useState(!isSalesRole);
   const [generatedDate, setGeneratedDate] = useState(
@@ -21,6 +26,14 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   const [managerApproved, setManagerApproved] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [liveBriefing, setLiveBriefing] = useState("");
+
+  // Executive C-Suite Actions State (Spec Row 4)
+  const [csuiteDiscountApproved, setCsuiteDiscountApproved] = useState(false);
+  const [csuiteBudgetApproved, setCsuiteBudgetApproved] = useState(false);
+
+  // IT Admin Cross-Audit Reconciliation State (Spec Row 4)
+  const [crossAuditReconciled, setCrossAuditReconciled] = useState(true);
+  const [isReconciling, setIsReconciling] = useState(false);
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -111,7 +124,8 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             >
               {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
             </button>
-            {role !== "standard" && (
+            {/* BR-04 Enforcement: Only Executive or IT Admin can switch to Strategic / Comprehensive Telemetry */}
+            {(isExecRole || isAdminRole) && (
               <button
                 onClick={() => setReportMode("executive")}
                 style={{
@@ -120,20 +134,16 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                   background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
                 }}
               >
-                {isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}
+                {isAdminRole
+                  ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện" : "Strategic Briefing & Global Telemetry")
+                  : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing")}
               </button>
             )}
-            {role === "standard" && (
-              <button
-                onClick={() => setReportMode("shift")}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
-                  background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
-                }}
-              >
-                {isVi ? "Báo Cáo Ca Chuyên Viên" : "Specialist Shift Report"}
-              </button>
+            {/* Department Managers have locked department scope (BR-04) */}
+            {isManagerRole && (
+              <span style={{ fontSize: 11.5, color: "var(--text-4)", padding: "4px 10px", fontStyle: "italic" }}>
+                {isVi ? "Phạm vi: Cấp trung (BR-04 cố định)" : "Scope: Department Scope (BR-04)"}
+              </span>
             )}
           </div>
         </div>
@@ -154,29 +164,21 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   if (isSalesRole && reportMode === "shift") {
     return (
       <div className="view active" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
-        {/* Switcher Bar for Specialist */}
+        {/* Switcher Bar for Specialist - strictly Micro Scope (BR-02) */}
         <div style={{ maxWidth: 1400, margin: "0 auto 14px auto", width: "100%", boxSizing: "border-box" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
-            <button
-              onClick={() => setReportMode("shift")}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
+            <span
               style={{
                 display: "flex", alignItems: "center", gap: 6,
                 padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
-                background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
+                background: "#2563eb", color: "#ffffff"
               }}
             >
               {isVi ? "Báo Cáo Ca Chuyên Viên" : "Specialist Shift Report"}
-            </button>
-            <button
-              onClick={() => setReportMode("department")}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
-                background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
-              }}
-            >
-              {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
-            </button>
+            </span>
+            <span style={{ fontSize: 11.5, color: "var(--text-3)", padding: "0 8px", fontStyle: "italic" }}>
+              {isVi ? "Phạm vi: Vi mô cá nhân (BR-02)" : "Scope: Specialist Micro-Level (BR-02)"}
+            </span>
           </div>
         </div>
 
@@ -1236,7 +1238,9 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
           }}
         >
-          {isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}
+          {isAdminRole
+            ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện" : "Strategic Briefing & Global Telemetry")
+            : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing")}
         </button>
         <button
           onClick={() => setReportMode("department")}
@@ -1253,8 +1257,16 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
         <div>
-          <div className="section-label">{t.reports_title || (isVi ? "Báo cáo Lãnh đạo & Tóm lược Chiến lược" : "Executive Reports & Strategic Briefings")}</div>
-          <div className="section-sub">{t.reports_sub || (isVi ? "Tự động tổng hợp thông tin kinh doanh, tín hiệu rủi ro và khuyến nghị hành động" : "Automated executive synthesis, multi-hop risk correlation, and strategic decision briefs")}</div>
+          <div className="section-label">
+            {isAdminRole
+              ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện" : "Strategic Briefing & Global Telemetry")
+              : (t.reports_title || (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"))}
+          </div>
+          <div className="section-sub">
+            {isAdminRole
+              ? (isVi ? "Giám sát chất lượng tri thức, độ trễ hệ thống, log kiểm duyệt HITL, an toàn SecOps & đối soát đa cấp" : "Cross-level audit reconciliation, knowledge graph quality, system latency, and SecOps telemetry")
+              : (t.reports_sub || (isVi ? "Bức tranh tài chính vĩ mô, rủi ro pháp lý CUAD toàn diện và các hành động ưu tiên cấp C-Suite" : "Automated executive synthesis, multi-hop risk correlation, and strategic decision briefs"))}
+          </div>
         </div>
 
         <div className="flex items-center gap-space-xs">
@@ -1292,10 +1304,24 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
 
         <div className="cfg-box flex flex-col gap-space-2xs">
           <label className="font-label-caps text-label-caps text-outline uppercase font-bold">{isVi ? "PHẠM VI DOANH NGHIỆP" : "BUSINESS AREAS"}</label>
-          <select className="bg-surface-container text-on-surface p-space-xs rounded-DEFAULT border border-outline-variant/30 text-body-sm">
-            <option>{isVi ? "Toàn diện (Sales, Finance, Ops, Legal)" : "Full Spectrum (Sales, Finance, Ops)"}</option>
-            <option>{isVi ? "Kinh doanh & Khách hàng" : "Sales & Customer Accounts"}</option>
-            <option>{isVi ? "Tài chính & Dòng tiền" : "Financial Cadence & AR"}</option>
+          <select
+            value={businessArea}
+            onChange={(e) => {
+              const val = e.target.value;
+              setBusinessArea(val);
+              if (val !== "all") {
+                showToast(isVi ? `Đang chuyển sang báo cáo chi tiết phòng ban: ${val.toUpperCase()}...` : `Opening department report for: ${val}...`);
+                setReportMode("department");
+              }
+            }}
+            className="bg-surface-container text-on-surface p-space-xs rounded-DEFAULT border border-outline-variant/30 text-body-sm"
+          >
+            <option value="all">{isVi ? "Vĩ mô toàn doanh nghiệp (5 Phòng ban · $123.22M USD)" : "Full Spectrum (5 Depts · $123.22M USD)"}</option>
+            <option value="sales">{isVi ? "Phòng Kinh Doanh & Khách Hàng (Sales)" : "Sales & Customer Accounts"}</option>
+            <option value="legal">{isVi ? "Phòng Pháp Chế & Tuân Thủ (Legal)" : "Legal & Compliance"}</option>
+            <option value="operations">{isVi ? "Phòng Vận Hành & Kho Vận (Ops)" : "Operations & Supply"}</option>
+            <option value="it">{isVi ? "Phòng Công Nghệ & An Toàn TT (IT)" : "IT & SecOps"}</option>
+            <option value="hr">{isVi ? "Phòng Nhân Sự & Đào Tạo (HR)" : "Human Resources"}</option>
           </select>
         </div>
 
@@ -1355,14 +1381,16 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
         <div className="border-b border-outline-variant/20 pb-space-sm">
           <div className="flex items-center justify-between">
             <span className="font-label-caps text-label-caps text-primary font-bold">
-              AEGIS ENTERPRISE INTELLIGENCE OBSERVATORY
+              {isAdminRole ? "AEGIS SECOPS & ENTERPRISE AUDIT OBSERVATORY" : "AEGIS ENTERPRISE INTELLIGENCE OBSERVATORY"}
             </span>
             <span className="font-code-sm text-code-sm text-outline">
-              DOC-ID: #EKMP-REP-2026-Q3
+              DOC-ID: {isAdminRole ? "#SECOPS-AUDIT-2026-Q3" : "#EKMP-REP-2026-Q3"}
             </span>
           </div>
           <h2 className="text-2xl font-bold text-on-surface mt-space-2xs">
-            {isVi ? "Báo cáo Tóm lược Chiến lược — Tháng 09/2026" : "Executive Strategic Briefing — September 2026"}
+            {isAdminRole
+              ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện — Tháng 09/2026" : "Strategic Briefing & Global System Telemetry — September 2026")
+              : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc — Tháng 09/2026" : "Executive Strategic Briefing — September 2026")}
           </h2>
           <div className="doc-date text-caption text-outline mt-space-2xs">
             {isVi ? "Tạo lúc:" : "Synthesized:"} {generatedDate} · Model: Hybrid GraphRAG · <b className="text-green-500">89.4% average confidence score</b>
@@ -1377,11 +1405,10 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           <div className="text-body-sm leading-relaxed text-on-surface" style={{ whiteSpace: "pre-line" }}>
             {liveBriefing ? liveBriefing : (
               isVi
-                ? "Tổng doanh thu toàn hệ thống lũy kế đạt $123.22M USD với 31.465 đơn hàng AdventureWorks trong cơ sở tri thức Neo4j. Khách hàng đóng góp lớn nhất dẫn đầu bởi Roger Harui ($989K) và Andrew Dixon ($961K). Tỷ lệ tuân thủ điều khoản hợp đồng CUAD đạt 56.7%, phát hiện 5 hợp đồng thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability) cần ban lãnh đạo phê duyệt phụ lục bổ sung."
-                : "Total enterprise monitored revenue reached $123.22M USD across 31,465 AdventureWorks orders in Neo4j. Top contributing VIP accounts led by Roger Harui ($989K) and Andrew Dixon ($961K). CUAD contract clause compliance rate is 56.7%, with 5 agreements identified lacking limitation of liability caps."
+                ? "Tổng doanh thu toàn hệ thống lũy kế đạt $123.22M USD với 31.465 đơn hàng AdventureWorks trong cơ sở tri thức Neo4j, giá trị đơn hàng trung bình đạt $3,916 AOV. Khách hàng đóng góp lớn nhất dẫn đầu bởi Roger Harui ($989K) và Andrew Dixon ($961K). Rủi ro pháp lý toàn diện được kiểm soát qua 30 hợp đồng CUAD với tỷ lệ tuân thủ điều khoản đạt 56.7%, phát hiện 5 hợp đồng thiếu điều khoản bảo vệ giới hạn trách nhiệm (Limitation of Liability) cần ban lãnh đạo phê duyệt phụ lục bổ sung. Phân tích công nợ quá hạn ghi nhận $8.6M USD và rủi ro khách hàng rời bỏ lớn tại 2 đối tác trọng điểm."
+                : "Total enterprise monitored revenue reached $123.22M USD across 31,465 AdventureWorks orders in Neo4j, with an average order value of $3,916 AOV. Top contributing VIP accounts led by Roger Harui ($989K) and Andrew Dixon ($961K). Comprehensive legal risk governed across 30 CUAD contracts with a 56.7% clause compliance rate, identifying 5 agreements lacking limitation of liability protections. Overdue receivables analysis stands at $8.6M USD with significant churn signals on key accounts."
             )}
           </div>
-
         </div>
 
         {/* 2. CUSTOMER SIGNALS */}
@@ -1442,25 +1469,80 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
           </div>
         </div>
 
-        {/* 4. RECOMMENDED EXECUTIVE ACTIONS */}
+        {/* 4. RECOMMENDED EXECUTIVE ACTIONS (WITH C-SUITE INTERACTIVE APPROVAL) */}
         <div className="bg-surface-container p-space-md rounded-DEFAULT border border-outline-variant/20">
-          <h3 className="text-sm font-bold text-tertiary uppercase tracking-wider mb-space-xs">
-            4. {isVi ? "HÀNH ĐỘNG CHIẾN LƯỢC ĐỀ XUẤT (RECOMMENDED ACTIONS)" : "RECOMMENDED EXECUTIVE ACTIONS"}
-          </h3>
+          <div className="flex items-center justify-between mb-space-xs flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-tertiary uppercase tracking-wider">
+              4. {isVi ? "HÀNH ĐỘNG CHIẾN LƯỢC ĐỀ XUẤT CẤP C-SUITE" : "RECOMMENDED C-SUITE EXECUTIVE ACTIONS"}
+            </h3>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", background: "rgba(37, 99, 235, 0.1)", padding: "2px 8px", borderRadius: 4 }}>
+              {isVi ? "Thẩm quyền: Ban Giám Đốc Phê Duyệt Hạn Mức" : "Authority: Executive Board Authorization"}
+            </span>
+          </div>
+
           <div className="flex flex-col gap-space-xs text-body-sm">
-            <div className="flex items-start gap-space-xs">
-              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
-              <span>
-                <b>{isVi ? "Ưu tiên 1:" : "Priority 1:"}</b> {isVi ? "Chỉ đạo Giám đốc Kinh doanh tiếp xúc trực tiếp Giám đốc Mua hàng đối tác Brakes and Gears (#29818) trong vòng 7 ngày kèm đề xuất gia hạn gói ưu đãi chiết khấu 10%." : "Direct Sales VP to schedule in-person renewal review with Procurement Director at Brakes and Gears (#29818) within 7 days offering a 10% retention package."}
-              </span>
+            {/* Priority 1 */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "8px 12px", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 260 }}>
+                <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
+                <span>
+                  <b>{isVi ? "Ưu tiên 1:" : "Priority 1:"}</b> {isVi ? "Chỉ đạo Giám đốc Kinh doanh tiếp xúc trực tiếp Giám đốc Mua hàng đối tác Brakes and Gears (#29818) trong vòng 7 ngày kèm đề xuất gia hạn gói ưu đãi chiết khấu 10% - 12%." : "Direct Sales VP to schedule in-person renewal review with Procurement Director at Brakes and Gears (#29818) offering a 10%-12% retention package."}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setCsuiteDiscountApproved(true);
+                  showToast(isVi ? "Ban Giám Đốc đã phê duyệt cấp hạn mức chiết khấu 10%-12% cho Brakes and Gears (#29818)!" : "Executive Board approved 10%-12% volume rebate for Brakes and Gears (#29818)!");
+                }}
+                disabled={csuiteDiscountApproved}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: csuiteDiscountApproved ? "rgba(16, 185, 129, 0.15)" : "#2563eb",
+                  color: csuiteDiscountApproved ? "#059669" : "#ffffff",
+                  border: csuiteDiscountApproved ? "1px solid rgba(16, 185, 129, 0.3)" : "none",
+                  cursor: csuiteDiscountApproved ? "default" : "pointer",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                {csuiteDiscountApproved ? (isVi ? "✓ Đã Phê Duyệt Hạn Mức 10-12%" : "✓ 10-12% Limit Approved") : (isVi ? "Phê Duyệt Hạn Mức 10-12%" : "Approve 10-12% Limit")}
+              </button>
             </div>
-            <div className="flex items-start gap-space-xs">
-              <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
-              <span>
-                <b>{isVi ? "Ưu tiên 2:" : "Priority 2:"}</b> {isVi ? "Kích hoạt đối soát công nợ 5 khách hàng có khoản chậm trả trên 60 ngày theo quy trình SOP-04 của Phòng Tài chính." : "Trigger accounts receivable reconciliation for top 5 delinquent customer accounts per SOP-04."}
-              </span>
+
+            {/* Priority 2 */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "8px 12px", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 260 }}>
+                <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
+                <span>
+                  <b>{isVi ? "Ưu tiên 2:" : "Priority 2:"}</b> {isVi ? "Kích hoạt đối soát công nợ 5 khách hàng chậm trả trên 60 ngày ($8.6M USD) và quyết định phân bổ ngân sách bảo lãnh thanh toán cho Logistics Sao Mai." : "Trigger accounts receivable reconciliation for top delinquent accounts ($8.6M USD) and authorize bank guarantee credit budget."}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setCsuiteBudgetApproved(true);
+                  showToast(isVi ? "Ban Giám Đốc đã ra quyết định phê duyệt phân bổ ngân sách bảo lãnh thanh toán!" : "Executive Board authorized payment guarantee budget allocation!");
+                }}
+                disabled={csuiteBudgetApproved}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: csuiteBudgetApproved ? "rgba(16, 185, 129, 0.15)" : "#059669",
+                  color: csuiteBudgetApproved ? "#059669" : "#ffffff",
+                  border: csuiteBudgetApproved ? "1px solid rgba(16, 185, 129, 0.3)" : "none",
+                  cursor: csuiteBudgetApproved ? "default" : "pointer",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                {csuiteBudgetApproved ? (isVi ? "✓ Đã Quyết Định Phân Bổ Ngân Sách" : "✓ Budget Allocation Authorized") : (isVi ? "Quyết Định Phân Bổ Ngân Sách" : "Authorize Budget")}
+              </button>
             </div>
-            <div className="flex items-start gap-space-xs">
+
+            {/* Priority 3 */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border)" }}>
               <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
                 <b>{isVi ? "Ưu tiên 3:" : "Priority 3:"}</b> {isVi ? "Hoàn tất xác thực con người (HITL) cho 12 tài liệu quy trình thiếu phòng ban chủ quản trong tuần này." : "Complete human-in-the-loop verification for 12 pending SOP documents lacking department ownership."}
@@ -1468,6 +1550,205 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             </div>
           </div>
         </div>
+
+        {/* 5. SECOPS & SYSTEM TELEMETRY (CHỈ HIỂN THỊ CHO QUẢN TRỊ VIÊN HỆ THỐNG - IT_ADMIN) */}
+        {isAdminRole && (
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ borderTop: "2px dashed var(--border)", paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(217, 119, 6, 0.1)", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name="fa-solid fa-shield-virus" size={15} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text-1)", margin: 0 }}>
+                      5. {isVi ? "GIÁM SÁT TOÀN DIỆN KỸ THUẬT & AN TOÀN THÔNG TIN (SECOPS TELEMETRY)" : "GLOBAL SYSTEM & SECOPS TELEMETRY"}
+                    </h3>
+                    <span style={{ fontSize: 11.5, color: "var(--text-4)" }}>
+                      {isVi ? "Theo dõi chất lượng tri thức, độ trễ hệ thống, log kiểm duyệt HITL và bảo mật phân quyền RBAC" : "Real-time telemetry on knowledge graph quality, latency, HITL queue, and SecOps compliance"}
+                    </span>
+                  </div>
+                </div>
+
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#d97706", background: "rgba(217, 119, 6, 0.1)", padding: "4px 10px", borderRadius: 12, border: "1px solid rgba(217, 119, 6, 0.25)" }}>
+                  ADMIN SECOPS PORTAL
+                </span>
+              </div>
+
+              {/* 4 Telemetry Metrics Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+                {/* Metric 1: Knowledge Quality */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {isVi ? "Chất Lượng Tri Thức (Graph Quality)" : "Knowledge Quality"}
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "#059669", margin: "6px 0 2px 0" }}>
+                    99.4%
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                    {isVi ? "52.283 Nodes · 40.194 Vectors · 0 Orphan" : "52,283 Nodes · 40,194 Vectors · 0 Orphan"}
+                  </div>
+                </div>
+
+                {/* Metric 2: System Latency */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {isVi ? "Độ Trễ Hệ Thống (P95 / P99)" : "System Latency"}
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "#2563eb", margin: "6px 0 2px 0" }}>
+                    18ms <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-4)" }}>/ 42ms P99</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                    {isVi ? "Neo4j Cypher & Qdrant Search tối ưu" : "Optimized Neo4j & Qdrant search"}
+                  </div>
+                </div>
+
+                {/* Metric 3: HITL Verification Logs */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {isVi ? "Log Kiểm Duyệt HITL" : "HITL Verification Queue"}
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "#d97706", margin: "6px 0 2px 0" }}>
+                    12 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-4)" }}>{isVi ? "hồ sơ chờ" : "pending"}</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                    {isVi ? "94.6% duyệt tự động · 0 vi phạm" : "94.6% auto-verified · 0 policy violations"}
+                  </div>
+                </div>
+
+                {/* Metric 4: Security & RBAC Compliance */}
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {isVi ? "An Toàn Thông Tin (SecOps)" : "Information Security"}
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "#7c3aed", margin: "6px 0 2px 0" }}>
+                    100%
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
+                    {isVi ? "2FA Active · Mã hóa SHA256 · Chuẩn BR-04" : "2FA Active · SHA256 hashed · BR-04 scope"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. CROSS-LEVEL AUDIT RECONCILIATION TABLE (ĐỐI SOÁT & KIỂM TRA CHÉO 3 CẤP) */}
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+                <div>
+                  <h4 style={{ fontSize: 14.5, fontWeight: 800, color: "var(--text-1)", margin: "0 0 2px 0" }}>
+                    6. {isVi ? "ĐỐI SOÁT & KIỂM TRA CHÉO TÍNH TOÀN VẸN BÁO CÁO 3 CẤP (AUDIT RECONCILIATION)" : "CROSS-LEVEL SHIFT & REPORT AUDIT RECONCILIATION"}
+                  </h4>
+                  <span style={{ fontSize: 11.5, color: "var(--text-4)" }}>
+                    {isVi ? "Toàn quyền kiểm tra chéo và đối soát báo cáo từ Chuyên viên -> Trưởng phòng -> Ban Giám Đốc" : "Cross-verifying shift reports from Specialist to Department Manager and Executive Board"}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      setIsReconciling(true);
+                      setTimeout(() => {
+                        setIsReconciling(false);
+                        setCrossAuditReconciled(true);
+                        showToast(isVi ? "Đối soát tự động hoàn tất: 100% số liệu 3 cấp khớp tuyệt đối và bảo đảm tính toàn vẹn!" : "Audit completed: 100% multi-level data matched and integrity verified!");
+                      }, 900);
+                    }}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      background: "rgba(37, 99, 235, 0.08)",
+                      color: "#2563eb",
+                      border: "1px solid rgba(37, 99, 235, 0.25)",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {isReconciling ? (isVi ? "Đang đối soát..." : "Reconciling...") : (isVi ? "Chạy Đối Soát Tức Thời" : "Run Live Audit")}
+                  </button>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "4px 8px", borderRadius: 6 }}>
+                    {isVi ? "TÍNH TOÀN VẸN: BẢO ĐẢM 100%" : "INTEGRITY: 100% VERIFIED"}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "var(--surface-2)", color: "var(--text-3)", borderBottom: "1px solid var(--border)" }}>
+                      <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Cấp Báo Cáo / Vai Trò" : "Level / Role"}</th>
+                      <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Cán Bộ Phụ Trách" : "Officer"}</th>
+                      <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Mã Chứng Từ & Dữ Liệu Đối Soát" : "Dossier & Doc IDs"}</th>
+                      <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Thẩm Quyền Tác Nghiệp (RBAC)" : "RBAC Authority"}</th>
+                      <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5, textAlign: "right" }}>{isVi ? "Kết Quả Đối Soát" : "Audit Result"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "#2563eb" }}>
+                        {isVi ? "Cấp 1: Vi mô (Micro)" : "Level 1: Micro Scope"}
+                      </td>
+                      <td style={{ padding: "10px" }}>
+                        <b>Nguyễn V. Nam</b> (@sales)
+                      </td>
+                      <td style={{ padding: "10px", fontFamily: "var(--f-mono)" }}>
+                        #EDR-8821, #BG-2026-09 · SLA 100% · $1.95M USD
+                      </td>
+                      <td style={{ padding: "10px", color: "var(--text-2)" }}>
+                        {isVi ? "Nộp ca qua 'Trình Duyệt Ngay' (Không ký)" : "Submitted via 'Submit Now' (No sign)"}
+                      </td>
+                      <td style={{ padding: "10px", textAlign: "right" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: 4 }}>
+                          ✓ {isVi ? "Khớp Số Liệu" : "Matched"}
+                        </span>
+                      </td>
+                    </tr>
+
+                    <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "#059669" }}>
+                        {isVi ? "Cấp 2: Cấp trung (BR-04)" : "Level 2: Dept Scope"}
+                      </td>
+                      <td style={{ padding: "10px" }}>
+                        <b>Trần M. Anh</b> (@manager)
+                      </td>
+                      <td style={{ padding: "10px", fontFamily: "var(--f-mono)" }}>
+                        #GM-EOD-2026-0920 · 8/8 Ca · 4.1 Tỷ VND bảo vệ
+                      </td>
+                      <td style={{ padding: "10px", color: "var(--text-2)" }}>
+                        {isVi ? "Ký số điện tử SHA256 & Báo cáo Ban Giám Đốc" : "SHA256 Signed & Transmitted to Board"}
+                      </td>
+                      <td style={{ padding: "10px", textAlign: "right" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: 4 }}>
+                          ✓ {isVi ? "Chữ Ký Hợp Lệ" : "Valid Seal"}
+                        </span>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "#7c3aed" }}>
+                        {isVi ? "Cấp 3: Vĩ mô (Enterprise)" : "Level 3: Enterprise"}
+                      </td>
+                      <td style={{ padding: "10px" }}>
+                        <b>Trần Thị Thu Hương</b> (@ceo)
+                      </td>
+                      <td style={{ padding: "10px", fontFamily: "var(--f-mono)" }}>
+                        $123.22M USD · $3,916 AOV · 30 CUAD · $8.6M AR
+                      </td>
+                      <td style={{ padding: "10px", color: "var(--text-2)" }}>
+                        {isVi ? "Phê duyệt hạn mức 10-12% & Phân bổ ngân sách" : "Approved 10-12% Limit & Budget"}
+                      </td>
+                      <td style={{ padding: "10px", textAlign: "right" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: 4 }}>
+                          ✓ {isVi ? "Toàn Vẹn 100%" : "Integrity OK"}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
