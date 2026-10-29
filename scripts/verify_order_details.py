@@ -3,13 +3,16 @@ Script: scripts/verify_order_details.py
 Description: Validates Neo4j AdventureWorks SalesOrders, CONTAINS_PRODUCT, and PLACED_ORDER integrity.
 """
 import sys
+import os
 from neo4j import GraphDatabase
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_AUTH = ("neo4j", "graphmind_secret")
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password123")
+NEO4J_AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 
 def verify_order_details():
     print("=" * 65)
