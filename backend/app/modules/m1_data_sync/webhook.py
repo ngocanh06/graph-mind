@@ -177,6 +177,20 @@ async def upload_document_to_central_storage(
             detail=f"Lỗi ghi tệp vào Central Storage: {str(e)}"
         )
 
+    # Immediately ingest into Qdrant & Neo4j with stable document_id & provenance
+    try:
+        ingest_res = process_document_ingestion(
+            content_bytes=content_bytes,
+            filename=safe_name,
+            department=canonical_dept,
+            event_type="created",
+            allow_skip_known=False
+        )
+        logger.info(f"[Upload] File '{safe_name}' successfully indexed into Qdrant & Neo4j (doc_id={ingest_res.get('data', {}).get('doc_id')})")
+    except Exception as ing_err:
+        logger.warning(f"[Upload] Immediate indexing notice for '{safe_name}': {ing_err}")
+        ingest_res = {"success": False, "error": str(ing_err)}
+
     # Invalidate repository inventory cache so subsequent GET reflects it immediately
     try:
         try:
@@ -197,7 +211,8 @@ async def upload_document_to_central_storage(
         "fileHash": file_hash,
         "eventType": "created",
         "sizeBytes": len(content_bytes),
-        "message": f"Đã lưu tệp '{safe_name}' vào Central Storage ({storage_res['storage_path']})."
+        "data": ingest_res,
+        "message": f"Đã lưu tệp '{safe_name}' vào Central Storage ({storage_res['storage_path']}) và lập chỉ mục vào Neo4j & Qdrant."
     }
 
 

@@ -145,7 +145,7 @@ def get_verified_indexed_hashes() -> Set[str]:
 
 def get_known_hashes() -> Set[str]:
     """Returns set of all verified SHA-256 hashes currently indexed in DB."""
-    return get_verified_indexed_hashes()
+    return get_verified_indexed_hashes() | {d["hash"] for d in _WATCHER_INGESTED_DOCS if d.get("hash")}
 
 
 # ============================================================================
@@ -380,11 +380,11 @@ def process_document_ingestion(
                 qdrant_client._client.delete(
                     collection_name=qdrant_client._collection,
                     points_selector=models.Filter(
-                        must=[
-                            models.FieldCondition(
-                                key="contract_name",
-                                match=models.MatchValue(value=target_name)
-                            )
+                        should=[
+                            models.FieldCondition(key="contract_name", match=models.MatchValue(value=target_name)),
+                            models.FieldCondition(key="source_file", match=models.MatchValue(value=target_name)),
+                            models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id)),
+                            models.FieldCondition(key="document_id", match=models.MatchValue(value=doc_id)),
                         ]
                     )
                 )
@@ -402,8 +402,11 @@ def process_document_ingestion(
                     vector=vec,
                     payload={
                         "contract_name": filename,
+                        "source_file": filename,
                         "doc_id": doc_id,
+                        "document_id": doc_id,
                         "chunk_id": idx,
+                        "chunk_index": idx,
                         "text": ch,
                         "department": dept_name,
                         "department_key": dept_key,
@@ -595,7 +598,12 @@ def process_document_deletion(filename: str, department: str = "sales") -> Dict[
             qdrant_client._client.delete(
                 collection_name=qdrant_client._collection,
                 points_selector=models.Filter(
-                    must=[models.FieldCondition(key="contract_name", match=models.MatchValue(value=filename))]
+                    should=[
+                        models.FieldCondition(key="contract_name", match=models.MatchValue(value=filename)),
+                        models.FieldCondition(key="source_file", match=models.MatchValue(value=filename)),
+                        models.FieldCondition(key="doc_id", match=models.MatchValue(value=filename)),
+                        models.FieldCondition(key="document_id", match=models.MatchValue(value=filename)),
+                    ]
                 )
             )
             qdrant_removed = True
@@ -692,6 +700,7 @@ def process_document_rename(old_name: str, new_name: str, department: str = "sal
             for p in pts:
                 new_payload = dict(p.payload or {})
                 new_payload["contract_name"] = new_name
+                new_payload["source_file"] = new_name
                 new_payload["old_name"] = old_name
                 qdrant_client._client.set_payload(
                     collection_name=qdrant_client._collection,

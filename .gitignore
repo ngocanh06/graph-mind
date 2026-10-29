@@ -51,3 +51,10 @@ scratch/
 # Archive and temporary verification files
 *.tar
 DockerUploadVerification.pdf
+
+# Monitored document directories (stored in Docker Central Storage volume)
+accounting_procurement/
+it/
+legal/
+rnd/
+sales/

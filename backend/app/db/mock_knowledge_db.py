@@ -1,5 +1,6 @@
 """
 Graph Mind — Enterprise Knowledge Base & Graph Dataset (Python)
+Baseline verified data from AdventureWorks ERP (Neo4j) & CUAD Legal Dataset (Qdrant).
 """
 from typing import Dict, Any, List
 from datetime import datetime
@@ -7,120 +8,121 @@ from datetime import datetime
 SYSTEM_HEALTH: Dict[str, Any] = {
     "status": "nominal",
     "uptime": "99.98%",
-    "activeSources": 247,
+    "activeSources": 581,
     "reasoningEngine": "Python Hybrid GraphRAG v2.6",
-    "lastSync": datetime.now().isoformat()
+    "lastSync": datetime.now().isoformat(),
+    "neo4jNodes": 55315,
+    "neo4jRelationships": 161574,
+    "qdrantVectors": 35276
 }
 
 AI_SIGNALS: List[Dict[str, Any]] = [
     {
         "id": "sig-1",
         "severity": "high",
-        "badge": "HIGH CHURN RISK",
-        "what_en": "Customer ABC Corporation order frequency decreased 32%.",
-        "what_vi": "Tần suất đặt hàng của Tập đoàn ABC giảm 32%.",
-        "why_en": "Order cadence fell from 8.0/mo to 5.4/mo over trailing 60 days — consistent with prior churn events in manufacturing tier.",
-        "why_vi": "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng trong 60 ngày qua — khớp với mô hình rời bỏ trước đây.",
+        "badge": "VIP ACCOUNT INSIGHT",
+        "what_en": "Top Customer 'Brakes and Gears' (#CUST-29818) generated $989,184.08 USD across 12 orders.",
+        "what_vi": "Khách hàng VIP 'Brakes and Gears' (#CUST-29818) đạt tổng doanh số $989,184.08 USD qua 12 đơn hàng.",
+        "why_en": "Largest revenue contributor in AdventureWorks ERP. Prioritize executive outreach for contract renewal.",
+        "why_vi": "Đối tác doanh số lớn nhất hệ thống AdventureWorks ERP. Cần ưu tiên chăm sóc gia hạn và rà soát hạn mức tín dụng.",
         "action_en": "Review account within 7 days",
         "action_vi": "Xem xét tài khoản trong vòng 7 ngày",
-        "entityId": "abc"
+        "entityId": "29818"
     },
     {
         "id": "sig-2",
         "severity": "med",
-        "badge": "MEDIUM RISK",
-        "what_en": "3 contracts expire within 21 days with no renewal activity logged.",
-        "what_vi": "3 hợp đồng hết hạn trong 21 ngày tới chưa có hoạt động gia hạn.",
-        "why_en": "Combined value of $4.1M USD has no renewal activity logged in CRM or Drive folders.",
-        "why_vi": "Tổng giá trị hợp đồng $4.1M USD chưa ghi nhận động thái gia hạn nào trên CRM hoặc Google Drive.",
+        "badge": "LEGAL RISK",
+        "what_en": "5 legal documents in CUAD repository lack Limitation of Liability clauses.",
+        "what_vi": "5 hợp đồng pháp chế trong kho CUAD thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability).",
+        "why_en": "Uncapped liability exposes the business to unlimited damages in legal disputes.",
+        "why_vi": "Thiếu điều khoản giới hạn trách nhiệm khiến doanh nghiệp đối mặt với rủi ro bồi thường vô hạn khi có tranh chấp.",
         "action_en": "Open Risk Center",
         "action_vi": "Mở Trung tâm Rủi ro",
-        "entityId": "ct18"
+        "entityId": "legal-contracts"
     },
     {
         "id": "sig-3",
         "severity": "low",
         "badge": "DATA QUALITY",
-        "what_en": "12 documents contain incomplete metadata or unverified owners.",
-        "what_vi": "12 tài liệu bị thiếu siêu dữ liệu hoặc chưa xác thực người sở hữu.",
-        "why_en": "Department and author fields missing, reducing traceability for downstream AI reasoning.",
-        "why_vi": "Thiếu trường phòng ban và người lập, làm giảm khả năng truy xuất bằng chứng của AI.",
-        "action_en": "Send to Validation Queue",
-        "action_vi": "Chuyển tới Hàng đợi Xác thực",
-        "entityId": "doc-sop"
+        "what_en": "All 581 documents and 35,276 vector points are 100% indexed and synchronized.",
+        "what_vi": "Toàn bộ 581 tài liệu và 35,276 điểm vector đã lập chỉ mục và đồng bộ hoàn tất 100%.",
+        "why_en": "Multi-department knowledge repository (Legal, Sales, Accounting, R&D, IT) verified in Central Storage & Neo4j.",
+        "why_vi": "Kho tài liệu đa phòng ban đã đồng bộ hoàn chỉnh giữa Central Storage, Qdrant và Neo4j.",
+        "action_en": "View Document Repository",
+        "action_vi": "Xem Kho Tài liệu",
+        "entityId": "doc-repository"
     }
 ]
 
 ENTITIES: Dict[str, Any] = {
-    "abc": {
-        "id": "abc",
+    "29818": {
+        "id": "29818",
         "type": "CUSTOMER",
-        "name": "ABC Corporation",
+        "name": "Brakes and Gears",
         "verified": True,
         "status": "Human Verified",
-        "risk": "Elevated",
-        "industry": "Manufacturing & Industrial",
-        "contact": "Tran M. Anh (Procurement Dir.)",
-        "revenue": "$6.4M USD",
-        "ordersCount": 214,
-        "activeContracts": 2,
-        "relationships": [
-            { "rel": "Customer of", "target": "Company X" },
-            { "rel": "Purchased", "target": "Product A" },
-            { "rel": "Signed", "target": "Contract CT-2026-18", "warning": True }
-        ]
-    },
-    "ct18": {
-        "id": "ct18",
-        "type": "CONTRACT",
-        "name": "Contract CT-2026-18",
-        "verified": False,
-        "status": "Needs Review",
-        "risk": "High",
-        "industry": "Legal / Sales",
-        "contact": "Pham Q. Linh (Account Mgr)",
-        "revenue": "$1.2M USD",
-        "ordersCount": 18,
+        "risk": "Low",
+        "industry": "Bicycle Retail & Distribution",
+        "contact": "Executive Procurement Team",
+        "revenue": "$989,184.08 USD",
+        "ordersCount": 12,
         "activeContracts": 1,
         "relationships": [
-            { "rel": "Signed by", "target": "ABC Corporation" },
-            { "rel": "Governs", "target": "Product A supply" },
-            { "rel": "Expires on", "target": "18 Oct 2026 (12 days left)" }
+            { "rel": "Placed Order", "target": "Order #43659", "warning": False },
+            { "rel": "Purchased", "target": "Product #707 (Sport-100 Helmet)" },
+            { "rel": "Customer Tier", "target": "Enterprise Partner" }
         ]
     },
-    "delta": {
-        "id": "delta",
+    "29715": {
+        "id": "29715",
         "type": "CUSTOMER",
-        "name": "Delta Trading Ltd",
+        "name": "Excellent Riding Supplies",
         "verified": True,
         "status": "Human Verified",
-        "risk": "Medium",
-        "industry": "Distribution & Logistics",
-        "contact": "Nguyen V. Binh (Director)",
-        "revenue": "$3.2M USD",
-        "ordersCount": 94,
+        "risk": "Low",
+        "industry": "Sports & Outdoor Goods",
+        "contact": "Regional Account Lead",
+        "revenue": "$961,675.86 USD",
+        "ordersCount": 12,
         "activeContracts": 1,
         "relationships": [
-            { "rel": "Customer of", "target": "Company X" },
-            { "rel": "Purchased", "target": "Product B" },
-            { "rel": "Signed", "target": "Contract CT-2026-24" }
+            { "rel": "Placed Order", "target": "Sales Orders" },
+            { "rel": "Purchased", "target": "Mountain Bikes & Components" }
         ]
     },
-    "proda": {
-        "id": "proda",
-        "type": "PRODUCT",
-        "name": "Product A — Enterprise Core",
+    "43659": {
+        "id": "43659",
+        "type": "ORDER",
+        "name": "SalesOrder #43659",
         "verified": True,
         "status": "System Verified",
         "risk": "Low",
-        "industry": "Software & Services",
-        "contact": "Product Management Team",
-        "revenue": "$28.4M USD (YTD)",
-        "ordersCount": 840,
-        "activeContracts": 180,
+        "industry": "Sales & Commerce",
+        "contact": "AdventureWorks ERP",
+        "revenue": "$23,153.23 USD",
+        "ordersCount": 1,
+        "activeContracts": 1,
         "relationships": [
-            { "rel": "Delivered to", "target": "ABC Corporation" },
-            { "rel": "Produced by", "target": "Tech Division" }
+            { "rel": "Placed by", "target": "Better Bike Shop (#29825)" },
+            { "rel": "Contains", "target": "Mountain-100 Silver, 38" }
+        ]
+    },
+    "707": {
+        "id": "707",
+        "type": "PRODUCT",
+        "name": "Sport-100 Helmet, Red",
+        "verified": True,
+        "status": "System Verified",
+        "risk": "Low",
+        "industry": "Safety Gear & Apparel",
+        "contact": "Manufacturing Department",
+        "revenue": "List Price: $34.99 USD",
+        "ordersCount": 3088,
+        "activeContracts": 1,
+        "relationships": [
+            { "rel": "SubCategory", "target": "Helmets" },
+            { "rel": "Category", "target": "Accessories" }
         ]
     }
 }
@@ -128,56 +130,59 @@ ENTITIES: Dict[str, Any] = {
 CONNECTORS: List[Dict[str, Any]] = [
     {
         "id": "conn-1",
-        "name": "Google Drive",
-        "type": "cloud_storage",
-        "status": "Connected · Continuous",
-        "lastSync": "2 min ago",
-        "nextSync": "in 13 min",
-        "filesProcessed": 4208,
-        "recordsExtracted": 18930,
+        "name": "Neo4j Knowledge Graph",
+        "type": "graph_database",
+        "status": "Connected · Live",
+        "lastSync": "Just now",
+        "nextSync": "Real-time Event-driven",
+        "filesProcessed": 581,
+        "recordsExtracted": 55315,
+        "relationshipsCount": 161574,
         "errors": 0
     },
     {
         "id": "conn-2",
-        "name": "Google Sheets",
-        "type": "tabular_data",
+        "name": "Qdrant Vector Database",
+        "type": "vector_database",
         "status": "Connected · Continuous",
-        "lastSync": "9 min ago",
-        "nextSync": "in 6 min",
-        "filesProcessed": 312,
-        "recordsExtracted": 52104,
+        "lastSync": "Just now",
+        "nextSync": "Real-time",
+        "filesProcessed": 2,
+        "recordsExtracted": 35276,
         "errors": 0
     },
     {
         "id": "conn-3",
-        "name": "Local Agent — AEGIS",
-        "type": "agent_daemon",
-        "status": "3 machines online",
-        "lastSync": "14s ago",
-        "nextSync": "Real-time",
-        "filesProcessed": 86,
-        "recordsExtracted": 4,
-        "errors": 1
+        "name": "Central Storage & AEGIS File Watcher",
+        "type": "filesystem",
+        "status": "Active · Live Sync",
+        "lastSync": "Just now",
+        "nextSync": "Continuous Event Stream",
+        "filesProcessed": 581,
+        "recordsExtracted": 581,
+        "errors": 0
     },
     {
         "id": "conn-4",
-        "name": "File Watcher",
-        "type": "filesystem",
-        "status": "Active · Low Latency",
+        "name": "PostgreSQL RDBMS",
+        "type": "relational_db",
+        "status": "Connected · ACID Compliant",
         "lastSync": "Just now",
-        "nextSync": "Real-time",
-        "filesProcessed": 212,
-        "recordsExtracted": 198,
+        "nextSync": "Transaction-based",
+        "filesProcessed": 12,
+        "recordsExtracted": "RBAC, Audit Logs, SOPs",
         "errors": 0
     }
 ]
 
 LLMOPS_METRICS: Dict[str, Any] = {
-    "totalTokens30D": "18.4M",
-    "promptTokens": "11.2M",
-    "completionTokens": "7.2M",
-    "aiQueries": 54180,
-    "avgLatency": "2.1s",
-    "estimatedCost": "$312",
-    "citationCoverage": "94%"
+    "model": "qwen2.5-7b-instruct-graphmind",
+    "engine": "Ollama Local Inference",
+    "hybridEngine": "Python Hybrid GraphRAG v2.6 (RRF Fusion)",
+    "vectorPointsIndexed": 35276,
+    "graphNodesIndexed": 55315,
+    "documentsIndexed": 581,
+    "avgLatency": "1.8s",
+    "estimatedCost": "$0 (100% Local Self-Hosted)",
+    "citationCoverage": "96.4%"
 }

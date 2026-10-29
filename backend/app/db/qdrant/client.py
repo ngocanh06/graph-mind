@@ -26,7 +26,7 @@ _EMBED_MODEL = None
 
 
 def get_embed_model():
-    """Lazy load SentenceTransformer model with graceful fallback."""
+    """Lazy load SentenceTransformer or FastEmbed model from local cache."""
     global _EMBED_MODEL
     if _EMBED_MODEL is None:
         try:
@@ -36,7 +36,21 @@ def get_embed_model():
             _EMBED_MODEL = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
             print("[Qdrant] SentenceTransformer 'all-MiniLM-L6-v2' loaded successfully")
         except Exception:
-            _EMBED_MODEL = False
+            try:
+                from fastembed import TextEmbedding
+                class _FastEmbedAdapter:
+                    def __init__(self):
+                        self._model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
+                    def encode(self, texts, **kwargs):
+                        import numpy as np
+                        if isinstance(texts, str):
+                            return np.array(list(self._model.embed([texts]))[0])
+                        return np.array([e for e in self._model.embed(texts)])
+                _EMBED_MODEL = _FastEmbedAdapter()
+                print("[Qdrant] FastEmbed 'all-MiniLM-L6-v2' loaded successfully")
+            except Exception as e:
+                print(f"[Qdrant] Warning: Could not load embedding model: {e}")
+                _EMBED_MODEL = False
     return _EMBED_MODEL if _EMBED_MODEL is not False else None
 
 
@@ -61,17 +75,20 @@ class QdrantClientWrapper:
             resp = self._client.get_collections()
             col_names = [c.name for c in resp.collections]
             if self._collection not in col_names:
-                try:
-                    from qdrant_client.http import models
-                    self._client.create_collection(
-                        collection_name=self._collection,
-                        vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
-                    )
-                    print(f"[Qdrant] Created collection '{self._collection}' (size=384, distance=Cosine)")
-                except Exception as col_err:
-                    if col_names:
-                        self._collection = col_names[0]
-                    print(f"[Qdrant] Collection notice: {col_err}")
+                if "cuad_contracts" in col_names:
+                    self._collection = "cuad_contracts"
+                else:
+                    try:
+                        from qdrant_client.http import models
+                        self._client.create_collection(
+                            collection_name=self._collection,
+                            vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE)
+                        )
+                        print(f"[Qdrant] Created collection '{self._collection}' (size=384, distance=Cosine)")
+                    except Exception as col_err:
+                        if col_names:
+                            self._collection = col_names[0]
+                            print(f"[Qdrant] Collection notice: {col_err}")
             self._connected = True
             print(f"[Qdrant] Connected to {host}:{port}, active collection={self._collection}")
             return True
@@ -150,11 +167,20 @@ class QdrantClientWrapper:
             points = []
             for r in results:
                 payload = r.payload or {}
+                doc_id_val = payload.get("document_id") or payload.get("doc_id") or payload.get("contract_id") or str(r.id)
+                file_val = payload.get("source_file") or payload.get("contract_name") or payload.get("name") or "Document"
+                chunk_idx_val = payload.get("chunk_index") if payload.get("chunk_index") is not None else payload.get("chunk_id")
                 points.append({
                     "id": str(r.id),
-                    "contract_name": payload.get("contract_name", "Contract Document"),
-                    "chunk_id": payload.get("chunk_id"),
+                    "document_id": doc_id_val,
+                    "doc_id": doc_id_val,
+                    "source_file": file_val,
+                    "contract_name": file_val,
+                    "chunk_index": chunk_idx_val,
+                    "chunk_id": chunk_idx_val,
                     "text": payload.get("text", ""),
+                    "department": payload.get("department") or "",
+                    "source": payload.get("source") or col,
                     "payload": payload,
                     "score": None,
                 })
@@ -168,16 +194,33 @@ class QdrantClientWrapper:
         query: str,
         collection_name: str = None,
         limit: int = 10,
+        query_filter: Optional[Dict[str, Any]] = None,
+        entity_type: Optional[Any] = None,
+        table: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Semantic vector search using SentenceTransformer embedding.
         Falls back to keyword search if model is unavailable.
+        Supports Qdrant payload filtering by entity_type (single or list) or table or custom query_filter.
         """
         if not self._connected and not self.connect():
             return []
         col = collection_name or self._collection
         if not col or not query.strip():
             return []
+
+        # Build filter if entity_type or table is provided
+        effective_filter = query_filter
+        if (entity_type or table) and not effective_filter:
+            must_conditions = []
+            if entity_type:
+                if isinstance(entity_type, list):
+                    must_conditions.append({"key": "entity_type", "match": {"any": entity_type}})
+                else:
+                    must_conditions.append({"key": "entity_type", "match": {"value": str(entity_type)}})
+            if table:
+                must_conditions.append({"key": "table", "match": {"value": str(table)}})
+            effective_filter = {"must": must_conditions}
 
         model = get_embed_model()
         if model:
@@ -187,12 +230,16 @@ class QdrantClientWrapper:
 
                 query_vec = model.encode(query.strip()).tolist()
                 url = f"http://{self._host}:{self._port}/collections/{col}/points/search"
-                req_data = json.dumps({
+                search_payload = {
                     "vector": query_vec,
                     "limit": limit,
                     "with_payload": True,
                     "with_vector": False
-                }).encode("utf-8")
+                }
+                if effective_filter:
+                    search_payload["filter"] = effective_filter
+
+                req_data = json.dumps(search_payload).encode("utf-8")
                 req = urllib.request.Request(
                     url,
                     data=req_data,
@@ -204,13 +251,24 @@ class QdrantClientWrapper:
                     results = []
                     for h in hits:
                         payload = h.get("payload") or {}
+                        h_id = str(h.get("id"))
+                        doc_id_val = payload.get("document_id") or payload.get("doc_id") or payload.get("contract_id") or h_id
+                        file_val = payload.get("source_file") or payload.get("contract_name") or payload.get("name") or "Document"
+                        chunk_idx_val = payload.get("chunk_index") if payload.get("chunk_index") is not None else payload.get("chunk_id")
                         results.append({
-                            "id": str(h.get("id")),
+                            "id": h_id,
                             "score": round(float(h.get("score", 0)), 4),
-                            "contract_name": payload.get("contract_name", "Contract Document"),
-                            "chunk_id": payload.get("chunk_id"),
-                            "text": payload.get("text", ""),
+                            "document_id": doc_id_val,
+                            "doc_id": doc_id_val,
+                            "source_file": file_val,
+                            "contract_name": file_val,
+                            "chunk_index": chunk_idx_val,
+                            "chunk_id": chunk_idx_val,
+                            "text": payload.get("text") or payload.get("searchable_text", ""),
+                            "department": payload.get("department") or "",
+                            "source": payload.get("source") or col,
                             "payload": payload,
+                            "collection": col,
                         })
                     return results
             except Exception as e:
@@ -252,13 +310,24 @@ class QdrantClientWrapper:
                     if hit_cnt > 0:
                         score = round(hit_cnt / len(tokens), 2)
                 if score > 0:
+                    r_id = str(r.id)
+                    doc_id_val = payload.get("document_id") or payload.get("doc_id") or payload.get("contract_id") or r_id
+                    file_val = payload.get("source_file") or payload.get("contract_name") or payload.get("name") or "Document"
+                    chunk_idx_val = payload.get("chunk_index") if payload.get("chunk_index") is not None else payload.get("chunk_id")
                     matched.append({
-                        "id": str(r.id),
+                        "id": r_id,
                         "score": score,
-                        "contract_name": payload.get("contract_name", "Contract Document"),
-                        "chunk_id": payload.get("chunk_id"),
+                        "document_id": doc_id_val,
+                        "doc_id": doc_id_val,
+                        "source_file": file_val,
+                        "contract_name": file_val,
+                        "chunk_index": chunk_idx_val,
+                        "chunk_id": chunk_idx_val,
                         "text": payload.get("text", ""),
+                        "department": payload.get("department") or "",
+                        "source": payload.get("source") or col,
                         "payload": payload,
+                        "collection": col,
                     })
             matched.sort(key=lambda x: x["score"], reverse=True)
             return matched[:limit]
