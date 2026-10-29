@@ -80,20 +80,28 @@ _LOGS_FILE = os.path.join(_DATA_DIR, "watcher_sync_logs.json")
 _DOCS_FILE = os.path.join(_DATA_DIR, "watcher_ingested_docs.json")
 
 
+import threading
+_JSON_LOCK = threading.Lock()
+
+
 def _load_json(path: str) -> list:
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except Exception as e:
+        logger.warning(f"[Pipeline] Could not load {path}: {e}")
         return []
 
 
 def _save_json(path: str, data: list) -> None:
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.warning(f"[Pipeline] Failed to persist {path}: {e}")
+    with _JSON_LOCK:
+        try:
+            temp_path = f"{path}.tmp"
+            with open(temp_path, "w", encoding="utf-8", errors="replace") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(temp_path, path)
+        except Exception as e:
+            logger.warning(f"[Pipeline] Failed to persist {path}: {e}")
 
 
 _WATCHER_SYNC_LOGS: List[Dict[str, Any]] = _load_json(_LOGS_FILE)
@@ -375,8 +383,6 @@ def process_document_ingestion(
                         should=[
                             models.FieldCondition(key="contract_name", match=models.MatchValue(value=target_name)),
                             models.FieldCondition(key="source_file", match=models.MatchValue(value=target_name)),
-                            models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id)),
-                            models.FieldCondition(key="document_id", match=models.MatchValue(value=doc_id)),
                         ]
                     )
                 )
@@ -386,9 +392,19 @@ def process_document_ingestion(
             from app.db.qdrant.client import get_embed_model
             _embed = get_embed_model()
             pts = []
+            chunk_texts = [ch[:1000] for ch in chunks]
+            if _embed and chunk_texts:
+                try:
+                    vectors = _embed.encode(chunk_texts)
+                    vectors_list = [v.tolist() for v in vectors]
+                except Exception:
+                    vectors_list = [_embed.encode(t).tolist() for t in chunk_texts]
+            else:
+                vectors_list = [[0.01 * ((i + idx) % 50) for i in range(384)] for idx in range(len(chunks))]
+
             for idx, ch in enumerate(chunks):
                 pt_id = int(hashlib.md5(f"{final_hash}_{filename}_{idx}".encode()).hexdigest()[:15], 16)
-                vec = _embed.encode(ch[:1000]).tolist() if _embed else [0.01 * ((i + idx) % 50) for i in range(384)]
+                vec = vectors_list[idx]
                 pts.append(models.PointStruct(
                     id=pt_id,
                     vector=vec,
@@ -466,13 +482,11 @@ def process_document_ingestion(
             for idx, cl in enumerate(entities.get("clauses", [])):
                 neo4j_client.run_cypher("""
                     MATCH (d:Document {name: $name})
-                    CREATE (cl:Clause {
-                        id: $cl_id,
-                        type: $cl_type,
-                        title: $cl_title,
-                        snippet: $cl_snippet
-                    })
-                    CREATE (d)-[:CONTAINS_CLAUSE]->(cl)
+                    MERGE (cl:Clause {id: $cl_id})
+                    SET cl.type = $cl_type,
+                        cl.title = $cl_title,
+                        cl.snippet = $cl_snippet
+                    MERGE (d)-[:CONTAINS_CLAUSE]->(cl)
                 """, {
                     "name": filename,
                     "cl_id": f"{doc_id}_CL_{idx+1}",
