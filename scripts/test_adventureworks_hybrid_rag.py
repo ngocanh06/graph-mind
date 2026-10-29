@@ -35,8 +35,8 @@ def test_adventureworks_hybrid_rag():
 
     aw_info = client.get_collection("adventureworks_entities")
     total_aw_points = aw_info.points_count
-    print(f"  adventureworks_entities points: {total_aw_points:,} (Expected: 26,129)")
-    assert total_aw_points == 26129, f"Expected 26,129 vectors, got {total_aw_points}"
+    print(f"  adventureworks_entities points: {total_aw_points:,} (Expected: 52,594)")
+    assert total_aw_points == 52594, f"Expected 52,594 vectors, got {total_aw_points}"
 
     # 2. Vector Type Distribution Verification
     print("\n[2/4] Verifying Entity Breakdown in adventureworks_entities...")
@@ -45,7 +45,7 @@ def test_adventureworks_hybrid_rag():
         "Vendor": 104,
         "Store": 701,
         "Customer": 19820,
-        "SalesOrder": 5000,
+        "SalesOrder": 31465,
     }
 
     for entity_type, expected_cnt in expected_breakdown.items():
