@@ -136,20 +136,33 @@ def generate_cypher_from_query(query: str) -> str:
             LIMIT 10
             """
 
-    # 2. CUAD Document / Contract general queries
-    if any(k in q_lower for k in ["hợp đồng", "contract", "thỏa thuận", "agreement", "công ty", "company"]):
-        terms = [w for w in re.findall(r"\w+", query) if len(w) >= 3 and w.lower() not in {"hợp", "đồng", "the", "and", "cho", "các", "tìm"}]
-        search_term = terms[0] if terms else ""
+    # 2. CUAD Document / Central Knowledge Repository general queries
+    doc_triggers = [
+        "hợp đồng", "contract", "thỏa thuận", "agreement", "công ty", "company",
+        "tài liệu", "văn bản", "document", "hồ sơ", "file", "tập tin", "quy hoạch",
+        "tuyến tính", "mô hình", "bài toán", "nghiên cứu", "r&d"
+    ]
+    if any(k in q_lower for k in doc_triggers):
+        stop_words = {
+            "hợp", "đồng", "the", "and", "cho", "các", "tìm", "tài", "liệu", "văn", "bản",
+            "trong", "này", "về", "có", "bao", "nhiêu", "chính", "cụ", "thể", "từng", "là",
+            "gì", "thế", "nào", "được", "quy", "định", "ra", "sao", "biến", "điều", "kiện",
+            "đối", "với", "hàm", "mục", "tiêu", "ràng", "buộc", "của", "phòng", "ban", "mã",
+            "xác", "định", "như", "nào", "quản", "lý", "bài", "toán", "mô", "hình"
+        }
+        terms = [w for w in re.findall(r"[\w\.]+", query) if len(w) >= 3 and w.lower() not in stop_words]
+        search_term = max(terms, key=len) if terms else ""
         if search_term:
             return f"""
             MATCH (ctr:Document)
             WHERE toLower(ctr.name) CONTAINS toLower('{search_term}')
-            RETURN ctr.name AS name, coalesce(ctr.department, 'Pháp chế (Legal)') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
+               OR toLower(coalesce(ctr.id, '')) CONTAINS toLower('{search_term}')
+            RETURN ctr.name AS name, ctr.id AS id, coalesce(ctr.department, 'Chung') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
             LIMIT 8
             """
         return """
         MATCH (ctr:Document)
-        RETURN ctr.name AS name, coalesce(ctr.department, 'Pháp chế (Legal)') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
+        RETURN ctr.name AS name, ctr.id AS id, coalesce(ctr.department, 'Chung') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
         LIMIT 8
         """
 
@@ -216,8 +229,27 @@ def generate_cypher_from_query(query: str) -> str:
         """
 
     # 5. Default Property Search Fallback across all nodes
-    clean_term = re.sub(r"[^\w\s]", "", query).strip().split()
-    term = clean_term[0] if clean_term else "Order"
+    # Guard against generic Vietnamese/English stop words so queries without entity terms do not perform
+    # broad substring scans matching unrelated nodes (e.g. 'Trong' matching 'Armstrong').
+    STOP_WORDS = {
+        "trong", "tài", "liệu", "về", "cho", "các", "hãy", "những", "một", "này", "của", "và", "là", "gì",
+        "thế", "nào", "có", "bao", "nhiêu", "với", "theo", "được", "trên", "dưới", "khi", "tại", "sau", "trước",
+        "chính", "thì", "đến", "nào", "ở", "ra", "sao", "thực", "hiện", "như", "đã", "đang", "sẽ", "biết", "tôi",
+        "bạn", "hỏi", "đáp", "thông", "tin", "mô", "hình", "bài", "toán", "quy", "hoạch", "tuyến", "tính",
+        "điều", "kiện", "biến", "hàm", "mục", "tiêu", "ràng", "buộc", "order", "sales", "công", "ty"
+    }
+    candidate_terms = [
+        w for w in re.findall(r"[\w\.-]+", query)
+        if len(w) >= 3 and w.lower() not in STOP_WORDS
+    ]
+    if not candidate_terms:
+        # No specific entity keyword found in query - do not run broad wildcard query that matches random substring
+        return "MATCH (n:NonExistent) RETURN n LIMIT 0"
+
+    # Pick the most specific term (e.g. DOC_..., numbers, capitalized entities or longest word)
+    specific_terms = [w for w in candidate_terms if any(c.isupper() or c.isdigit() for c in w)]
+    term = specific_terms[0] if specific_terms else max(candidate_terms, key=len)
+
     return f"""
     MATCH (n)
     WHERE any(prop IN keys(n) WHERE 

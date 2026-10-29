@@ -150,11 +150,20 @@ class QdrantClientWrapper:
             points = []
             for r in results:
                 payload = r.payload or {}
+                doc_id_val = payload.get("document_id") or payload.get("doc_id") or payload.get("contract_id") or str(r.id)
+                file_val = payload.get("source_file") or payload.get("contract_name") or payload.get("name") or "Document"
+                chunk_idx_val = payload.get("chunk_index") if payload.get("chunk_index") is not None else payload.get("chunk_id")
                 points.append({
                     "id": str(r.id),
-                    "contract_name": payload.get("contract_name") or payload.get("name") or "Contract Document",
-                    "chunk_id": payload.get("chunk_id"),
+                    "document_id": doc_id_val,
+                    "doc_id": doc_id_val,
+                    "source_file": file_val,
+                    "contract_name": file_val,
+                    "chunk_index": chunk_idx_val,
+                    "chunk_id": chunk_idx_val,
                     "text": payload.get("text", ""),
+                    "department": payload.get("department") or "",
+                    "source": payload.get("source") or col,
                     "payload": payload,
                     "score": None,
                 })
@@ -169,12 +178,13 @@ class QdrantClientWrapper:
         collection_name: str = None,
         limit: int = 10,
         query_filter: Optional[Dict[str, Any]] = None,
-        entity_type: Optional[str] = None,
+        entity_type: Optional[Any] = None,
+        table: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Semantic vector search using SentenceTransformer embedding.
         Falls back to keyword search if model is unavailable.
-        Supports Qdrant payload filtering by entity_type or custom query_filter.
+        Supports Qdrant payload filtering by entity_type (single or list) or table or custom query_filter.
         """
         if not self._connected and not self.connect():
             return []
@@ -182,14 +192,18 @@ class QdrantClientWrapper:
         if not col or not query.strip():
             return []
 
-        # Build filter if entity_type is provided
+        # Build filter if entity_type or table is provided
         effective_filter = query_filter
-        if entity_type and not effective_filter:
-            effective_filter = {
-                "must": [
-                    {"key": "entity_type", "match": {"value": entity_type}}
-                ]
-            }
+        if (entity_type or table) and not effective_filter:
+            must_conditions = []
+            if entity_type:
+                if isinstance(entity_type, list):
+                    must_conditions.append({"key": "entity_type", "match": {"any": entity_type}})
+                else:
+                    must_conditions.append({"key": "entity_type", "match": {"value": str(entity_type)}})
+            if table:
+                must_conditions.append({"key": "table", "match": {"value": str(table)}})
+            effective_filter = {"must": must_conditions}
 
         model = get_embed_model()
         if model:
@@ -220,12 +234,22 @@ class QdrantClientWrapper:
                     results = []
                     for h in hits:
                         payload = h.get("payload") or {}
+                        h_id = str(h.get("id"))
+                        doc_id_val = payload.get("document_id") or payload.get("doc_id") or payload.get("contract_id") or h_id
+                        file_val = payload.get("source_file") or payload.get("contract_name") or payload.get("name") or "Document"
+                        chunk_idx_val = payload.get("chunk_index") if payload.get("chunk_index") is not None else payload.get("chunk_id")
                         results.append({
-                            "id": str(h.get("id")),
+                            "id": h_id,
                             "score": round(float(h.get("score", 0)), 4),
-                            "contract_name": payload.get("contract_name") or payload.get("name") or "Contract Document",
-                            "chunk_id": payload.get("chunk_id"),
+                            "document_id": doc_id_val,
+                            "doc_id": doc_id_val,
+                            "source_file": file_val,
+                            "contract_name": file_val,
+                            "chunk_index": chunk_idx_val,
+                            "chunk_id": chunk_idx_val,
                             "text": payload.get("text") or payload.get("searchable_text", ""),
+                            "department": payload.get("department") or "",
+                            "source": payload.get("source") or col,
                             "payload": payload,
                             "collection": col,
                         })
@@ -269,12 +293,22 @@ class QdrantClientWrapper:
                     if hit_cnt > 0:
                         score = round(hit_cnt / len(tokens), 2)
                 if score > 0:
+                    r_id = str(r.id)
+                    doc_id_val = payload.get("document_id") or payload.get("doc_id") or payload.get("contract_id") or r_id
+                    file_val = payload.get("source_file") or payload.get("contract_name") or payload.get("name") or "Document"
+                    chunk_idx_val = payload.get("chunk_index") if payload.get("chunk_index") is not None else payload.get("chunk_id")
                     matched.append({
-                        "id": str(r.id),
+                        "id": r_id,
                         "score": score,
-                        "contract_name": payload.get("contract_name") or payload.get("name") or "Contract Document",
-                        "chunk_id": payload.get("chunk_id"),
+                        "document_id": doc_id_val,
+                        "doc_id": doc_id_val,
+                        "source_file": file_val,
+                        "contract_name": file_val,
+                        "chunk_index": chunk_idx_val,
+                        "chunk_id": chunk_idx_val,
                         "text": payload.get("text", ""),
+                        "department": payload.get("department") or "",
+                        "source": payload.get("source") or col,
                         "payload": payload,
                         "collection": col,
                     })
