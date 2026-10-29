@@ -198,6 +198,17 @@ except ImportError:
     except Exception as e:
         logger.warning(f"[M1 Data Sync] Could not load file_watcher_router: {e}")
 
+# M1 Data Sync — Google Drive & Sheets Connector (FR4 & FR19)
+try:
+    from app.modules.m1_data_sync.google_connector import router as google_connector_router
+    app.include_router(google_connector_router)
+except ImportError:
+    try:
+        from modules.m1_data_sync.google_connector import router as google_connector_router
+        app.include_router(google_connector_router)
+    except Exception as e:
+        logger.warning(f"[M1 Data Sync] Could not load google_connector_router: {e}")
+
 # Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
