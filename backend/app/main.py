@@ -2083,14 +2083,25 @@ def get_assigned_contracts(
 
 @app.get("/api/risk/alerts")
 def get_risk_alerts(
-    role: str = Query(default="standard"),
-    dept: str = Query(default="Kinh doanh")
+    role: Optional[str] = Query(default=None),
+    dept: Optional[str] = Query(default=None),
+    x_user_role: Optional[str] = Header(None),
+    x_user_dept: Optional[str] = Header(None),
 ):
     """
     Returns live risk alerts computed from real Neo4j nodes (SalesOrder, Customer)
-    and real Qdrant CUAD contracts. Filtered by role/data scope.
+    and real Qdrant CUAD contracts. Filtered by role/data scope (BR-02, BR-05, UC.20).
+    - Executive & Admin: Full enterprise scope (Sales, Legal anomalies, Financial risks).
+    - Department Manager: Scoped to assigned department (BR-02 / BR-04).
+    - Standard User: Scoped strictly to operational shift within department (US23 / FR43 / E2).
     """
-    is_standard = role in ["standard", "sales", "ops"]
+    effective_role = (x_user_role or role or "standard").strip().lower()
+    raw_dept = (x_user_dept or dept or "Kinh doanh").strip()
+    
+    is_exec_or_admin = effective_role in ["executive", "it_admin", "admin", "cfo", "ceo"]
+    is_manager = effective_role in ["knowledge_manager", "manager", "lead", "tp"]
+    is_standard = not is_exec_or_admin and not is_manager
+
     cuad_items = _get_cuad_cache()
     
     top_cust = None
@@ -2209,12 +2220,34 @@ def get_risk_alerts(
         }
     ]
 
-    alerts = sales_alerts if is_standard else (sales_alerts + legal_alerts)
+    # Data scope selection (BR-02, BR-05, UC.20)
+    if is_exec_or_admin:
+        # Full enterprise scope (BR-05)
+        alerts = sales_alerts + legal_alerts
+        scope_level = "ENTERPRISE_UNRESTRICTED"
+    elif is_manager:
+        # Department Scope (BR-02 / BR-04)
+        clean_dept = raw_dept.lower()
+        if "pháp chế" in clean_dept or "legal" in clean_dept:
+            alerts = legal_alerts
+        else:
+            alerts = sales_alerts
+        scope_level = "DEPARTMENT_SCOPE"
+    else:
+        # Standard User: only operational alerts within assigned scope (US23 / FR43 / E2)
+        alerts = sales_alerts
+        scope_level = "STANDARD_OPERATIONAL"
 
     return {
         "success": True,
         "total": len(alerts),
         "data": alerts,
+        "rbac": {
+            "role": effective_role,
+            "department": raw_dept,
+            "scopeLevel": scope_level,
+            "isUnrestricted": is_exec_or_admin
+        },
         "summary": {
             "total_alerts": len(alerts),
             "contract_expiring": sum(1 for a in alerts if a["category"] == "contract_expiring"),

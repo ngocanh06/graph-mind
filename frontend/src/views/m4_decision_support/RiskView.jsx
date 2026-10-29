@@ -139,7 +139,15 @@ const ALL_ALERTS_DATA = (isVi) => [
 
 export default function RiskView({ onNavigate, lang = "vi", role = "executive", currentUser }) {
   const isVi = lang === "vi";
-  const isStandardSales = role === "standard" || role === "sales" || currentUser?.roleKey === "SALES_OPS" || currentUser?.id === "standard";
+  
+  // 3-Tier Enterprise Role Matrix (SRS BR-02, BR-05, UC.20, US34, US23)
+  const isExecOrAdmin = role === "executive" || role === "it_admin" || currentUser?.id === "executive" || currentUser?.id === "it_admin";
+  const isManager = role === "knowledge_manager" || currentUser?.id === "knowledge_manager";
+  const isStandardSales = !isExecOrAdmin && !isManager;
+
+  const userDept = currentUser?.department || (isVi ? "Kinh doanh & Bán hàng" : "Sales & BD");
+  const isLegalDept = (currentUser?.department || "").toLowerCase().includes("pháp chế") || (currentUser?.department || "").toLowerCase().includes("legal");
+
   const [filter, setFilter] = useState("all");
   const [resolved, setResolved] = useState({});
   const [showEmpty, setShowEmpty] = useState(false);
@@ -149,7 +157,7 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
   const loadAlerts = async () => {
     setIsLoadingLive(true);
     try {
-      const res = await fetchRiskAlerts(role, "Kinh doanh");
+      const res = await fetchRiskAlerts(currentUser || role, currentUser?.department || "Kinh doanh");
       if (res && res.success && res.data && res.data.length > 0) {
         setLiveAlerts(res.data);
       }
@@ -163,18 +171,25 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
   // Truy vấn dữ liệu cảnh báo thực tế từ Backend API (Neo4j & Qdrant)
   useEffect(() => {
     loadAlerts();
-  }, [role]);
+  }, [role, currentUser]);
 
-  // US23, US39: PHÂN QUYỀN DATA SCOPE PHÒNG BAN
-  // Đối với Standard User (Kinh doanh): CHỈ HIỂN THỊ cảnh báo sụt giảm đơn hàng & hợp đồng sắp hết hạn của phòng ban Kinh doanh
+  // US23, US34, UC.20: PHÂN QUYỀN DATA SCOPE THEO ĐẶC TẢ
+  // - Executive/Admin: Toàn quyền truy cập tất cả cảnh báo vĩ mô toàn doanh nghiệp (BR-05)
+  // - Department Manager: Giám sát toàn diện trong phạm vi phòng ban quản lý (BR-02 / BR-04)
+  // - Standard User: Giới hạn nghiêm ngặt theo ca việc phòng ban được giao (US23 / FR43 / E2)
   const sourceAlerts = liveAlerts.length > 0 ? liveAlerts : ALL_ALERTS_DATA(isVi);
-  const rawAlerts = isStandardSales
-    ? sourceAlerts.filter((a) => a.dept === "sales" && (a.category === "order_drop" || a.category === "contract_expiring"))
-    : sourceAlerts;
+  const rawAlerts = isExecOrAdmin
+    ? sourceAlerts
+    : isManager
+    ? (isLegalDept
+        ? sourceAlerts.filter((a) => a.dept === "legal" || a.category === "legal_anomaly")
+        : sourceAlerts.filter((a) => a.dept === "sales" || a.category === "order_drop" || a.category === "contract_expiring"))
+    : sourceAlerts.filter((a) => a.dept === "sales" && (a.category === "order_drop" || a.category === "contract_expiring"));
 
   const countExpiring = rawAlerts.filter((a) => a.category === "contract_expiring").length;
   const countOrderDrop = rawAlerts.filter((a) => a.category === "order_drop").length;
-  const countHigh = rawAlerts.filter((a) => a.severity === "high").length;
+  const countLegal = rawAlerts.filter((a) => a.category === "legal_anomaly" || a.category === "LEGAL_COMPLIANCE").length;
+  const countHigh = rawAlerts.filter((a) => a.severity === "high" || a.severity === "critical" || a.variant === "danger").length;
 
   const visible = showEmpty
     ? []
@@ -182,26 +197,81 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
         if (resolved[a.id]) return false;
         if (filter === "contract_expiring") return a.category === "contract_expiring";
         if (filter === "order_drop") return a.category === "order_drop";
-        if (filter === "high") return a.severity === "high";
+        if (filter === "legal_anomaly") return a.category === "legal_anomaly" || a.category === "LEGAL_COMPLIANCE";
+        if (filter === "high") return a.severity === "high" || a.severity === "critical" || a.variant === "danger";
         return true;
       });
 
   const handleResolve = (id) => setResolved((prev) => ({ ...prev, [id]: true }));
 
-  // Filter Buttons theo tiêu chí nghiệp vụ
-  const filterBtns = isStandardSales
+  // Filter Buttons theo tiêu chí phân quyền từng nhóm vai trò
+  const filterBtns = isExecOrAdmin
     ? [
-        { key: "all", label: `${isVi ? "Tất cả cảnh báo Kinh doanh" : "All Sales Alerts"} (${rawAlerts.length})` },
-        { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})`, variant: "danger" },
-        { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Cadence Dips"} (${countOrderDrop})`, variant: "warning" },
+        { key: "all", label: `${isVi ? "Tất cả cảnh báo vĩ mô" : "All Enterprise Alerts"} (${rawAlerts.length})` },
+        { key: "high", label: `${isVi ? "Mức độ Nghiêm trọng" : "Critical"} (${countHigh})`, variant: "danger" },
+        { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})` },
+        { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Drops"} (${countOrderDrop})` },
+        { key: "legal_anomaly", label: `${isVi ? "Bất thường Pháp lý" : "Legal Anomalies"} (${countLegal})`, variant: "purple" },
       ]
-    : [
-        { key: "all", label: `${isVi ? "Tất cả cảnh báo" : "All"} (${rawAlerts.length})` },
+    : isManager
+    ? [
+        { key: "all", label: `${isVi ? "Tất cả cảnh báo phòng ban" : "All Department Alerts"} (${rawAlerts.length})` },
         { key: "high", label: `${isVi ? "Mức độ Cao" : "Critical"} (${countHigh})`, variant: "danger" },
         { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})` },
         { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Drops"} (${countOrderDrop})` },
+      ]
+    : [
+        { key: "all", label: `${isVi ? "Cảnh báo Kinh doanh trong ca" : "All Sales Alerts"} (${rawAlerts.length})` },
+        { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})`, variant: "danger" },
+        { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Cadence Dips"} (${countOrderDrop})`, variant: "warning" },
       ];
 
+  const pageTitle = isExecOrAdmin
+    ? (isVi ? "Trung tâm Cảnh báo Rủi ro Thông minh" : "Smart Risk & Alert Center")
+    : isManager
+    ? (isVi ? `Trung tâm Cảnh báo Rủi ro Phòng ban: ${userDept}` : `Department Risk & Alert Center: ${currentUser?.departmentEn || userDept}`)
+    : (isVi ? "Cảnh báo Rủi ro Phòng Kinh doanh (Sales Risk Center)" : "Sales Department Risk Alerts");
+
+  const pageSubtitle = isExecOrAdmin
+    ? (isVi
+        ? "Đài quan sát rủi ro vĩ mô toàn diện: phát hiện sớm hợp đồng sắp mãn hạn, biến động tần suất đặt hàng VIP và bất thường pháp lý trên toàn bộ đồ thị tri thức (BR-05 / UC.20)."
+        : "Comprehensive enterprise risk center: early detection of expiring contracts, VIP order cadence drops and legal anomalies across knowledge graph (BR-05 / UC.20).")
+    : isManager
+    ? (isVi
+        ? `Giám sát toàn diện các chỉ số rủi ro tác nghiệp, hợp đồng sắp mãn hạn và biến động doanh số thuộc phạm vi ${userDept} (BR-02 / BR-04 / UC.20).`
+        : `Monitor operational risks, contract expirations and revenue anomalies within assigned department scope (BR-02 / BR-04 / UC.20).`)
+    : (isVi
+        ? "Chỉ hiển thị cảnh báo sụt giảm đơn hàng & hợp đồng sắp hết hạn thuộc phạm vi ca làm việc & phòng Kinh doanh (US23, US39, FR43). Hỗ trợ chuyên viên chủ động đàm phán tái ký."
+        : "Dedicated sales operational alerts: Track expiring client contracts and order cadence dips for sales shift (US23, US39, FR43).");
+
+  const scopeBadge = isExecOrAdmin ? (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+      <span>{isVi ? "Phạm vi: Toàn doanh nghiệp (Full Enterprise Scope · BR-05)" : "Scope: Enterprise-Wide (BR-05)"}</span>
+      {liveAlerts.length > 0 && (
+        <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.12)", padding: "1px 7px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
+          ● Live Neo4j & Qdrant
+        </span>
+      )}
+    </span>
+  ) : isManager ? (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+      <span>{isVi ? `Phạm vi quản lý: ${userDept} (BR-02 Scope)` : `Scope: ${userDept} (BR-02 Scope)`}</span>
+      {liveAlerts.length > 0 && (
+        <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.12)", padding: "1px 7px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
+          ● Live Neo4j & Qdrant
+        </span>
+      )}
+    </span>
+  ) : (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+      <span>{isVi ? "Phạm vi nghiệp vụ: Phòng Kinh doanh (US23/FR43)" : "Scope: Sales Department (US23/FR43)"}</span>
+      {liveAlerts.length > 0 && (
+        <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.12)", padding: "1px 7px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
+          ● Live Neo4j & Qdrant
+        </span>
+      )}
+    </span>
+  );
 
   return (
     <div style={{ background: "var(--base, #F8FAFC)", minHeight: "100%", padding: "28px 32px 48px", boxSizing: "border-box" }}>
@@ -209,32 +279,9 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
 
         {/* ── HEADER TOOLBAR ─────────────────────────────────── */}
         <PageHeader
-          title={
-            isStandardSales
-              ? (isVi ? "Cảnh báo Rủi ro Phòng Kinh doanh (Sales Risk Center)" : "Sales Department Risk Alerts")
-              : (isVi ? "Trung tâm Cảnh báo Rủi ro Thông minh" : "Smart Risk & Alert Center")
-          }
-          subtitle={
-            isStandardSales
-              ? (isVi
-                ? "Chỉ hiển thị cảnh báo sụt giảm đơn hàng & hợp đồng sắp hết hạn của phòng ban Kinh doanh (US23, US39). Giúp chuyên viên chủ động đàm phán tái ký và bảo vệ doanh số."
-                : "Dedicated sales operational alerts: Track expiring client contracts and order cadence dips (US23, US39).")
-              : (isVi
-                ? "Phát hiện sớm hợp đồng sắp mãn hạn và đối tác có tần suất đặt hàng suy giảm bất thường qua đồ thị tri thức."
-                : "Early detection of expiring contracts and partners with abnormal order cadence drops via knowledge graph.")
-          }
-          badge={
-            isStandardSales ? (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <span>{isVi ? "Phạm vi dữ liệu: Phòng Kinh doanh" : "Scope: Sales Department"}</span>
-                {liveAlerts.length > 0 && (
-                  <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.12)", padding: "1px 7px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
-                    ● Live Neo4j & Qdrant
-                  </span>
-                )}
-              </span>
-            ) : null
-          }
+          title={pageTitle}
+          subtitle={pageSubtitle}
+          badge={scopeBadge}
           actions={
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               {filterBtns.map(({ key, label, variant }) => {
@@ -262,103 +309,155 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
           }
         />
 
-        {/* ── THỐNG KÊ TỔNG QUAN PHÒNG KINH DOANH ───────────────── */}
-        {isStandardSales && (
+        {/* ── THỐNG KÊ TỔNG QUAN THEO NHÓM VAI TRÒ ───────────── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isExecOrAdmin ? "repeat(auto-fit, minmax(280px, 1fr))" : "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: "16px",
+          }}
+        >
+          {/* Card 1: Hợp đồng sắp hết hạn */}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: "16px",
+              background: "linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(220,38,38,0.02) 100%)",
+              border: "1px solid rgba(220,38,38,0.25)",
+              borderRadius: "14px",
+              padding: "16px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
             }}
           >
             <div
               style={{
-                background: "linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(220,38,38,0.02) 100%)",
-                border: "1px solid rgba(220,38,38,0.25)",
-                borderRadius: "14px",
-                padding: "16px 20px",
+                width: 42,
+                height: 42,
+                borderRadius: "10px",
+                background: "rgba(220,38,38,0.15)",
+                color: "#DC2626",
                 display: "flex",
                 alignItems: "center",
-                gap: "14px",
+                justifyContent: "center",
+                flexShrink: 0,
               }}
             >
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: "10px",
-                  background: "rgba(220,38,38,0.15)",
-                  color: "#DC2626",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Clock size={20} />
-              </div>
-              <div>
-                <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#991B1B" }}>
-                  {isVi ? "HỢP ĐỒNG SẮP HẾT HẠN (CẦN TÁI KÝ)" : "EXPIRING CONTRACTS"}
-                </div>
-                <div style={{ fontSize: "20px", fontWeight: 800, color: "#991B1B", marginTop: "2px" }}>
-                  {countExpiring} {isVi ? "Hợp đồng" : "Contracts"}
-                </div>
-                <div style={{ fontSize: "11.5px", color: "#7F1D1D" }}>
-                  {isVi ? "Tổng giá trị 2.02 Tỷ VNĐ cần bảo vệ" : "2.02B VND pipeline to protect"}
-                </div>
-              </div>
+              <Clock size={20} />
             </div>
-
-            <div
-              style={{
-                background: "linear-gradient(135deg, rgba(217,119,6,0.08) 0%, rgba(217,119,6,0.02) 100%)",
-                border: "1px solid rgba(217,119,6,0.25)",
-                borderRadius: "14px",
-                padding: "16px 20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-              }}
-            >
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: "10px",
-                  background: "rgba(217,119,6,0.15)",
-                  color: "#D97706",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <TrendingDown size={20} />
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#991B1B" }}>
+                {isVi ? "HỢP ĐỒNG SẮP HẾT HẠN (15–30 NGÀY)" : "EXPIRING CONTRACTS (15-30 DAYS)"}
               </div>
-              <div>
-                <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#92400E" }}>
-                  {isVi ? "KHÁCH HÀNG SỤT GIẢM ĐƠN HÀNG" : "ORDER CADENCE DIPS"}
-                </div>
-                <div style={{ fontSize: "20px", fontWeight: 800, color: "#92400E", marginTop: "2px" }}>
-                  {countOrderDrop} {isVi ? "Đối tác" : "Partners"}
-                </div>
-                <div style={{ fontSize: "11.5px", color: "#78350F" }}>
-                  {isVi ? "Ước tính hụt -405 Triệu VNĐ doanh số" : "-405M VND projected dip"}
-                </div>
+              <div style={{ fontSize: "20px", fontWeight: 800, color: "#991B1B", marginTop: "2px" }}>
+                {countExpiring} {isVi ? "Hợp đồng" : "Contracts"}
+              </div>
+              <div style={{ fontSize: "11.5px", color: "#7F1D1D" }}>
+                {isVi ? "Tổng giá trị 2.02 Tỷ VNĐ cần tái đàm phán" : "2.02B VND pipeline to renegotiate"}
               </div>
             </div>
           </div>
-        )}
+
+          {/* Card 2: Sụt giảm đơn hàng */}
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(217,119,6,0.08) 0%, rgba(217,119,6,0.02) 100%)",
+              border: "1px solid rgba(217,119,6,0.25)",
+              borderRadius: "14px",
+              padding: "16px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
+            }}
+          >
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: "10px",
+                background: "rgba(217,119,6,0.15)",
+                color: "#D97706",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <TrendingDown size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#92400E" }}>
+                {isVi ? "KHÁCH HÀNG SỤT GIẢM ĐƠN HÀNG (-30%)" : "ORDER CADENCE DIPS (-30%)"}
+              </div>
+              <div style={{ fontSize: "20px", fontWeight: 800, color: "#92400E", marginTop: "2px" }}>
+                {countOrderDrop} {isVi ? "Đối tác trọng điểm" : "VIP Partners"}
+              </div>
+              <div style={{ fontSize: "11.5px", color: "#78350F" }}>
+                {isVi ? "Ước tính hụt -405 Triệu VNĐ doanh thu" : "-405M VND projected dip"}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Bất thường Pháp lý & Bồi thường (Dành riêng cho Executive & Admin) */}
+          {isExecOrAdmin && (
+            <div
+              style={{
+                background: "linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.02) 100%)",
+                border: "1px solid rgba(139,92,246,0.25)",
+                borderRadius: "14px",
+                padding: "16px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+              }}
+            >
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: "10px",
+                  background: "rgba(139,92,246,0.15)",
+                  color: "#8B5CF6",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#5B21B6" }}>
+                  {isVi ? "BẤT THƯỜNG ĐIỀU KHOẢN PHÁP LÝ" : "LEGAL COMPLIANCE EXPOSURE"}
+                </div>
+                <div style={{ fontSize: "20px", fontWeight: 800, color: "#5B21B6", marginTop: "2px" }}>
+                  {countLegal} {isVi ? "Cảnh báo" : "Anomalies"}
+                </div>
+                <div style={{ fontSize: "11.5px", color: "#4C1D95" }}>
+                  {isVi ? "Rủi ro bồi thường vô hạn (No Liability Cap)" : "Uncapped liability exposure"}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ── ALERTS LIST / EMPTY STATE ─────────────────────── */}
         {showEmpty || visible.length === 0 ? (
           <EmptyState
             icon={ShieldCheck}
             title={isVi ? "Không còn cảnh báo rủi ro tồn đọng" : "No active risk alerts remaining"}
-            description={isVi
-              ? "Toàn bộ hợp đồng phòng Kinh doanh đều an toàn và các chỉ số giao dịch AdventureWorks đang nằm trong biên độ chuẩn."
-              : "All sales contracts in the CUAD knowledge base are safely active and AdventureWorks sales metrics remain within normal parameters."}
+            description={
+              isExecOrAdmin
+                ? (isVi
+                    ? "Toàn bộ hợp đồng CUAD và các giao dịch AdventureWorks trên đồ thị tri thức đều an toàn, nằm trong biên độ tuân thủ chuẩn."
+                    : "All enterprise contracts and AdventureWorks orders on the knowledge graph are safe and compliant.")
+                : isManager
+                ? (isVi
+                    ? `Toàn bộ hợp đồng và hoạt động kinh doanh thuộc phạm vi ${userDept} đang vận hành ổn định.`
+                    : `All contracts and activities within ${userDept} are running within normal parameters.`)
+                : (isVi
+                    ? "Toàn bộ hợp đồng phòng Kinh doanh được giao đều an toàn, không có giao dịch bất thường trong ca làm việc."
+                    : "All assigned sales contracts and orders remain safe during this shift.")
+            }
             actionLabel={isVi ? "Khôi phục dữ liệu mẫu" : "Restore sample alerts"}
             onAction={() => { setShowEmpty(false); setFilter("all"); setResolved({}); }}
           />
