@@ -26,7 +26,7 @@ _EMBED_MODEL = None
 
 
 def get_embed_model():
-    """Lazy load SentenceTransformer or FastEmbed model from local cache."""
+    """Lazy load SentenceTransformer model with graceful fallback."""
     global _EMBED_MODEL
     if _EMBED_MODEL is None:
         try:
@@ -36,21 +36,7 @@ def get_embed_model():
             _EMBED_MODEL = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
             print("[Qdrant] SentenceTransformer 'all-MiniLM-L6-v2' loaded successfully")
         except Exception:
-            try:
-                from fastembed import TextEmbedding
-                class _FastEmbedAdapter:
-                    def __init__(self):
-                        self._model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
-                    def encode(self, texts, **kwargs):
-                        import numpy as np
-                        if isinstance(texts, str):
-                            return np.array(list(self._model.embed([texts]))[0])
-                        return np.array([e for e in self._model.embed(texts)])
-                _EMBED_MODEL = _FastEmbedAdapter()
-                print("[Qdrant] FastEmbed 'all-MiniLM-L6-v2' loaded successfully")
-            except Exception as e:
-                print(f"[Qdrant] Warning: Could not load embedding model: {e}")
-                _EMBED_MODEL = False
+            _EMBED_MODEL = False
     return _EMBED_MODEL if _EMBED_MODEL is not False else None
 
 
