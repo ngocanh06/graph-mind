@@ -383,19 +383,21 @@ def process_document_ingestion(
             from qdrant_client.http import models
 
             # Clean previous vectors if modifying
-            target_name = old_name or filename
-            try:
-                qdrant_client._client.delete(
-                    collection_name=qdrant_client._collection,
-                    points_selector=models.Filter(
-                        should=[
-                            models.FieldCondition(key="contract_name", match=models.MatchValue(value=target_name)),
-                            models.FieldCondition(key="source_file", match=models.MatchValue(value=target_name)),
-                        ]
+            if old_name or event_type in ("updated", "modified"):
+                target_name = old_name or filename
+                try:
+                    qdrant_client._client.delete(
+                        collection_name=qdrant_client._collection,
+                        points_selector=models.Filter(
+                            should=[
+                                models.FieldCondition(key="contract_name", match=models.MatchValue(value=target_name)),
+                                models.FieldCondition(key="source_file", match=models.MatchValue(value=target_name)),
+                            ]
+                        ),
+                        wait=False
                     )
-                )
-            except Exception as del_err:
-                logger.debug(f"[Pipeline] Qdrant clean old points note: {del_err}")
+                except Exception as del_err:
+                    logger.debug(f"[Pipeline] Qdrant clean old points note: {del_err}")
 
             from app.db.qdrant.client import get_embed_model
             _embed = get_embed_model()
@@ -436,7 +438,8 @@ def process_document_ingestion(
                 for b_start in range(0, len(pts), 100):
                     qdrant_client._client.upsert(
                         collection_name=qdrant_client._collection,
-                        points=pts[b_start:b_start + 100]
+                        points=pts[b_start:b_start + 100],
+                        wait=False
                     )
                 qdrant_indexed = True
     except Exception as e:

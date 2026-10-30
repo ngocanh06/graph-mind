@@ -87,9 +87,10 @@ def ingest_single_file(filepath: Path, dept: str) -> Dict[str, Any]:
             filename=filepath.name,
             department=dept,
             event_type="created",
-            allow_skip_known=False  # Force vectorization into Qdrant
+            allow_skip_known=False
         )
-        return {"name": filepath.name, "dept": dept, "success": res.get("success", False), "res": res}
+        qdrant_ok = res.get("data", {}).get("qdrant_indexed", False)
+        return {"name": filepath.name, "dept": dept, "success": res.get("success", False) and qdrant_ok, "res": res}
     except Exception as e:
         return {"name": filepath.name, "dept": dept, "success": False, "error": str(e)}
 
@@ -139,34 +140,26 @@ def main():
             status = "OK" if r.get("success") else "ERR"
             logger.info(f"[{idx}/{len(missing_aw_names)}] [{status}] {name} ({dept})")
 
-    # 4. Process missing CUAD PDFs with ThreadPoolExecutor
+    # 4. Process missing CUAD PDFs sequentially (rock-solid, zero C++ threading crashes)
     if missing_cuad_names:
         logger.info("\n" + "-" * 50)
-        logger.info(f"Phase 2: Ingesting {len(missing_cuad_names)} missing CUAD PDFs (4 worker threads)...")
+        logger.info(f"Phase 2: Ingesting {len(missing_cuad_names)} missing CUAD PDFs (sequential safe mode)...")
         logger.info("-" * 50)
-        workers = 4
         success_count = 0
         failed_count = 0
 
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            future_to_file = {
-                executor.submit(ingest_single_file, cuad_files[name], "legal"): name
-                for name in missing_cuad_names
-            }
-
-            for idx, future in enumerate(as_completed(future_to_file), start=1):
-                name = future_to_file[future]
-                try:
-                    res = future.result()
-                    if res.get("success"):
-                        success_count += 1
-                        logger.info(f"[{idx}/{len(missing_cuad_names)}] [OK] {name}")
-                    else:
-                        failed_count += 1
-                        logger.warning(f"[{idx}/{len(missing_cuad_names)}] [FAIL] {name}: {res.get('error')}")
-                except Exception as e:
+        for idx, name in enumerate(missing_cuad_names, start=1):
+            try:
+                res = ingest_single_file(cuad_files[name], "legal")
+                if res.get("success"):
+                    success_count += 1
+                    logger.info(f"[{idx}/{len(missing_cuad_names)}] [OK] {name}")
+                else:
                     failed_count += 1
-                    logger.error(f"[{idx}/{len(missing_cuad_names)}] [EXC] {name}: {e}")
+                    logger.warning(f"[{idx}/{len(missing_cuad_names)}] [FAIL] {name}: {res.get('error')}")
+            except Exception as e:
+                failed_count += 1
+                logger.error(f"[{idx}/{len(missing_cuad_names)}] [EXC] {name}: {e}")
 
         logger.info(f"Phase 2 complete: {success_count} succeeded, {failed_count} failed.")
 

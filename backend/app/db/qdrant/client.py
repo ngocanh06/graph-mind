@@ -57,7 +57,7 @@ class QdrantClientWrapper:
         self._port = port
         self._collection = (settings.QDRANT_COLLECTION_NAME if settings else None) or os.getenv("QDRANT_COLLECTION_NAME", "cuad_contracts")
         try:
-            self._client = QdrantClient(host=host, port=port, timeout=8, check_compatibility=False)
+            self._client = QdrantClient(host=host, port=port, timeout=60, check_compatibility=False)
             resp = self._client.get_collections()
             col_names = [c.name for c in resp.collections]
             if self._collection not in col_names:
