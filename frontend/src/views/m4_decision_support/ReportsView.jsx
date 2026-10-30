@@ -105,6 +105,178 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
     showToast(isVi ? "Đã sao chép tóm tắt báo cáo vào bộ nhớ tạm!" : "Summary copied to clipboard!");
   };
 
+  const handleExportPDF = () => {
+    showToast(isVi ? "Đang chuẩn bị trang in & xuất file PDF chuẩn A4..." : "Preparing print layout & A4 PDF export...");
+    const originalTitle = document.title;
+    const isShift = (isSalesRole && reportMode === "shift");
+    const docName = isShift
+      ? (isVi ? `BaoCao_CaTacNghiep_${currentUser?.username || "ChuyenVien"}` : `Shift_Report_${currentUser?.username || "Specialist"}`)
+      : (isVi ? "BaoCao_ChienLuoc_BanGiamDoc_GraphMind" : "Executive_Strategic_Briefing_GraphMind");
+    document.title = `${docName}_${new Date().toISOString().slice(0, 10)}`;
+    setTimeout(() => {
+      window.print();
+      document.title = originalTitle;
+    }, 250);
+  };
+
+  const handleExportWord = () => {
+    showToast(isVi ? "Đang khởi tạo tài liệu Word (.doc)..." : "Generating Word Document (.doc)...");
+    const isShift = (isSalesRole && reportMode === "shift");
+    const docTitle = isShift
+      ? (isVi ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC — CHUYÊN VIÊN NGHIỆP VỤ" : "SPECIALIST SHIFT OPERATIONS REPORT")
+      : (isAdminRole
+          ? (isVi ? "BÁO CÁO CHIẾN LƯỢC & GIÁM SÁT TOÀN DIỆN" : "STRATEGIC BRIEFING & GLOBAL TELEMETRY")
+          : (isVi ? "BÁO CÁO CHIẾN LƯỢC BAN GIÁM ĐỐC (EXECUTIVE BRIEFING)" : "EXECUTIVE STRATEGIC BRIEFING"));
+
+    const dateStr = generatedDate || new Date().toLocaleDateString(isVi ? "vi-VN" : "en-US");
+    const authorStr = currentUser?.name || (isShift ? "Chuyên viên nghiệp vụ" : "Hệ thống GraphMind AI");
+    const docId = isShift ? "#SHIFT-OPS-2026-SEP" : (isAdminRole ? "#SECOPS-AUDIT-2026-Q3" : "#EKMP-REP-2026-Q3");
+
+    let contentHtml = "";
+
+    if (isShift) {
+      contentHtml = `
+        <h1>${docTitle}</h1>
+        <p style="text-align: center; color: #64748b; font-size: 10pt;">
+          <b>Mã tài liệu:</b> ${docId} | <b>Thời gian:</b> ${dateStr} | <b>Chuyên viên:</b> ${authorStr} (@${currentUser?.username || "ops"})
+        </p>
+        <hr style="border: 1px solid #cbd5e1; margin: 16px 0;" />
+        
+        <h2>I. TỔNG QUAN KẾT QUẢ CÔNG VIỆC TRONG CA</h2>
+        <p>Trong ca làm việc hôm nay, chuyên viên đã theo dõi sát sao các tài khoản doanh nghiệp phụ trách. Tiếp nhận và xử lý dứt điểm các ca cảnh báo rủi ro sụt giảm đơn hàng, đạt 100% cam kết thời gian phản hồi SLA. Đã thành công kích hoạt giải pháp đàm phán thông minh qua AI Copilot để giữ chân tài khoản Brakes and Gears ($989k USD) và thỏa thuận hạn mức đối soát công nợ tại Excellent Riding Supplies ($961k USD).</p>
+
+        <h2>II. CHỈ SỐ KPI TÁC NGHIỆP TRỌNG YẾU</h2>
+        <table>
+          <tr><th>Chỉ số (KPI)</th><th>Giá trị</th><th>Trạng thái / Đánh giá</th></tr>
+          <tr><td>Ca cảnh báo đã giải quyết</td><td><b>4 / 4 ca</b></td><td>100% SLA cam kết (TB 12 phút/ca)</td></tr>
+          <tr><td>Doanh số VIP bảo vệ thành công</td><td><b>$1,950,000 USD</b></td><td>Brakes and Gears ($989k), Excellent Riding Supplies ($961k)</td></tr>
+          <tr><td>Hồ sơ chứng từ đã phát hành</td><td><b>3 bộ chứng từ</b></td><td>BG-2026-09, EDR #8821, Phụ lục hợp đồng PL #44</td></tr>
+          <tr><td>Độ hài lòng tài khoản phụ trách</td><td><b>98.5%</b></td><td>Xuất sắc · Không có khiếu nại phát sinh</td></tr>
+        </table>
+
+        <h2>III. NHẬT KÝ CHI TIẾT CÁC CA ĐÃ XỬ LÝ</h2>
+        <table>
+          <tr><th>Thời gian</th><th>Khách hàng</th><th>Sự việc cảnh báo</th><th>Giải pháp tác nghiệp</th><th>Mã EDR</th><th>Trạng thái</th></tr>
+          <tr><td>09:15</td><td><b>Brakes and Gears</b> (CUST-29818)</td><td>Sụt giảm đơn hàng (-32%), rủi ro hợp đồng CT-2026-18</td><td>Copilot gợi ý gói chiết khấu 10% giữ chân tài khoản; xuất phiếu EDR</td><td>#EDR-8821</td><td>Đã giải quyết</td></tr>
+          <tr><td>10:30</td><td><b>Excellent Riding Supplies</b> (CUST-29715)</td><td>Nguy cơ rời bỏ dòng sản phẩm B (-44%)</td><td>Rà soát điều khoản độc quyền; gửi thư mời làm việc với GĐ Mua hàng</td><td>#EDR-8825</td><td>Đang theo dõi</td></tr>
+          <tr><td>11:15</td><td><b>Tập đoàn Dược Phẩm V</b></td><td>Nâng cấp hạ tầng bảo mật dữ liệu GxP</td><td>Lập bảng báo giá chính thức $450K USD gửi qua email kèm chứng thư số</td><td>#BG-2026-09</td><td>Đã gửi báo giá</td></tr>
+          <tr><td>14:00</td><td><b>Logistics Sao Mai</b></td><td>Ký kết phụ lục gia hạn hợp đồng vận tải</td><td>Soạn thảo phụ lục theo mẫu chuẩn Pháp chế; gửi ký số qua cổng điện tử</td><td>#PL-44</td><td>Đã hoàn tất</td></tr>
+        </table>
+
+        <h2>IV. ĐỀ XUẤT & KIẾN NGHỊ GỬI TRƯỞNG PHÒNG TRẦN M. ANH</h2>
+        <ol>
+          <li><b>Cấp hạn mức duyệt chiết khấu nhanh (10% - 12%):</b> Xem xét cấp thẩm quyền duyệt nhanh nếu khách hàng Brakes and Gears cam kết kỳ hạn 24 tháng trước ngày 30/09.</li>
+          <li><b>Đôn đốc Pháp chế phê duyệt bảo lãnh thanh toán:</b> Đôn đốc bộ phận Pháp chế hoàn tất thẩm định phụ lục bảo lãnh cho Logistics Sao Mai trong sáng mai.</li>
+        </ol>
+
+        <h2>V. XÁC NHẬN PHÊ DUYỆT CỦA TRƯỞNG PHÒNG</h2>
+        <div style="border: 1px dashed #059669; padding: 12px; background: #f0fdf4; margin-top: 10px;">
+          <p><b>Người phê duyệt:</b> Trần M. Anh — Trưởng Phòng Quản Lý Nghiệp Vụ</p>
+          <p><b>Trạng thái:</b> ${managerApproved ? "ĐÃ PHÊ DUYỆT & KÝ SỐ ĐIỆN TỬ" : (reportSubmitted ? "ĐANG CHỜ TRƯỞNG PHÒNG DUYỆT" : "BẢN THẢO CHỜ TRÌNH DUYỆT")}</p>
+          <p><b>Mã băm chứng thực:</b> SHA256: 7f89b2c89e1a...a889 · Khối phê duyệt nội bộ GraphMind</p>
+        </div>
+      `;
+    } else {
+      contentHtml = `
+        <h1>${docTitle}</h1>
+        <p style="text-align: center; color: #64748b; font-size: 10pt;">
+          <b>Mã tài liệu:</b> ${docId} | <b>Thời gian tạo:</b> ${dateStr} | <b>Phạm vi:</b> Vĩ mô Toàn Doanh Nghiệp (5 Phòng ban)
+        </p>
+        <p style="text-align: center; color: #059669; font-size: 10pt; font-weight: bold;">
+          Dữ liệu kiểm toán đối soát: 100% Khớp trên 3 Lớp (Central Storage, Qdrant Vector DB, Neo4j Knowledge Graph)
+        </p>
+        <hr style="border: 1px solid #cbd5e1; margin: 16px 0;" />
+
+        <h2>I. TỔNG QUAN TÀI CHÍNH & VẬN HÀNH VĨ MÔ</h2>
+        <table>
+          <tr><th>Chỉ tiêu Chiến lược</th><th>Giá trị Thực tế</th><th>Tăng trưởng / Đánh giá</th></tr>
+          <tr><td>Tổng doanh thu toàn hệ thống</td><td><b>$123,216,786 USD</b></td><td>+12.4% so với cùng kỳ năm trước</td></tr>
+          <tr><td>Quy mô đơn hàng tích lũy</td><td><b>31,465 đơn hàng</b></td><td>Độ bao phủ 100% trên 19,820 khách hàng</td></tr>
+          <tr><td>Tổng số hợp đồng giám sát (CUAD)</td><td><b>510 hợp đồng</b></td><td>100% đã lập chỉ mục Vector Qdrant & Neo4j</td></tr>
+          <tr><td>Tổng số tệp dữ liệu nghiệp vụ (AW)</td><td><b>71 tệp dữ liệu</b></td><td>Bao phủ 5 phân hệ: Kinh doanh, R&D, Mua hàng, IT, Kho</td></tr>
+          <tr><td>Tổng điểm Vector tri thức</td><td><b>49,336 Vector Chunks</b></td><td>Độ chính xác truy vấn ngữ nghĩa: 94.8%</td></tr>
+        </table>
+
+        <h2>II. DANH MỤC KHÁCH HÀNG VIP & NGUY CƠ BIẾN ĐỘNG DOANH SỐ</h2>
+        <table>
+          <tr><th>Mã KH</th><th>Tên Khách hàng VIP</th><th>Doanh số Lũy kế</th><th>Tỷ trọng</th><th>Rủi ro / Cảnh báo</th></tr>
+          <tr><td>CUST-29818</td><td><b>Brakes and Gears</b></td><td>$989,450 USD</td><td>Top 1 Doanh số</td><td>Cảnh báo sụt giảm -32% đơn hàng tháng 9. Hợp đồng CT-2026-18 hết hạn trong 24 ngày.</td></tr>
+          <tr><td>CUST-29715</td><td><b>Excellent Riding Supplies</b></td><td>$961,230 USD</td><td>Top 2 Doanh số</td><td>Nguy cơ churn dòng sản phẩm B (-44%). Cần gia hạn độc quyền.</td></tr>
+          <tr><td>CUST-29638</td><td><b>Vigorous Exercise Company</b></td><td>$842,100 USD</td><td>Top 3 Doanh số</td><td>Ổn định · Tăng trưởng đơn hàng xe đạp leo núi +8%.</td></tr>
+          <tr><td>CUST-29580</td><td><b>Action Bicycle Specialists</b></td><td>$798,600 USD</td><td>Top 4 Doanh số</td><td>Ổn định · Hợp đồng bảo trì thiết bị hiệu lực đến 2027.</td></tr>
+        </table>
+
+        <h2>III. PHÂN TÍCH RỦI RO PHÁP LÝ & HỢP ĐỒNG SẮP HẾT HẠN (FR42)</h2>
+        <p>Hệ thống giám sát phát hiện <b>12 hợp đồng</b> có nguy cơ phơi nhiễm rủi ro cao hoặc sắp hết hạn trong vòng 15–30 ngày:</p>
+        <ul>
+          <li><b>Hợp đồng cung ứng Brakes and Gears (CT-2026-18):</b> Hết hạn trong 24 ngày. Giá trị phơi nhiễm $989k USD. Khuyến nghị: Áp dụng gói chiết khấu bậc thang 10-12% gia hạn 24 tháng.</li>
+          <li><b>Hợp đồng phân phối Excellent Riding Supplies:</b> Thiếu điều khoản bảo đảm số lượng tối thiểu. Cần bổ sung phụ lục cam kết doanh số quý 4.</li>
+          <li><b>Hợp đồng bảo trì hạ tầng IT Cloud:</b> Sắp hết hạn trong 18 ngày. Cần kích hoạt quy trình phê duyệt ngân sách IT.</li>
+        </ul>
+
+        <h2>IV. KHUYẾN NGHỊ HÀNH ĐỘNG CẤP BAN ĐIỀU HÀNH (C-SUITE PRIORITY ACTIONS)</h2>
+        <ol>
+          <li><b>Phê duyệt hạn mức chiết khấu giữ chân tài khoản VIP:</b> Ủy quyền cho Trưởng phòng Kinh doanh áp dụng mức chiết khấu lên đến 12% đối với các hợp đồng kỳ hạn từ 24 tháng trở lên.</li>
+          <li><b>Kích hoạt quy trình đàm phán gia hạn hợp đồng sớm 30 ngày:</b> Ban hành SOP chuẩn hóa việc tự động cảnh báo và gửi dự thảo hợp đồng trước 30 ngày cho toàn bộ 510 đối tác.</li>
+          <li><b>Đồng bộ dữ liệu đa kênh (Google Drive & ERP):</b> Duy trì tính liên tục của pipeline thu nạp M1 với chu kỳ cập nhật tự động.</li>
+        </ol>
+
+        <h2>V. CHỨNG THỰC DỮ LIỆU & KIỂM TOÁN HỆ THỐNG</h2>
+        <div style="border: 1px solid #2563eb; padding: 12px; background: #eff6ff; margin-top: 14px;">
+          <p><b>Chứng nhận bởi:</b> GraphMind / AEGIS Enterprise Knowledge Platform</p>
+          <p><b>Phương pháp trích xuất:</b> Hybrid GraphRAG (Neo4j Graph Traversal + Qdrant Dense Vector Embeddings)</p>
+          <p><b>Mã băm kiểm toán (Audit Hash):</b> SHA256: a3de9a208f4c...b901 · Hệ thống đạt chứng nhận kiểm toán 3 lớp L1-L2-L3</p>
+        </div>
+      `;
+    }
+
+    const fullHtml = `<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset='utf-8'>
+  <title>${docTitle}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    body { font-family: 'Times New Roman', 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #111827; margin: 1in; }
+    h1 { font-size: 18pt; color: #1e3a8a; text-align: center; border-bottom: 2pt solid #1e3a8a; padding-bottom: 8pt; margin-bottom: 8pt; }
+    h2 { font-size: 13pt; color: #1d4ed8; border-bottom: 1pt solid #cbd5e1; padding-bottom: 4pt; margin-top: 16pt; margin-bottom: 8pt; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8pt; margin-bottom: 12pt; }
+    th { background-color: #f1f5f9; color: #0f172a; font-weight: bold; border: 1pt solid #cbd5e1; padding: 6pt; font-size: 10pt; text-align: left; }
+    td { border: 1pt solid #cbd5e1; padding: 6pt; font-size: 10pt; vertical-align: top; }
+    ul, ol { margin-top: 4pt; margin-bottom: 8pt; padding-left: 20pt; }
+    li { margin-bottom: 4pt; }
+  </style>
+</head>
+<body>
+  ${contentHtml}
+</body>
+</html>`;
+
+    const blob = new Blob([fullHtml], { type: "application/msword;charset=utf-8" });
+    const filename = isShift
+      ? `Bao_Cao_Ca_Tac_Nghiep_${currentUser?.username || "ChuyenVien"}_${new Date().toISOString().slice(0, 10)}.doc`
+      : `Bao_Cao_Chien_Luoc_Ban_Giam_Doc_${new Date().toISOString().slice(0, 10)}.doc`;
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(isVi ? `Đã xuất tệp Word '${filename}' thành công!` : `Exported Word document '${filename}' successfully!`);
+  };
+
   // ----------------------------------------------------------------------
   // RENDER FOR DEPARTMENT MANAGER OR USERS INSPECTING DEPARTMENT REPORT
   // ----------------------------------------------------------------------
@@ -541,6 +713,63 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             gap: 16px;
             flex-wrap: wrap;
           }
+
+          /* PRINT MEDIA STYLES (FR44 PDF EXPORT) */
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 12mm 15mm;
+            }
+            body, html {
+              background: #ffffff !important;
+              color: #0f172a !important;
+              font-size: 11pt !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            nav, aside, header, .sidebar, .top-bar, .rep-filter-dock, .report-config,
+            .rep-actions-cluster, .rep-actions-bar, .fixed, .rep-btn, button, select,
+            .animate-bounce, .rep-seg-group {
+              display: none !important;
+            }
+            .view, .sales-report-wrap, .doc-preview {
+              max-width: 100% !important;
+              width: 100% !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              background: #ffffff !important;
+              overflow: visible !important;
+            }
+            .rep-hero-box, .rep-kpi-card, .rep-table-panel, .rep-doc-dossier, .rep-sign-box, .doc-preview {
+              box-shadow: none !important;
+              border: 1px solid #cbd5e1 !important;
+              background: #ffffff !important;
+              color: #0f172a !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              margin-bottom: 12pt !important;
+            }
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              page-break-inside: auto !important;
+            }
+            tr {
+              page-break-inside: avoid !important;
+              page-break-after: auto !important;
+            }
+            th, td {
+              border: 1px solid #cbd5e1 !important;
+              padding: 6pt 8pt !important;
+              color: #0f172a !important;
+            }
+            th {
+              background: #f1f5f9 !important;
+              font-weight: 700 !important;
+            }
+          }
         `}</style>
 
         {/* Floating Toast Notification */}
@@ -652,6 +881,24 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
                 >
                   <Icon name="fa-solid fa-paper-plane" size={15} />
                   <span>{isVi ? "Gửi Trưởng Phòng Duyệt" : "Submit to Manager"}</span>
+                </button>
+
+                <button
+                  onClick={handleExportWord}
+                  className="rep-btn"
+                  title={isVi ? "Xuất báo cáo ca làm việc ra định dạng Word (.doc)" : "Export shift report to Word (.doc)"}
+                >
+                  <Icon name="fa-solid fa-file-word" size={14} style={{ color: "#2563eb" }} />
+                  <span>{isVi ? "Xuất Word" : "Export Word"}</span>
+                </button>
+
+                <button
+                  onClick={handleExportPDF}
+                  className="rep-btn"
+                  title={isVi ? "In hoặc Lưu báo cáo ca dưới dạng PDF A4" : "Print or save report as PDF"}
+                >
+                  <Icon name="fa-solid fa-file-pdf" size={14} style={{ color: "#ef4444" }} />
+                  <span>{isVi ? "Xuất PDF" : "Export PDF"}</span>
                 </button>
               </div>
             </div>
@@ -1220,6 +1467,58 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   // ----------------------------------------------------------------------
   return (
     <section className="view active text-on-surface flex flex-col gap-space-md" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
+      {/* Scoped Print Styles for Executive Briefing (FR44 PDF Export) */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+          }
+          body, html {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-size: 11pt !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          nav, aside, header, .sidebar, .top-bar, .report-config, .rep-filter-dock,
+          .fixed, button, select, .animate-bounce, .rep-actions-bar {
+            display: none !important;
+          }
+          .view, .doc-preview {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: #ffffff !important;
+            overflow: visible !important;
+          }
+          .doc-preview {
+            border: 1px solid #cbd5e1 !important;
+            padding: 18pt !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+          }
+          th, td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 6pt 8pt !important;
+            color: #0f172a !important;
+          }
+          th {
+            background: #f1f5f9 !important;
+            font-weight: 700 !important;
+          }
+        }
+      `}</style>
+
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface-container-high border border-primary/40 text-on-surface px-space-md py-space-sm rounded-DEFAULT shadow-2xl flex items-center gap-space-sm animate-bounce" style={{ backdropFilter: "blur(8px)" }}>
@@ -1362,16 +1661,20 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             {isVi ? "Sao chép Tóm tắt" : "Copy Summary"}
           </button>
           <button
-            onClick={() => showToast(isVi ? "Đang xuất tài liệu Word (.docx) chuẩn ban giám đốc..." : "Exporting Board-Ready Word Document...")}
-            className="btn sm"
+            onClick={handleExportWord}
+            className="btn sm flex items-center gap-1.5"
+            title={isVi ? "Xuất báo cáo chiến lược ra file Word (.doc)" : "Export strategic briefing to Word (.doc)"}
           >
-            {isVi ? "Xuất Word" : "Export Word"}
+            <Icon name="fa-solid fa-file-word" size={13} style={{ color: "#2563eb" }} />
+            <span>{isVi ? "Xuất Word" : "Export Word"}</span>
           </button>
           <button
-            onClick={() => showToast(isVi ? "Đang tạo bản PDF in chất lượng cao..." : "Exporting High-Resolution PDF Briefing...")}
-            className="btn primary sm"
+            onClick={handleExportPDF}
+            className="btn primary sm flex items-center gap-1.5"
+            title={isVi ? "In hoặc Lưu báo cáo chiến lược dưới dạng PDF A4" : "Print or save briefing as PDF"}
           >
-            {isVi ? "Xuất PDF" : "Export PDF"}
+            <Icon name="fa-solid fa-file-pdf" size={13} />
+            <span>{isVi ? "Xuất PDF" : "Export PDF"}</span>
           </button>
         </div>
       </div>

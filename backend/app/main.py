@@ -198,6 +198,17 @@ except ImportError:
     except Exception as e:
         logger.warning(f"[M1 Data Sync] Could not load file_watcher_router: {e}")
 
+# M1 Data Sync — Google Drive & Sheets Connector (FR4 & FR19)
+try:
+    from app.modules.m1_data_sync.google_connector import router as google_connector_router
+    app.include_router(google_connector_router)
+except ImportError:
+    try:
+        from modules.m1_data_sync.google_connector import router as google_connector_router
+        app.include_router(google_connector_router)
+    except Exception as e:
+        logger.warning(f"[M1 Data Sync] Could not load google_connector_router: {e}")
+
 # Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -594,20 +605,66 @@ def get_entity_by_id(entity_id: str):
 
 @app.post("/api/graph/verify")
 def verify_entity(req: VerifyEntityRequest):
+    new_status = "Human Verified" if req.verified else "Needs Review"
+    updated_node = None
+
+    # 1. Update in Neo4j Production Graph DB if connected (FR24 & FR25)
+    if neo4j_client.is_connected or neo4j_client.connect():
+        try:
+            cypher = """
+            MATCH (n)
+            WHERE elementId(n) = $id 
+               OR n.id = $id 
+               OR toString(n.ProductID) = $id 
+               OR toString(n.CustomerID) = $id 
+               OR toString(n.SalesOrderID) = $id 
+               OR n.name = $id
+            SET n.verified = $verified,
+                n.status = $status,
+                n.auditor = $auditor,
+                n.verifiedAt = datetime()
+            RETURN elementId(n) AS id, labels(n) AS labels, coalesce(n.name, n.id, $id) AS name,
+                   n.verified AS verified, n.status AS status, n.auditor AS auditor,
+                   toString(n.verifiedAt) AS verifiedAt
+            LIMIT 1
+            """
+            records = neo4j_client.run_cypher(
+                cypher,
+                {
+                    "id": str(req.entityId),
+                    "verified": bool(req.verified),
+                    "status": new_status,
+                    "auditor": str(req.auditor or "Human Auditor")
+                }
+            )
+            if records:
+                updated_node = records[0]
+                logger.info(f"[Knowledge Editor] Verified node in Neo4j: {updated_node}")
+        except Exception as e:
+            logger.warning(f"[Knowledge Editor] Neo4j verify error: {e}")
+
+    # 2. Also update in-memory ENTITIES map (if exists or fallback)
     entity = ENTITIES.get(req.entityId)
-    if not entity:
-        # Fallback response for real nodes
-        return {
-            "success": True,
-            "message": f"Entity {req.entityId} verified by {req.auditor}",
-            "data": {"id": req.entityId, "verified": req.verified, "status": "Human Verified"}
+    if entity:
+        entity["verified"] = req.verified
+        entity["status"] = new_status
+        entity["auditor"] = req.auditor
+        if not updated_node:
+            updated_node = entity
+
+    if not updated_node:
+        updated_node = {
+            "id": req.entityId,
+            "verified": req.verified,
+            "status": new_status,
+            "auditor": req.auditor,
+            "source": "Neo4j / Knowledge Graph"
         }
-    entity["verified"] = req.verified
-    entity["status"] = "Human Verified" if req.verified else "Needs Review"
+
     return {
         "success": True,
-        "message": f"Entity {req.entityId} verification updated by {req.auditor}",
-        "data": entity
+        "message": f"Entity {req.entityId} verification updated by {req.auditor}: status={new_status}",
+        "data": updated_node
     }
 
 
@@ -793,8 +850,20 @@ def _init_aw_search_cache():
     import csv
     from pathlib import Path
 
-    # 1. Subcategories
-    subcat_path = Path("D:/adventureworks/Production_ProductSubcategory.csv")
+    repo_root = Path(__file__).resolve().parent.parent.parent
+
+    def _resolve_csv(filename: str, candidate_dirs: list) -> Path:
+        for d in candidate_dirs:
+            p = repo_root / d / filename
+            if p.exists():
+                return p
+        matches = list(repo_root.glob(f"**/{filename}"))
+        if matches:
+            return matches[0]
+        return repo_root / candidate_dirs[0] / filename
+
+    # 1. Subcategories (rnd/Production_ProductSubcategory.csv)
+    subcat_path = _resolve_csv("Production_ProductSubcategory.csv", ["rnd", "sales", "accounting_procurement"])
     if subcat_path.exists():
         try:
             with open(subcat_path, encoding="utf-8", errors="ignore") as f:
@@ -803,8 +872,8 @@ def _init_aw_search_cache():
         except Exception as e:
             logger.warning(f"[Search] Load subcategories error: {e}")
 
-    # 2. Products
-    prod_path = Path("D:/adventureworks/Production_Product.csv")
+    # 2. Products (rnd/Production_Product.csv)
+    prod_path = _resolve_csv("Production_Product.csv", ["rnd", "sales", "accounting_procurement"])
     if prod_path.exists():
         try:
             with open(prod_path, encoding="utf-8", errors="ignore") as f:
@@ -833,9 +902,9 @@ def _init_aw_search_cache():
         except Exception as e:
             logger.warning(f"[Search] Load products error: {e}")
 
-    # 3. Customers & Stores
+    # 3. Customers & Stores (sales/Sales_Store.csv)
     cust_list = []
-    store_path = Path("D:/adventureworks/Sales_Store.csv")
+    store_path = _resolve_csv("Sales_Store.csv", ["sales", "accounting_procurement", "rnd"])
     if store_path.exists():
         try:
             with open(store_path, encoding="utf-8", errors="ignore") as f:
@@ -862,10 +931,12 @@ def _init_aw_search_cache():
         except Exception as e:
             logger.warning(f"[Search] Load stores error: {e}")
 
-    person_path = Path("D:/adventureworks/Person_Person.csv")
+    # 4. Persons (sales/Person_Person.csv)
+    person_path = _resolve_csv("Person_Person.csv", ["sales", "accounting_procurement", "rnd"])
     if person_path.exists():
         try:
             with open(person_path, encoding="utf-8", errors="ignore") as f:
+                count = 0
                 for r in csv.DictReader(f):
                     fname = r.get("FirstName", "")
                     lname = r.get("LastName", "")
@@ -888,6 +959,9 @@ def _init_aw_search_cache():
                             "numValue": 125000,
                             "score": 0.94
                         })
+                        count += 1
+                        if count >= 1000:
+                            break
         except Exception as e:
             logger.warning(f"[Search] Load persons error: {e}")
 
@@ -2305,9 +2379,11 @@ def get_risk_alerts(
         },
         "summary": {
             "total_alerts": len(alerts),
-            "legal_risk": sum(1 for a in alerts if a["category"] == "legal_risk"),
-            "financial_risk": sum(1 for a in alerts if a["category"] == "financial_risk"),
-            "high_severity": sum(1 for a in alerts if a["severity"] == "high")
+            "legal_risk": sum(1 for a in alerts if a.get("category") == "legal_risk"),
+            "financial_risk": sum(1 for a in alerts if a.get("category") == "financial_risk"),
+            "contract_expiring": sum(1 for a in alerts if a.get("category") == "contract_expiring"),
+            "order_drop": sum(1 for a in alerts if a.get("category") == "order_drop"),
+            "high_severity": sum(1 for a in alerts if str(a.get("severity", "")).lower() in ["high", "critical"])
         }
     }
 

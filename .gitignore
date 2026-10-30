@@ -50,6 +50,7 @@ scratch/
 
 # Archive and temporary verification files
 *.tar
+*.zip
 DockerUploadVerification.pdf
 
 # Monitored document directories (stored in Docker Central Storage volume)
