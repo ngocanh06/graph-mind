@@ -384,6 +384,17 @@
     "neo4jSynced": true
   },
   {
+    "id": "evt_1793369407123",
+    "eventType": "deleted",
+    "fileName": "các mô hình hỗ trợ ra quyết đinh.xlsx",
+    "department": "Kinh doanh (Sales)",
+    "timestamp": "2026-10-30T21:10:07.123082",
+    "formattedTime": "30/10/2026 21:10",
+    "status": "success",
+    "qdrantRemoved": true,
+    "neo4jRemoved": true
+  },
+  {
     "id": "evt_1793369417183",
     "eventType": "created",
     "fileName": "C1SE.18_PRODUCT_BACKLOG_GraphMind_ver1.0.docx",
@@ -396,17 +407,6 @@
     "status": "success",
     "qdrantIndexed": true,
     "neo4jSynced": true
-  },
-  {
-    "id": "evt_1793369407123",
-    "eventType": "deleted",
-    "fileName": "các mô hình hỗ trợ ra quyết đinh.xlsx",
-    "department": "Kinh doanh (Sales)",
-    "timestamp": "2026-10-30T21:10:07.123082",
-    "formattedTime": "30/10/2026 21:10",
-    "status": "success",
-    "qdrantRemoved": true,
-    "neo4jRemoved": true
   },
   {
     "id": "evt_1793369401901",
@@ -451,6 +451,17 @@
     "neo4jSynced": true
   },
   {
+    "id": "evt_1793369386466",
+    "eventType": "deleted",
+    "fileName": "Case 4 - Toi uu chi phi khao sat thi truong MSI.xlsx",
+    "department": "Kinh doanh (Sales)",
+    "timestamp": "2026-10-30T21:09:46.466825",
+    "formattedTime": "30/10/2026 21:09",
+    "status": "success",
+    "qdrantRemoved": true,
+    "neo4jRemoved": true
+  },
+  {
     "id": "evt_1793369386599",
     "eventType": "created",
     "fileName": "CÁC DẠNG BÀI TOÁN KINH TẾ VỀ QUY HOẠCH TUYẾN TÍNH (1).docx",
@@ -463,17 +474,6 @@
     "status": "success",
     "qdrantIndexed": true,
     "neo4jSynced": true
-  },
-  {
-    "id": "evt_1793369386466",
-    "eventType": "deleted",
-    "fileName": "Case 4 - Toi uu chi phi khao sat thi truong MSI.xlsx",
-    "department": "Kinh doanh (Sales)",
-    "timestamp": "2026-10-30T21:09:46.466825",
-    "formattedTime": "30/10/2026 21:09",
-    "status": "success",
-    "qdrantRemoved": true,
-    "neo4jRemoved": true
   },
   {
     "id": "evt_1793369371024",
@@ -504,6 +504,17 @@
     "neo4jSynced": true
   },
   {
+    "id": "evt_1793369359610",
+    "eventType": "deleted",
+    "fileName": "[Trương Đình Anh Quang][Phạm Gia Huy] - Formatted.docx",
+    "department": "Kinh doanh (Sales)",
+    "timestamp": "2026-10-30T21:09:19.610040",
+    "formattedTime": "30/10/2026 21:09",
+    "status": "success",
+    "qdrantRemoved": true,
+    "neo4jRemoved": true
+  },
+  {
     "id": "evt_1793369363086",
     "eventType": "created",
     "fileName": "Case 4 - Toi uu chi phi khao sat thi truong MSI.xlsx",
@@ -516,17 +527,6 @@
     "status": "success",
     "qdrantIndexed": true,
     "neo4jSynced": true
-  },
-  {
-    "id": "evt_1793369359610",
-    "eventType": "deleted",
-    "fileName": "[Trương Đình Anh Quang][Phạm Gia Huy] - Formatted.docx",
-    "department": "Kinh doanh (Sales)",
-    "timestamp": "2026-10-30T21:09:19.610040",
-    "formattedTime": "30/10/2026 21:09",
-    "status": "success",
-    "qdrantRemoved": true,
-    "neo4jRemoved": true
   },
   {
     "id": "evt_1793369352077",
@@ -571,6 +571,17 @@
     "neo4jSynced": true
   },
   {
+    "id": "evt_1793369330672",
+    "eventType": "deleted",
+    "fileName": "FILE-HOAN-CHINH-HSK1-6.xlsx",
+    "department": "Kinh doanh (Sales)",
+    "timestamp": "2026-10-30T21:08:50.672474",
+    "formattedTime": "30/10/2026 21:08",
+    "status": "success",
+    "qdrantRemoved": true,
+    "neo4jRemoved": true
+  },
+  {
     "id": "evt_1793369334090",
     "eventType": "created",
     "fileName": "Dang_chinh_tac_QHTT.docx",
@@ -583,17 +594,6 @@
     "status": "success",
     "qdrantIndexed": true,
     "neo4jSynced": true
-  },
-  {
-    "id": "evt_1793369330672",
-    "eventType": "deleted",
-    "fileName": "FILE-HOAN-CHINH-HSK1-6.xlsx",
-    "department": "Kinh doanh (Sales)",
-    "timestamp": "2026-10-30T21:08:50.672474",
-    "formattedTime": "30/10/2026 21:08",
-    "status": "success",
-    "qdrantRemoved": true,
-    "neo4jRemoved": true
   },
   {
     "id": "evt_1793369322764",
@@ -675,6 +675,34 @@
     "chunksCount": 1,
     "timestamp": "2026-10-30T21:00:20.600258",
     "formattedTime": "30/10/2026 21:00",
+    "status": "success",
+    "qdrantIndexed": true,
+    "neo4jSynced": true
+  },
+  {
+    "id": "evt_1793366210919",
+    "eventType": "created",
+    "fileName": "Bài giảng Chủ nghĩa xã hội khoa học.pdf",
+    "department": "Công nghệ / IT",
+    "docId": "DOC_4FF47438",
+    "fileHash": "4ff474380c001ded328b62bfe89c8b4548a04722110ddcd44be46e6716a183e0",
+    "chunksCount": 97,
+    "timestamp": "2026-10-30T20:16:30.719607",
+    "formattedTime": "30/10/2026 20:16",
+    "status": "success",
+    "qdrantIndexed": true,
+    "neo4jSynced": true
+  },
+  {
+    "id": "evt_1793365757735",
+    "eventType": "created",
+    "fileName": "AI_Capstone_Guideline.pdf",
+    "department": "Pháp chế (Legal)",
+    "docId": "DOC_58B35922",
+    "fileHash": "58b359229273990aacfae569a4bc917483447a8f58f833c4f3e435e0b3f63b5c",
+    "chunksCount": 30,
+    "timestamp": "2026-10-30T20:08:59.201605",
+    "formattedTime": "30/10/2026 20:08",
     "status": "success",
     "qdrantIndexed": true,
     "neo4jSynced": true

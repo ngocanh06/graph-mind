@@ -461,7 +461,16 @@ export default function CopilotView({
           setCurrentSessionId(response.sessionId);
         }
         if (response.session && response.session.messages) {
-          setMessages(response.session.messages);
+          const normalized = response.session.messages.map((m, idx) => ({
+            ...m,
+            id: m.id || `${m.sender || "msg"}_${idx}_${Date.now()}`,
+            introText: m.introText || m.text || m.answer || "",
+            verifiedBadge: m.verifiedBadge || m.model || "GraphMind AI",
+            confidence: m.confidence || (m.confidenceScore !== undefined ? `${m.confidenceScore}%` : "0%"),
+            time: m.time || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
+            userLabel: m.userLabel || (m.sender === "user" ? (currentUser?.name || currentUser?.username || "Executive User") : "AI Copilot")
+          }));
+          setMessages(normalized);
         } else {
           const data = response?.data || response;
           const answerText = response?.answer || data?.insight || response?.text || (isVi ? "Hệ thống đã hoàn tất xử lý." : "Processing completed.");
@@ -1355,10 +1364,10 @@ export default function CopilotView({
                             gap: 4
                           }}>
                             <Sparkles size={11} />
-                            {msg.verifiedBadge}
+                            {msg.verifiedBadge || msg.model || "GraphMind AI"}
                           </span>
                           <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>
-                            {isVi ? "Độ tin cậy:" : "Confidence:"} <strong style={{ color: "var(--text-1)" }}>{msg.confidence}</strong>
+                            {isVi ? "Độ tin cậy:" : "Confidence:"} <strong style={{ color: "var(--text-1)" }}>{msg.confidence || (msg.confidenceScore !== undefined ? `${msg.confidenceScore}%` : "0%")}</strong>
                           </span>
                         </div>
 
@@ -1388,7 +1397,7 @@ export default function CopilotView({
                         )}
                       </div>
 
-                      {renderFormattedMessage(msg.introText)}
+                      {renderFormattedMessage(msg.introText || msg.text || msg.answer || "")}
 
                       {/* Risk Callout */}
                       {msg.riskBox && (
@@ -1492,7 +1501,7 @@ export default function CopilotView({
                           </button>
                           <button
                             onClick={() => {
-                              navigator.clipboard?.writeText(msg.introText);
+                              navigator.clipboard?.writeText(msg.introText || msg.text || msg.answer || "");
                               showToast(isVi ? "Đã sao chép câu trả lời" : "Copied to clipboard");
                             }}
                             title={isVi ? "Sao chép" : "Copy"}
