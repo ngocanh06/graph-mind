@@ -297,6 +297,19 @@ def sync_google_drive() -> Dict[str, Any]:
         allow_skip_known=False
     )
 
+    # Also save file to Central Document Storage (/data/sales) so it appears directly in Kho tài liệu
+    try:
+        from app.core.central_storage import save_file_to_storage
+        save_file_to_storage(sample_content, sync_filename, "sales")
+    except Exception as err:
+        logger.warning(f"[GoogleConnector] Central storage save note: {err}")
+
+    try:
+        from app.main import invalidate_inventory_cache
+        invalidate_inventory_cache()
+    except Exception:
+        pass
+
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
     creds["last_sync"] = now_str
     creds["files_synced_count"] = creds.get("files_synced_count", 0) + 1

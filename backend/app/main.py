@@ -1744,8 +1744,49 @@ def get_repository_documents(
                 "risk": "Low",
                 "riskLabel": "Khớp đồ thị & vector" if status == "INDEXED" else "Chờ nạp",
                 "source": "central_storage",
-                "isNew": w_info.get("isNew", False)
             })
+
+        # Also include any newly ingested watcher/connector documents (e.g. Google Drive sync) not yet in raw inventory scan
+        inv_names = {inv["name"] for inv in inventory}
+        for w_name, w_info in watcher_map.items():
+            if w_name not in inv_names:
+                all_items.append({
+                    "id": w_info.get("id") or f"DOC_{hashlib.md5(w_name.encode()).hexdigest()[:8].upper()}",
+                    "raw_id": w_name,
+                    "name": w_name,
+                    "category": w_info.get("category", "Tài liệu Đồng bộ"),
+                    "category_en": w_info.get("category_en", "Synced Document"),
+                    "type": w_info.get("type", "TXT"),
+                    "ext": os.path.splitext(w_name)[1].lower(),
+                    "dept": w_info.get("dept", "Kinh doanh (Sales)"),
+                    "deptKey": w_info.get("deptKey", "sales"),
+                    "deptLabel": w_info.get("deptLabel", "Kinh doanh (Sales)"),
+                    "department": w_info.get("department", "Kinh doanh (Sales)"),
+                    "owner": w_info.get("owner", "Google Drive Sync"),
+                    "date": w_info.get("date", datetime.now().strftime("%d/%m/%Y")),
+                    "mtime": time.time(),
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "status": "INDEXED",
+                    "statusBadge": "Đã lập chỉ mục",
+                    "statusState": "active",
+                    "qdrant_indexed": True,
+                    "neo4j_synced": True,
+                    "qdrantIndexed": True,
+                    "neo4jSynced": True,
+                    "chunk_count": w_info.get("chunk_count", 1),
+                    "chunks": f"{w_info.get('chunk_count', 1)} Chunks",
+                    "storage_path": w_info.get("storage_path", f"/data/sales/{w_name}"),
+                    "hash": w_info.get("hash", ""),
+                    "fileHash": w_info.get("hash", ""),
+                    "file_hash": w_info.get("hash", ""),
+                    "size": w_info.get("size", "1.2 KB"),
+                    "size_bytes": 1024,
+                    "risk": "Low",
+                    "riskLabel": "Khớp đồ thị & vector",
+                    "source": "google_drive",
+                    "isNew": True
+                })
 
         indexed_count = sum(1 for it in all_items if it["status"] == "INDEXED")
         pending_count = sum(1 for it in all_items if it["status"] == "PENDING")
