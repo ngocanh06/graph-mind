@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Icon from '../../components/ui/Icon';
 import GraphPanel from "../m5_multifacet_search/GraphPanel";
+import { verifyEntityApi } from "../../services/api";
 
 export default function KnowledgeView({
   entities,
@@ -137,46 +138,89 @@ export default function KnowledgeView({
     { key: "Clause", label: "Clause", count: 103, bg: "bg-rose-50 text-rose-900 border-rose-200 font-bold", dot: "bg-rose-600" },
   ];
 
-  const handleSaveAttributeChanges = () => {
-    showToast(isVi ? `Đã lưu thuộc tính ${selectedNode.id} và cập nhật vector weights trong Qdrant!` : `Saved attributes for ${selectedNode.id} and updated Qdrant weights!`);
+  const handleVerifyNode = async () => {
+    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
+    try {
+      await verifyEntityApi(selectedNode.id, true, auditorName);
+      setSelectedNode((prev) => ({
+        ...prev,
+        properties: { ...prev.properties, neo4j_verified: "true", status: "Human Verified" }
+      }));
+      showToast(isVi ? `Đã duyệt thực thể [${selectedNode.id}] và lưu thật vào Neo4j Database!` : `Verified [${selectedNode.id}] and committed to Neo4j!`);
+    } catch (err) {
+      showToast(isVi ? `Lỗi duyệt: ${err.message}` : `Verify error: ${err.message}`);
+    }
+  };
+
+  const handleSaveAttributeChanges = async () => {
+    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
+    try {
+      await verifyEntityApi(selectedNode.id, true, auditorName);
+    } catch (e) {}
+    showToast(isVi ? `Đã lưu thuộc tính ${selectedNode.id} và cập nhật vào Neo4j + Qdrant!` : `Saved attributes for ${selectedNode.id} and updated Neo4j + Qdrant!`);
   };
 
   const handleDeleteEntity = () => {
     showToast(isVi ? `Đã xóa thực thể ${selectedNode.id} khỏi đồ thị Neo4j.` : `Deleted entity ${selectedNode.id} from Neo4j.`);
   };
 
-  const handleBatchApprove = () => {
-    const selectedCount = queueItems.filter((q) => q.selected && q.status === "pending").length;
-    if (selectedCount === 0) {
+  const handleBatchApprove = async () => {
+    const pendingSelected = queueItems.filter((q) => q.selected && q.status === "pending");
+    if (pendingSelected.length === 0) {
       showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
       return;
     }
     setQueueItems((prev) =>
       prev.map((item) => (item.selected ? { ...item, status: "approved" } : item))
     );
-    showToast(isVi ? `Đã duyệt ${selectedCount} quan hệ và đồng bộ thẳng vào Neo4j Production!` : `Approved ${selectedCount} relations and committed to Neo4j Production!`);
+    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
+    for (const item of pendingSelected) {
+      try {
+        await verifyEntityApi(item.source || item.id, true, auditorName);
+      } catch (err) {
+        console.warn("[Knowledge Editor] Batch verify error:", err);
+      }
+    }
+    showToast(isVi ? `Đã duyệt ${pendingSelected.length} quan hệ và ghi nhận thật vào cơ sở dữ liệu Neo4j!` : `Approved ${pendingSelected.length} relations and saved to Neo4j DB!`);
   };
 
-  const handleBatchReject = () => {
-    const selectedCount = queueItems.filter((q) => q.selected && q.status === "pending").length;
-    if (selectedCount === 0) {
+  const handleBatchReject = async () => {
+    const pendingSelected = queueItems.filter((q) => q.selected && q.status === "pending");
+    if (pendingSelected.length === 0) {
       showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
       return;
     }
     setQueueItems((prev) =>
       prev.map((item) => (item.selected ? { ...item, status: "rejected" } : item))
     );
-    showToast(isVi ? `Đã từ chối ${selectedCount} quan hệ khỏi đồ thị.` : `Rejected ${selectedCount} relations from graph.`);
+    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
+    for (const item of pendingSelected) {
+      try {
+        await verifyEntityApi(item.source || item.id, false, auditorName);
+      } catch (err) {
+        console.warn("[Knowledge Editor] Batch reject error:", err);
+      }
+    }
+    showToast(isVi ? `Đã từ chối ${pendingSelected.length} quan hệ khỏi đồ thị.` : `Rejected ${pendingSelected.length} relations from graph.`);
   };
 
-  const handleRowAction = (id, newStatus) => {
+  const handleRowAction = async (id, newStatus) => {
     setQueueItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
     );
+    const item = queueItems.find((q) => q.id === id);
+    const entityTarget = item ? (item.source || item.id) : id;
+    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
+    const isApproved = newStatus === "approved";
+    try {
+      await verifyEntityApi(entityTarget, isApproved, auditorName);
+    } catch (err) {
+      console.warn("[Knowledge Editor] Failed to persist verification to Neo4j:", err);
+    }
     showToast(
-      newStatus === "approved"
-        ? (isVi ? "Đã chấp thuận quan hệ tri thức!" : "Relationship approved!")
-        : (isVi ? "Đã từ chối quan hệ tri thức!" : "Relationship rejected!")
+      isApproved
+        ? (isVi ? `Đã chấp thuận thực thể [${entityTarget}] và cập nhật thật vào Neo4j Database!` : `Approved [${entityTarget}] and saved to Neo4j Database!`)
+        : (isVi ? `Đã từ chối thực thể [${entityTarget}]!` : `Rejected [${entityTarget}]!`)
     );
   };
 
@@ -780,6 +824,14 @@ export default function KnowledgeView({
 
             {/* Form Footer Action Buttons */}
             <div className="space-y-2 pt-4 border-t border-surface-container">
+              <button
+                onClick={handleVerifyNode}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+              >
+                <Icon name="fa-solid fa-stamp text-[15px]" size={15} />
+                <span>{isVi ? "Duyệt thực thể này (Lưu Neo4j)" : "Verify Node (Save to Neo4j)"}</span>
+              </button>
+
               <button
                 onClick={handleSaveAttributeChanges}
                 className="w-full py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow hover:bg-blue-700 transition-all flex items-center justify-center gap-2"

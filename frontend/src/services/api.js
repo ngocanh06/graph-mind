@@ -780,5 +780,81 @@ export async function deleteSop(sopId, currentUser = null) {
   }
 }
 
+// ============================================================================
+// MODULE 1: GOOGLE DRIVE & SHEETS CONNECTOR (FR4 & FR19)
+// ============================================================================
+
+export async function fetchGoogleConnectorStatus() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/status`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] fetchGoogleConnectorStatus error:", e);
+  }
+  return null;
+}
+
+export async function fetchGoogleAuthUrl() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/auth-url`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] fetchGoogleAuthUrl error:", e);
+  }
+  return null;
+}
+
+export async function configureGoogleOAuth(clientId, clientSecret, redirectUri) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/configure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] configureGoogleOAuth error:", e);
+  }
+  return null;
+}
+
+export async function disconnectGoogleOAuth() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/disconnect`, {
+      method: "POST"
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] disconnectGoogleOAuth error:", e);
+  }
+  return null;
+}
+
+export async function mockConnectGoogle(email, organization) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/mock-connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, organization })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] mockConnectGoogle error:", e);
+  }
+  return null;
+}
+
+export async function syncGoogleDrive() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/sync`, {
+      method: "POST"
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] syncGoogleDrive error:", e);
+  }
+  return null;
+}
+
 
 

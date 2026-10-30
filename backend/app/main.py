@@ -198,6 +198,17 @@ except ImportError:
     except Exception as e:
         logger.warning(f"[M1 Data Sync] Could not load file_watcher_router: {e}")
 
+# M1 Data Sync — Google Drive & Sheets Connector (FR4 & FR19)
+try:
+    from app.modules.m1_data_sync.google_connector import router as google_connector_router
+    app.include_router(google_connector_router)
+except ImportError:
+    try:
+        from modules.m1_data_sync.google_connector import router as google_connector_router
+        app.include_router(google_connector_router)
+    except Exception as e:
+        logger.warning(f"[M1 Data Sync] Could not load google_connector_router: {e}")
+
 # Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -602,20 +613,66 @@ def get_entity_by_id(entity_id: str):
 
 @app.post("/api/graph/verify")
 def verify_entity(req: VerifyEntityRequest):
+    new_status = "Human Verified" if req.verified else "Needs Review"
+    updated_node = None
+
+    # 1. Update in Neo4j Production Graph DB if connected (FR24 & FR25)
+    if neo4j_client.is_connected or neo4j_client.connect():
+        try:
+            cypher = """
+            MATCH (n)
+            WHERE elementId(n) = $id 
+               OR n.id = $id 
+               OR toString(n.ProductID) = $id 
+               OR toString(n.CustomerID) = $id 
+               OR toString(n.SalesOrderID) = $id 
+               OR n.name = $id
+            SET n.verified = $verified,
+                n.status = $status,
+                n.auditor = $auditor,
+                n.verifiedAt = datetime()
+            RETURN elementId(n) AS id, labels(n) AS labels, coalesce(n.name, n.id, $id) AS name,
+                   n.verified AS verified, n.status AS status, n.auditor AS auditor,
+                   toString(n.verifiedAt) AS verifiedAt
+            LIMIT 1
+            """
+            records = neo4j_client.run_cypher(
+                cypher,
+                {
+                    "id": str(req.entityId),
+                    "verified": bool(req.verified),
+                    "status": new_status,
+                    "auditor": str(req.auditor or "Human Auditor")
+                }
+            )
+            if records:
+                updated_node = records[0]
+                logger.info(f"[Knowledge Editor] Verified node in Neo4j: {updated_node}")
+        except Exception as e:
+            logger.warning(f"[Knowledge Editor] Neo4j verify error: {e}")
+
+    # 2. Also update in-memory ENTITIES map (if exists or fallback)
     entity = ENTITIES.get(req.entityId)
-    if not entity:
-        # Fallback response for real nodes
-        return {
-            "success": True,
-            "message": f"Entity {req.entityId} verified by {req.auditor}",
-            "data": {"id": req.entityId, "verified": req.verified, "status": "Human Verified"}
+    if entity:
+        entity["verified"] = req.verified
+        entity["status"] = new_status
+        entity["auditor"] = req.auditor
+        if not updated_node:
+            updated_node = entity
+
+    if not updated_node:
+        updated_node = {
+            "id": req.entityId,
+            "verified": req.verified,
+            "status": new_status,
+            "auditor": req.auditor,
+            "source": "Neo4j / Knowledge Graph"
         }
-    entity["verified"] = req.verified
-    entity["status"] = "Human Verified" if req.verified else "Needs Review"
+
     return {
         "success": True,
-        "message": f"Entity {req.entityId} verification updated by {req.auditor}",
-        "data": entity
+        "message": f"Entity {req.entityId} verification updated by {req.auditor}: status={new_status}",
+        "data": updated_node
     }
 
 
@@ -801,8 +858,20 @@ def _init_aw_search_cache():
     import csv
     from pathlib import Path
 
-    # 1. Subcategories
-    subcat_path = Path("D:/adventureworks/Production_ProductSubcategory.csv")
+    repo_root = Path(__file__).resolve().parent.parent.parent
+
+    def _resolve_csv(filename: str, candidate_dirs: list) -> Path:
+        for d in candidate_dirs:
+            p = repo_root / d / filename
+            if p.exists():
+                return p
+        matches = list(repo_root.glob(f"**/{filename}"))
+        if matches:
+            return matches[0]
+        return repo_root / candidate_dirs[0] / filename
+
+    # 1. Subcategories (rnd/Production_ProductSubcategory.csv)
+    subcat_path = _resolve_csv("Production_ProductSubcategory.csv", ["rnd", "sales", "accounting_procurement"])
     if subcat_path.exists():
         try:
             with open(subcat_path, encoding="utf-8", errors="ignore") as f:
@@ -811,8 +880,8 @@ def _init_aw_search_cache():
         except Exception as e:
             logger.warning(f"[Search] Load subcategories error: {e}")
 
-    # 2. Products
-    prod_path = Path("D:/adventureworks/Production_Product.csv")
+    # 2. Products (rnd/Production_Product.csv)
+    prod_path = _resolve_csv("Production_Product.csv", ["rnd", "sales", "accounting_procurement"])
     if prod_path.exists():
         try:
             with open(prod_path, encoding="utf-8", errors="ignore") as f:
@@ -841,9 +910,9 @@ def _init_aw_search_cache():
         except Exception as e:
             logger.warning(f"[Search] Load products error: {e}")
 
-    # 3. Customers & Stores
+    # 3. Customers & Stores (sales/Sales_Store.csv)
     cust_list = []
-    store_path = Path("D:/adventureworks/Sales_Store.csv")
+    store_path = _resolve_csv("Sales_Store.csv", ["sales", "accounting_procurement", "rnd"])
     if store_path.exists():
         try:
             with open(store_path, encoding="utf-8", errors="ignore") as f:
@@ -870,10 +939,12 @@ def _init_aw_search_cache():
         except Exception as e:
             logger.warning(f"[Search] Load stores error: {e}")
 
-    person_path = Path("D:/adventureworks/Person_Person.csv")
+    # 4. Persons (sales/Person_Person.csv)
+    person_path = _resolve_csv("Person_Person.csv", ["sales", "accounting_procurement", "rnd"])
     if person_path.exists():
         try:
             with open(person_path, encoding="utf-8", errors="ignore") as f:
+                count = 0
                 for r in csv.DictReader(f):
                     fname = r.get("FirstName", "")
                     lname = r.get("LastName", "")
@@ -896,6 +967,9 @@ def _init_aw_search_cache():
                             "numValue": 125000,
                             "score": 0.94
                         })
+                        count += 1
+                        if count >= 1000:
+                            break
         except Exception as e:
             logger.warning(f"[Search] Load persons error: {e}")
 
@@ -2098,169 +2172,29 @@ def get_risk_alerts(
 ):
     """
     Returns live risk alerts computed from real Neo4j nodes (SalesOrder, Customer)
-    and real Qdrant CUAD contracts. Filtered by role/data scope (BR-02, BR-05, UC.20).
+    and real Qdrant CUAD contracts (FR42, BR-02, BR-05, UC.20).
     - Executive & Admin: Full enterprise scope (Sales, Legal anomalies, Financial risks).
     - Department Manager: Scoped to assigned department (BR-02 / BR-04).
     - Standard User: Scoped strictly to operational shift within department (US23 / FR43 / E2).
     """
     effective_role = (x_user_role or role or "standard").strip().lower()
     raw_dept = (x_user_dept or dept or "Kinh doanh").strip()
-    
-    is_exec_or_admin = effective_role in ["executive", "it_admin", "admin", "cfo", "ceo"]
-    is_manager = effective_role in ["knowledge_manager", "manager", "lead", "tp"]
-    is_standard = not is_exec_or_admin and not is_manager
-
-    cuad_items = _get_cuad_cache()
-    
-    top_cust = None
-    if neo4j_client.is_connected or neo4j_client.connect():
-        try:
-            res = neo4j_client.run_cypher("""
-                MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
-                RETURN c.id as cid, coalesce(c.name, 'Customer #' + toString(c.id)) as cname, count(o) as orders, round(sum(coalesce(o.totalDue, 0.0)), 2) as rev
-                ORDER BY rev DESC LIMIT 2
-            """)
-            if res:
-                top_cust = res[0]
-        except Exception:
-            pass
-
-    first_cuad = cuad_items[0] if cuad_items else {"id": "CUAD_001", "name": "CUAD_Service_Agreement.pdf"}
-    second_cuad = cuad_items[1] if len(cuad_items) > 1 else {"id": "CUAD_002", "name": "CUAD_Outsourcing.pdf"}
-    cust_display_name = top_cust["cname"] if top_cust else "Brakes and Gears"
-    cust_display_id = f"CUST-{top_cust['cid']}" if top_cust else "CUST-29818"
-    cust_rev_str = f"${top_cust['rev']:,.2f} USD" if top_cust else "$989,184.08 USD"
-
-    sales_alerts = [
-        {
-            "id": "ALERT-CUAD-087",
-            "category": "contract_expiring",
-            "dept": "sales",
-            "severity": "high",
-            "variant": "danger",
-            "badgeLabel": "Hợp đồng sắp hết hạn (5 ngày)",
-            "detectedAt": "Phát hiện từ Qdrant Vector Store",
-            "title": f"Hợp đồng {first_cuad['name']} hết hạn trong 5 ngày",
-            "description": f"Hợp đồng nguyên tắc ({first_cuad['id']}) giữa Doanh nghiệp và đối tác {cust_display_name} ({cust_display_id}) sẽ hết hiệu lực ngày 05/11/2026. Điều khoản gia hạn tự động không được kích hoạt trong {first_cuad['name']}. Cần tái đàm phán ngay.",
-            "meta": [
-                {"label": "Phòng ban:", "value": "Kinh doanh & Bán hàng"},
-                {"label": "Đối tác:", "value": f"{cust_display_name} ({cust_display_id})"},
-                {"label": "Giá trị hợp đồng:", "value": cust_rev_str, "highlight": "var(--blue, #2563EB)"},
-                {"label": "Trích dẫn nguồn:", "value": f"{first_cuad['name']} (Qdrant Chunk #1)", "isLink": True}
-            ],
-            "docId": first_cuad["name"],
-            "aliasId": first_cuad["id"]
-        },
-        {
-            "id": "ALERT-CRM-3912",
-            "category": "order_drop",
-            "dept": "sales",
-            "severity": "medium",
-            "variant": "warning",
-            "badgeLabel": "Sụt giảm đơn hàng (-30%)",
-            "detectedAt": "Phát hiện từ Neo4j SalesOrder Header",
-            "title": f"Khách hàng VIP ({cust_display_name}) giảm 30% tần suất đặt hàng",
-            "description": f"Mô hình phân tích đơn hàng từ Neo4j SalesOrder (Node Customer #{top_cust['cid'] if top_cust else '29818'}) ghi nhận số lượng đơn đặt hàng trung bình giảm từ 8 đơn/tháng xuống còn 2 đơn trong 45 ngày qua. Cần chuyên viên liên hệ chăm sóc.",
-            "meta": [
-                {"label": "Khách hàng ID:", "value": f"{cust_display_id} ({cust_display_name})"},
-                {"label": "Phòng ban:", "value": "Kinh doanh & Bán hàng"},
-                {"label": "Doanh số đóng góp:", "value": cust_rev_str, "highlight": "var(--red, #DC2626)"}
-            ],
-            "docId": "Sales_SalesOrderDetail.csv",
-            "aliasId": "AW_SALES_ORDERS"
-        },
-        {
-            "id": "ALERT-EXP-104",
-            "category": "contract_expiring",
-            "dept": "sales",
-            "severity": "high",
-            "variant": "danger",
-            "badgeLabel": "Hợp đồng sắp hết hạn (18 ngày)",
-            "detectedAt": "Phát hiện hôm qua",
-            "title": f"Hợp đồng {second_cuad['name']} hết hạn trong 18 ngày",
-            "description": f"Hợp đồng phân phối linh kiện {second_cuad['name']} sẽ hết hạn vào ngày 18/11/2026. Đối tác đề xuất mở rộng thêm danh mục phụ tùng mới, cần chuẩn bị phụ lục hợp đồng đính kèm trước khi đáo hạn.",
-            "meta": [
-                {"label": "Phòng ban:", "value": "Kinh doanh & Bán hàng"},
-                {"label": "Đối tác:", "value": "Excellent Riding Supplies (CUST-29715)"},
-                {"label": "Giá trị hợp đồng:", "value": "$961,675.86 USD", "highlight": "var(--blue, #2563EB)"},
-                {"label": "Trích dẫn nguồn:", "value": second_cuad['name'], "isLink": True}
-            ],
-            "docId": second_cuad["name"],
-            "aliasId": second_cuad["id"]
-        },
-        {
-            "id": "ALERT-ORDER-4102",
-            "category": "order_drop",
-            "dept": "sales",
-            "severity": "medium",
-            "variant": "warning",
-            "badgeLabel": "Sụt giảm đơn hàng (Chậm >30 ngày)",
-            "detectedAt": "Phát hiện 2 ngày trước",
-            "title": "Đối tác Phân phối (Minh Phát Corp) chậm phát sinh đơn hàng mới quá 30 ngày",
-            "description": "Theo dõi chu kỳ mua hàng định kỳ từ Neo4j ghi nhận đối tác đã quá 30 ngày chưa phát sinh Purchase Order mới. Đề xuất nhân viên phụ trách kiểm tra tình trạng tồn kho của đại lý.",
-            "meta": [
-                {"label": "Khách hàng ID:", "value": "CUST-30117 (Minh Phát Corp)"},
-                {"label": "Phòng ban:", "value": "Kinh doanh & Bán hàng"},
-                {"label": "Doanh số dự kiến ảnh hưởng:", "value": "-120,000,000 ₫", "highlight": "var(--amber, #D97706)"}
-            ],
-            "docId": "Sales_SalesOrderDetail.csv",
-            "aliasId": "AW_SALES_ORDERS"
-        }
-    ]
-
-    legal_alerts = [
-        {
-            "id": "ALERT-GRAPH-042",
-            "category": "legal_anomaly",
-            "dept": "legal",
-            "severity": "medium",
-            "variant": "purple",
-            "badgeLabel": "Bất thường Pháp lý",
-            "detectedAt": "Neo4j Schema Inspector",
-            "title": f"Điều khoản bất thường trong Hợp đồng {first_cuad['name']}",
-            "description": "Neo4j Schema Inspector phát hiện quan hệ HAS_RISK_LIABILITY liên kết giữa điều khoản thanh toán và rủi ro phạt hợp đồng không có mức trần (No Liability Cap).",
-            "meta": [
-                {"label": "Phòng ban:", "value": "Pháp chế & Rủi ro"},
-                {"label": "Thực thể liên quan:", "value": f"Node {first_cuad['id']}_Clause_19"}
-            ],
-            "docId": first_cuad["name"],
-            "aliasId": first_cuad["id"]
-        }
-    ]
-
-    # Data scope selection (BR-02, BR-05, UC.20)
-    if is_exec_or_admin:
-        # Full enterprise scope (BR-05)
-        alerts = sales_alerts + legal_alerts
-        scope_level = "ENTERPRISE_UNRESTRICTED"
-    elif is_manager:
-        # Department Scope (BR-02 / BR-04)
-        clean_dept = raw_dept.lower()
-        if "pháp chế" in clean_dept or "legal" in clean_dept:
-            alerts = legal_alerts
-        else:
-            alerts = sales_alerts
-        scope_level = "DEPARTMENT_SCOPE"
-    else:
-        # Standard User: only operational alerts within assigned scope (US23 / FR43 / E2)
-        alerts = sales_alerts
-        scope_level = "STANDARD_OPERATIONAL"
-
+    try:
+        from app.api.v1.dashboard import get_risk_alerts as v1_get_risk_alerts
+    except ImportError:
+        from api.v1.dashboard import get_risk_alerts as v1_get_risk_alerts
+    res = v1_get_risk_alerts(role=effective_role, dept=raw_dept, scope=None)
+    alerts = res.get("data", [])
     return {
         "success": True,
         "total": len(alerts),
         "data": alerts,
-        "rbac": {
-            "role": effective_role,
-            "department": raw_dept,
-            "scopeLevel": scope_level,
-            "isUnrestricted": is_exec_or_admin
-        },
+        "rbac": res.get("rbac", {}),
         "summary": {
             "total_alerts": len(alerts),
-            "contract_expiring": sum(1 for a in alerts if a["category"] == "contract_expiring"),
-            "order_drop": sum(1 for a in alerts if a["category"] == "order_drop"),
-            "high_severity": sum(1 for a in alerts if a["severity"] == "high")
+            "contract_expiring": sum(1 for a in alerts if a.get("category") == "contract_expiring"),
+            "order_drop": sum(1 for a in alerts if a.get("category") == "order_drop"),
+            "high_severity": sum(1 for a in alerts if str(a.get("severity", "")).lower() in ["high", "critical"])
         }
     }
 

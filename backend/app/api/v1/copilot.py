@@ -444,7 +444,9 @@ async def ask_copilot(
     allowed, reject_reason = check_data_scope_permission(clean_query, user_role)
     if not allowed and reject_reason:
         blocked_msg = {
+            "success": True,
             "answer": reject_reason,
+            "text": reject_reason,
             "evidenceChips": [
                 {
                     "id": "rbac-scope-guard",
@@ -470,12 +472,13 @@ async def ask_copilot(
             "latency": 0.05,
             "model": "GraphMind RBAC Engine (Level-3 Isolation)",
             "query": clean_query,
+            "sessionId": str(session_obj.id),
             "session_id": str(session_obj.id),
         }
         new_msgs = list(session_obj.messages or [])
         new_msgs.append({"sender": "user", "text": clean_query, "timestamp": datetime.now().isoformat()})
         new_msgs.append({
-            "sender": "bot",
+            "sender": "copilot",
             "text": reject_reason,
             "timestamp": datetime.now().isoformat(),
             "evidenceChips": blocked_msg["evidenceChips"],
@@ -487,6 +490,8 @@ async def ask_copilot(
         session_obj.messages = new_msgs
         session_obj.updated_at = datetime.now()
         await db.commit()
+        await db.refresh(session_obj)
+        blocked_msg["session"] = session_obj.to_dict()
         return blocked_msg
 
     # 2. Hybrid Retrieval: Qdrant Vector + Neo4j Graph
@@ -771,19 +776,22 @@ async def ask_copilot(
     if top_vec_score < GROUNDING_MIN_SCORE and not has_valid_graph:
         safe_reply = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức để trả lời câu hỏi này."
         blocked_msg = {
+            "success": True,
             "answer": safe_reply,
+            "text": safe_reply,
             "evidenceChips": [],
             "citations": [],
             "confidenceScore": 0,
             "latency": 0.05,
             "model": "GraphMind Grounding Gate (Calibrated 0.28)",
             "query": clean_query,
+            "sessionId": str(session_obj.id),
             "session_id": str(session_obj.id),
         }
         new_msgs = list(session_obj.messages or [])
         new_msgs.append({"sender": "user", "text": clean_query, "timestamp": datetime.now().isoformat()})
         new_msgs.append({
-            "sender": "bot",
+            "sender": "copilot",
             "text": safe_reply,
             "timestamp": datetime.now().isoformat(),
             "evidenceChips": [],
@@ -795,6 +803,8 @@ async def ask_copilot(
         session_obj.messages = new_msgs
         session_obj.updated_at = datetime.now()
         await db.commit()
+        await db.refresh(session_obj)
+        blocked_msg["session"] = session_obj.to_dict()
         return blocked_msg
 
     # 3. Fusion Ranking: Reciprocal Rank Fusion (RRF k=60)
