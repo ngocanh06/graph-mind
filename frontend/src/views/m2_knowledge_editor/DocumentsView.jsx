@@ -6,7 +6,8 @@ import {
   uploadDocument,
   renameDocument,
   replaceDocument,
-  deleteDocument
+  deleteDocument,
+  downloadDocumentFile
 } from '../../services/api';
 import { DEPARTMENTS, resolveDepartment } from '../../constants/departments';
 
@@ -314,13 +315,20 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     showToast(isVi ? `Đã xác thực và đồng bộ toàn bộ thực thể của ${activeDoc.name} vào Neo4j!` : `Verified and synchronized entities from ${activeDoc.name} into Neo4j!`);
   };
 
-  const handleDownloadDoc = () => {
+  const handleDownloadDoc = async () => {
     if (!activeDoc || !activeDoc.name) return;
     if (!isAdmin) {
       showToast(isVi ? "Chính sách C4: Tài khoản Standard/Dept Manager chỉ được xem trước (Read-Only). Liên hệ IT Admin để tải tệp gốc." : "Policy C4: Standard/Dept Manager accounts are Read-Only. Contact IT Admin to download raw file.");
       return;
     }
     showToast(isVi ? `Đang ghi nhận Audit Log & tải xuống ${activeDoc.name}...` : `Logging Audit Trail & downloading ${activeDoc.name}...`);
+    try {
+      await downloadDocumentFile(activeDoc.name, activeDoc.deptKey || activeDoc.dept || 'legal', currentUser);
+      showToast(isVi ? `✓ Đã tải xuống thành công ${activeDoc.name}` : `✓ Downloaded ${activeDoc.name} successfully`);
+    } catch (err) {
+      console.error("[DownloadDoc] Error:", err);
+      showToast(isVi ? `Lỗi tải tệp: ${err.message}` : `Download error: ${err.message}`);
+    }
   };
 
   const resetFilters = () => {

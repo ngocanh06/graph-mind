@@ -3,7 +3,7 @@
  * Communicates with Python FastAPI backend (port 5000) with offline fallback
  */
 
-const API_BASE = "http://localhost:5000/api";
+export const API_BASE = "http://localhost:5000/api";
 
 export async function fetchHealth() {
   try {
@@ -350,6 +350,30 @@ export async function fetchDocumentDetail(docId, currentUser = null) {
     console.warn("[Repository] fetchDocumentDetail error:", e);
   }
   return null;
+}
+
+export async function downloadDocumentFile(filename, department = "legal", currentUser = null) {
+  const sp = new URLSearchParams();
+  if (filename) sp.set("filename", filename);
+  if (department) sp.set("department", department);
+
+  const res = await fetch(`${API_BASE}/documents/download?${sp.toString()}`, {
+    headers: getAuthHeaders(currentUser),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Không thể tải tệp gốc.");
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  return true;
 }
 
 export async function uploadDocument(file, department = "legal", currentUser = null) {
