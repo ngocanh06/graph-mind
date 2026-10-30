@@ -1,5 +1,33 @@
 [
   {
+    "id": "evt_1793366210919",
+    "eventType": "created",
+    "fileName": "Bài giảng Chủ nghĩa xã hội khoa học.pdf",
+    "department": "Công nghệ / IT",
+    "docId": "DOC_4FF47438",
+    "fileHash": "4ff474380c001ded328b62bfe89c8b4548a04722110ddcd44be46e6716a183e0",
+    "chunksCount": 97,
+    "timestamp": "2026-10-30T20:16:30.719607",
+    "formattedTime": "30/10/2026 20:16",
+    "status": "success",
+    "qdrantIndexed": true,
+    "neo4jSynced": true
+  },
+  {
+    "id": "evt_1793365757735",
+    "eventType": "created",
+    "fileName": "AI_Capstone_Guideline.pdf",
+    "department": "Pháp chế (Legal)",
+    "docId": "DOC_58B35922",
+    "fileHash": "58b359229273990aacfae569a4bc917483447a8f58f833c4f3e435e0b3f63b5c",
+    "chunksCount": 30,
+    "timestamp": "2026-10-30T20:08:59.201605",
+    "formattedTime": "30/10/2026 20:08",
+    "status": "success",
+    "qdrantIndexed": true,
+    "neo4jSynced": true
+  },
+  {
     "id": "evt_1793274728769",
     "eventType": "created",
     "fileName": "ADUROBIOTECH,INC_06_02_2020-EX-10.7-CONSULTING AGREEMENT(1).PDF",

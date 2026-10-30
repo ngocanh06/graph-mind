@@ -59,3 +59,7 @@ it/
 legal/
 rnd/
 sales/
+
+# Google Drive OAuth credentials & local runtime configs
+backend/app/modules/m1_data_sync/data/google_credentials.json
+backend/app/modules/m1_data_sync/data/google_oauth_config.json

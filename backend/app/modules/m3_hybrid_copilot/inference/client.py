@@ -118,7 +118,10 @@ class OllamaClient:
                 "4. ĐỊNH DẠNG TRÌNH BÀY:\n"
                 "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò, địa điểm hoặc điều khoản cụ thể: BẮT BUỘC trả lời TRỰC TIẾP và RÕ RÀNG thông tin đó ngay dòng đầu tiên (ví dụ: 'Trưởng nhóm là [Họ và tên], vai trò [Chức danh]...').\n"
                 "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
-                "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu."
+                "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu.\n"
+                "5. QUY TẮC TỪ CHỐI & KIỂM TRA ĐỐI TƯỢNG (GROUNDING REFUSAL):\n"
+                "   - Nếu câu hỏi hỏi về một tài liệu, hợp đồng, phòng ban hoặc đối tượng cụ thể (ví dụ: 'tài liệu X', 'hợp đồng Y') mà tên hoặc từ khóa đó KHÔNG XUẤT HIỆN trong các trích đoạn ngữ cảnh, bạn BẮT BUỘC phải trả lời rõ ràng rằng tài liệu hoặc đối tượng đó không tồn tại trong kho lưu trữ được cung cấp.\n"
+                "   - TUYỆT ĐỐI KHÔNG được gán ghép phòng ban, nội dung hay số liệu của một tài liệu khác trong ngữ cảnh cho tài liệu mà người dùng đang hỏi."
             )
             context_block = ""
             if chunks_context:
