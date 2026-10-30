@@ -10,13 +10,20 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.core.security import get_password_hash
+from fastapi.security import HTTPAuthorizationCredentials
+from app.core.security import get_password_hash, decode_access_token
 from app.db.postgres.database import get_db
 from app.db.postgres.models.user import User
 from app.db.postgres.models.audit_log import AuditLog
 from app.modules.m6_admin_security.audit_service import log_action
 from app.modules.m6_admin_security.deps import get_admin_user
-from app.modules.m6_admin_security.rbac import is_superuser_for_role
+from app.modules.m6_admin_security.rbac import (
+    is_superuser_for_role,
+    canonical_role,
+    CANONICAL_ROLES,
+    ROLE_ALIASES,
+    ADMIN_ONLY_DETAIL,
+)
 from app.schemas.user_admin import (
     UserCreateRequest,
     UserRoleUpdateRequest,
@@ -27,6 +34,37 @@ from app.schemas.user_admin import (
 )
 
 router = APIRouter(prefix="/admin", tags=["M6 Admin"])
+
+
+def _check_role(role: str) -> None:
+    """Kiểm tra role có hợp lệ không (hỗ trợ kiểm thử và xác thực tài khoản)."""
+    if not role or (role not in CANONICAL_ROLES and role not in ROLE_ALIASES):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Role không hợp lệ: {role}. Các role hợp lệ: {list(CANONICAL_ROLES)}",
+        )
+
+
+async def require_admin(creds: Optional[HTTPAuthorizationCredentials] = None) -> dict:
+    """Kiểm tra quyền IT Admin nhanh qua JWT Bearer token (hỗ trợ test suite và self-check không cần DB)."""
+    if not creds or not creds.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token không hợp lệ hoặc thiếu Bearer header.",
+        )
+    payload = decode_access_token(creds.credentials)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token không hợp lệ hoặc đã hết hạn.",
+        )
+    role = payload.get("role")
+    if not role or canonical_role(role) != "it_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ADMIN_ONLY_DETAIL,
+        )
+    return payload
 
 
 # ── GET /admin/users ──────────────────────────────────────────────────────────
