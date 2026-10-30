@@ -73,7 +73,7 @@ export const ENTERPRISE_ROLES = {
     color: "#d97706",
     accentColor: "#f59e0b",
     defaultView: "admin",
-    allowedViews: ["admin", "knowledge", "connectors", "documents", "reports", "search", "copilot", "executive"],
+    allowedViews: ["admin", "knowledge", "connectors", "documents", "reports", "search", "copilot", "executive", "risk"],
     description: "Toàn quyền quản trị hệ thống, đồ thị tri thức (Knowledge Graph), kết nối dữ liệu (Connectors), kiểm duyệt HITL, phân quyền RBAC & LLMOps.",
     descriptionEn: "Full authority over system telemetry, enterprise Knowledge Graph, data connector pipelines, HITL validation queues, and RBAC security."
   },

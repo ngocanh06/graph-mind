@@ -16,12 +16,20 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+try:
+    import pytest
+    asyncio_test = pytest.mark.asyncio
+except ImportError:
+    def asyncio_test(func):
+        return func
+
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from app.main import app
 from app.db.postgres.database import engine
 
 
+@asyncio_test
 async def test_copilot_pin_and_department_share():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

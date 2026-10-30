@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Calendar, Building2, TrendingUp, Users, FileText, DollarSign,
   Activity, AlertTriangle, ArrowUpRight, Sparkles, RefreshCw,
-  ShieldCheck, BarChart3, ChevronRight, CheckCircle2
+  ShieldCheck, BarChart3, ChevronRight, CheckCircle2, ShieldAlert, ArrowLeft
 } from "lucide-react";
 import {
   fetchExecutiveKPIs,
@@ -19,9 +19,12 @@ export default function ExecutiveView({
   signals = [],
   onNavigate,
   t = {},
-  lang = "vi"
+  lang = "vi",
+  role = "executive",
+  currentUser
 }) {
   const isVi = lang === "vi";
+  const isExec = role === "executive" || role === "it_admin" || currentUser?.id === "executive" || currentUser?.id === "it_admin";
   const [period, setPeriod] = useState("30D");
   const [dept, setDept] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -36,14 +39,15 @@ export default function ExecutiveView({
   const [growthRate, setGrowthRate] = useState(null);
 
   const loadData = async () => {
+    if (!isExec) return;
     setIsRefreshing(true);
     try {
       const [kpiRes, custRes, distRes, alertRes, trendRes] = await Promise.all([
-        fetchExecutiveKPIs(),
-        fetchTopCustomers(5),
-        fetchContractDistribution(),
-        fetchRiskAlerts(),
-        fetchRevenueTrend()
+        fetchExecutiveKPIs(currentUser),
+        fetchTopCustomers(5, currentUser),
+        fetchContractDistribution(currentUser),
+        fetchRiskAlerts(role, currentUser?.department, currentUser),
+        fetchRevenueTrend(currentUser)
       ]);
 
       if (kpiRes && kpiRes.success) setKpis(kpiRes.data);
@@ -181,6 +185,134 @@ export default function ExecutiveView({
     }
   ];
 
+
+  if (!isExec) {
+    return (
+      <div style={{ background: "var(--base)", minHeight: "100%", padding: "40px 24px", boxSizing: "border-box" }}>
+        <div style={{ maxWidth: 720, margin: "60px auto", textAlign: "center" }}>
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-xl, 16px)",
+            padding: "48px 36px",
+            boxShadow: "var(--shadow-md, 0 4px 20px rgba(0,0,0,0.06))",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              background: "rgba(239, 68, 68, 0.1)",
+              color: "var(--red, #ef4444)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 20
+            }}>
+              <ShieldAlert size={34} />
+            </div>
+
+            <span style={{
+              fontSize: 11,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "var(--red, #ef4444)",
+              background: "rgba(239, 68, 68, 0.08)",
+              border: "1px solid rgba(239, 68, 68, 0.2)",
+              borderRadius: 4,
+              padding: "3px 10px",
+              marginBottom: 12
+            }}>
+              {isVi ? "Giới hạn phân quyền dữ liệu · BR-05" : "Access Restriction · BR-05"}
+            </span>
+
+            <h2 style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: "var(--text-1)",
+              margin: "0 0 12px 0",
+              fontFamily: "var(--f-display)"
+            }}>
+              {isVi ? "Truy cập Bảng điều khiển điều hành bị từ chối" : "Executive Decision Dashboard Access Restricted"}
+            </h2>
+
+            <p style={{
+              fontSize: 14,
+              color: "var(--text-3)",
+              lineHeight: 1.6,
+              maxWidth: 580,
+              margin: "0 0 28px 0"
+            }}>
+              {isVi ? (
+                <>
+                  Theo quy định nghiệp vụ <strong>BR-05</strong> và đặc tả <strong>UC.19 / PB57</strong>, 
+                  Bảng điều khiển điều hành vĩ mô chỉ dành riêng cho <strong>Ban Giám Đốc (Executive)</strong> và 
+                  <strong> Quản trị viên (Admin)</strong>.
+                  <br /><br />
+                  Tài khoản hiện tại của bạn là <strong>{currentUser?.badge || (role === "knowledge_manager" ? "Trưởng phòng / Quản lý" : role)}</strong> thuộc phạm vi phòng ban (Department Scope - BR-02/BR-04).
+                </>
+              ) : (
+                <>
+                  According to business rule <strong>BR-05</strong> and specification <strong>UC.19 / PB57</strong>, 
+                  the Executive Decision Dashboard is restricted to <strong>Executive Leadership</strong> and 
+                  <strong> Administrators</strong>.
+                  <br /><br />
+                  Your current account is signed in as <strong>{currentUser?.badgeEn || role}</strong> within Department Scope (BR-02/BR-04).
+                </>
+              )}
+            </p>
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+              <button
+                onClick={() => onNavigate && onNavigate("home")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 20px",
+                  borderRadius: "var(--r-md, 8px)",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-2)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                <ArrowLeft size={15} />
+                {isVi ? "Về Trang chủ" : "Return to Home"}
+              </button>
+
+              <button
+                onClick={() => onNavigate && onNavigate("reports")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 20px",
+                  borderRadius: "var(--r-md, 8px)",
+                  background: "var(--primary, #059669)",
+                  border: "none",
+                  color: "#ffffff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(5, 150, 105, 0.25)"
+                }}
+              >
+                <BarChart3 size={15} />
+                {isVi ? "Đến Báo cáo phòng ban" : "Go to Department Reports"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px", boxSizing: "border-box" }}>
