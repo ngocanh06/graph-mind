@@ -85,6 +85,12 @@ class QdrantClientWrapper:
                     except Exception as col_err:
                         if col_names:
                             self._collection = col_names[0]
+            # Ensure keyword indexes on critical lookup fields for sub-second retrieval
+            try:
+                self._client.create_payload_index(collection_name=self._collection, field_name="contract_name", field_schema="keyword")
+                self._client.create_payload_index(collection_name=self._collection, field_name="doc_id", field_schema="keyword")
+            except Exception:
+                pass
             self._connected = True
             print(f"[Qdrant] Connected to {host}:{port}, active collection={self._collection}")
             return True

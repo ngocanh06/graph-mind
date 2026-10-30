@@ -1776,23 +1776,126 @@ def get_document_detail(
     scope: ScopeContext = Depends(get_user_scope),
 ):
     """
-    Returns real detail: Central Storage path, real text chunks (Qdrant),
+    Returns real detail: Central Storage path, real text chunks (Qdrant/Watcher),
     and real records/relations (Neo4j) with BR-02 check.
+    Fast and accurate preview for all file types (.docx, .pdf, .csv, watcher docs).
     """
     doc_id_clean = (doc_id or "").strip()
+
+    # 1. Check Watcher Ingested Docs FIRST (fastest in-memory cache < 1ms)
+    watcher_doc = None
+    try:
+        from app.modules.m1_data_sync.webhook import get_watcher_ingested_docs
+        watcher_docs = get_watcher_ingested_docs()
+        watcher_doc = next((
+            d for d in watcher_docs
+            if d.get("id") == doc_id_clean or
+               d.get("name") == doc_id_clean or
+               d.get("raw_id") == doc_id_clean or
+               d.get("name", "").lower() == doc_id_clean.lower() or
+               d.get("id", "").lower() == doc_id_clean.lower()
+        ), None)
+    except Exception as e:
+        logger.warning(f"[DocumentDetail] Watcher doc lookup error: {e}")
+
+    if watcher_doc:
+        dept_key = watcher_doc.get("deptKey") or watcher_doc.get("dept_key") or "rnd"
+        scope.assert_document_access(doc_id_clean, dept_key)
+
+        fname = watcher_doc.get("name") or doc_id_clean
+        dept_name = watcher_doc.get("department") or watcher_doc.get("dept") or dept_key
+        final_id = watcher_doc.get("id") or doc_id_clean
+        storage_path = watcher_doc.get("storage_path") or f"/data/{dept_key}/{fname}"
+        file_hash = watcher_doc.get("hash") or watcher_doc.get("file_hash") or ""
+        ext = os.path.splitext(fname)[1].lower()
+
+        chunks = list(watcher_doc.get("chunks_list") or [])
+        ent = watcher_doc.get("extracted_entities") or {}
+        companies = list(ent.get("companies") or [])
+        clauses = list(ent.get("clauses") or [])
+        records = list(watcher_doc.get("records") or [])
+
+        if ext == ".csv" and not records:
+            try:
+                from app.core.central_storage import read_file_from_storage
+                import csv, io
+                raw_bytes = read_file_from_storage(fname, dept_key)
+                if raw_bytes:
+                    text_content = raw_bytes[:50000].decode("utf-8", errors="ignore")
+                    reader = csv.DictReader(io.StringIO(text_content))
+                    records = [row for i, row in enumerate(reader) if i < 25]
+            except Exception as e:
+                logger.warning(f"[DocumentDetail] CSV preview parse error: {e}")
+
+        neo4j_rels = [
+            {"from": f"Document: {fname}", "rel": "BELONGS_TO_DEPT", "to": f"Department: {dept_name}"}
+        ]
+        for comp in companies:
+            neo4j_rels.append({"from": f"Company: {comp}", "rel": "PARTY_TO", "to": f"Document: {fname}"})
+        for cl in clauses:
+            neo4j_rels.append({"from": f"Document: {fname}", "rel": "CONTAINS_CLAUSE", "to": (cl.get("title") if isinstance(cl, dict) else str(cl)) or "Clause"})
+
+        total_chunk_count = len(chunks) or watcher_doc.get("chunk_count") or (len(records) if records else 1)
+
+        return {
+            "success": True,
+            "data": {
+                "id": final_id,
+                "raw_id": fname,
+                "name": fname,
+                "department": dept_name,
+                "dept": dept_name,
+                "deptKey": dept_key,
+                "deptLabel": dept_name,
+                "category": watcher_doc.get("category", f"Tài liệu {dept_name}"),
+                "category_en": watcher_doc.get("category_en", f"{dept_name} Document"),
+                "previewType": watcher_doc.get("previewType") or ("spreadsheet" if ext == ".csv" else "sop_document" if ext == ".docx" else "document"),
+                "source": watcher_doc.get("source", "aegis_local_file_watcher"),
+                "storage_path": storage_path,
+                "storagePath": storage_path,
+                "status": watcher_doc.get("status", "INDEXED"),
+                "statusBadge": watcher_doc.get("statusBadge", "Đã lập chỉ mục"),
+                "statusState": watcher_doc.get("statusState", "active"),
+                "qdrant_indexed": watcher_doc.get("qdrant_indexed", True),
+                "qdrantIndexed": watcher_doc.get("qdrant_indexed", True),
+                "neo4j_synced": watcher_doc.get("neo4j_synced", True),
+                "neo4jSynced": watcher_doc.get("neo4j_synced", True),
+                "chunk_count": total_chunk_count,
+                "chunks": f"{total_chunk_count} Chunks",
+                "chunks_list": chunks,
+                "sample_text": chunks[0]["text"] if chunks else "",
+                "hash": file_hash,
+                "fileHash": file_hash,
+                "file_hash": file_hash,
+                "size": watcher_doc.get("size", "1.2 MB"),
+                "created_at": watcher_doc.get("lastModified") or datetime.now().isoformat(),
+                "updated_at": watcher_doc.get("lastModified") or datetime.now().isoformat(),
+                "date": watcher_doc.get("date") or datetime.now().strftime("%d/%m/%Y"),
+                "owner": watcher_doc.get("owner", "AEGIS File Watcher"),
+                "access": watcher_doc.get("access", "RBAC Dept Only"),
+                "schema": watcher_doc.get("schema", f"AEGIS {dept_name} Schema"),
+                "type": watcher_doc.get("type") or ("PDF" if ext == ".pdf" else "CSV" if ext == ".csv" else ext.replace(".", "").upper()),
+                "neo4jRel": neo4j_rels,
+                "entities": [{"key": "Tập đoàn/Công ty", "val": c, "type": "financial"} for c in companies] +
+                            [{"key": (cl.get("type") if isinstance(cl, dict) else "Điều khoản"), "val": (cl.get("title") if isinstance(cl, dict) else str(cl)), "type": "legal"} for cl in clauses],
+                "records": records
+            }
+        }
+
     inventory = get_central_storage_inventory()
 
-    # 1. Match in Central Storage inventory directly
+    # 2. Match in Central Storage inventory directly
     storage_item = next((
         it for it in inventory
         if it["name"] == doc_id_clean or
            it["name"].lower() == doc_id_clean.lower() or
            it["storage_path"] == doc_id_clean or
            it["storage_path"].lower() == doc_id_clean.lower() or
-           f"DOC_{hashlib.md5(it['name'].encode()).hexdigest()[:8].upper()}" == doc_id_clean.upper()
+           f"DOC_{hashlib.md5(it['name'].encode()).hexdigest()[:8].upper()}" == doc_id_clean.upper() or
+           (watcher_doc and it["name"].lower() == watcher_doc.get("name", "").lower())
     ), None)
 
-    # 2. If CUAD alias (e.g. CUAD_001, CUAD_087, CUAD_87, CUAD_1)
+    # 3. If CUAD alias (e.g. CUAD_001, CUAD_087, CUAD_87, CUAD_1)
     if not storage_item and doc_id_clean.upper().startswith("CUAD"):
         cuad_items = _get_cuad_cache()
         matched = next((c for c in cuad_items if c["id"].upper() == doc_id_clean.upper()), None)
@@ -1823,14 +1926,14 @@ def get_document_detail(
                     "ext": ".pdf"
                 }
 
-    # 3. If AdventureWorks alias (e.g. AW_SALES_ORDERS, AW_CATEGORIES, etc.)
+    # 4. If AdventureWorks alias (e.g. AW_SALES_ORDERS, AW_CATEGORIES, etc.)
     if not storage_item and ("AW_" in doc_id_clean.upper() or "SALES_ORDERS" in doc_id_clean.upper()):
         if "ORDER" in doc_id_clean.upper() or "SALES" in doc_id_clean.upper():
             storage_item = next((it for it in inventory if "SalesOrder" in it["name"]), None)
         elif "CAT" in doc_id_clean.upper() or "PROD" in doc_id_clean.upper():
             storage_item = next((it for it in inventory if "Product" in it["name"] or "Category" in it["name"]), None)
 
-    # 4. Fallback: Substring search in inventory
+    # 5. Fallback: Substring search in inventory
     if not storage_item:
         clean_lower = doc_id_clean.lower()
         storage_item = next((
@@ -1838,92 +1941,131 @@ def get_document_detail(
             if clean_lower in it["name"].lower() or it["name"].lower() in clean_lower
         ), None)
 
-    target_lookup = storage_item["name"] if storage_item else doc_id_clean
-    dept_key = storage_item["dept_key"] if storage_item else ("legal" if "CUAD" in doc_id_clean.upper() else "sales" if "SALES" in doc_id_clean.upper() else "legal")
-    dept_name = storage_item.get("dept_name") if storage_item else ("Pháp chế (Legal)" if dept_key == "legal" else "Kinh doanh (Sales)")
+    fname = (watcher_doc.get("name") if watcher_doc else None) or (storage_item["name"] if storage_item else doc_id_clean)
+    dept_key = (watcher_doc.get("deptKey") or watcher_doc.get("dept_key") if watcher_doc else None) or \
+               (storage_item["dept_key"] if storage_item else ("legal" if "CUAD" in doc_id_clean.upper() else "sales" if "SALES" in doc_id_clean.upper() else "legal"))
+    dept_name = (watcher_doc.get("department") or watcher_doc.get("dept") if watcher_doc else None) or \
+                (storage_item.get("dept_name") if storage_item else ("Pháp chế (Legal)" if dept_key == "legal" else "Kinh doanh (Sales)"))
 
     # Enforce Department Scope (BR-02)
     scope.assert_document_access(doc_id_clean, dept_key)
 
-    # Query Neo4j for Document node
-    neo_doc = None
+    ext = os.path.splitext(fname)[1].lower()
+    final_id = (watcher_doc.get("id") if watcher_doc else None) or (storage_item.get("id") if storage_item else None) or f"DOC_{hashlib.md5(fname.encode()).hexdigest()[:8].upper()}"
+    storage_path = (watcher_doc.get("storage_path") if watcher_doc else None) or (storage_item.get("storage_path") if storage_item else f"/data/{dept_key}/{fname}")
+    file_hash = (watcher_doc.get("hash") or watcher_doc.get("file_hash") if watcher_doc else None) or (storage_item.get("hash") if storage_item else "")
+    size_bytes = (watcher_doc.get("size_bytes") if watcher_doc else None) or (storage_item.get("size_bytes", 0) if storage_item else 0)
+
     neo4j_rels = []
     clauses = []
     companies = []
-    try:
-        if neo4j_client.is_connected or neo4j_client.connect():
-            res = neo4j_client.run_cypher("""
-                MATCH (d:Document)
-                WHERE d.id = $id OR d.name = $id OR d.oldName = $id OR d.name = $clean_id OR d.id = $clean_id
-                OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
-                OPTIONAL MATCH (c:Company)-[:PARTY_TO]->(d)
-                RETURN d.id as id, d.name as name, d.department as dept, d.deptKey as deptKey,
-                       d.storagePath as storagePath, d.hash as hash, d.chunksCount as chunks,
-                       d.ingestedAt as ingestedAt, d.lastModified as lastModified,
-                       d.qdrantIndexed as qdrantIndexed, d.neo4jSynced as neo4jSynced,
-                       collect(DISTINCT {id: cl.id, type: cl.type, title: cl.title, snippet: cl.snippet}) as clauses,
-                       collect(DISTINCT c.name) as companies
-                LIMIT 1
-            """, {"id": target_lookup, "clean_id": doc_id_clean})
-            if res and res[0].get("id"):
-                neo_doc = res[0]
-                clauses = [cl for cl in neo_doc.get("clauses", []) if cl.get("id")]
-                companies = [cp for cp in neo_doc.get("companies", []) if cp]
-    except Exception as e:
-        logger.warning(f"[DocumentDetail] Neo4j query error: {e}")
-
-    # Determine canonical filename & metadata
-    fname = (neo_doc.get("name") if neo_doc else None) or target_lookup
-    dept_name = (neo_doc.get("dept") if neo_doc else None) or dept_name
-    dept_key = (neo_doc.get("deptKey") if neo_doc else None) or dept_key
-    final_id = (neo_doc.get("id") if neo_doc else None) or (storage_item.get("id") if storage_item else None) or f"DOC_{hashlib.md5(fname.encode()).hexdigest()[:8].upper()}"
-    storage_path = (neo_doc.get("storagePath") if neo_doc else None) or (storage_item.get("storage_path") if storage_item else f"/data/{dept_key}/{fname}")
-    file_hash = (neo_doc.get("hash") if neo_doc else None) or (storage_item.get("hash") if storage_item else "")
-
-    # Query Qdrant for real chunks
     chunks = []
-    try:
-        if qdrant_client.is_connected or qdrant_client.connect():
-            from qdrant_client.http import models
-            filter_cond = models.Filter(
-                should=[
-                    models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname)),
-                    models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".pdf", ".txt"))),
-                    models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".PDF", ".pdf"))),
-                    models.FieldCondition(key="doc_id", match=models.MatchValue(value=final_id)),
-                    models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id_clean))
-                ]
-            )
-            pts, _ = qdrant_client._client.scroll(
-                collection_name=qdrant_client._collection,
-                scroll_filter=filter_cond,
-                limit=30,
-                with_payload=True,
-                with_vectors=False
-            )
-            for p in pts:
-                chunks.append({
-                    "id": str(p.id),
-                    "chunk_id": p.payload.get("chunk_id", 0),
-                    "text": p.payload.get("text", "")
-                })
-            chunks.sort(key=lambda c: c.get("chunk_id", 0))
-    except Exception as e:
-        logger.warning(f"[DocumentDetail] Qdrant scroll chunks error: {e}")
+    records = []
+    neo_doc = None
 
-    # Fallback to direct reading from storage if chunks empty
-    if not chunks:
+    if watcher_doc:
+        chunks = list(watcher_doc.get("chunks_list") or [])
+        ent = watcher_doc.get("extracted_entities") or {}
+        companies = list(ent.get("companies") or [])
+        clauses = list(ent.get("clauses") or [])
+        records = list(watcher_doc.get("records") or [])
+
+    # If it's a CSV file, parse the first 25 rows for live table preview
+    if ext == ".csv" and not records:
+        try:
+            from app.core.central_storage import read_file_from_storage
+            import csv, io
+            raw_bytes = read_file_from_storage(fname, dept_key)
+            if raw_bytes:
+                text_content = raw_bytes[:50000].decode("utf-8", errors="ignore")
+                reader = csv.DictReader(io.StringIO(text_content))
+                records = [row for i, row in enumerate(reader) if i < 25]
+        except Exception as e:
+            logger.warning(f"[DocumentDetail] CSV preview parse error: {e}")
+
+    # Query Neo4j for Document node only if not found in watcher or to enrich relations
+    if not clauses and not companies:
+        try:
+            if neo4j_client.is_connected or neo4j_client.connect():
+                res = neo4j_client.run_cypher("""
+                    MATCH (d:Document)
+                    WHERE d.id = $id OR d.name = $id OR d.oldName = $id OR d.name = $clean_id OR d.id = $clean_id
+                    OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
+                    OPTIONAL MATCH (c:Company)-[:PARTY_TO]->(d)
+                    RETURN d.id as id, d.name as name, d.department as dept, d.deptKey as deptKey,
+                           d.storagePath as storagePath, d.hash as hash, d.chunksCount as chunks,
+                           d.ingestedAt as ingestedAt, d.lastModified as lastModified,
+                           d.qdrantIndexed as qdrantIndexed, d.neo4jSynced as neo4jSynced,
+                           collect(DISTINCT {id: cl.id, type: cl.type, title: cl.title, snippet: cl.snippet}) as clauses,
+                           collect(DISTINCT c.name) as companies
+                    LIMIT 1
+                """, {"id": fname, "clean_id": doc_id_clean})
+                if res and res[0].get("id"):
+                    neo_doc = res[0]
+                    clauses = [cl for cl in neo_doc.get("clauses", []) if cl.get("id")]
+                    companies = [cp for cp in neo_doc.get("companies", []) if cp]
+        except Exception as e:
+            logger.warning(f"[DocumentDetail] Neo4j query error: {e}")
+
+    # Query Qdrant for real chunks if not already available from watcher
+    if not chunks and not records:
+        try:
+            if qdrant_client.is_connected or qdrant_client.connect():
+                from qdrant_client.http import models
+                filter_cond = models.Filter(
+                    should=[
+                        models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname)),
+                        models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".pdf", ".txt"))),
+                        models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".PDF", ".pdf"))),
+                        models.FieldCondition(key="doc_id", match=models.MatchValue(value=final_id)),
+                        models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id_clean))
+                    ]
+                )
+                pts, _ = qdrant_client._client.scroll(
+                    collection_name=qdrant_client._collection,
+                    scroll_filter=filter_cond,
+                    limit=30,
+                    with_payload=True,
+                    with_vectors=False
+                )
+                for p in pts:
+                    chunks.append({
+                        "id": str(p.id),
+                        "chunk_id": p.payload.get("chunk_id", 0),
+                        "text": p.payload.get("text", "")
+                    })
+                chunks.sort(key=lambda c: c.get("chunk_id", 0))
+        except Exception as e:
+            logger.warning(f"[DocumentDetail] Qdrant scroll chunks error: {e}")
+
+    # Fallback storage reading if still empty: handle docx and txt safely (no binary raw bytes!)
+    if not chunks and not records:
         try:
             from app.core.central_storage import read_file_from_storage
             raw_bytes = read_file_from_storage(fname, dept_key)
             if raw_bytes:
-                text_sample = raw_bytes[:3000].decode("utf-8", errors="ignore").strip()
-                if text_sample:
-                    chunks.append({
-                        "id": f"{final_id}_sample",
-                        "chunk_id": 1,
-                        "text": text_sample
-                    })
+                if ext == ".docx":
+                    import io, zipfile, xml.etree.ElementTree as ET
+                    with zipfile.ZipFile(io.BytesIO(raw_bytes)) as z:
+                        xml_content = z.read("word/document.xml")
+                        tree = ET.fromstring(xml_content)
+                        texts = [node.text for node in tree.iter() if node.text and node.text.strip()]
+                        clean_text = "\n\n".join(texts)
+                        paragraphs = [p.strip() for p in clean_text.split("\n\n") if len(p.strip()) > 30]
+                        for idx, p in enumerate(paragraphs[:10]):
+                            chunks.append({
+                                "id": f"{final_id}_{idx}",
+                                "chunk_id": idx,
+                                "text": p
+                            })
+                elif ext in [".txt", ".md", ".json"]:
+                    text_sample = raw_bytes[:4000].decode("utf-8", errors="ignore").strip()
+                    if text_sample:
+                        chunks.append({
+                            "id": f"{final_id}_sample",
+                            "chunk_id": 1,
+                            "text": text_sample
+                        })
         except Exception as e:
             logger.debug(f"[DocumentDetail] Fallback storage read: {e}")
 
@@ -1943,12 +2085,19 @@ def get_document_detail(
         neo4j_rels.append({
             "from": f"Document: {fname}",
             "rel": "CONTAINS_CLAUSE",
-            "to": cl.get("title") or "Clause"
+            "to": (cl.get("title") if isinstance(cl, dict) else str(cl)) or "Clause"
         })
 
-    is_indexed = (len(chunks) > 0 or neo_doc is not None)
-    ext = os.path.splitext(fname)[1].lower()
-    size_bytes = storage_item.get("size_bytes", 0) if storage_item else 0
+    is_indexed = (len(chunks) > 0 or len(records) > 0 or neo_doc is not None or (watcher_doc and watcher_doc.get("status") == "INDEXED"))
+    source = (watcher_doc.get("source") if watcher_doc else None) or ("aegis_local_file_watcher" if "DOC_" in doc_id_clean else "central_storage")
+    category = (watcher_doc.get("category") if watcher_doc else None) or (f"Tài liệu {dept_name}")
+    category_en = (watcher_doc.get("category_en") if watcher_doc else None) or (f"{dept_name} Document")
+    preview_type = (watcher_doc.get("previewType") if watcher_doc else None) or ("spreadsheet" if ext == ".csv" else "sop_document" if ext == ".docx" else "document")
+    status = (watcher_doc.get("status") if watcher_doc else None) or ("INDEXED" if is_indexed else "PENDING")
+    status_badge = (watcher_doc.get("statusBadge") if watcher_doc else None) or ("Đã lập chỉ mục" if is_indexed else "Chờ xử lý")
+    status_state = (watcher_doc.get("statusState") if watcher_doc else None) or ("active" if is_indexed else "pending")
+    owner = (watcher_doc.get("owner") if watcher_doc else None) or "AEGIS Central Storage"
+    total_chunk_count = len(chunks) or (watcher_doc.get("chunk_count") if watcher_doc else 0) or (neo_doc.get("chunks") if neo_doc else 0) or (len(records) if records else 1)
 
     return {
         "success": True,
@@ -1960,35 +2109,39 @@ def get_document_detail(
             "dept": dept_name,
             "deptKey": dept_key,
             "deptLabel": dept_name,
+            "category": category,
+            "category_en": category_en,
+            "previewType": preview_type,
+            "source": source,
             "storage_path": storage_path,
             "storagePath": storage_path,
-            "status": "INDEXED" if is_indexed else "PENDING",
-            "statusBadge": "Đã lập chỉ mục" if is_indexed else "Chờ xử lý",
-            "statusState": "active" if is_indexed else "pending",
-            "qdrant_indexed": len(chunks) > 0,
-            "qdrantIndexed": len(chunks) > 0,
-            "neo4j_synced": neo_doc is not None,
-            "neo4jSynced": neo_doc is not None,
-            "chunk_count": len(chunks) or (neo_doc.get("chunks") if neo_doc else 0),
-            "chunks": f"{len(chunks) or (neo_doc.get('chunks') if neo_doc else 0)} Chunks",
+            "status": status,
+            "statusBadge": status_badge,
+            "statusState": status_state,
+            "qdrant_indexed": len(chunks) > 0 or (watcher_doc and watcher_doc.get("qdrant_indexed", True)),
+            "qdrantIndexed": len(chunks) > 0 or (watcher_doc and watcher_doc.get("qdrant_indexed", True)),
+            "neo4j_synced": neo_doc is not None or (watcher_doc and watcher_doc.get("neo4j_synced", True)),
+            "neo4jSynced": neo_doc is not None or (watcher_doc and watcher_doc.get("neo4j_synced", True)),
+            "chunk_count": total_chunk_count,
+            "chunks": f"{total_chunk_count} Chunks",
             "chunks_list": chunks,
             "sample_text": chunks[0]["text"] if chunks else "",
             "hash": file_hash,
             "fileHash": file_hash,
             "file_hash": file_hash,
-            "size": _format_size_bytes(size_bytes) if size_bytes else "1.2 MB",
+            "size": watcher_doc.get("size") if watcher_doc else (_format_size_bytes(size_bytes) if size_bytes else "1.2 MB"),
             "size_bytes": size_bytes,
-            "created_at": neo_doc.get("ingestedAt") if neo_doc else datetime.now().isoformat(),
-            "updated_at": neo_doc.get("lastModified") if neo_doc else datetime.now().isoformat(),
-            "date": datetime.now().strftime("%d/%m/%Y"),
-            "owner": "AEGIS Central Storage",
-            "access": "RBAC Strict (Level 3)" if dept_key == "legal" else "RBAC Dept Only",
-            "schema": f"AEGIS {dept_name} Schema",
-            "type": "PDF" if ext == ".pdf" else "CSV" if ext == ".csv" else ext.replace(".", "").upper(),
+            "created_at": (watcher_doc.get("lastModified") if watcher_doc else None) or (neo_doc.get("ingestedAt") if neo_doc else datetime.now().isoformat()),
+            "updated_at": (watcher_doc.get("lastModified") if watcher_doc else None) or (neo_doc.get("lastModified") if neo_doc else datetime.now().isoformat()),
+            "date": (watcher_doc.get("date") if watcher_doc else None) or datetime.now().strftime("%d/%m/%Y"),
+            "owner": owner,
+            "access": (watcher_doc.get("access") if watcher_doc else None) or ("RBAC Strict (Level 3)" if dept_key == "legal" else "RBAC Dept Only"),
+            "schema": (watcher_doc.get("schema") if watcher_doc else None) or f"AEGIS {dept_name} Schema",
+            "type": (watcher_doc.get("type") if watcher_doc else None) or ("PDF" if ext == ".pdf" else "CSV" if ext == ".csv" else ext.replace(".", "").upper()),
             "neo4jRel": neo4j_rels,
             "entities": [{"key": "Tập đoàn/Công ty", "val": c, "type": "financial"} for c in companies] +
-                        [{"key": cl.get("type", "Điều khoản"), "val": cl.get("title", ""), "type": "legal"} for cl in clauses],
-            "records": []
+                        [{"key": (cl.get("type") if isinstance(cl, dict) else "Điều khoản"), "val": (cl.get("title") if isinstance(cl, dict) else str(cl)), "type": "legal"} for cl in clauses],
+            "records": records
         }
     }
 
