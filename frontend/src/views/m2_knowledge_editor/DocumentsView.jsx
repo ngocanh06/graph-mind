@@ -426,71 +426,74 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* ========================================================================= */}
       {/* REALTIME INGESTION PROGRESS BANNER */}
       {/* ========================================================================= */}
-      {summary.cuad_total > 0 && (
-        <div className={`p-4 md:p-5 rounded-2xl border transition-all ${
-          summary.pending_documents > 0
-            ? "bg-primary/5 border-primary/30 shadow-xs"
-            : "bg-emerald-500/10 border-emerald-500/30"
-        }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-                summary.pending_documents > 0
-                  ? "bg-primary text-white animate-pulse"
-                  : "bg-emerald-600 text-white"
-              }`}>
-                <Icon name={summary.pending_documents > 0 ? "fa-solid fa-arrows-rotate" : "fa-solid fa-check-double"} size={18} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm text-on-surface">
-                    {isVi ? "Tiến trình đồng bộ CUAD Ingestion" : "CUAD Ingestion Pipeline Progress"}
-                  </h3>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                    summary.pending_documents > 0
-                      ? "bg-amber-100 text-amber-800 border border-amber-300"
-                      : "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                  }`}>
-                    {summary.pending_documents > 0
-                      ? (isVi ? "Đang xử lý / Ingesting" : "Processing")
-                      : (isVi ? "Hoàn tất 100%" : "100% Completed")}
-                  </span>
+      {summary.cuad_total > 0 && (() => {
+        const isCuadPending = summary.cuad_contracts < summary.cuad_total;
+        return (
+          <div className={`p-4 md:p-5 rounded-2xl border transition-all ${
+            isCuadPending
+              ? "bg-primary/5 border-primary/30 shadow-xs"
+              : "bg-emerald-500/10 border-emerald-500/30"
+          }`}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                  isCuadPending
+                    ? "bg-primary text-white animate-pulse"
+                    : "bg-emerald-600 text-white"
+                }`}>
+                  <Icon name={isCuadPending ? "fa-solid fa-arrows-rotate" : "fa-solid fa-check-double"} size={18} />
                 </div>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  {summary.pending_documents > 0
-                    ? (isVi
-                        ? `Đang trích xuất văn bản & nạp vector Qdrant + đồ thị Neo4j (${summary.cuad_contracts} / ${summary.cuad_total} files)`
-                        : `Extracting text, embedding Qdrant chunks & merging Neo4j graph (${summary.cuad_contracts} / ${summary.cuad_total} files)`)
-                    : (isVi
-                        ? `Toàn bộ ${summary.cuad_contracts}/${summary.cuad_total} Hợp đồng CUAD & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks đã được lập chỉ mục đầy đủ trong Qdrant và Neo4j.`
-                        : `All ${summary.cuad_contracts}/${summary.cuad_total} CUAD contracts & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks fully indexed in Qdrant & Neo4j.`)}
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-on-surface">
+                      {isVi ? "Tiến trình đồng bộ CUAD Ingestion" : "CUAD Ingestion Pipeline Progress"}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      isCuadPending
+                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                    }`}>
+                      {isCuadPending
+                        ? (isVi ? "Đang xử lý / Ingesting" : "Processing")
+                        : (isVi ? "Hoàn tất 100%" : "100% Completed")}
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    {isCuadPending
+                      ? (isVi
+                          ? `Đang trích xuất văn bản & nạp vector Qdrant + đồ thị Neo4j (${summary.cuad_contracts} / ${summary.cuad_total} files)`
+                          : `Extracting text, embedding Qdrant chunks & merging Neo4j graph (${summary.cuad_contracts} / ${summary.cuad_total} files)`)
+                      : (isVi
+                          ? `Toàn bộ ${summary.cuad_contracts}/${summary.cuad_total} Hợp đồng CUAD & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks đã được lập chỉ mục đầy đủ trong Qdrant và Neo4j.`
+                          : `All ${summary.cuad_contracts}/${summary.cuad_total} CUAD contracts & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks fully indexed in Qdrant & Neo4j.`)}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-4 min-w-[240px]">
-              <div className="flex-1 space-y-1.5">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-on-surface-variant font-mono">
-                    {summary.cuad_contracts} / {summary.cuad_total}
-                  </span>
-                  <span className="text-primary font-bold font-mono">
-                    {summary.cuad_total > 0 ? (Math.round((summary.cuad_contracts / summary.cuad_total) * 1000) / 10).toFixed(1) : 0}%
-                  </span>
-                </div>
-                <div className="w-full bg-surface-container-high h-2.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-primary to-emerald-500 h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${summary.cuad_total > 0 ? Math.min(100, Math.round((summary.cuad_contracts / summary.cuad_total) * 1000) / 10) : 0}%`
-                    }}
-                  ></div>
+              <div className="flex items-center gap-4 min-w-[240px]">
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-on-surface-variant font-mono">
+                      {summary.cuad_contracts} / {summary.cuad_total}
+                    </span>
+                    <span className="text-emerald-600 font-bold font-mono">
+                      {summary.cuad_total > 0 ? (Math.round((summary.cuad_contracts / summary.cuad_total) * 1000) / 10).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-surface-container-high h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${summary.cuad_total > 0 ? Math.min(100, Math.round((summary.cuad_contracts / summary.cuad_total) * 1000) / 10) : 0}%`
+                      }}
+                    ></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* DASHBOARD STATISTICS CARDS (6 REQUIRED REAL-DATA KPIS) */}
