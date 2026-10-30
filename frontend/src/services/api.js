@@ -19,7 +19,7 @@ export async function fetchSignals() {
   try {
     const res = await fetch(`${API_BASE}/signals`);
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -27,7 +27,7 @@ export async function fetchEntities() {
   try {
     const res = await fetch(`${API_BASE}/graph/entities`);
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -39,7 +39,7 @@ export async function verifyEntityApi(entityId, verified, auditor = "Dieu Hoang 
       body: JSON.stringify({ entityId, verified, auditor })
     });
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -176,7 +176,7 @@ export async function getCurrentUserApi(token) {
       }
     });
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -533,7 +533,7 @@ export async function triggerMockWatcherDrop(fileName = "HD_CungCap_ThietBi_2026
       `Điều khoản 2: Phương thức thanh toán 3 đợt theo khối lượng nghiệm thu.\n` +
       `Điều khoản 3: Bồi thường thiệt hại và phạt vi phạm 8% giá trị vi phạm.`
     ], { type: "text/plain" });
-    
+
     formData.append("file", blob, fileName);
     formData.append("department", department);
     formData.append("file_name", fileName);
