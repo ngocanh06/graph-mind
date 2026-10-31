@@ -13,7 +13,7 @@ SYSTEM_HEALTH: Dict[str, Any] = {
     "lastSync": datetime.now().isoformat(),
     "neo4jNodes": 55315,
     "neo4jRelationships": 161574,
-    "qdrantVectors": 35276
+    "qdrantVectors": 61741
 }
 
 AI_SIGNALS: List[Dict[str, Any]] = [
@@ -45,8 +45,8 @@ AI_SIGNALS: List[Dict[str, Any]] = [
         "id": "sig-3",
         "severity": "low",
         "badge": "DATA QUALITY",
-        "what_en": "All 581 documents and 35,276 vector points are 100% indexed and synchronized.",
-        "what_vi": "Toàn bộ 581 tài liệu và 35,276 điểm vector đã lập chỉ mục và đồng bộ hoàn tất 100%.",
+        "what_en": "All 581 documents and 61,741 vector points are 100% indexed and synchronized.",
+        "what_vi": "Toàn bộ 581 tài liệu và 61,741 điểm vector đã lập chỉ mục và đồng bộ hoàn tất 100%.",
         "why_en": "Multi-department knowledge repository (Legal, Sales, Accounting, R&D, IT) verified in Central Storage & Neo4j.",
         "why_vi": "Kho tài liệu đa phòng ban đã đồng bộ hoàn chỉnh giữa Central Storage, Qdrant và Neo4j.",
         "action_en": "View Document Repository",

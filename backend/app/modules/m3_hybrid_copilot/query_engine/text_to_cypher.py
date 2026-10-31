@@ -169,17 +169,17 @@ def generate_cypher_from_query(query: str) -> str:
     # 3. AdventureWorks Customer queries (ranked by revenue for VIPs/Top accounts)
     if any(k in q_lower for k in ["khách hàng", "customer", "crm", "vip", "đối tác mua hàng"]):
         return """
-        MATCH (c:Customer)
-        OPTIONAL MATCH (c)-[:PURCHASED]->(p:Product)
-        OPTIONAL MATCH (c)-[:PLACED_ORDER]->(o:SalesOrder)
-        WITH c, count(DISTINCT p) AS prod_count, count(DISTINCT o) AS order_count, round(coalesce(sum(coalesce(o.totalDue, 0.0)), 0), 2) AS totalSpent
-        WITH c, prod_count, order_count, totalSpent,
-             (CASE WHEN prod_count >= order_count THEN prod_count ELSE order_count END) AS final_count
+        MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
+
+
+        WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
+
+
         RETURN coalesce(c.name, c.title, 'Customer #' + toString(c.id)) AS name,
                c.id AS CustomerID,
-               final_count AS order_count,
+               order_count,
                totalSpent,
-               'Khách hàng ' + coalesce(c.name, 'Customer #' + toString(c.id)) + ' (' + coalesce(c.tier, 'Khách hàng') + '): Tổng chi tiêu $' + toString(totalSpent) + ' USD với ' + toString(final_count) + ' giao dịch.' AS snippet,
+               'Khách hàng ' + coalesce(c.name, 'Customer #' + toString(c.id)) + ' (' + coalesce(c.tier, 'Khách hàng') + '): Tổng chi tiêu $' + toString(totalSpent) + ' USD với ' + toString(order_count) + ' đơn hàng.' AS snippet,
                elementId(c) AS _id, ['Customer'] AS _labels
         ORDER BY totalSpent DESC
         LIMIT 6

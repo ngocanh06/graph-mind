@@ -475,17 +475,31 @@ async def ask_copilot(
             "sessionId": str(session_obj.id),
             "session_id": str(session_obj.id),
         }
+        now_str = datetime.now().strftime("%H:%M")
+        user_label = getattr(user, "full_name", None) or getattr(user, "username", None) or "User"
         new_msgs = list(session_obj.messages or [])
-        new_msgs.append({"sender": "user", "text": clean_query, "timestamp": datetime.now().isoformat()})
         new_msgs.append({
+            "id": f"u_{int(time.time()*1000)}",
+            "sender": "user",
+            "time": now_str,
+            "userLabel": user_label,
+            "text": clean_query,
+        })
+        new_msgs.append({
+            "id": f"c_{int(time.time()*1000)}",
             "sender": "copilot",
+            "time": now_str,
+            "verifiedBadge": blocked_msg["model"],
+            "confidence": "100%",
+            "confidenceScore": 100,
+            "citationCount": len(blocked_msg.get("citations", [])),
+            "latency": "0.05s",
+            "introText": reject_reason,
             "text": reject_reason,
-            "timestamp": datetime.now().isoformat(),
+            "answer": reject_reason,
             "evidenceChips": blocked_msg["evidenceChips"],
             "citations": blocked_msg["citations"],
-            "confidenceScore": 100,
-            "latency": 0.05,
-            "model": blocked_msg["model"]
+            "model": blocked_msg["model"],
         })
         session_obj.messages = new_msgs
         session_obj.updated_at = datetime.now()
@@ -519,6 +533,7 @@ async def ask_copilot(
     active_target_doc = None
     target_doc_id = None
     doc_filter = None
+    candidate_tokens = []
 
     GENERIC_STOP = {
         "trong", "tai", "lieu", "khoan", "dong", "hang", "phan", "minh", "mind", "graph",
@@ -537,12 +552,12 @@ async def ask_copilot(
             RETURN d.name as name, d.id as id
             LIMIT 1
         """, {"q": clean_query})
+        raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
+        candidate_tokens = [
+            t for t in raw_tokens
+            if t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
+        ]
         if not doc_matches:
-            raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
-            candidate_tokens = [
-                t for t in raw_tokens
-                if t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
-            ]
             for t in sorted(candidate_tokens, key=len, reverse=True):
                 doc_matches = neo4j_client.run_cypher("""
                     MATCH (d:Document)
@@ -564,8 +579,83 @@ async def ask_copilot(
                     {"key": "document_id", "match": {"value": target_doc_id}},
                 ]
             }
-    except Exception:
-        pass
+        else:
+            # 2.0.1 ENTITY EXISTENCE GATE: If user explicitly asks about a specific named document/file/contract
+            # but it does not exist anywhere in Neo4j or Qdrant, refuse immediately to avoid false-positive hallucinations
+            targeted_doc_term = None
+            t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
+            if t_match:
+                cand = t_match.group(1).strip()
+                if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
+                    targeted_doc_term = cand
+            elif candidate_tokens and is_doc_repo_query:
+                targeted_doc_term = candidate_tokens[0]
+
+            if targeted_doc_term:
+                term_in_docs = False
+                try:
+                    chk_hits = qdrant_client.vector_search(query=targeted_doc_term, collection_name="cuad_contracts", limit=3)
+                    for qh in chk_hits:
+                        src = (qh.get("source_file") or qh.get("contract_name") or "").lower()
+                        txt = (qh.get("text") or "").lower()
+                        if targeted_doc_term.lower() in src or targeted_doc_term.lower() in txt:
+                            term_in_docs = True
+                            break
+                except Exception:
+                    term_in_docs = False
+
+                if not term_in_docs:
+                    not_found_msg = (
+                        f"Không tìm thấy tài liệu hoặc hồ sơ nào có tên '{targeted_doc_term}' trong kho tri thức của hệ thống. "
+                        f"Vui lòng kiểm tra lại tên tài liệu hoặc nạp tài liệu vào kho lưu trữ của phòng ban để AI Copilot có thể tra cứu."
+                    )
+                    blocked_msg = {
+                        "success": True,
+                        "answer": not_found_msg,
+                        "text": not_found_msg,
+                        "evidenceChips": [],
+                        "citations": [],
+                        "confidenceScore": 0,
+                        "latency": 0.05,
+                        "model": "GraphMind Entity Existence Gate",
+                        "query": clean_query,
+                        "sessionId": str(session_obj.id),
+                        "session_id": str(session_obj.id),
+                    }
+                    now_str = datetime.now().strftime("%H:%M")
+                    user_label = getattr(user, "full_name", None) or getattr(user, "username", None) or "User"
+                    new_msgs = list(session_obj.messages or [])
+                    new_msgs.append({
+                        "id": f"u_{int(time.time()*1000)}",
+                        "sender": "user",
+                        "time": now_str,
+                        "userLabel": user_label,
+                        "text": clean_query,
+                    })
+                    new_msgs.append({
+                        "id": f"c_{int(time.time()*1000)}",
+                        "sender": "copilot",
+                        "time": now_str,
+                        "verifiedBadge": "Entity Gate Refusal",
+                        "confidence": "0%",
+                        "confidenceScore": 0,
+                        "citationCount": 0,
+                        "latency": "0.05s",
+                        "introText": not_found_msg,
+                        "text": not_found_msg,
+                        "answer": not_found_msg,
+                        "evidenceChips": [],
+                        "citations": [],
+                        "model": blocked_msg["model"],
+                    })
+                    session_obj.messages = new_msgs
+                    session_obj.updated_at = datetime.now()
+                    await db.commit()
+                    await db.refresh(session_obj)
+                    blocked_msg["session"] = session_obj.to_dict()
+                    return blocked_msg
+    except Exception as e:
+        logger.warning(f"[Copilot Gate] Error in document identity gate: {e}")
 
     vector_hits = []
     # 2.1 Route to relevant Qdrant vector collections
@@ -605,20 +695,25 @@ async def ask_copilot(
         top_score = float(top_hit.get("score") or 0.0)
         is_cuad_doc = (top_hit.get("source") != "adventureworks") and ("entity_type" not in (top_hit.get("payload") or {}))
         if is_cuad_doc and top_name and top_score >= 0.28:
-            active_target_doc = top_name
-            target_doc_id = top_doc_id
-            doc_filter = {
-                "should": [
-                    {"key": "contract_name", "match": {"value": active_target_doc}},
-                    {"key": "source_file", "match": {"value": active_target_doc}},
-                    {"key": "doc_id", "match": {"value": target_doc_id}},
-                    {"key": "document_id", "match": {"value": target_doc_id}},
-                ]
-            }
-            # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
-            deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-            if deep_hits:
-                vector_hits = deep_hits
+            # Check relevance: do not lock onto top_name if user asked for specific tokens absent from top_name
+            should_lock = True
+            if candidate_tokens:
+                should_lock = any(tok.lower() in top_name.lower() or tok.lower() in (top_hit.get("text") or "").lower() for tok in candidate_tokens)
+            if should_lock:
+                active_target_doc = top_name
+                target_doc_id = top_doc_id
+                doc_filter = {
+                    "should": [
+                        {"key": "contract_name", "match": {"value": active_target_doc}},
+                        {"key": "source_file", "match": {"value": active_target_doc}},
+                        {"key": "doc_id", "match": {"value": target_doc_id}},
+                        {"key": "document_id", "match": {"value": target_doc_id}},
+                    ]
+                }
+                # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
+                deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+                if deep_hits:
+                    vector_hits = deep_hits
 
     graph_hits = []
     if active_target_doc or target_doc_id:
@@ -788,17 +883,31 @@ async def ask_copilot(
             "sessionId": str(session_obj.id),
             "session_id": str(session_obj.id),
         }
+        now_str = datetime.now().strftime("%H:%M")
+        user_label = getattr(user, "full_name", None) or getattr(user, "username", None) or "User"
         new_msgs = list(session_obj.messages or [])
-        new_msgs.append({"sender": "user", "text": clean_query, "timestamp": datetime.now().isoformat()})
         new_msgs.append({
+            "id": f"u_{int(time.time()*1000)}",
+            "sender": "user",
+            "time": now_str,
+            "userLabel": user_label,
+            "text": clean_query,
+        })
+        new_msgs.append({
+            "id": f"c_{int(time.time()*1000)}",
             "sender": "copilot",
+            "time": now_str,
+            "verifiedBadge": "Grounding Refusal",
+            "confidence": "0%",
+            "confidenceScore": 0,
+            "citationCount": 0,
+            "latency": "0.05s",
+            "introText": safe_reply,
             "text": safe_reply,
-            "timestamp": datetime.now().isoformat(),
+            "answer": safe_reply,
             "evidenceChips": [],
             "citations": [],
-            "confidenceScore": 0,
-            "latency": 0.05,
-            "model": blocked_msg["model"]
+            "model": blocked_msg["model"],
         })
         session_obj.messages = new_msgs
         session_obj.updated_at = datetime.now()

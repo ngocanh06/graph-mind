@@ -40,7 +40,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
 
 # SSE Subscribers
 _SSE_SUBSCRIBERS: List[asyncio.Queue] = []
@@ -99,7 +99,16 @@ def _save_json(path: str, data: list) -> None:
             temp_path = f"{path}.tmp"
             with open(temp_path, "w", encoding="utf-8", errors="replace") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            os.replace(temp_path, path)
+            try:
+                os.replace(temp_path, path)
+            except OSError:
+                with open(path, "w", encoding="utf-8", errors="replace") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"[Pipeline] Failed to persist {path}: {e}")
 
