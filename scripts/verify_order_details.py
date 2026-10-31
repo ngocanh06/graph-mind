@@ -9,9 +9,15 @@ from neo4j import GraphDatabase
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", "backend", ".env"))
+except ImportError:
+    pass
+
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "graphmind_secret")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password123")
 NEO4J_AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 
 def verify_order_details():
