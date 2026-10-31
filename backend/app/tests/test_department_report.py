@@ -5,8 +5,8 @@ Validates:
 2. Department Manager has access to their own department report (BR-04, Proposal Sect. 6.1a).
 3. Department Manager is rejected with 403 when requesting another department report.
 4. Standard User is rejected with 403 when requesting another department report.
-5. Standard User is rejected with 403 when trying to sign off a shift report.
-6. Department Manager successfully signs off a team member's shift report (200 OK).
+5. Shift report lifecycle: author drafts/edits/submits; non-author cannot edit; Standard User cannot review.
+6. Manager approves/rejects (reject needs reason); re-review -> 409; approved report is locked.
 7. Department report AI synthesis returns structured synthesis (200 OK).
 """
 
@@ -40,6 +40,8 @@ def make_headers(username: str, role: str, dept: str) -> dict:
 
 
 async def run_department_report_tests():
+    from app.db.postgres.database import create_all_tables
+    await create_all_tables()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         print("\n======================================================================")
@@ -81,29 +83,50 @@ async def run_department_report_tests():
         assert res.status_code == 403, f"Expected 403 for Standard User, got {res.status_code}: {res.text}"
         print(f"    -> OK: Standard User blocked with 403 Forbidden on Legal department report.")
 
-        # 5. Standard User blocked from signing off a shift report
-        print("\n[5] Testing Standard User blocked from signing off a shift report...")
-        res = await client.post(
-            "/api/dashboard/department-report/signoff",
-            headers=sales_user_headers,
-            json={"submissionId": "shift-sales-01", "comment": "Tự duyệt"}
-        )
-        assert res.status_code == 403, f"Expected 403 for Standard User signoff, got {res.status_code}: {res.text}"
-        print(f"    -> OK: Standard User blocked with 403 Forbidden from approving shift reports.")
+        SR = "/api/dashboard/shift-reports"
+        body = {"summary": "Xử lý 2 ca", "cases": [{"customer": "ACME", "issue": "x", "ref": "EDR-1"}], "proposals": ""}
 
-        # 6. Department Manager signs off a team member's shift report
-        print("\n[6] Testing Department Manager sign-off on team shift report...")
-        res = await client.post(
-            "/api/dashboard/department-report/signoff",
-            headers=mgr_headers,
-            json={"submissionId": "shift-sales-01", "comment": "Đã xem và phê duyệt. Khen ngợi giải pháp giữ chân Brakes and Gears."}
-        )
-        assert res.status_code == 200, f"Expected 200 for Manager signoff, got {res.status_code}: {res.text}"
-        sign_data = res.json()
-        assert sign_data["success"] is True
-        assert sign_data["data"]["status"] == "APPROVED"
-        assert "token" in sign_data["data"]
-        print(f"    -> OK: Shift report signed off with token {sign_data['data']['token'][:24]}...")
+        # 5. Author drafts, edits and submits; non-author cannot edit
+        print("\n[5] Testing shift report draft -> edit -> submit (author only)...")
+        res = await client.post(SR, headers=sales_user_headers, json=body)
+        assert res.status_code == 200, res.text
+        rid = res.json()["report"]["id"]
+        assert res.json()["report"]["status"] == "DRAFT"
+        body["summary"] = "Xử lý 3 ca (đã sửa)"
+        res = await client.put(f"{SR}/{rid}", headers=sales_user_headers, json=body)
+        assert res.status_code == 200 and res.json()["report"]["summary"].endswith("(đã sửa)")
+        res = await client.put(f"{SR}/{rid}", headers=mgr_headers, json=body)
+        assert res.status_code == 403, f"Non-author edit must be 403, got {res.status_code}"
+        res = await client.post(f"{SR}/{rid}/review", headers=mgr_headers, json={"decision": "approve"})
+        assert res.status_code == 409, f"Reviewing a DRAFT must be 409, got {res.status_code}"
+        res = await client.post(f"{SR}/{rid}/submit", headers=sales_user_headers)
+        assert res.status_code == 200 and res.json()["report"]["status"] == "SUBMITTED"
+        assert len(res.json()["report"]["contentHash"]) == 64
+        res = await client.put(f"{SR}/{rid}", headers=sales_user_headers, json=body)
+        assert res.status_code == 409, "Submitted report must be locked"
+        print("    -> OK: lifecycle + authorization enforced.")
+
+        # 6. Review: Standard User blocked; manager rejects (reason required), author revises, manager approves
+        print("\n[6] Testing review (reject needs reason, approve locks, no double review)...")
+        res = await client.post(f"{SR}/{rid}/review", headers=sales_user_headers, json={"decision": "approve"})
+        assert res.status_code == 403, f"Standard User review must be 403, got {res.status_code}"
+        res = await client.post(f"{SR}/{rid}/review", headers=mgr_headers, json={"decision": "reject", "comment": ""})
+        assert res.status_code == 422, f"Reject without reason must be 422, got {res.status_code}"
+        res = await client.post(f"{SR}/{rid}/review", headers=mgr_headers, json={"decision": "reject", "comment": "Thiếu số liệu"})
+        assert res.status_code == 200 and res.json()["report"]["status"] == "REJECTED"
+        res = await client.put(f"{SR}/{rid}", headers=sales_user_headers, json=body)
+        assert res.status_code == 200, "Rejected report must be editable again"
+        res = await client.post(f"{SR}/{rid}/submit", headers=sales_user_headers)
+        assert res.status_code == 200
+        res = await client.get("/api/dashboard/department-report?department=sales", headers=mgr_headers)
+        assert any(s["id"] == rid and s["status"] == "SUBMITTED" for s in res.json()["submissions"])
+        res = await client.post(f"{SR}/{rid}/review", headers=mgr_headers, json={"decision": "approve", "comment": "OK"})
+        assert res.status_code == 200 and res.json()["report"]["status"] == "APPROVED", res.text
+        res = await client.post(f"{SR}/{rid}/review", headers=mgr_headers, json={"decision": "approve"})
+        assert res.status_code == 409, f"Re-review must be 409, got {res.status_code}"
+        res = await client.put(f"{SR}/{rid}", headers=sales_user_headers, json=body)
+        assert res.status_code == 409, "Approved report must be locked"
+        print("    -> OK: review workflow enforced.")
 
         # 7. Department report AI synthesis
         print("\n[7] Testing Department AI Report synthesis...")

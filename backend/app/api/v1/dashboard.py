@@ -41,18 +41,10 @@ class BriefingRequest(BaseModel):
     focus: Optional[str] = "executive"
 
 
-class DepartmentReportSignoffRequest(BaseModel):
-    submissionId: str
-    comment: Optional[str] = ""
-
-
 class DepartmentSynthesisRequest(BaseModel):
     department: Optional[str] = None
     timeframe: Optional[str] = "today"
 
-
-# In-memory store for digital sign-offs of department shift reports
-SIGNED_OFF_SUBMISSIONS: Dict[str, Dict[str, Any]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -772,107 +764,28 @@ async def get_department_activity_report(
 
     sop_count = max(len(db_sops), 5 if target_dept == "sales" else 4)
 
-    # Shift Submissions per department
-    SUBMISSIONS_CATALOG = {
-        "sales": [
-            {
-                "id": "shift-sales-01",
-                "specialistName": "Nguyễn V. Nam",
-                "username": "ops",
-                "roleTitle": "Chuyên viên Kinh doanh Cấp cao",
-                "avatar": "NN",
-                "submissionTime": "Hôm nay, 16:30",
-                "status": SIGNED_OFF_SUBMISSIONS.get("shift-sales-01", {}).get("status", "PENDING_REVIEW"),
-                "signedBy": SIGNED_OFF_SUBMISSIONS.get("shift-sales-01", {}).get("signedBy", None),
-                "signedAt": SIGNED_OFF_SUBMISSIONS.get("shift-sales-01", {}).get("signedAt", None),
-                "slaRate": "100% SLA",
-                "avgTurnaround": "12 phút/ca",
-                "casesHandled": 4,
-                "pipelineValue": "4.1 Tỷ VND",
-                "documentsDispatched": ["Báo giá #BG-2026-09", "EDR #8821", "Phụ lục PL #44"],
-                "summary": "Tiếp nhận 4/4 ca cảnh báo rủi ro khách hàng. Giữ chân thành công Brakes and Gears (Mã #29818) và thỏa thuận đối soát công nợ 45 ngày với Excellent Riding Supplies (Mã #29715).",
-                "escalation": "Đề xuất Trưởng phòng cấp hạn mức duyệt chiết khấu nhanh 10% - 12% cho hợp đồng kỳ hạn 24 tháng trước 30/09."
-            },
-            {
-                "id": "shift-sales-02",
-                "specialistName": "Trần Thị Mai",
-                "username": "mai.sales",
-                "roleTitle": "Account Executive",
-                "avatar": "TM",
-                "submissionTime": "Hôm nay, 15:45",
-                "status": SIGNED_OFF_SUBMISSIONS.get("shift-sales-02", {}).get("status", "APPROVED"),
-                "signedBy": SIGNED_OFF_SUBMISSIONS.get("shift-sales-02", {}).get("signedBy", "Trần M. Anh"),
-                "signedAt": SIGNED_OFF_SUBMISSIONS.get("shift-sales-02", {}).get("signedAt", "2026-10-22T08:50:00Z"),
-                "slaRate": "100% SLA",
-                "avgTurnaround": "15 phút/ca",
-                "casesHandled": 3,
-                "pipelineValue": "1.8 Tỷ VND",
-                "documentsDispatched": ["HĐ Nguyên tắc #HĐ-2026-92", "Báo giá thiết bị"],
-                "summary": "Tái tục thành công 100% gói dịch vụ cloud cho chi nhánh miền Trung. Xử lý kịp thời phản hồi khiếu nại bảo hành.",
-                "escalation": "Xin phê duyệt rút ngắn chu kỳ đối soát thanh toán từ 15 ngày xuống 7 ngày đối với đối tác thân thiết."
-            },
-            {
-                "id": "shift-sales-03",
-                "specialistName": "Lê Quốc Bảo",
-                "username": "bao.sales",
-                "roleTitle": "Sales Support & Contract Admin",
-                "avatar": "LB",
-                "submissionTime": "Hôm nay, 14:10",
-                "status": SIGNED_OFF_SUBMISSIONS.get("shift-sales-03", {}).get("status", "APPROVED"),
-                "signedBy": SIGNED_OFF_SUBMISSIONS.get("shift-sales-03", {}).get("signedBy", "Trần M. Anh"),
-                "signedAt": SIGNED_OFF_SUBMISSIONS.get("shift-sales-03", {}).get("signedAt", "2026-10-22T07:20:00Z"),
-                "slaRate": "100% SLA",
-                "avgTurnaround": "10 phút/ca",
-                "casesHandled": 6,
-                "pipelineValue": "850 Triệu VND",
-                "documentsDispatched": ["5 bộ hợp đồng mua bán linh kiện", "Chứng từ bảo lãnh"],
-                "summary": "Hoàn tất lập chỉ mục 5 hợp đồng cung ứng phụ tùng vào kho dữ liệu số, đồng bộ đầy đủ lên Knowledge Graph.",
-                "escalation": "Hệ thống vận hành ổn định, không có kiến nghị đặc biệt."
-            }
-        ],
-        "legal": [
-            {
-                "id": "shift-legal-01",
-                "specialistName": "Phạm Thùy Linh",
-                "username": "linh.legal",
-                "roleTitle": "Chuyên viên Pháp chế Hợp đồng",
-                "avatar": "PL",
-                "submissionTime": "Hôm nay, 16:15",
-                "status": SIGNED_OFF_SUBMISSIONS.get("shift-legal-01", {}).get("status", "PENDING_REVIEW"),
-                "signedBy": SIGNED_OFF_SUBMISSIONS.get("shift-legal-01", {}).get("signedBy", None),
-                "signedAt": SIGNED_OFF_SUBMISSIONS.get("shift-legal-01", {}).get("signedAt", None),
-                "slaRate": "100% SLA",
-                "avgTurnaround": "18 phút/ca",
-                "casesHandled": 5,
-                "pipelineValue": "7.2 Tỷ VND",
-                "documentsDispatched": ["Phụ lục Bảo mật NDA-2026", "Ý kiến Pháp lý #LK-08"],
-                "summary": "Rà soát điều khoản bồi thường và giới hạn trách nhiệm CUAD cho 5 hợp đồng đối tác chiến lược. Phát hiện 2 hợp đồng cần sửa đổi.",
-                "escalation": "Kiến nghị Ban Giám đốc ban hành hướng dẫn áp dụng điều khoản chuẩn về bảo vệ dữ liệu cá nhân Nghị định 13."
-            }
-        ],
-        "operations": [
-            {
-                "id": "shift-ops-01",
-                "specialistName": "Đặng Văn Hùng",
-                "username": "hung.ops",
-                "roleTitle": "Chuyên viên Chuỗi Cung ứng",
-                "avatar": "DH",
-                "submissionTime": "Hôm nay, 15:30",
-                "status": SIGNED_OFF_SUBMISSIONS.get("shift-ops-01", {}).get("status", "APPROVED"),
-                "signedBy": SIGNED_OFF_SUBMISSIONS.get("shift-ops-01", {}).get("signedBy", "Lê Văn Hưng"),
-                "signedAt": SIGNED_OFF_SUBMISSIONS.get("shift-ops-01", {}).get("signedAt", "2026-10-22T08:35:00Z"),
-                "slaRate": "100% SLA",
-                "avgTurnaround": "14 phút/ca",
-                "casesHandled": 7,
-                "pipelineValue": "3.8 Tỷ VND",
-                "documentsDispatched": ["Biên bản giao nhận kho vận", "Báo cáo kiểm kê #KK-40"],
-                "summary": "Thông quan thành công 3 lô hàng linh kiện điện tử, giảm chi phí lưu kho 8.4% so với định mức tuần.",
-                "escalation": "Đề xuất mở rộng hợp đồng thuê kho vệ tinh khu vực phía Nam."
-            }
-        ]
-    }
-
-    submissions = SUBMISSIONS_CATALOG.get(target_dept, SUBMISSIONS_CATALOG["sales"])
+    # Shift submissions: real reports from Postgres (SUBMITTED/APPROVED/REJECTED; drafts stay private to author)
+    submissions = []
+    try:
+        from app.db.postgres.database import AsyncSessionLocal
+        from app.db.postgres.models.shift_report import ShiftReport
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as session:
+            rows = (await session.execute(
+                select(ShiftReport)
+                .where(ShiftReport.department == target_dept, ShiftReport.status != "DRAFT")
+                .order_by(ShiftReport.submitted_at.desc())
+            )).scalars().all()
+        for r in rows:
+            d = r.to_dict()
+            d["roleTitle"] = r.department
+            d["avatar"] = "".join(w[0] for w in r.author_name.split()[:2]).upper() or "NV"
+            d["submissionTime"] = r.submitted_at.strftime("%d/%m/%Y %H:%M") if r.submitted_at else ""
+            d["casesHandled"] = len(r.cases or [])
+            d["documentsDispatched"] = [c.get("ref") for c in (r.cases or []) if c.get("ref")]
+            submissions.append(d)
+    except Exception as dbe:
+        logger.warning(f"[DepartmentReport] shift reports query failed: {dbe}")
 
     # Aggregated Department Activity Stream
     ACTIVITY_STREAM = [
@@ -994,46 +907,6 @@ async def get_department_activity_report(
         "activityStream": ACTIVITY_STREAM,
         "sops": DEPARTMENT_SOPS,
         "escalations": ESCALATIONS_TO_CLEVEL,
-    }
-
-
-@router.post("/department-report/signoff")
-async def signoff_department_shift_report(
-    req: DepartmentReportSignoffRequest,
-    scope: ScopeContext = Depends(get_user_scope),
-):
-    """
-    Department Manager (or Executive/Admin) signs off on a team specialist's shift report.
-    Enforces that Standard Users cannot sign off (BR-04, Proposal Sect. 6.1a).
-    """
-    if scope.role == "standard_user":
-        raise HTTPException(
-            status_code=403,
-            detail="Quyền truy cập bị từ chối: Chuyên viên không có quyền phê duyệt báo cáo ca của đồng nghiệp. Chức năng chỉ dành cho Trưởng phòng hoặc Ban Giám Đốc."
-        )
-
-    signed_name = scope.user.full_name or "Trần M. Anh (Trưởng phòng)"
-    token = f"SHA256:{uuid.uuid4().hex[:12]}...{uuid.uuid4().hex[:8]}"
-
-    SIGNED_OFF_SUBMISSIONS[req.submissionId] = {
-        "status": "APPROVED",
-        "signedBy": signed_name,
-        "signedAt": datetime.utcnow().isoformat(),
-        "comment": req.comment or "Đã xem và phê duyệt toàn bộ báo cáo ca. Đồng ý chủ trương tác nghiệp.",
-        "token": token
-    }
-
-    return {
-        "success": True,
-        "message": f"Đã phê duyệt và ký số thành công báo cáo ca #{req.submissionId}!",
-        "data": {
-            "submissionId": req.submissionId,
-            "status": "APPROVED",
-            "signedBy": signed_name,
-            "signedAt": datetime.utcnow().isoformat(),
-            "token": token,
-            "comment": req.comment
-        }
     }
 
 

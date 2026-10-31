@@ -678,21 +678,31 @@ export async function fetchDepartmentActivityReport(dept = null, timeframe = "to
   return null;
 }
 
-export async function signoffDepartmentShiftReport(submissionId, comment = "", currentUser = null) {
+async function shiftReportCall(path, method, body, currentUser) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/department-report/signoff`, {
-      method: "POST",
+    const res = await fetch(`${API_BASE}/dashboard/shift-reports${path}`, {
+      method,
       headers: getAuthHeaders(currentUser),
-      body: JSON.stringify({ submissionId, comment }),
+      body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) return data;
-    return { success: false, status: res.status, detail: data.detail || "Phê duyệt thất bại." };
+    const detail = Array.isArray(data.detail) ? data.detail.map((d) => d.msg).join("; ") : data.detail;
+    return { success: false, status: res.status, detail: detail || "Thao tác thất bại." };
   } catch (e) {
-    console.warn("[Dashboard] signoffDepartmentShiftReport error:", e);
+    console.warn("[ShiftReport] error:", e);
     return { success: false, detail: e.message };
   }
 }
+
+export const fetchMyShiftReports = (currentUser = null) => shiftReportCall("/mine", "GET", null, currentUser);
+export const saveShiftReport = (id, body, currentUser = null) =>
+  shiftReportCall(id ? `/${id}` : "", id ? "PUT" : "POST", body, currentUser);
+export const submitShiftReport = (id, currentUser = null) => shiftReportCall(`/${id}/submit`, "POST", null, currentUser);
+
+// decision: "approve" | "reject" (reject requires a comment)
+export const signoffDepartmentShiftReport = (submissionId, comment = "", currentUser = null, decision = "approve") =>
+  shiftReportCall(`/${submissionId}/review`, "POST", { decision, comment }, currentUser);
 
 export async function synthesizeDepartmentReport(dept = null, timeframe = "today", currentUser = null) {
   try {

@@ -213,6 +213,11 @@ except ImportError:
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
 
+# Shift reports lifecycle (draft -> submit -> approve/reject)
+from app.api.v1.shift_reports import router as shift_reports_router
+app.include_router(shift_reports_router, prefix="/api/dashboard/shift-reports", tags=["shift-reports"])
+app.include_router(shift_reports_router, prefix="/api/v1/dashboard/shift-reports", tags=["shift-reports"])
+
 # SOP routers (/api/sop and /api/v1/sop) — FR26, UC.14, BR-04
 app.include_router(sop_router, prefix="/api/v1/sop", tags=["sop"])
 app.include_router(sop_router, prefix="/api/sop", tags=["sop"])

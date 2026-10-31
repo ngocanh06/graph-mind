@@ -56,7 +56,7 @@ async def get_db() -> AsyncSession:
 # ── Tạo / xóa toàn bộ tables (dùng trong dev/test, production dùng Alembic) ─
 async def create_all_tables():
     """Tạo tất cả tables từ ORM models. Chỉ dùng trong dev/test."""
-    from app.db.postgres.models import user, copilot_session, sop_document, audit_log, knowledge_permission, otp  # noqa: F401
+    from app.db.postgres.models import user, copilot_session, sop_document, audit_log, knowledge_permission, otp, shift_report  # noqa: F401
     from app.modules.m6_admin_security import rbac_matrix_model  # noqa: F401
 
     async with engine.begin() as conn:
