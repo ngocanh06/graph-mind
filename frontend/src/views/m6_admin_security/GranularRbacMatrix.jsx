@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  Users, ShoppingCart, Package, Building2, UserCheck, FileText,
-  Scale, BookOpen, RotateCcw, Save, Shield, CheckCircle2,
-  Lock, AlertTriangle, Info, Sliders, Edit3
+  ShoppingCart, Building2, UserCheck,
+  Scale, RotateCcw, Save, Shield, CheckCircle2,
+  Lock, AlertTriangle, Info, Sliders, Edit3, Cpu, FlaskConical, Crown
 } from "lucide-react";
 import {
   fetchGranularRbacMatrix,
@@ -10,28 +10,93 @@ import {
   resetGranularRbacMatrix
 } from "./adminApi";
 
-// Meta định nghĩa 8 loại tri thức cố định
+// 7 cột bên phải: 5 phòng ban + Nhân viên + Ban lãnh đạo
 const RESOURCE_META = {
-  CUSTOMER: { label: "Khách hàng (CRM)", icon: Users, desc: "Dữ liệu khách hàng, tài khoản liên hệ", color: "#2563eb", bg: "rgba(37, 99, 235, 0.08)" },
-  SALES_ORDER: { label: "Đơn hàng (ERP)", icon: ShoppingCart, desc: "Lịch sử mua hàng, báo giá, doanh thu", color: "#059669", bg: "rgba(5, 150, 105, 0.08)" },
-  PRODUCT: { label: "Sản phẩm", icon: Package, desc: "Danh mục sản phẩm, tính năng & tồn kho", color: "#0891b2", bg: "rgba(8, 145, 178, 0.08)" },
-  VENDOR: { label: "Nhà cung cấp", icon: Building2, desc: "Hồ sơ đối tác, nhà cung ứng nguyên liệu", color: "#7c3aed", bg: "rgba(124, 58, 237, 0.08)" },
-  EMPLOYEE: { label: "Nhân viên", icon: UserCheck, desc: "Hồ sơ nhân sự, tiền lương, đánh giá KPI", color: "#d97706", bg: "rgba(217, 119, 6, 0.08)" },
-  CONTRACT: { label: "Hợp đồng (CUAD)", icon: FileText, desc: "Văn bản hợp đồng thương mại & pháp lý", color: "#db2777", bg: "rgba(219, 39, 119, 0.08)" },
-  CLAUSE: { label: "Điều khoản", icon: Scale, desc: "Các điều khoản phạt vi phạm, bảo mật NDA", color: "#dc2626", bg: "rgba(220, 38, 38, 0.08)" },
-  SOP_WIKI: { label: "SOP Wiki", icon: BookOpen, desc: "Tài liệu quy trình vận hành chuẩn nội bộ", color: "#4f46e5", bg: "rgba(79, 70, 229, 0.08)" },
+  LEGAL: {
+    label: "Pháp chế (Legal)",
+    icon: Scale,
+    desc: "Phòng Pháp chế: Hợp đồng CUAD, điều khoản pháp lý & NDA",
+    color: "#4f46e5",
+    bg: "rgba(79, 70, 229, 0.08)",
+  },
+  SALES: {
+    label: "Kinh doanh (Sales)",
+    icon: ShoppingCart,
+    desc: "Phòng Kinh doanh: Khách hàng CRM, đơn hàng ERP & báo giá",
+    color: "#059669",
+    bg: "rgba(5, 150, 105, 0.08)",
+  },
+  ACCOUNTING_PROCUREMENT: {
+    label: "Kế toán / Thu mua",
+    icon: Building2,
+    desc: "Phòng Kế toán & Thu mua: Hóa đơn, nhà cung cấp & công nợ",
+    color: "#d97706",
+    bg: "rgba(217, 119, 6, 0.08)",
+  },
+  IT: {
+    label: "Công nghệ / IT",
+    icon: Cpu,
+    desc: "Phòng Công nghệ / IT: Hạ tầng hệ thống, bảo mật SecOps & SOP kỹ thuật",
+    color: "#2563eb",
+    bg: "rgba(37, 99, 235, 0.08)",
+  },
+  RND: {
+    label: "R&D",
+    icon: FlaskConical,
+    desc: "Phòng Nghiên cứu & Phát triển: Sản phẩm & tài liệu kỹ thuật",
+    color: "#7c3aed",
+    bg: "rgba(124, 58, 237, 0.08)",
+  },
+  EMPLOYEE: {
+    label: "Nhân viên",
+    icon: UserCheck,
+    desc: "Dữ liệu Nhân viên: Hồ sơ nhân sự, KPI & báo cáo ca làm việc",
+    color: "#0891b2",
+    bg: "rgba(8, 145, 178, 0.08)",
+  },
+  EXECUTIVE_BOARD: {
+    label: "Ban lãnh đạo",
+    icon: Crown,
+    desc: "Dữ liệu Ban lãnh đạo: Báo cáo chiến lược & điều hành C-Level",
+    color: "#db2777",
+    bg: "rgba(219, 39, 119, 0.08)",
+  },
 };
 
-// Meta các nhóm Vai trò / Phòng ban
+// Cột bên trái: 4 Role chuẩn của dự án
 const ROW_GROUPS = [
-  { role_code: "ADMIN", department_code: "ALL", name: "Admin hệ thống (SecOps / IT)", scopeLabel: "Toàn công ty", scopeType: "ALL_DEPARTMENTS", isFull: true },
-  { role_code: "EXECUTIVE", department_code: "ALL", name: "Ban lãnh đạo (Executive / C-Level)", scopeLabel: "Toàn công ty", scopeType: "ALL_DEPARTMENTS", isFull: true },
-  { role_code: "DEPARTMENT_MANAGER", department_code: "ALL", name: "Trưởng phòng (Department Manager)", scopeLabel: "Nội bộ phòng ban", scopeType: "OWN_DEPARTMENT" },
-  { role_code: "STANDARD_USER", department_code: "SALES", name: "Chuyên viên — Kinh doanh (Sales)", scopeLabel: "Phòng Kinh doanh", scopeType: "OWN_DEPARTMENT" },
-  { role_code: "STANDARD_USER", department_code: "ACCOUNTING", name: "Chuyên viên — Kế toán (Accounting)", scopeLabel: "Phòng Kế toán", scopeType: "OWN_DEPARTMENT" },
-  { role_code: "STANDARD_USER", department_code: "LEGAL", name: "Chuyên viên — Pháp lý (Legal)", scopeLabel: "Phòng Pháp lý", scopeType: "OWN_DEPARTMENT" },
-  { role_code: "STANDARD_USER", department_code: "HR", name: "Chuyên viên — Nhân sự (HR)", scopeLabel: "Phòng Nhân sự", scopeType: "OWN_DEPARTMENT" },
-  { role_code: "STANDARD_USER", department_code: "IT", name: "Chuyên viên — Công nghệ (IT)", scopeLabel: "Phòng Công nghệ", scopeType: "OWN_DEPARTMENT" },
+  {
+    role_code: "ADMIN",
+    department_code: "ALL",
+    name: "Admin hệ thống (SecOps / IT)",
+    scopeLabel: "Toàn công ty",
+    scopeType: "ALL_DEPARTMENTS",
+    isFull: true,
+  },
+  {
+    role_code: "EXECUTIVE",
+    department_code: "ALL",
+    name: "Ban lãnh đạo (Executive Director)",
+    scopeLabel: "Toàn công ty",
+    scopeType: "ALL_DEPARTMENTS",
+    isFull: true,
+  },
+  {
+    role_code: "DEPARTMENT_MANAGER",
+    department_code: "ALL",
+    name: "Trưởng phòng (Department Manager)",
+    scopeLabel: "Nội bộ phòng ban",
+    scopeType: "OWN_DEPARTMENT",
+    isFull: false,
+  },
+  {
+    role_code: "STANDARD_USER",
+    department_code: "ALL",
+    name: "Chuyên viên (Standard User)",
+    scopeLabel: "Nội bộ phòng ban",
+    scopeType: "OWN_DEPARTMENT",
+    isFull: false,
+  },
 ];
 
 export default function GranularRbacMatrix() {
@@ -183,19 +248,10 @@ export default function GranularRbacMatrix() {
     }
   };
 
-  // Lọc các hàng hiển thị
+  // Lọc 4 vai trò hiển thị
   const filteredRows = useMemo(() => {
     if (roleFilter === "ALL") return ROW_GROUPS;
-    if (roleFilter === "ADMIN_EXEC") {
-      return ROW_GROUPS.filter((r) => r.role_code === "ADMIN" || r.role_code === "EXECUTIVE");
-    }
-    if (roleFilter === "MANAGER") {
-      return ROW_GROUPS.filter((r) => r.role_code === "DEPARTMENT_MANAGER");
-    }
-    if (roleFilter === "STANDARD") {
-      return ROW_GROUPS.filter((r) => r.role_code === "STANDARD_USER");
-    }
-    return ROW_GROUPS.filter((r) => r.department_code === roleFilter);
+    return ROW_GROUPS.filter((r) => r.role_code === roleFilter);
   }, [roleFilter]);
 
   return (
@@ -329,7 +385,7 @@ export default function GranularRbacMatrix() {
         </div>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter Bar cho 4 Role của dự án */}
       <div
         style={{
           display: "flex",
@@ -348,14 +404,10 @@ export default function GranularRbacMatrix() {
         </span>
         {[
           { id: "ALL", label: "Tất cả vai trò" },
-          { id: "ADMIN_EXEC", label: "Admin & Executive" },
-          { id: "MANAGER", label: "Trưởng phòng" },
-          { id: "STANDARD", label: "Chuyên viên (Toàn bộ)" },
-          { id: "SALES", label: "Sales" },
-          { id: "ACCOUNTING", label: "Kế toán" },
-          { id: "LEGAL", label: "Pháp lý" },
-          { id: "HR", label: "Nhân sự" },
-          { id: "IT", label: "Công nghệ" },
+          { id: "ADMIN", label: "Admin hệ thống" },
+          { id: "EXECUTIVE", label: "Ban lãnh đạo (Executive)" },
+          { id: "DEPARTMENT_MANAGER", label: "Trưởng phòng (Manager)" },
+          { id: "STANDARD_USER", label: "Chuyên viên (Standard User)" },
         ].map((f) => {
           const active = roleFilter === f.id;
           return (
@@ -395,7 +447,7 @@ export default function GranularRbacMatrix() {
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "12px" }}>
           <thead>
             <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
-              {/* Sticky Column: Vai trò & Phòng ban */}
+              {/* Sticky Column: 4 Vai trò của dự án */}
               <th
                 style={{
                   position: "sticky",
@@ -416,7 +468,7 @@ export default function GranularRbacMatrix() {
                 Vai trò / Phạm vi phòng ban
               </th>
 
-              {/* 8 Resource Type Columns */}
+              {/* 7 Columns: 5 phòng ban + Nhân viên + Ban lãnh đạo */}
               {Object.keys(RESOURCE_META).map((resKey) => {
                 const item = RESOURCE_META[resKey];
                 const Icon = item.icon;
@@ -469,7 +521,7 @@ export default function GranularRbacMatrix() {
                     transition: "background var(--transition-fast)",
                   }}
                 >
-                  {/* Sticky First Column */}
+                  {/* Sticky First Column: 4 Roles */}
                   <td
                     style={{
                       position: "sticky",
@@ -517,20 +569,21 @@ export default function GranularRbacMatrix() {
                     </div>
                   </td>
 
-                  {/* 8 Resource Cells */}
+                  {/* 7 Resource Cells */}
                   {Object.keys(RESOURCE_META).map((resKey) => {
                     const k = makeKey(row.role_code, row.department_code, resKey);
+                    const defaultAllowed = isFullAccess || resKey !== "EXECUTIVE_BOARD";
                     const policy = policies[k] || {
-                      can_query: isFullAccess,
-                      can_view_citation: isFullAccess,
-                      can_edit: row.role_code === "ADMIN" || (row.role_code === "DEPARTMENT_MANAGER" && resKey === "SOP_WIKI"),
+                      can_query: defaultAllowed,
+                      can_view_citation: defaultAllowed,
+                      can_edit: row.role_code === "ADMIN" || (row.role_code === "DEPARTMENT_MANAGER" && resKey !== "EMPLOYEE" && resKey !== "EXECUTIVE_BOARD"),
                       can_view_sensitive: isFullAccess,
-                      data_scope: row.scopeType,
+                      data_scope: defaultAllowed ? row.scopeType : "NONE",
                     };
 
                     const isChanged = changedKeys.includes(k);
-                    const canEditSupported = resKey === "SOP_WIKI" || row.role_code === "ADMIN";
-                    const isSensitiveSupported = resKey === "CONTRACT" || resKey === "CLAUSE" || resKey === "EMPLOYEE";
+                    const canEditSupported = resKey !== "EXECUTIVE_BOARD" || row.role_code === "ADMIN";
+                    const isSensitiveSupported = resKey === "LEGAL" || resKey === "EMPLOYEE" || resKey === "EXECUTIVE_BOARD";
 
                     return (
                       <td
@@ -610,7 +663,7 @@ export default function GranularRbacMatrix() {
                               <button
                                 type="button"
                                 onClick={() => updateCellField(row.role_code, row.department_code, resKey, "can_edit", !policy.can_edit)}
-                                title={policy.can_edit ? "Có quyền biên tập SOP (Bấm để tắt)" : "Không có quyền biên tập (Bấm để bật)"}
+                                title={policy.can_edit ? "Có quyền biên tập tài liệu phòng ban (Bấm để tắt)" : "Không có quyền biên tập (Bấm để bật)"}
                                 style={{
                                   background: policy.can_edit ? "var(--green-soft, rgba(5, 150, 105, 0.09))" : "var(--surface-3, #edf2f7)",
                                   border: policy.can_edit ? "1px solid rgba(5, 150, 105, 0.25)" : "1px solid var(--border-soft)",

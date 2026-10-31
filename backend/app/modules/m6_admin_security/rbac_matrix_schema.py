@@ -7,33 +7,32 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-# 8 loại tri thức cố định
+# 7 cột phân quyền: 5 phòng ban + Nhân viên + Ban lãnh đạo
 RESOURCE_TYPES = [
-    "CUSTOMER",
-    "SALES_ORDER",
-    "PRODUCT",
-    "VENDOR",
+    "LEGAL",
+    "SALES",
+    "ACCOUNTING_PROCUREMENT",
+    "IT",
+    "RND",
     "EMPLOYEE",
-    "CONTRACT",
-    "CLAUSE",
-    "SOP_WIKI",
+    "EXECUTIVE_BOARD",
 ]
 
-# Danh sách vai trò và phòng ban chuẩn
+# Danh sách 4 vai trò chuẩn của dự án và 5 phòng ban
 ROLES = [
-    {"code": "ADMIN", "name": "Admin hệ thống (Admin)", "badge": "warning"},
-    {"code": "EXECUTIVE", "name": "Ban lãnh đạo (Executive)", "badge": "danger"},
-    {"code": "DEPARTMENT_MANAGER", "name": "Trưởng phòng (Manager)", "badge": "success"},
-    {"code": "STANDARD_USER", "name": "Chuyên viên (Standard)", "badge": "info"},
+    {"code": "ADMIN", "name": "Admin hệ thống (SecOps / IT)", "badge": "warning"},
+    {"code": "EXECUTIVE", "name": "Ban lãnh đạo (Executive Director)", "badge": "danger"},
+    {"code": "DEPARTMENT_MANAGER", "name": "Trưởng phòng (Department Manager)", "badge": "success"},
+    {"code": "STANDARD_USER", "name": "Chuyên viên (Standard User)", "badge": "info"},
 ]
 
 DEPARTMENTS = [
     {"code": "ALL", "name": "Toàn công ty (Tất cả)"},
-    {"code": "SALES", "name": "Phòng Kinh doanh (Sales)"},
-    {"code": "ACCOUNTING", "name": "Phòng Kế toán (Accounting)"},
-    {"code": "HR", "name": "Phòng Nhân sự (HR)"},
-    {"code": "LEGAL", "name": "Phòng Pháp lý (Legal)"},
-    {"code": "IT", "name": "Phòng Công nghệ (IT)"},
+    {"code": "LEGAL", "name": "Pháp chế (Legal)"},
+    {"code": "SALES", "name": "Kinh doanh (Sales)"},
+    {"code": "ACCOUNTING_PROCUREMENT", "name": "Kế toán / Thu mua"},
+    {"code": "IT", "name": "Công nghệ / IT"},
+    {"code": "RND", "name": "R&D"},
 ]
 
 
