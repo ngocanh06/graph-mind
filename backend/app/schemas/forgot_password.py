@@ -2,23 +2,23 @@
 Pydantic schemas cho luồng Quên mật khẩu & OTP (M6 - PB43)
 """
 import re
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 
 
 _PWD_RE = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$')
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 
 class VerifyOtpRequest(BaseModel):
-    email: EmailStr
+    email: str
     otp_code: str
 
 
 class ResetPasswordRequest(BaseModel):
-    email: EmailStr
+    email: str
     otp_code: str
     new_password: str
     confirm_password: str

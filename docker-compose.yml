@@ -1,43 +1,4 @@
-version: '3.8'
-
 services:
-  # ============================================================================
-  # POSTGRESQL (Đã tắt do đang sử dụng PostgreSQL cài trực tiếp trên Windows)
-  # Nếu muốn dùng lại qua Docker, hãy bỏ comment phần này và phần pgadmin bên dưới.
-  # ============================================================================
-  # postgres:
-  #   image: postgres:16-alpine
-  #   container_name: postgres_db
-  #   restart: unless-stopped
-  #   ports:
-  #     - "5432:5432"
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: 12345678
-  #     POSTGRES_DB: graphmind_db
-  #   volumes:
-  #     - ./postgres_data:/var/lib/postgresql/data
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres -d graphmind_db"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-
-  # pgadmin:
-  #   image: dpage/pgadmin4:latest
-  #   container_name: pgadmin
-  #   restart: unless-stopped
-  #   ports:
-  #     - "5050:80"
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: admin@graphmind.local
-  #     PGADMIN_DEFAULT_PASSWORD: admin123
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./pgadmin_data:/var/lib/pgadmin
-
   # ============================================================================
   # NEO4J GRAPH DATABASE
   # ============================================================================
@@ -62,6 +23,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - graphmind-net
 
   # ============================================================================
   # QDRANT VECTOR DATABASE
@@ -75,3 +38,100 @@ services:
       - "6334:6334"
     volumes:
       - ./qdrant_data:/qdrant/storage
+    networks:
+      - graphmind-net
+
+  # ============================================================================
+  # GRAPHMIND FASTAPI BACKEND
+  # Shares /data with File Watcher for central document storage
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: graphmind_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - WATCH_ROOT=/data
+      - CENTRAL_STORAGE_DIR=/data
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=graphmind_secret
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_COLLECTION_NAME=cuad_contracts
+      - POSTGRES_SERVER=host.docker.internal
+      - AEGIS_AGENT_API_KEY=dev-agent-key
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - graphmind_documents:/data
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - graphmind-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ============================================================================
+  # GRAPHMIND FRONTEND DASHBOARD
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: graphmind_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - graphmind-net
+
+  # ============================================================================
+  # AEGIS FILE WATCHER DAEMON (DOCKER VOLUME STORAGE)
+  # Monitors /data on Docker Named Volume graphmind_documents
+  # Transmits CREATE / MODIFY / DELETE / RENAME events to Backend via Webhook
+  # ============================================================================
+  file-watcher:
+    build:
+      context: ./aegis-agent
+      dockerfile: Dockerfile
+    container_name: aegis_file_watcher
+    restart: unless-stopped
+    environment:
+      - WATCH_ROOT=/data
+      - AEGIS_BACKEND_URL=http://backend:5000
+      - AEGIS_BACKEND_FALLBACK_URL=http://host.docker.internal:5000
+      - AEGIS_AGENT_API_KEY=dev-agent-key
+      - AGENT_API_KEY=dev-agent-key
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - graphmind_documents:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - qdrant
+      - neo4j
+    networks:
+      - graphmind-net
+
+# ============================================================================
+# PERSISTENT VOLUMES
+# Storage separation:
+#   1. graphmind_documents: Dedicated named volume for raw monitored documents (/data)
+#   2. qdrant_data: Vector database storage (isolated in ./qdrant_data)
+#   3. neo4j_data: Graph database property store (isolated in ./neo4j_data)
+# ============================================================================
+volumes:
+  graphmind_documents:
+    name: graph-mind_graphmind_documents
+
+networks:
+  graphmind-net:
+    driver: bridge

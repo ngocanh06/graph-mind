@@ -19,6 +19,7 @@ class UserOut(BaseModel):
     username: str
     full_name: Optional[str] = None
     role: str
+    status: str = "active"
     is_active: bool
     is_superuser: bool
 

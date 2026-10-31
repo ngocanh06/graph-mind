@@ -4,19 +4,29 @@ Pydantic schemas cho User Admin API (M6)
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, field_validator
+import re
+from pydantic import BaseModel, field_validator
 
 from app.modules.m6_admin_security.rbac import canonical_role
 
 
 VALID_ROLES = {"executive", "it_admin", "knowledge_manager", "standard"}
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class UserCreateRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     full_name: Optional[str] = None
     role: str = "standard"
+
+    @field_validator("email")
+    @classmethod
+    def email_valid(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Định dạng email không hợp lệ")
+        return v
 
     @field_validator("password")
     @classmethod
@@ -58,13 +68,16 @@ class PasswordResetRequest(BaseModel):
 class UserAdminOut(BaseModel):
     user_id: uuid.UUID
     email: str
-    username: Optional[str]
-    full_name: Optional[str]
+    username: Optional[str] = None
+    full_name: Optional[str] = None
     role: str
+    status: str = "active"
     is_active: bool
     is_superuser: bool
     created_at: datetime
-    last_login_at: Optional[datetime]
+    last_login_at: Optional[datetime] = None
+    last_active_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

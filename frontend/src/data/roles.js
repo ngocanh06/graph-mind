@@ -73,7 +73,7 @@ export const ENTERPRISE_ROLES = {
     color: "#d97706",
     accentColor: "#f59e0b",
     defaultView: "admin",
-    allowedViews: ["admin", "knowledge", "connectors", "documents", "reports", "search", "copilot", "executive"],
+    allowedViews: ["admin", "knowledge", "connectors", "documents", "reports", "search", "copilot", "executive", "risk"],
     description: "Toàn quyền quản trị hệ thống, đồ thị tri thức (Knowledge Graph), kết nối dữ liệu (Connectors), kiểm duyệt HITL, phân quyền RBAC & LLMOps.",
     descriptionEn: "Full authority over system telemetry, enterprise Knowledge Graph, data connector pipelines, HITL validation queues, and RBAC security."
   },
@@ -95,7 +95,7 @@ export const ENTERPRISE_ROLES = {
     color: "#2563eb",
     accentColor: "#60a5fa",
     defaultView: "search",
-    allowedViews: ["search", "copilot", "documents", "reports"],
+    allowedViews: ["search", "copilot", "documents", "reports", "risk", "home"],
     description: "Bàn làm việc kinh doanh: theo dõi sức khỏe tài khoản khách hàng, xử lý cảnh báo sụt giảm đơn hàng, trợ lý AI đàm phán, quản lý kho hợp đồng và báo cáo công việc ca làm việc.",
     descriptionEn: "Sales operations hub: track client account health, handle order drop alerts, negotiate contract renewals with AI Copilot, and file operational work reports."
   }

@@ -357,7 +357,12 @@ class Neo4jClient:
             params: Dict[str, Any] = {"limit": limit}
             cypher = """
                 MATCH (n)
-                WHERE any(prop IN keys(n) WHERE toString(n[prop]) CONTAINS $q)
+                WHERE any(prop IN keys(n) WHERE 
+                    CASE 
+                        WHEN n[prop] IS :: LIST<ANY> THEN any(item IN n[prop] WHERE toLower(toString(item)) CONTAINS toLower($q))
+                        ELSE toLower(toString(n[prop])) CONTAINS toLower($q)
+                    END
+                )
                 RETURN n, labels(n) as labels
                 LIMIT $limit
             """

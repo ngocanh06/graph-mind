@@ -39,6 +39,7 @@ class User(Base):
     full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="standard_user", index=True)
     department_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active", server_default="active", index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -55,10 +56,23 @@ class User(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    last_active_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
 
     # Backward compatibility synonyms
     id = synonym("user_id")
     hashed_password = synonym("password_hash")
+
+    def set_status(self, new_status: str):
+        self.status = new_status
+        self.is_active = (new_status == "active")
 
     def __repr__(self) -> str:
         return f"<User user_id={self.user_id} email={self.email} role={self.role}>"

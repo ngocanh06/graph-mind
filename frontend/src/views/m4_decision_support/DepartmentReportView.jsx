@@ -21,6 +21,12 @@ const DEPT_OPTIONS = [
   { id: "hr", labelVi: "Nhân Sự & Đào Tạo", labelEn: "Human Resources", badge: "HR", color: "#DC2626" },
 ];
 
+const STATUS_UI = {
+  SUBMITTED: { c: "#d97706", vi: "CHỜ DUYỆT", en: "PENDING" },
+  APPROVED: { c: "#059669", vi: "ĐÃ DUYỆT & KÝ SỐ", en: "APPROVED" },
+  REJECTED: { c: "#dc2626", vi: "ĐÃ TỪ CHỐI", en: "REJECTED" },
+};
+
 export default function DepartmentReportView({
   onNavigate,
   t = {},
@@ -107,42 +113,31 @@ export default function DepartmentReportView({
 
   // Handle shift report signoff
   const handleOpenSignoff = (sub) => {
-    if (isSpecialist) {
-      showToast(isVi ? "Chuyên viên không có quyền phê duyệt báo cáo ca (BR-04)!" : "Only Department Managers can sign off on shift reports (BR-04)!");
-      return;
-    }
     setTargetSubmission(sub);
-    setManagerComment(isVi ? "Đã xem và phê duyệt toàn bộ nội dung ca làm việc. Đánh giá cao tinh thần chủ động." : "Reviewed and approved shift dossier. Excellent initiative.");
+    setManagerComment(sub.managerComment || "");
     setSignoffModalOpen(true);
   };
 
-  const handleConfirmSignoff = async () => {
+  const handleConfirmSignoff = async (decision = "approve") => {
     if (!targetSubmission) return;
+    if (decision === "reject" && !managerComment.trim()) {
+      showToast(isVi ? "Cần ghi lý do khi từ chối báo cáo." : "A reason is required to reject.");
+      return;
+    }
     setIsSigning(true);
     try {
-      const res = await signoffDepartmentShiftReport(targetSubmission.id, managerComment, currentUser);
+      const res = await signoffDepartmentShiftReport(targetSubmission.id, managerComment, currentUser, decision);
       if (res && res.success) {
-        showToast(isVi ? `Đã phê duyệt & ký số thành công báo cáo ca của ${targetSubmission.specialistName}!` : `Successfully signed off on ${targetSubmission.specialistName}'s shift report!`);
+        showToast(decision === "approve"
+          ? (isVi ? "Đã phê duyệt & ký số báo cáo ca." : "Shift report approved & signed.")
+          : (isVi ? "Đã từ chối báo cáo, chuyên viên sẽ sửa lại." : "Report rejected; specialist will revise."));
         setSignoffModalOpen(false);
-        // Refresh local submissions state
-        setReportData((prev) => {
-          if (!prev) return prev;
-          const updatedSubs = prev.submissions.map((s) => {
-            if (s.id === targetSubmission.id) {
-              return {
-                ...s,
-                status: "APPROVED",
-                signedBy: currentUser?.name || "Trần M. Anh (Trưởng phòng)",
-                signedAt: new Date().toISOString(),
-                managerComment: managerComment,
-              };
-            }
-            return s;
-          });
-          return { ...prev, submissions: updatedSubs };
+        setReportData((prev) => prev && {
+          ...prev,
+          submissions: prev.submissions.map((s) => (s.id === res.report.id ? { ...s, ...res.report } : s)),
         });
       } else {
-        showToast(res?.detail || (isVi ? "Phê duyệt thất bại." : "Signoff failed."));
+        showToast(res?.detail || (isVi ? "Thao tác thất bại." : "Action failed."));
       }
     } catch (err) {
       showToast(err.message);
@@ -466,6 +461,10 @@ export default function DepartmentReportView({
                 <Award size={14} />
                 {isVi ? "SLA Hoàn tất 100%" : "100% SLA"}
               </span>
+              <span className="dept-tag dept-tag-green">
+                <CheckCircle2 size={14} />
+                {isVi ? "Hiệu suất: 8/8 Đạt A+ · 0 Ca tồn đọng" : "Staff Performance: 8/8 Grade A+ · 0 Backlog"}
+              </span>
             </div>
 
             <h1 style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0", letterSpacing: "-0.02em" }}>
@@ -530,27 +529,52 @@ export default function DepartmentReportView({
               {isVi ? "PHÒNG BAN:" : "DEPARTMENT:"}
             </span>
             {isExecOrAdmin ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                {DEPT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => handleSelectDept(opt.id)}
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: "6px",
-                      fontSize: "12.5px",
-                      fontWeight: activeDept === opt.id ? "700" : "500",
-                      border: "1px solid",
-                      borderColor: activeDept === opt.id ? opt.color : "var(--border)",
-                      background: activeDept === opt.id ? `${opt.color}15` : "var(--surface)",
-                      color: activeDept === opt.id ? opt.color : "var(--text-3)",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease"
-                    }}
-                  >
-                    {isVi ? opt.labelVi : opt.labelEn}
-                  </button>
-                ))}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {/* Dropdown Menu Selector per Spec: "chọn lọc báo cáo của bất kỳ phòng ban nào từ menu dropdown" */}
+                <select
+                  value={activeDept}
+                  onChange={(e) => handleSelectDept(e.target.value)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "6px",
+                    fontSize: "12.5px",
+                    fontWeight: "700",
+                    border: "1px solid #2563eb",
+                    background: "var(--surface)",
+                    color: "#2563eb",
+                    cursor: "pointer",
+                  }}
+                  title={isVi ? "Menu dropdown chọn lọc phòng ban" : "Dropdown department selector"}
+                >
+                  {DEPT_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {isVi ? opt.labelVi : opt.labelEn}
+                    </option>
+                  ))}
+                </select>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                  {DEPT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => handleSelectDept(opt.id)}
+                      style={{
+                        padding: "5px 12px",
+                        borderRadius: "6px",
+                        fontSize: "12.5px",
+                        fontWeight: activeDept === opt.id ? "700" : "500",
+                        border: "1px solid",
+                        borderColor: activeDept === opt.id ? opt.color : "var(--border)",
+                        background: activeDept === opt.id ? `${opt.color}15` : "var(--surface)",
+                        color: activeDept === opt.id ? opt.color : "var(--text-3)",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      {isVi ? opt.labelVi : opt.labelEn}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -636,9 +660,14 @@ export default function DepartmentReportView({
             <div style={{ height: 4, background: "var(--border)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
               <div style={{ width: "100%", height: "100%", background: "linear-gradient(90deg, #10b981, #059669)" }}></div>
             </div>
-            <div style={{ fontSize: "12px", color: "var(--text-4)", marginTop: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Clock size={12} />
-              <span>{isVi ? `Xử lý TB: ${kpis.avgTurnaroundMinutes || 12} phút/ca · 8/8 chuyên viên hoàn tất` : `Avg turnaround: ${kpis.avgTurnaroundMinutes || 12}m/case · 8/8 filed`}</span>
+            <div style={{ fontSize: "12px", color: "var(--text-4)", marginTop: "6px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Clock size={12} />
+                <span>{isVi ? `Xử lý TB: ${kpis.avgTurnaroundMinutes || 12} phút/ca · 8/8 chuyên viên hoàn tất` : `Avg turnaround: ${kpis.avgTurnaroundMinutes || 12}m/case · 8/8 filed`}</span>
+              </div>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "1px 7px", borderRadius: "8px" }}>
+                {isVi ? "0 ca tồn đọng (0 backlog)" : "0 backlog"}
+              </span>
             </div>
           </div>
         </div>
@@ -788,96 +817,42 @@ export default function DepartmentReportView({
             <table className="dept-table">
               <thead>
                 <tr>
-                  <th>{isVi ? "Chuyên Viên / Vị Trí" : "Specialist / Role"}</th>
-                  <th>{isVi ? "Thời Gian Nộp" : "Timestamp"}</th>
-                  <th>{isVi ? "Ca Xử Lý / SLA" : "Cases / SLA"}</th>
-                  <th>{isVi ? "Doanh Số Bảo Vệ" : "Protected Value"}</th>
-                  <th>{isVi ? "Chứng Từ Phát Hành" : "Documents"}</th>
-                  <th>{isVi ? "Trạng Thái & Phê Duyệt" : "Sign-off Status"}</th>
+                  <th>{isVi ? "Chuyên Viên" : "Specialist"}</th>
+                  <th>{isVi ? "Thời Gian Nộp" : "Submitted"}</th>
+                  <th>{isVi ? "Số Ca Xử Lý" : "Cases"}</th>
+                  <th>{isVi ? "Chứng Từ" : "Documents"}</th>
+                  <th>{isVi ? "Trạng Thái" : "Status"}</th>
                   <th style={{ textAlign: "right" }}>{isVi ? "Thao Tác" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody>
+                {submissions.length === 0 && (
+                  <tr><td colSpan={6} style={{ textAlign: "center", padding: 24, color: "var(--text-4)" }}>
+                    {isVi ? "Chưa có báo cáo ca nào được gửi." : "No shift reports submitted yet."}
+                  </td></tr>
+                )}
                 {submissions.map((sub) => {
-                  const isApproved = sub.status === "APPROVED";
+                  const st = STATUS_UI[sub.status] || STATUS_UI.SUBMITTED;
                   return (
                     <tr key={sub.id}>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800" }}>
-                            {sub.avatar || sub.specialistName?.substring(0, 2) || "NV"}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: "700", fontSize: "13.5px", color: "var(--text-1)" }}>{sub.specialistName}</div>
-                            <div style={{ fontSize: "11px", color: "var(--text-4)" }}>@{sub.username} · {sub.roleTitle}</div>
-                          </div>
-                        </div>
+                        <div style={{ fontWeight: "700", fontSize: "13.5px", color: "var(--text-1)" }}>{sub.specialistName}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-4)" }}>@{sub.username}</div>
                       </td>
-                      <td style={{ fontSize: "12px", color: "var(--text-3)", whiteSpace: "nowrap" }}>
-                        {sub.submissionTime}
-                      </td>
+                      <td style={{ fontSize: "12px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{sub.submissionTime}</td>
+                      <td style={{ fontWeight: "700" }}>{sub.casesHandled}</td>
+                      <td style={{ fontSize: "11px", fontFamily: "var(--f-mono, monospace)" }}>{(sub.documentsDispatched || []).slice(0, 2).join(", ")}</td>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <span style={{ fontWeight: "700", color: "var(--text-1)" }}>{sub.casesHandled} {isVi ? "ca" : "cases"}</span>
-                          <span style={{ fontSize: "10.5px", fontWeight: "700", color: "#059669", background: "rgba(16,185,129,0.1)", padding: "1px 6px", borderRadius: "10px" }}>
-                            {sub.slaRate}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: "11px", color: "var(--text-4)", marginTop: "2px" }}>{sub.avgTurnaround}</div>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: "800", color: "#2563eb", fontSize: "13.5px" }}>
-                          {sub.pipelineValue}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                          {sub.documentsDispatched?.slice(0, 2).map((doc, idx) => (
-                            <span key={idx} style={{ fontSize: "11px", color: "var(--text-2)", fontFamily: "var(--f-mono, monospace)" }}>
-                              {doc}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        {isApproved ? (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11.5px", fontWeight: "700", color: "#059669", background: "rgba(16,185,129,0.1)", padding: "3px 8px", borderRadius: "6px", width: "fit-content" }}>
-                              <CheckCircle2 size={13} />
-                              {isVi ? "ĐÃ DUYỆT & KÝ SỐ" : "APPROVED"}
-                            </span>
-                            <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>
-                              {isVi ? "Bởi:" : "By:"} {sub.signedBy || "Trần M. Anh"}
-                            </span>
-                          </div>
-                        ) : (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "11.5px", fontWeight: "700", color: "#d97706", background: "rgba(217,119,6,0.1)", padding: "3px 8px", borderRadius: "6px", width: "fit-content" }}>
-                            <Clock size={13} />
-                            {isVi ? "CHỜ TRƯỞNG PHÒNG DUYỆT" : "PENDING REVIEW"}
-                          </span>
-                        )}
+                        <span style={{ fontSize: "11.5px", fontWeight: "700", color: st.c }}>● {isVi ? st.vi : st.en}</span>
+                        {sub.signedBy && <div style={{ fontSize: "10.5px", color: "var(--text-4)" }}>{isVi ? "Bởi:" : "By:"} {sub.signedBy}</div>}
                       </td>
                       <td style={{ textAlign: "right" }}>
-                        {isApproved ? (
-                          <button
-                            onClick={() => {
-                              setTargetSubmission(sub);
-                              setSignoffModalOpen(true);
-                            }}
-                            style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-2)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
-                          >
-                            {isVi ? "Xem chứng thư" : "View Sign-off"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleOpenSignoff(sub)}
-                            className="btn-emerald"
-                            style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "5px" }}
-                          >
-                            <CheckCircle2 size={14} />
-                            <span>{isVi ? "Phê Duyệt & Ký Số" : "Sign Off"}</span>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleOpenSignoff(sub)}
+                          style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-2)", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
+                        >
+                          {sub.status === "SUBMITTED" && !isSpecialist ? (isVi ? "Xem & Duyệt" : "Review") : (isVi ? "Xem chi tiết" : "View")}
+                        </button>
                       </td>
                     </tr>
                   );
@@ -897,7 +872,7 @@ export default function DepartmentReportView({
                 <div key={s.id} style={{ background: "var(--surface)", border: "1px solid var(--border-soft)", borderRadius: "10px", padding: "12px 14px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontWeight: "700", fontSize: "13px", color: "var(--text-1)" }}>{s.specialistName}</span>
-                    <span style={{ fontSize: "11px", fontWeight: "700", color: "#2563eb" }}>{s.pipelineValue}</span>
+                    <span style={{ fontSize: "11px", fontWeight: "700", color: (STATUS_UI[s.status] || {}).c }}>{(STATUS_UI[s.status] || {})[isVi ? "vi" : "en"]}</span>
                   </div>
                   <p style={{ fontSize: "12px", color: "var(--text-2)", margin: 0, lineHeight: 1.45 }}>
                     {s.summary}
@@ -1087,8 +1062,8 @@ export default function DepartmentReportView({
               {liveSynthesis ? liveSynthesis : (
                 isVi
                   ? `Trong ca làm việc hôm nay, toàn thể 8/8 chuyên viên thuộc Phòng Kinh Doanh & Khách Hàng Doanh Nghiệp đã hoàn thành ca làm việc đúng hạn, đạt 100% cam kết thời gian phản hồi SLA (trung bình 12 phút/ca).
-Đội ngũ đã tiếp nhận và giải quyết dứt điểm 13 ca cảnh báo rủi ro khách hàng phát hiện từ đồ thị tri thức Neo4j, bảo vệ thành công 4.1 Tỷ VND doanh số tái ký hợp đồng (tiêu biểu: ABC Corporation 1.2B và Delta Trading Ltd 2.9B). Toàn bộ chứng từ phát hành (#BG-2026-09, EDR #8821, Phụ lục PL #44) đều được lưu trữ và kiểm soát chặt chẽ theo phân quyền RBAC.`
-                  : `During today's operational cycle, all 8 specialists fulfilled shift requirements with 100% SLA compliance (avg 12m turnaround). Handled 13 high-priority account alerts, protecting $4.1B VND in contract renewals (ABC Corp $1.2B, Delta Trading $2.9B). All outbound transaction annexes were validated under strict RBAC governance.`
+Đội ngũ đã tiếp nhận và giải quyết dứt điểm 13 ca cảnh báo rủi ro khách hàng phát hiện từ đồ thị tri thức Neo4j, bảo vệ thành công $1.95M USD doanh số tài khoản VIP (tiêu biểu: Brakes and Gears #29818 và Excellent Riding Supplies #29715). Toàn bộ chứng từ phát hành (#BG-2026-09, EDR #8821, Phụ lục PL #44) đều được lưu trữ và kiểm soát chặt chẽ theo phân quyền RBAC.`
+                  : `During today's operational cycle, all 8 specialists fulfilled shift requirements with 100% SLA compliance (avg 12m turnaround). Handled 13 high-priority account alerts, protecting $1.95M USD in VIP account revenue (Brakes and Gears #29818, Excellent Riding Supplies #29715). All outbound transaction annexes were validated under strict RBAC governance.`
               )}
             </div>
           </div>
@@ -1176,9 +1151,16 @@ export default function DepartmentReportView({
               <div style={{ color: "var(--text-3)" }}>
                 {targetSubmission.summary}
               </div>
-              <div style={{ marginTop: "6px", color: "#2563eb", fontWeight: "700" }}>
-                {isVi ? "Doanh số bảo vệ:" : "Protected pipeline:"} {targetSubmission.pipelineValue} · {targetSubmission.slaRate}
-              </div>
+              {(targetSubmission.cases || []).map((c, i) => (
+                <div key={i} style={{ marginTop: "6px", fontSize: "12px", color: "var(--text-2)" }}>
+                  <b>{c.time} {c.customer}</b> — {c.issue} → {c.solution} {c.ref && <code>[{c.ref}]</code>}
+                </div>
+              ))}
+              {targetSubmission.escalation && (
+                <div style={{ marginTop: "8px", color: "#d97706", fontWeight: "700", fontSize: "12px" }}>
+                  {isVi ? "Kiến nghị:" : "Proposals:"} {targetSubmission.escalation}
+                </div>
+              )}
             </div>
 
             <div>
@@ -1189,6 +1171,7 @@ export default function DepartmentReportView({
                 value={managerComment}
                 onChange={(e) => setManagerComment(e.target.value)}
                 rows={3}
+                disabled={!(!isSpecialist && targetSubmission.status === "SUBMITTED")}
                 style={{
                   width: "100%",
                   padding: "10px",
@@ -1211,15 +1194,26 @@ export default function DepartmentReportView({
               >
                 {isVi ? "Hủy" : "Cancel"}
               </button>
-              <button
-                onClick={handleConfirmSignoff}
-                disabled={isSigning}
-                className="btn-emerald"
-                style={{ padding: "8px 18px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
-              >
-                <CheckCircle2 size={16} />
-                <span>{isSigning ? (isVi ? "Đang ký số..." : "Signing...") : (isVi ? "Xác Nhận & Ký Số Phê Duyệt" : "Confirm & Sign Off")}</span>
-              </button>
+              {!isSpecialist && targetSubmission.status === "SUBMITTED" && (
+                <>
+                  <button
+                    onClick={() => handleConfirmSignoff("reject")}
+                    disabled={isSigning}
+                    style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #dc2626", background: "var(--surface)", color: "#dc2626", fontSize: "13px", fontWeight: "700", cursor: "pointer" }}
+                  >
+                    {isVi ? "Từ Chối (cần lý do)" : "Reject (reason required)"}
+                  </button>
+                  <button
+                    onClick={() => handleConfirmSignoff("approve")}
+                    disabled={isSigning}
+                    className="btn-emerald"
+                    style={{ padding: "8px 18px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <CheckCircle2 size={16} />
+                    <span>{isSigning ? (isVi ? "Đang ký số..." : "Signing...") : (isVi ? "Duyệt & Ký Số" : "Approve & Sign")}</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </Modal>

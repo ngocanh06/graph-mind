@@ -461,7 +461,16 @@ export default function CopilotView({
           setCurrentSessionId(response.sessionId);
         }
         if (response.session && response.session.messages) {
-          setMessages(response.session.messages);
+          const normalized = response.session.messages.map((m, idx) => ({
+            ...m,
+            id: m.id || `${m.sender || "msg"}_${idx}_${Date.now()}`,
+            introText: m.introText || m.text || m.answer || "",
+            verifiedBadge: m.verifiedBadge || m.model || "GraphMind AI",
+            confidence: m.confidence || (m.confidenceScore !== undefined ? `${m.confidenceScore}%` : "0%"),
+            time: m.time || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
+            userLabel: m.userLabel || (m.sender === "user" ? (currentUser?.name || currentUser?.username || "Executive User") : "AI Copilot")
+          }));
+          setMessages(normalized);
         } else {
           const data = response?.data || response;
           const answerText = response?.answer || data?.insight || response?.text || (isVi ? "Hệ thống đã hoàn tất xử lý." : "Processing completed.");
@@ -1211,7 +1220,39 @@ export default function CopilotView({
                   </p>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 520, width: "100%", textAlign: "left" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10, maxWidth: 640, width: "100%", textAlign: "left" }}>
+                  <button
+                    onClick={() => fillPrompt(isVi ? "Đánh giá tỷ lệ tuân thủ điều khoản pháp lý và danh sách hợp đồng thiếu điều khoản bảo vệ quan trọng" : "Evaluate legal compliance rate and identify contracts lacking crucial protective clauses")}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-1)",
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>🛡️ {isVi ? "Rà soát tuân thủ & Rủi ro" : "Legal Compliance & Risks"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "Tỷ lệ tuân thủ và HĐ thiếu bảo vệ" : "Assess missing protective clauses"}</div>
+                  </button>
+
+                  <button
+                    onClick={() => fillPrompt(isVi ? "Khách hàng nào có doanh thu cao nhất và phân tích cơ cấu giao dịch?" : "Which customer generated the highest revenue and breakdown their transaction structure?")}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-1)",
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>👑 {isVi ? "Top Khách hàng VIP" : "Top VIP Accounts"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "Truy vấn khách hàng đóng góp lớn nhất" : "Query top revenue contributors"}</div>
+                  </button>
+
                   <button
                     onClick={() => fillPrompt(isVi ? "Tìm các hợp đồng dịch vụ sắp hết hạn trong 30 ngày tới" : "Find service agreements expiring in the next 30 days")}
                     style={{
@@ -1229,7 +1270,7 @@ export default function CopilotView({
                   </button>
 
                   <button
-                    onClick={() => fillPrompt(isVi ? "Khách hàng VIP nào giảm tần suất đặt hàng trong quý 3?" : "Which VIP customers experienced order frequency drop in Q3?")}
+                    onClick={() => fillPrompt(isVi ? "Phân tích xu hướng doanh thu và cơ cấu tăng trưởng giao dịch gần đây" : "Analyze revenue trends and recent transaction growth")}
                     style={{
                       padding: "12px",
                       borderRadius: "var(--r-md)",
@@ -1240,8 +1281,8 @@ export default function CopilotView({
                       textAlign: "left"
                     }}
                   >
-                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>📉 {isVi ? "Rủi ro sụt giảm đơn hàng" : "Order Cadence Dips"}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "So sánh dữ liệu đơn hàng gần đây" : "Compare time-series order history"}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>📈 {isVi ? "Xu hướng Doanh thu" : "Revenue Trends"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{isVi ? "Doanh thu $123.22M USD qua 4 năm" : "Review multi-year revenue metrics"}</div>
                   </button>
                 </div>
               </div>
@@ -1323,10 +1364,10 @@ export default function CopilotView({
                             gap: 4
                           }}>
                             <Sparkles size={11} />
-                            {msg.verifiedBadge}
+                            {msg.verifiedBadge || msg.model || "GraphMind AI"}
                           </span>
                           <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>
-                            {isVi ? "Độ tin cậy:" : "Confidence:"} <strong style={{ color: "var(--text-1)" }}>{msg.confidence}</strong>
+                            {isVi ? "Độ tin cậy:" : "Confidence:"} <strong style={{ color: "var(--text-1)" }}>{msg.confidence || (msg.confidenceScore !== undefined ? `${msg.confidenceScore}%` : "0%")}</strong>
                           </span>
                         </div>
 
@@ -1356,7 +1397,7 @@ export default function CopilotView({
                         )}
                       </div>
 
-                      {renderFormattedMessage(msg.introText)}
+                      {renderFormattedMessage(msg.introText || msg.text || msg.answer || "")}
 
                       {/* Risk Callout */}
                       {msg.riskBox && (
@@ -1460,7 +1501,7 @@ export default function CopilotView({
                           </button>
                           <button
                             onClick={() => {
-                              navigator.clipboard?.writeText(msg.introText);
+                              navigator.clipboard?.writeText(msg.introText || msg.text || msg.answer || "");
                               showToast(isVi ? "Đã sao chép câu trả lời" : "Copied to clipboard");
                             }}
                             title={isVi ? "Sao chép" : "Copy"}

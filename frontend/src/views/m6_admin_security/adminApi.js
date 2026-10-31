@@ -84,7 +84,15 @@ export async function apiFetch(path, opts = {}) {
     data = null;
   }
   if (!res.ok) {
-    const err = new Error(extractDetail(data, `HTTP ${res.status}`));
+    const detailMsg = extractDetail(data, `HTTP ${res.status}`);
+    if (res.status === 403 && detailMsg && detailMsg.includes("Tài khoản đã bị khóa")) {
+      try {
+        localStorage.removeItem("aegis_token");
+        sessionStorage.removeItem("aegis_token");
+        window.location.href = "/login";
+      } catch {}
+    }
+    const err = new Error(detailMsg);
     err.status = res.status;
     throw err;
   }
@@ -109,10 +117,12 @@ export function changeAdminUserRole(userId, role) {
 export function lockAdminUser(userId) {
   return apiFetch(`/admin/users/${userId}/lock`, { method: "PATCH" });
 }
+export const lockUser = lockAdminUser;
 
 export function unlockAdminUser(userId) {
   return apiFetch(`/admin/users/${userId}/unlock`, { method: "PATCH" });
 }
+export const unlockUser = unlockAdminUser;
 
 export function resetAdminUserPassword(userId, newPassword) {
   return apiFetch(`/admin/users/${userId}/reset-password`, {
@@ -142,4 +152,26 @@ export function updateKnowledgePermission(domain, role, allowed) {
     method: "PUT",
     body: JSON.stringify({ domain, role, allowed }),
   });
+}
+
+// ── Granular RBAC Matrix APIs (PB02 - Mục 6.2.1) ─────────────────────────────
+export function fetchGranularRbacMatrix() {
+  return apiFetch("/admin/rbac-matrix");
+}
+
+export function updateGranularRbacMatrix(policies) {
+  return apiFetch("/admin/rbac-matrix", {
+    method: "PUT",
+    body: JSON.stringify({ policies }),
+  });
+}
+
+export function resetGranularRbacMatrix() {
+  return apiFetch("/admin/rbac-matrix/reset-default", {
+    method: "POST",
+  });
+}
+
+export function fetchMyKnowledgeScope() {
+  return apiFetch("/admin/rbac-matrix/user-scope/me");
 }

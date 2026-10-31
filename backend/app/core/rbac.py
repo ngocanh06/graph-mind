@@ -1,16 +1,20 @@
 """
-Graph Mind — Enterprise RBAC & Department Scope Enforcement (BR-02, BR-04, BR-05)
-Business Rules Implemented:
-- BR-02: "Access to contract information and transaction data is strictly compliant
-          with each user's RBAC, Department Scope, and Data Scope." (FR3, FR32)
-- BR-04: "Department Managers are only allowed to draft and publish SOPs for their own departments."
-- BR-05: "Executives have unrestricted full-access to data across the enterprise." (FR41, FR42, FR27)
+Graph Mind — Enterprise RBAC & Department Data Scope Governance (BR-02, BR-04, BR-05, US19)
+Enforces Row-Level / Node-Level Data Isolation as defined in SRS BR-02, BR-04, BR-05, and US19.
+
+Roles:
+- executive: Unrestricted full-access across the SME (BR-05).
+- it_admin: Full access to all telemetry, system configs & documents (BR-03).
+- knowledge_manager: Access to assigned department documents & oversight queues (BR-04).
+- standard: Access strictly scoped to assigned department (Default: Sales / Kinh doanh).
 """
 
+import re
 import uuid
 import urllib.parse
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
-from typing import Optional, Set, List, Dict, Any
+from typing import Optional, Set, List, Dict, Any, Tuple
 from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import or_, select, text
@@ -26,6 +30,109 @@ except ImportError:
     from db.postgres.models.user import User
 
 security_bearer = HTTPBearer(auto_error=False)
+
+# ── Role Definitions & Entity Label Scopes ───────────────────────────────────
+ROLE_EXECUTIVE = "executive"
+ROLE_ADMIN = "it_admin"
+ROLE_MANAGER = "knowledge_manager"
+ROLE_STANDARD = "standard"
+
+# Mapping department scopes
+ROLE_DEPARTMENT_SCOPE = {
+    ROLE_EXECUTIVE: ["ALL"],
+    ROLE_ADMIN: ["ALL"],
+    ROLE_MANAGER: ["Kinh doanh", "R&D", "Pháp chế"],
+    ROLE_STANDARD: ["Kinh doanh", "R&D"]  # Sales Specialist: Sales orders, customers, product catalog
+}
+
+# Entity labels allowed per role
+ALLOWED_ENTITY_LABELS = {
+    ROLE_EXECUTIVE: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Employee", "Vendor", "Company"},
+    ROLE_ADMIN: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Employee", "Vendor", "Company"},
+    ROLE_MANAGER: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Company"},
+    ROLE_STANDARD: {"Customer", "Product", "SalesOrder", "Contract", "Clause"}  # Excludes Employee (HR payroll / internal personnel)
+}
+
+# Forbidden topics/keywords for Standard Sales User (HR payroll, employee directory, internal audit logs)
+STANDARD_RESTRICTED_KEYWORDS = [
+    r"\blương\b",
+    r"\btiền lương\b",
+    r"\bbảng lương\b",
+    r"\bsalary\b",
+    r"\bsalaries\b",
+    r"\bpayroll\b",
+    r"\bnhân sự nội bộ\b",
+    r"\bstaff directory\b",
+    r"\bemployee directory\b",
+    r"\bhồ sơ nhân viên\b",
+    r"\bquản trị hệ thống\b",
+    r"\bapi key\b",
+    r"\bsecret key\b",
+]
+
+
+def is_privileged_role(role: str) -> bool:
+    """Kiểm tra vai trò có toàn quyền truy cập liên phòng ban hay không"""
+    clean_role = (role or "").strip().lower()
+    return clean_role in [ROLE_EXECUTIVE, ROLE_ADMIN, "admin", "cfo", "ceo"]
+
+
+def check_data_scope_permission(query: str, role: str) -> Tuple[bool, Optional[str]]:
+    """
+    Kiểm tra xem câu hỏi hoặc truy vấn của người dùng có vi phạm phạm vi dữ liệu RBAC không.
+    Đối với Standard User (Kinh doanh): Không được phép tra cứu bảng lương nhân viên / nhân sự nội bộ (HR).
+    """
+    clean_role = (role or "").strip().lower()
+    if is_privileged_role(clean_role) or clean_role == ROLE_MANAGER:
+        return True, None
+
+    clean_query = (query or "").lower()
+    for pattern in STANDARD_RESTRICTED_KEYWORDS:
+        if re.search(pattern, clean_query, re.IGNORECASE):
+            return False, (
+                "Theo chính sách phân quyền dữ liệu RBAC (Quy tắc BR-02 / US19), tài khoản Standard User "
+                "(Chuyên viên Kinh doanh) chỉ có quyền tra cứu trong phạm vi Dữ liệu Kinh doanh (Khách hàng, "
+                "Đơn hàng, Danh mục sản phẩm và Hợp đồng thương mại liên quan). Dữ liệu nhân sự / tiền lương "
+                "thuộc phạm vi bảo mật của phòng Nhân sự (HR) và Ban Giám Đốc."
+            )
+
+    return True, None
+
+
+def filter_graph_entities_by_scope(entities: List[Dict[str, Any]], role: str) -> List[Dict[str, Any]]:
+    """Lọc danh sách các node thực thể Neo4j trả về tuân thủ Data Scope của role"""
+    clean_role = (role or "").strip().lower()
+    if is_privileged_role(clean_role):
+        return entities
+
+    allowed_labels = ALLOWED_ENTITY_LABELS.get(clean_role, ALLOWED_ENTITY_LABELS[ROLE_STANDARD])
+    filtered = []
+    for ent in entities:
+        labels = ent.get("_labels") or []
+        if isinstance(labels, str):
+            labels = [labels]
+        # Nếu thực thể là Employee mà user là Standard User -> loại bỏ
+        if "Employee" in labels and clean_role == ROLE_STANDARD:
+            continue
+        filtered.append(ent)
+    return filtered
+
+
+def filter_search_documents_by_scope(documents: List[Dict[str, Any]], role: str) -> List[Dict[str, Any]]:
+    """Lọc tài liệu / bộ dữ liệu trả về trong Multi-facet Search tuân thủ Data Scope"""
+    clean_role = (role or "").strip().lower()
+    if is_privileged_role(clean_role):
+        return documents
+
+    filtered = []
+    for doc in documents:
+        doc_id = doc.get("id") or doc.get("code") or ""
+        # Ẩn Staff Directory khỏi Standard User
+        if "EMPLOYEE" in doc_id.upper() or "STAFF" in doc_id.upper():
+            continue
+        filtered.append(doc)
+    return filtered
+
 
 # ── Canonical Department Mapping ─────────────────────────────────────────────
 DEPT_CANONICAL: Dict[str, str] = {
@@ -231,7 +338,6 @@ class ScopeContext:
         return filtered
 
 
-
 # ── User Resolution Helper ───────────────────────────────────────────────────
 async def get_request_user(
     auth_header: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
@@ -250,6 +356,8 @@ async def get_request_user(
     4. X-User-Name
     5. Default fallback to executive user
     """
+    u = None
+
     # 1. Bearer Token
     if auth_header and auth_header.credentials:
         try:
@@ -258,34 +366,29 @@ async def get_request_user(
                 uid = uuid.UUID(payload["sub"])
                 res = await db.execute(select(User).where(User.user_id == uid))
                 u = res.scalar_one_or_none()
-                if u:
-                    return u
         except Exception:
             pass
 
     # 2. X-User-Id / Query user_id
-    uid_candidate = x_user_id or user_id
-    if uid_candidate:
-        try:
-            uid = uuid.UUID(uid_candidate)
-            res = await db.execute(select(User).where(User.user_id == uid))
-            u = res.scalar_one_or_none()
-            if u:
-                return u
-        except (ValueError, TypeError):
-            pass
+    if not u:
+        uid_candidate = x_user_id or user_id
+        if uid_candidate:
+            try:
+                uid = uuid.UUID(uid_candidate)
+                res = await db.execute(select(User).where(User.user_id == uid))
+                u = res.scalar_one_or_none()
+            except (ValueError, TypeError):
+                pass
 
     # 3. X-User-Email
-    if x_user_email:
+    if not u and x_user_email:
         clean_email = x_user_email.strip().lower()
         clean_email = USER_ALIASES.get(clean_email, clean_email)
         res = await db.execute(select(User).where(User.email.ilike(clean_email)))
         u = res.scalar_one_or_none()
-        if u:
-            return u
 
     # 4. X-User-Name
-    if x_user_name:
+    if not u and x_user_name:
         clean_name = x_user_name.strip().lower()
         clean_name = USER_ALIASES.get(clean_name, clean_name)
         res = await db.execute(
@@ -297,19 +400,40 @@ async def get_request_user(
             )
         )
         u = res.scalar_one_or_none()
-        if u:
-            return u
 
     # 5. Default fallback to first active user (exec)
-    res = await db.execute(select(User).order_by(User.created_at.asc()).limit(1))
-    u = res.scalar_one_or_none()
-    if u:
-        return u
+    if not u:
+        res = await db.execute(select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.asc()).limit(1))
+        u = res.scalar_one_or_none()
 
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Chưa xác định được tài khoản người dùng.",
-    )
+    if not u:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chưa xác định được tài khoản người dùng.",
+        )
+
+    if u.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tài khoản không tồn tại trong hệ thống.",
+        )
+
+    if not u.is_active or getattr(u, "status", "active") == "locked":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tài khoản đã bị khóa, liên hệ quản trị viên",
+        )
+
+    # Cập nhật Online (Throttled 2 phút)
+    now = datetime.now(timezone.utc)
+    if u.last_active_at is None or (now - u.last_active_at).total_seconds() > 120:
+        u.last_active_at = now
+        try:
+            await db.commit()
+        except Exception:
+            pass
+
+    return u
 
 
 # ── Scope Context Dependency ─────────────────────────────────────────────────
@@ -326,7 +450,6 @@ async def get_user_scope(
     is_admin = (not x_user_role and user.is_superuser) or user_role in ["admin", "it_admin"]
     is_exec = user_role in ["executive", "ceo", "cfo"]
     is_unrestricted = is_admin or is_exec
-
 
     # Resolve Department Name
     dept_name = None

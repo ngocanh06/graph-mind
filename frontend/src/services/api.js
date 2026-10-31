@@ -3,7 +3,7 @@
  * Communicates with Python FastAPI backend (port 5000) with offline fallback
  */
 
-const API_BASE = "http://localhost:5000/api";
+export const API_BASE = "http://localhost:5000/api";
 
 export async function fetchHealth() {
   try {
@@ -19,7 +19,7 @@ export async function fetchSignals() {
   try {
     const res = await fetch(`${API_BASE}/signals`);
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -27,7 +27,7 @@ export async function fetchEntities() {
   try {
     const res = await fetch(`${API_BASE}/graph/entities`);
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -39,7 +39,7 @@ export async function verifyEntityApi(entityId, verified, auditor = "Dieu Hoang 
       body: JSON.stringify({ entityId, verified, auditor })
     });
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -49,11 +49,20 @@ export function getAuthHeaders(currentUser = null) {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  if (currentUser) {
-    if (currentUser.email) headers["X-User-Email"] = currentUser.email;
-    if (currentUser.username) headers["X-User-Name"] = currentUser.username;
-    if (currentUser.id) headers["X-User-Id"] = currentUser.id;
-    if (currentUser.department) headers["X-User-Dept"] = encodeURIComponent(currentUser.department);
+  let user = currentUser;
+  if (!user) {
+    try {
+      const saved = localStorage.getItem("aegis_user");
+      if (saved) user = JSON.parse(saved);
+    } catch (e) {}
+  }
+  if (user) {
+    if (user.email) headers["X-User-Email"] = user.email;
+    if (user.username) headers["X-User-Name"] = user.username;
+    if (user.id) headers["X-User-Id"] = user.id;
+    if (user.department) headers["X-User-Dept"] = encodeURIComponent(user.department);
+    if (user.role || user.roleKey) headers["X-User-Role"] = user.roleKey || user.role;
+    if (user.roleKey) headers["X-User-RoleKey"] = user.roleKey;
   }
   return headers;
 }
@@ -167,7 +176,7 @@ export async function getCurrentUserApi(token) {
       }
     });
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -310,6 +319,8 @@ export async function fetchRepositoryDocuments(params = {}, currentUser = null) 
     if (params.search) sp.set("search", params.search);
     if (params.doc_type && params.doc_type !== "ALL") sp.set("doc_type", params.doc_type);
     if (params.dept && params.dept !== "ALL") sp.set("dept", params.dept);
+    if (params.sort_by && params.sort_by !== "default") sp.set("sort_by", params.sort_by);
+    if (params.new_only) sp.set("new_only", "true");
     if (params.limit) sp.set("limit", params.limit);
     if (params.offset !== undefined) sp.set("offset", params.offset);
 
@@ -339,17 +350,137 @@ export async function fetchDocumentDetail(docId, currentUser = null) {
   return null;
 }
 
+export async function downloadDocumentFile(filename, department = "legal", currentUser = null) {
+  const sp = new URLSearchParams();
+  if (filename) sp.set("filename", filename);
+  if (department) sp.set("department", department);
+
+  const res = await fetch(`${API_BASE}/documents/download?${sp.toString()}`, {
+    headers: getAuthHeaders(currentUser),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Không thể tải tệp gốc.");
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  return true;
+}
+
+export async function uploadDocument(file, department = "legal", currentUser = null) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("department", department);
+
+    const headers = {};
+    const token = localStorage.getItem("aegis_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
+    if (currentUser?.username) headers["X-User-Name"] = currentUser.username;
+    if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
+
+    const res = await fetch(`${API_BASE}/v1/sync/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi tải lên (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Upload] uploadDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function renameDocument(oldName, newName, department = "legal", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/documents/rename`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({
+        old_name: oldName,
+        new_name: newName,
+        department: department
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi đổi tên (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Document] renameDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function replaceDocument(file, oldName, department = "legal", currentUser = null) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("old_name", oldName);
+    formData.append("department", department);
+
+    const headers = {};
+    const token = localStorage.getItem("aegis_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
+    if (currentUser?.username) headers["X-User-Name"] = currentUser.username;
+    if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
+
+    const res = await fetch(`${API_BASE}/documents/replace`, {
+      method: "POST",
+      headers,
+      body: formData
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi thay file (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Document] replaceDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function deleteDocument(fileName, department = "legal", currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/documents/delete`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify({
+        file_name: fileName,
+        department: department
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi xóa tài liệu (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Document] deleteDocument error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+
 // ============================================================================
 // MULTI-FACET SEARCH API (REAL DATABASE DATA)
 // ============================================================================
 
-export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 12, currentUser = null) {
+export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = "ALL", status = "ALL", limit = 60, currentUser = null, category = "ALL") {
   try {
     const sp = new URLSearchParams();
     if (query) sp.set("q", query);
     if (mode) sp.set("mode", mode);
     if (dept && dept !== "ALL") sp.set("dept", dept);
     if (status && status !== "ALL") sp.set("status", status);
+    if (category && category !== "ALL") sp.set("category", category);
     sp.set("limit", limit);
 
     const res = await fetch(`${API_BASE}/search?${sp.toString()}`, {
@@ -362,6 +493,85 @@ export async function fetchMultiFacetSearch(query = "", mode = "hybrid", dept = 
     }
   } catch (e) {
     console.warn("[Search] fetchMultiFacetSearch error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
+// ASSIGNED CONTRACTS & RISK ALERTS (LIVE DATABASE API)
+// ============================================================================
+
+export async function fetchAssignedContracts(role = "standard", dept = "Kinh doanh", limit = 8) {
+  try {
+    const sp = new URLSearchParams({ role, dept, limit: String(limit) });
+    const res = await fetch(`${API_BASE}/contracts/assigned?${sp.toString()}`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Contracts] fetchAssignedContracts error:", e);
+  }
+  return null;
+}
+
+export async function fetchRiskAlerts(roleOrUser = "standard", dept = "Kinh doanh") {
+  try {
+    const isUserObj = roleOrUser && typeof roleOrUser === "object";
+    const userRole = isUserObj ? (roleOrUser.id || roleOrUser.role || "standard") : roleOrUser;
+    const userDept = isUserObj ? (roleOrUser.department || dept) : dept;
+    const headers = getAuthHeaders(isUserObj ? roleOrUser : null);
+
+    const sp = new URLSearchParams({ role: userRole, dept: userDept });
+    const res = await fetch(`${API_BASE}/risk/alerts?${sp.toString()}`, { headers });
+    if (res.ok) return await res.json();
+
+    const resFallback = await fetch(`${API_BASE}/dashboard/risk-alerts?${sp.toString()}`, { headers });
+    if (resFallback.ok) return await resFallback.json();
+  } catch (e) {
+    console.warn("[Risk] fetchRiskAlerts error:", e);
+  }
+  return null;
+}
+
+// ============================================================================
+// M1 DATA SYNC — AEGIS LOCAL FILE WATCHER STATUS API
+// ============================================================================
+
+export async function fetchWatcherSyncStatus() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/sync/file-watcher/status`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Watcher] fetchWatcherSyncStatus error:", e);
+  }
+  return null;
+}
+
+export async function triggerMockWatcherDrop(fileName = "HD_CungCap_ThietBi_2026.pdf", department = "Kinh doanh") {
+  try {
+    const formData = new FormData();
+    const blob = new Blob([
+      `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\nHỢP ĐỒNG KINH TẾ #${Date.now().toString().slice(-4)}\n` +
+      `Bên A: Công ty Cổ phần Công nghệ GraphMind\n` +
+      `Bên B: Tập đoàn Viễn thông Alpha (CUST-29818)\n` +
+      `Giá trị hợp đồng: 1,280,000,000 VND\n` +
+      `Điều khoản 1: Bảo mật thông tin tuyệt đối (Confidentiality).\n` +
+      `Điều khoản 2: Phương thức thanh toán 3 đợt theo khối lượng nghiệm thu.\n` +
+      `Điều khoản 3: Bồi thường thiệt hại và phạt vi phạm 8% giá trị vi phạm.`
+    ], { type: "text/plain" });
+
+    formData.append("file", blob, fileName);
+    formData.append("department", department);
+    formData.append("file_name", fileName);
+
+    const res = await fetch(`http://localhost:5000/api/v1/sync/file-watcher`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer dev-agent-key"
+      },
+      body: formData
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Watcher] triggerMockWatcherDrop error:", e);
   }
   return null;
 }
@@ -381,7 +591,6 @@ export async function fetchExecutiveKPIs(currentUser = null) {
   }
   return null;
 }
-
 export async function fetchTopCustomers(limit = 5, currentUser = null) {
   try {
     const res = await fetch(`${API_BASE}/dashboard/top-customers?limit=${limit}`, {
@@ -418,17 +627,6 @@ export async function fetchContractDistribution(currentUser = null) {
   return null;
 }
 
-export async function fetchRiskAlerts(currentUser = null) {
-  try {
-    const res = await fetch(`${API_BASE}/dashboard/risk-alerts`, {
-      headers: getAuthHeaders(currentUser),
-    });
-    if (res.ok) return await res.json();
-  } catch (e) {
-    console.warn("[Dashboard] fetchRiskAlerts error:", e);
-  }
-  return null;
-}
 
 export async function fetchRecentActivities(limit = 8, currentUser = null) {
   try {
@@ -480,21 +678,31 @@ export async function fetchDepartmentActivityReport(dept = null, timeframe = "to
   return null;
 }
 
-export async function signoffDepartmentShiftReport(submissionId, comment = "", currentUser = null) {
+async function shiftReportCall(path, method, body, currentUser) {
   try {
-    const res = await fetch(`${API_BASE}/dashboard/department-report/signoff`, {
-      method: "POST",
+    const res = await fetch(`${API_BASE}/dashboard/shift-reports${path}`, {
+      method,
       headers: getAuthHeaders(currentUser),
-      body: JSON.stringify({ submissionId, comment }),
+      body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) return data;
-    return { success: false, status: res.status, detail: data.detail || "Phê duyệt thất bại." };
+    const detail = Array.isArray(data.detail) ? data.detail.map((d) => d.msg).join("; ") : data.detail;
+    return { success: false, status: res.status, detail: detail || "Thao tác thất bại." };
   } catch (e) {
-    console.warn("[Dashboard] signoffDepartmentShiftReport error:", e);
+    console.warn("[ShiftReport] error:", e);
     return { success: false, detail: e.message };
   }
 }
+
+export const fetchMyShiftReports = (currentUser = null) => shiftReportCall("/mine", "GET", null, currentUser);
+export const saveShiftReport = (id, body, currentUser = null) =>
+  shiftReportCall(id ? `/${id}` : "", id ? "PUT" : "POST", body, currentUser);
+export const submitShiftReport = (id, currentUser = null) => shiftReportCall(`/${id}/submit`, "POST", null, currentUser);
+
+// decision: "approve" | "reject" (reject requires a comment)
+export const signoffDepartmentShiftReport = (submissionId, comment = "", currentUser = null, decision = "approve") =>
+  shiftReportCall(`/${submissionId}/review`, "POST", { decision, comment }, currentUser);
 
 export async function synthesizeDepartmentReport(dept = null, timeframe = "today", currentUser = null) {
   try {
@@ -605,5 +813,82 @@ export async function deleteSop(sopId, currentUser = null) {
     return { ok: false, error: e.message };
   }
 }
+
+// ============================================================================
+// MODULE 1: GOOGLE DRIVE & SHEETS CONNECTOR (FR4 & FR19)
+// ============================================================================
+
+export async function fetchGoogleConnectorStatus() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/status`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] fetchGoogleConnectorStatus error:", e);
+  }
+  return null;
+}
+
+export async function fetchGoogleAuthUrl() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/auth-url`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] fetchGoogleAuthUrl error:", e);
+  }
+  return null;
+}
+
+export async function configureGoogleOAuth(clientId, clientSecret, redirectUri) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/configure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] configureGoogleOAuth error:", e);
+  }
+  return null;
+}
+
+export async function disconnectGoogleOAuth() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/disconnect`, {
+      method: "POST"
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] disconnectGoogleOAuth error:", e);
+  }
+  return null;
+}
+
+export async function mockConnectGoogle(email, organization) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/mock-connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, organization })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] mockConnectGoogle error:", e);
+  }
+  return null;
+}
+
+export async function syncGoogleDrive() {
+  try {
+    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/sync`, {
+      method: "POST"
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[GoogleConnector] syncGoogleDrive error:", e);
+  }
+  return null;
+}
+
 
 

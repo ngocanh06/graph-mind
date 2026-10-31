@@ -4,6 +4,7 @@ Handles prompt synthesis and chat generation with local Ollama runtime.
 """
 import logging
 import time
+import re
 from typing import Optional, Dict, Any, List
 import httpx
 from app.core.config import settings
@@ -13,7 +14,10 @@ logger = logging.getLogger(__name__)
 
 class OllamaClient:
     def __init__(self):
-        self.base_url = settings.INFERENCE_ENGINE_URL.rstrip("/")
+        url = settings.INFERENCE_ENGINE_URL.rstrip("/")
+        if url.endswith("/v1"):
+            url = url[:-3].rstrip("/")
+        self.base_url = url
         self.model = settings.MODEL_NAME
 
     async def is_available(self) -> bool:
@@ -23,7 +27,7 @@ class OllamaClient:
                 res = await client.get(f"{self.base_url}/api/tags")
                 if res.status_code == 200:
                     models = [m.get("name", "") for m in res.json().get("models", [])]
-                    return any(self.model in m for m in models) or len(models) > 0
+                    return any(self.model in m or m.startswith(self.model) for m in models) or len(models) > 0
         except Exception as e:
             logger.debug(f"Ollama connection check failed: {e}")
         return False
@@ -69,25 +73,34 @@ class OllamaClient:
         evidence_chunks = evidence_chunks or []
         graph_entities = graph_entities or []
 
-        # 1. Trích xuất text từ vector chunks
+        # 1. Trích xuất text từ vector chunks (Ưu tiên các đoạn chứa từ khóa trọng tâm của query)
+        q_lower = query.lower()
+        key_terms = [w for w in re.findall(r"[\w\.-]+", q_lower) if len(w) >= 3 and w not in ["trong", "tài", "liệu", "cho", "tôi", "biết", "các", "có", "là", "gì", "của", "ai"]]
+        def chunk_priority(c):
+            t_low = (c.get("text") or c.get("content") or "").lower()
+            match_cnt = sum(1 for k in key_terms if k in t_low)
+            return (match_cnt, float(c.get("score") or 0.0))
+
+        ordered_chunks = sorted(evidence_chunks, key=chunk_priority, reverse=True)
+
         chunks_text_list = []
-        for i, c in enumerate(evidence_chunks[:4]):
+        for i, c in enumerate(ordered_chunks[:5]):
             t = c.get("text") or c.get("content") or ""
-            cname = c.get("contract_name") or c.get("name") or "CUAD Contract"
-            cid = c.get("chunk_id", i + 1)
+            cname = c.get("source_file") or c.get("contract_name") or c.get("name") or "Tài liệu"
+            cid = c.get("chunk_index") if c.get("chunk_index") is not None else c.get("chunk_id", i + 1)
             if t:
-                chunks_text_list.append(f"[Trích đoạn #{cid} - {cname}]:\n{t[:600]}")
+                chunks_text_list.append(f"[Trích đoạn #{cid} - {cname}]:\n{t[:1200]}")
         chunks_context = "\n\n".join(chunks_text_list)
 
         # 2. Trích xuất text từ graph entities
         entities_text_list = []
-        for e in graph_entities[:10]:
+        for e in graph_entities[:4]:
             name = e.get("name") or e.get("title") or e.get("_id")
             labels = "/".join(e.get("_labels") or ["Entity"])
             snippet = e.get("snippet")
             info = f"{name} ({labels})"
             if snippet:
-                info += f": {snippet}"
+                info += f": {snippet[:350]}"
             if name:
                 entities_text_list.append(info)
         entities_context = "\n".join([f"- {it}" for it in entities_text_list])
@@ -99,11 +112,16 @@ class OllamaClient:
                 "Bạn sử dụng kiến trúc Hybrid GraphRAG kết hợp giữa đồ thị tri thức Neo4j và tìm kiếm vector Qdrant. "
                 "Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, chính xác, khách quan dựa trên ngữ cảnh được cung cấp.\n"
                 "QUY TẮC BẮT BUỘC:\n"
-                "1. Tuyệt đối chỉ sử dụng dữ kiện và số liệu có thật trong ngữ cảnh. Không tự bịa đặt mã UUID ảo (như 11111111-...). \n"
-                "2. ĐỊNH DẠNG TRÌNH BÀY:\n"
-                "   - Viết một câu giới thiệu ngắn gọn ở đầu.\n"
-                "   - Các ý chính hoặc các thực thể/khách hàng BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
-                "   - Khi liệt kê chi tiết các năm hoặc các điều khoản, BẮT BUỘC phải xuống dòng cho từng năm/điều khoản với dấu gạch đầu dòng (- Năm 2011: ..., - Năm 2012: ...). Tuyệt đối không viết dồn trên cùng một dòng."
+                "1. Tuyệt đối chỉ sử dụng dữ kiện, công thức và số liệu có thật trong ngữ cảnh. Không tự bịa đặt mã UUID ảo. \n"
+                "2. Chỉ trả lời dựa trên chính xác tên tài liệu, nội dung văn bản và số liệu trong các trích đoạn được cung cấp. Tuyệt đối KHÔNG tự bịa ra thông tin về khách hàng, đơn hàng hay hợp đồng nếu tài liệu là kế hoạch dự án, nghiên cứu R&D hoặc văn bản nội bộ. Nếu trích đoạn không ghi tên công ty hay đối tác, tuyệt đối không tự ý thêm bất kỳ tên công ty nào vào câu trả lời.\n"
+                "3. NÊU ĐẦY ĐỦ VÀ RÕ RÀNG các công thức toán học, hàm mục tiêu, tất cả các ràng buộc và điều kiện biến nếu có trong ngữ cảnh.\n"
+                "4. ĐỊNH DẠNG TRÌNH BÀY:\n"
+                "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò, địa điểm hoặc điều khoản cụ thể: BẮT BUỘC trả lời TRỰC TIẾP và RÕ RÀNG thông tin đó ngay dòng đầu tiên (ví dụ: 'Trưởng nhóm là [Họ và tên], vai trò [Chức danh]...').\n"
+                "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
+                "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu.\n"
+                "5. QUY TẮC TỪ CHỐI & KIỂM TRA ĐỐI TƯỢNG (GROUNDING REFUSAL):\n"
+                "   - Nếu câu hỏi hỏi về một tài liệu, hợp đồng, phòng ban hoặc đối tượng cụ thể (ví dụ: 'tài liệu X', 'hợp đồng Y') mà tên hoặc từ khóa đó KHÔNG XUẤT HIỆN trong các trích đoạn ngữ cảnh, bạn BẮT BUỘC phải trả lời rõ ràng rằng tài liệu hoặc đối tượng đó không tồn tại trong kho lưu trữ được cung cấp.\n"
+                "   - TUYỆT ĐỐI KHÔNG được gán ghép phòng ban, nội dung hay số liệu của một tài liệu khác trong ngữ cảnh cho tài liệu mà người dùng đang hỏi."
             )
             context_block = ""
             if chunks_context:
@@ -116,7 +134,8 @@ class OllamaClient:
             system_prompt = (
                 "You are GraphMind Copilot, an enterprise AI assistant powered by Hybrid GraphRAG "
                 "(Neo4j Knowledge Graph + Qdrant Vector DB + fine-tuned Qwen2.5-7B). "
-                "Synthesize a clear, professional answer strictly using the provided context."
+                "Synthesize a clear, professional answer strictly using the provided context. "
+                "Never associate unrelated company names with the document unless explicitly in the excerpts."
             )
             context_block = ""
             if chunks_context:
@@ -144,7 +163,9 @@ class OllamaClient:
                         "options": {
                             "temperature": 0.3,
                             "top_p": 0.9,
-                            "num_predict": 512
+                            "num_predict": 512,
+                            "repeat_penalty": 1.18,
+                            "repeat_last_n": 64
                         }
                     }
                 )

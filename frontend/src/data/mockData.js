@@ -3,111 +3,109 @@ export const INITIAL_DATA = {
     {
       id: "sig-1",
       severity: "high",
-      badge: "HIGH CHURN RISK",
-      what_en: "Customer ABC Corporation order frequency decreased 32%.",
-      what_vi: "Tần suất đặt hàng của Tập đoàn ABC giảm 32%.",
-      why_en: "Order cadence fell from 8.0/mo to 5.4/mo over trailing 60 days — consistent with prior churn events in manufacturing tier.",
-      why_vi: "Tần suất đặt hàng giảm từ 8,0/tháng xuống 5,4/tháng trong 60 ngày qua — khớp với mô hình rời bỏ trước đây.",
+      badge: "VIP ACCOUNT INSIGHT",
+      what_en: "Top Customer 'Brakes and Gears' (#CUST-29818) generated $989,184.08 USD across 12 orders.",
+      what_vi: "Khách hàng VIP 'Brakes and Gears' (#CUST-29818) đạt tổng doanh số $989,184.08 USD qua 12 đơn hàng.",
+      why_en: "Largest revenue contributor in AdventureWorks ERP. Prioritize executive outreach for contract renewal.",
+      why_vi: "Đối tác doanh số lớn nhất hệ thống AdventureWorks ERP. Cần ưu tiên chăm sóc gia hạn và rà soát hạn mức tín dụng.",
       action_en: "Review account within 7 days",
       action_vi: "Xem xét tài khoản trong vòng 7 ngày",
-      entityId: "abc"
+      entityId: "29818"
     },
     {
       id: "sig-2",
       severity: "med",
-      badge: "MEDIUM RISK",
-      what_en: "3 contracts expire within 21 days with no renewal activity logged.",
-      what_vi: "3 hợp đồng hết hạn trong 21 ngày tới chưa có hoạt động gia hạn.",
-      why_en: "Combined value of $4.1M USD has no renewal activity logged in CRM or Drive folders.",
-      why_vi: "Tổng giá trị hợp đồng $4.1M USD chưa ghi nhận động thái gia hạn nào trên CRM hoặc Google Drive.",
+      badge: "LEGAL RISK",
+      what_en: "5 legal documents in CUAD repository lack Limitation of Liability clauses.",
+      what_vi: "5 hợp đồng pháp chế trong kho CUAD thiếu điều khoản giới hạn trách nhiệm (Limitation of Liability).",
+      why_en: "Uncapped liability exposes the business to unlimited damages in legal disputes.",
+      why_vi: "Thiếu điều khoản giới hạn trách nhiệm khiến doanh nghiệp đối mặt với rủi ro bồi thường vô hạn khi có tranh chấp.",
       action_en: "Open Risk Center",
       action_vi: "Mở Trung tâm Rủi ro",
-      entityId: "ct18"
+      entityId: "legal-contracts"
     },
     {
       id: "sig-3",
       severity: "low",
       badge: "DATA QUALITY",
-      what_en: "12 documents contain incomplete metadata or unverified owners.",
-      what_vi: "12 tài liệu bị thiếu siêu dữ liệu hoặc chưa xác thực người sở hữu.",
-      why_en: "Department and author fields missing, reducing traceability for downstream AI reasoning.",
-      why_vi: "Thiếu trường phòng ban và người lập, làm giảm khả năng truy xuất bằng chứng của AI.",
-      action_en: "Send to Validation Queue",
-      action_vi: "Chuyển tới Hàng đợi Xác thực",
-      entityId: "doc-sop"
+      what_en: "All 581 documents and 35,276 vector points are 100% indexed and synchronized.",
+      what_vi: "Toàn bộ 581 tài liệu và 35,276 điểm vector đã lập chỉ mục và đồng bộ hoàn tất 100%.",
+      why_en: "Multi-department knowledge repository (Legal, Sales, Accounting, R&D, IT) verified in Central Storage & Neo4j.",
+      why_vi: "Kho tài liệu đa phòng ban đã đồng bộ hoàn chỉnh giữa Central Storage, Qdrant và Neo4j.",
+      action_en: "View Document Repository",
+      action_vi: "Xem Kho Tài liệu",
+      entityId: "doc-repository"
     }
   ],
 
   entities: {
-    abc: {
-      id: "abc",
+    "29818": {
+      id: "29818",
       type: "CUSTOMER",
-      name: "ABC Corporation",
+      name: "Brakes and Gears",
       verified: true,
       status: "Human Verified",
-      risk: "Elevated",
-      industry: "Manufacturing & Industrial",
-      contact: "Tran M. Anh (Procurement Dir.)",
-      revenue: "$6.4M USD",
-      ordersCount: 214,
-      activeContracts: 2,
-      relationships: [
-        { rel: "Customer of", target: "Company X" },
-        { rel: "Purchased", target: "Product A" },
-        { rel: "Signed", target: "Contract CT-2026-18", warning: true }
-      ]
-    },
-    ct18: {
-      id: "ct18",
-      type: "CONTRACT",
-      name: "Contract CT-2026-18",
-      verified: false,
-      status: "Needs Review",
-      risk: "High",
-      industry: "Legal / Sales",
-      contact: "Pham Q. Linh (Account Mgr)",
-      revenue: "$1.2M USD",
-      ordersCount: 18,
+      risk: "Low",
+      industry: "Bicycle Retail & Distribution",
+      contact: "Executive Procurement Team",
+      revenue: "$989,184.08 USD",
+      ordersCount: 12,
       activeContracts: 1,
       relationships: [
-        { rel: "Signed by", target: "ABC Corporation" },
-        { rel: "Governs", target: "Product A supply" },
-        { rel: "Expires on", target: "18 Oct 2026 (12 days left)" }
+        { rel: "Placed Order", target: "Order #43659", warning: false },
+        { rel: "Purchased", target: "Product #707 (Sport-100 Helmet)" },
+        { rel: "Customer Tier", target: "Enterprise Partner" }
       ]
     },
-    delta: {
-      id: "delta",
+    "29715": {
+      id: "29715",
       type: "CUSTOMER",
-      name: "Delta Trading Ltd",
+      name: "Excellent Riding Supplies",
       verified: true,
       status: "Human Verified",
-      risk: "Medium",
-      industry: "Distribution & Logistics",
-      contact: "Nguyen V. Binh (Director)",
-      revenue: "$3.2M USD",
-      ordersCount: 94,
+      risk: "Low",
+      industry: "Sports & Outdoor Goods",
+      contact: "Regional Account Lead",
+      revenue: "$961,675.86 USD",
+      ordersCount: 12,
       activeContracts: 1,
       relationships: [
-        { rel: "Customer of", target: "Company X" },
-        { rel: "Purchased", target: "Product B" },
-        { rel: "Signed", target: "Contract CT-2026-24" }
+        { rel: "Placed Order", target: "Sales Orders" },
+        { rel: "Purchased", target: "Mountain Bikes & Components" }
       ]
     },
-    proda: {
-      id: "proda",
-      type: "PRODUCT",
-      name: "Product A — Enterprise Core",
+    "43659": {
+      id: "43659",
+      type: "ORDER",
+      name: "SalesOrder #43659",
       verified: true,
       status: "System Verified",
       risk: "Low",
-      industry: "Software & Services",
-      contact: "Product Management Team",
-      revenue: "$28.4M USD (YTD)",
-      ordersCount: 840,
-      activeContracts: 180,
+      industry: "Sales & Commerce",
+      contact: "AdventureWorks ERP",
+      revenue: "$23,153.23 USD",
+      ordersCount: 1,
+      activeContracts: 1,
       relationships: [
-        { rel: "Delivered to", target: "ABC Corporation" },
-        { rel: "Produced by", target: "Tech Division" }
+        { rel: "Placed by", target: "Better Bike Shop (#29825)" },
+        { rel: "Contains", target: "Mountain-100 Silver, 38" }
+      ]
+    },
+    "707": {
+      id: "707",
+      type: "PRODUCT",
+      name: "Sport-100 Helmet, Red",
+      verified: true,
+      status: "System Verified",
+      risk: "Low",
+      industry: "Safety Gear & Apparel",
+      contact: "Manufacturing Department",
+      revenue: "List Price: $34.99 USD",
+      ordersCount: 3088,
+      activeContracts: 1,
+      relationships: [
+        { rel: "SubCategory", target: "Helmets" },
+        { rel: "Category", target: "Accessories" }
       ]
     }
   },
@@ -115,21 +113,21 @@ export const INITIAL_DATA = {
   validationQueue: [
     {
       id: "vq-1",
-      entity: "ABC Corporation",
-      relation: "SIGNED_CONTRACT → CT-2026-18 · from Contract_CT-2026-18.pdf, p.2",
-      confidence: 74
+      entity: "Brakes and Gears",
+      relation: "PLACED_ORDER → Order #43659 · from Sales_SalesOrderHeader.csv",
+      confidence: 100
     },
     {
       id: "vq-2",
-      entity: "Delta Trading Ltd",
-      relation: "PURCHASED → Product B · from Invoice_0442.pdf, p.1",
-      confidence: 96
+      entity: "Excellent Riding Supplies",
+      relation: "PURCHASED → Sport-100 Helmet · from Sales_SalesOrderDetail.csv",
+      confidence: 98
     },
     {
       id: "vq-3",
-      entity: "Company X — Finance Dept",
-      relation: "OWNS_DOCUMENT → SOP-04 Reconciliation · conflicting owner field",
-      confidence: 52
+      entity: "Phòng Pháp chế (Legal)",
+      relation: "OWNS_DOCUMENT → CUAD Legal Contracts · verified in Neo4j",
+      confidence: 100
     }
   ]
 };

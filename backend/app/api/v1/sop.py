@@ -301,7 +301,8 @@ def ground_sop_into_knowledge_base(sop: SopDocument):
                 full_text = f"{text_content} {steps_text}".strip()
 
                 vec = model.encode(full_text).tolist()
-                point_id = abs(hash(sop.code)) % (10**12)
+                import zlib
+                point_id = zlib.crc32(sop.code.encode("utf-8"))
 
                 from qdrant_client.models import PointStruct
 
@@ -322,9 +323,47 @@ def ground_sop_into_knowledge_base(sop: SopDocument):
                         )
                     ],
                 )
-                logger.info(f"[Qdrant] Đã nhúng vector Ground-Truth cho {sop.code}")
+                logger.info(f"[Qdrant] Đã nhúng vector Ground-Truth cho {sop.code} (point_id={point_id})")
     except Exception as e:
         logger.warning(f"[Qdrant] Ingestion SOP {sop.code} vector failed: {e}")
+
+
+def unground_sop_from_knowledge_base(code: str):
+    """Xóa SOP khỏi đồ thị tri thức Neo4j và kho véc-tơ Qdrant khi SOP bị xóa."""
+    # 1. Xóa node khỏi Neo4j
+    try:
+        if neo4j_client.is_connected:
+            neo4j_client.run_cypher("MATCH (s:SOP {code: $code}) DETACH DELETE s", {"code": code})
+            logger.info(f"[Neo4j] Đã gỡ bỏ node SOP: {code}")
+    except Exception as e:
+        logger.warning(f"[Neo4j] Gỡ bỏ node SOP {code} thất bại: {e}")
+
+    # 2. Xóa vector points khỏi Qdrant
+    try:
+        if qdrant_client.is_connected and qdrant_client._client:
+            col = qdrant_client._collection
+            import zlib
+            point_id = zlib.crc32(code.encode("utf-8"))
+            try:
+                from qdrant_client.models import Filter, FieldCondition, MatchValue
+                qdrant_client._client.delete(
+                    collection_name=col,
+                    points_selector=Filter(
+                        must=[FieldCondition(key="chunk_id", match=MatchValue(value=code))]
+                    ),
+                )
+            except Exception:
+                pass
+            try:
+                qdrant_client._client.delete(
+                    collection_name=col,
+                    points_selector=[point_id],
+                )
+            except Exception:
+                pass
+            logger.info(f"[Qdrant] Đã gỡ bỏ vector embedding cho {code}")
+    except Exception as e:
+        logger.warning(f"[Qdrant] Gỡ bỏ vector SOP {code} thất bại: {e}")
 
 
 # ============================================================================
@@ -686,6 +725,9 @@ async def delete_sop(
     code = sop.code
     await db.delete(sop)
     await db.commit()
+
+    # Cascade delete from Knowledge Base (Neo4j Graph & Qdrant Vector DB)
+    unground_sop_from_knowledge_base(code)
 
     return SopResponse(
         success=True,

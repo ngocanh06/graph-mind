@@ -28,8 +28,8 @@ async def get_admin_user(
 
     result = await db.execute(select(User).where(User.user_id == uid))
     actor = result.scalar_one_or_none()
-    if not actor or not actor.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Tài khoản không hợp lệ.")
+    if not actor or actor.deleted_at is not None or not actor.is_active or getattr(actor, "status", "active") == "locked":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tài khoản đã bị khóa, liên hệ quản trị viên")
     if not is_system_admin(actor):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ADMIN_ONLY_DETAIL)
     return actor
