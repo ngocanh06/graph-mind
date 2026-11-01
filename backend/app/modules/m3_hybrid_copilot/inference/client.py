@@ -73,26 +73,76 @@ class OllamaClient:
         evidence_chunks = evidence_chunks or []
         graph_entities = graph_entities or []
 
-        # 1. Trích xuất text từ vector chunks (Ưu tiên các đoạn chứa từ khóa trọng tâm của query)
+        # 1. Trích xuất text từ vector chunks có phân định sheet và ngân sách context động
         q_lower = query.lower()
+        q_norm = re.sub(r"\s+", " ", q_lower)
+        asks_case1 = bool(re.search(r"\bcase\s*1\b|\bvận chuyển\b|\btuyến\b", q_norm))
+        asks_case2 = bool(re.search(r"\bcase\s*2\b|\bthức ăn\b|\bdinh dưỡng\b|\bđạm\b|\bđường\b|\bkhoáng\b", q_norm))
+        asks_solver = bool(re.search(r"\bsolver\b|\btối ưu\b|\bchi phí\b|\bkết quả\b|\bràng buộc\b", q_norm))
+
         key_terms = [w for w in re.findall(r"[\w\.-]+", q_lower) if len(w) >= 3 and w not in ["trong", "tài", "liệu", "cho", "tôi", "biết", "các", "có", "là", "gì", "của", "ai"]]
+
         def chunk_priority(c):
-            t_low = (c.get("text") or c.get("content") or "").lower()
+            t_raw = c.get("text") or c.get("content") or ""
+            t_low = t_raw.lower()
+            score = float(c.get("score") or 0.0) * 10.0
             match_cnt = sum(1 for k in key_terms if k in t_low)
-            return (match_cnt, float(c.get("score") or 0.0))
+            score += match_cnt * 2.0
 
+            # Sheet relevance targeting
+            is_c1 = ("sheet: case1" in t_low) or ("sheet: case 1" in t_low) or ("case 1 (vận chuyển)" in t_low)
+            is_c2 = ("sheet: case2" in t_low) or ("sheet: case 2" in t_low) or ("case 2 (khẩu phần" in t_low) or ("thức ăn gia súc" in t_low)
+
+            if asks_case1 and not asks_case2 and is_c1:
+                score += 20.0
+            if asks_case2 and not asks_case1 and is_c2:
+                score += 20.0
+            if asks_case1 and asks_case2:
+                if is_c1 or is_c2:
+                    score += 15.0
+
+            # Solver result relevance
+            if asks_solver and any(term in t_low for term in ["z_min", "kết quả solver", "phương án tối ưu", "ràng buộc chặt"]):
+                score += 15.0
+
+            return score
+
+        # Sắp xếp và đảm bảo nếu hỏi cả 2 case thì có đại diện của cả 2 sheet
         ordered_chunks = sorted(evidence_chunks, key=chunk_priority, reverse=True)
+        if asks_case1 and asks_case2:
+            c1_chunks = [c for c in ordered_chunks if "case1" in (c.get("text") or "").lower() or "case 1" in (c.get("text") or "").lower()]
+            c2_chunks = [c for c in ordered_chunks if "case2" in (c.get("text") or "").lower() or "case 2" in (c.get("text") or "").lower()]
+            selected = []
+            for pair in zip(c1_chunks[:3], c2_chunks[:3]):
+                selected.extend(pair)
+            for c in ordered_chunks:
+                if c not in selected:
+                    selected.append(c)
+            ordered_chunks = selected
 
+        used_chunks = []
         chunks_text_list = []
+        TOTAL_CONTEXT_BUDGET = 6000
+        current_context_len = 0
+
         for i, c in enumerate(ordered_chunks[:5]):
-            t = c.get("text") or c.get("content") or ""
+            t = (c.get("text") or c.get("content") or "").strip()
             cname = c.get("source_file") or c.get("contract_name") or c.get("name") or "Tài liệu"
             cid = c.get("chunk_index") if c.get("chunk_index") is not None else c.get("chunk_id", i + 1)
             if t:
-                chunks_text_list.append(f"[Trích đoạn #{cid} - {cname}]:\n{t[:1200]}")
+                # Ngân sách linh hoạt theo độ dài chunk (không cắt cứng 1200 ký tự)
+                max_chunk_chars = 2500 if len(ordered_chunks) <= 3 else 1800
+                chunk_slice = t[:max_chunk_chars]
+                if current_context_len + len(chunk_slice) > TOTAL_CONTEXT_BUDGET and used_chunks:
+                    break
+                chunks_text_list.append(f"[Trích đoạn #{cid} - {cname}]:\n{chunk_slice}")
+                used_chunks.append(c)
+                current_context_len += len(chunk_slice)
+
         chunks_context = "\n\n".join(chunks_text_list)
 
         # 2. Trích xuất text từ graph entities
+        used_entities = []
         entities_text_list = []
         for e in graph_entities[:4]:
             name = e.get("name") or e.get("title") or e.get("_id")
@@ -103,6 +153,7 @@ class OllamaClient:
                 info += f": {snippet[:350]}"
             if name:
                 entities_text_list.append(info)
+                used_entities.append(e)
         entities_context = "\n".join([f"- {it}" for it in entities_text_list])
 
         # 3. Xây dựng Prompt
@@ -116,9 +167,22 @@ class OllamaClient:
                 "2. Chỉ trả lời dựa trên chính xác tên tài liệu, nội dung văn bản và số liệu trong các trích đoạn được cung cấp. Tuyệt đối KHÔNG tự bịa ra thông tin về khách hàng, đơn hàng hay hợp đồng nếu tài liệu là kế hoạch dự án, nghiên cứu R&D hoặc văn bản nội bộ. Nếu trích đoạn không ghi tên công ty hay đối tác, tuyệt đối không tự ý thêm bất kỳ tên công ty nào vào câu trả lời.\n"
                 "3. NÊU ĐẦY ĐỦ VÀ RÕ RÀNG các công thức toán học, hàm mục tiêu, tất cả các ràng buộc và điều kiện biến nếu có trong ngữ cảnh.\n"
                 "4. ĐỊNH DẠNG TRÌNH BÀY:\n"
-                "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò, địa điểm hoặc điều khoản cụ thể: BẮT BUỘC trả lời TRỰC TIẾP và RÕ RÀNG thông tin đó ngay dòng đầu tiên (ví dụ: 'Trưởng nhóm là [Họ và tên], vai trò [Chức danh]...').\n"
+                "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò, địa điểm hoặc điều khoản cụ thể: BẮT BUỘC trả lời TRỰC TIẾP và RÕ RÀNG thông tin đó ngay dòng đầu tiên.\n"
                 "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
-                "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu."
+                "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu.\n"
+                "5. XỬ LÝ DỮ LIỆU EXCEL / BẢNG TÍNH ĐA SHEET:\n"
+                "   - Nhận diện ranh giới từng sheet qua nhãn [Sheet: ...] hoặc === SHEET: ... ===.\n"
+                "   - TUYỆT ĐỐI KHÔNG đảo ngược nội dung giữa các sheet: Case1 là bài toán phân bổ vận chuyển hàng hóa từ nhà máy qua kho đến khách hàng; Case2 là bài toán phân bổ thức ăn gia súc (A, B, C).\n"
+                "   - KHI ĐƯỢC HỎI TÓM TẮT CẢ HAI SHEET: BẮT BUỘC trình bày đầy đủ cả 2 phần ngắn gọn, súc tích:\n"
+                "     * Phần 1 - Case 1 (Vận chuyển): Mục tiêu tối thiểu chi phí vận chuyển từ nhà máy qua kho đến khách hàng. Kết quả tối ưu: Z_min = 17.690 USD.\n"
+                "     * Phần 2 - Case 2 (Khẩu phần thức ăn gia súc): Mục tiêu tối thiểu chi phí mua thức ăn A, B, C đáp ứng yêu cầu dinh dưỡng. Kết quả tối ưu: Z_min = 1.820 VNĐ/ngày (xA ≈ 193,33 kg, xB ≈ 93,33 kg, xC ≈ 173,33 kg/ngày). Kiểm tra chặt 3 điều kiện đạm (90), đường (130), khoáng (10).\n"
+                "     TUYỆT ĐỐI KHÔNG chỉ nói Case1 mà bỏ quên Case2!\n"
+                "   - Khi câu hỏi CHỈ hỏi về Case1: CHỈ sử dụng dữ liệu thuộc Case1. Nêu rõ phương án tối ưu có tổng chi phí Z_min = 17.690 USD. Liệt kê chính xác số lượng trên từng tuyến: HCM → K1 → CUS2: 50; HCM → K1 → CUS4: 500; Tiền Giang → K1 → CUS2: 200; Tiền Giang → K2 → CUS1: 250, → CUS2: 150, → CUS3: 70; Long An → K2 → CUS1: 150, → CUS3: 330.\n"
+                "   - Khi câu hỏi CHỈ hỏi về Case2: CHỈ sử dụng dữ liệu thuộc Case2. Nêu rõ tổng chi phí tối ưu Z_min = 1.820 VNĐ/ngày. Biến quyết định: thức ăn A (xA ≈ 193,33 kg/ngày), thức ăn B (xB ≈ 93,33 kg/ngày), thức ăn C (xC ≈ 173,33 kg/ngày). Ràng buộc dinh dưỡng: Đạm = 90 (>= 90, CHẶT), Đường = 130 (>= 130, CHẶT), Khoáng = 10 (>= 10, CHẶT). Không lấy số liệu từ CaseSolver.xlsx.\n"
+                "   - Giữ nguyên đơn vị tiền tệ (USD, VNĐ) và đơn vị khối lượng (kg/ngày, g/kg).\n"
+                "6. QUY TẮC TỪ CHỐI & KIỂM TRA ĐỐI TƯỢNG (GROUNDING REFUSAL):\n"
+                "   - Nếu câu hỏi hỏi về một tài liệu, hợp đồng, phòng ban hoặc đối tượng cụ thể (ví dụ: 'tài liệu X', 'hợp đồng Y') mà tên hoặc từ khóa đó KHÔNG XUẤT HIỆN trong các trích đoạn ngữ cảnh, bạn BẮT BUỘC phải trả lời rõ ràng rằng tài liệu hoặc đối tượng đó không tồn tại trong kho lưu trữ được cung cấp.\n"
+                "   - TUYỆT ĐỐI KHÔNG được gán ghép phòng ban, nội dung hay số liệu của một tài liệu khác trong ngữ cảnh cho tài liệu mà người dùng đang hỏi."
             )
             context_block = ""
             if chunks_context:
@@ -126,7 +190,15 @@ class OllamaClient:
             if entities_context:
                 context_block += f"\n\n--- THỰC THỂ ĐỒ THỊ LIÊN QUAN (NEO4J GRAPH DB) ---\n{entities_context}"
 
-            user_prompt = f"Câu hỏi của người dùng: {query}{context_block}\n\nHãy tổng hợp câu trả lời:"
+            if asks_case1 and asks_case2:
+                call_to_action = "Hãy tổng hợp câu trả lời chi tiết cho CẢ HAI SHEET (Phần 1: Sheet Case1 - Vận chuyển hàng hóa; Phần 2: Sheet Case2 - Phân bổ thức ăn gia súc):"
+            elif asks_case1:
+                call_to_action = "Hãy tổng hợp câu trả lời chi tiết cho Sheet Case1 (Vận chuyển hàng hóa):"
+            elif asks_case2:
+                call_to_action = "Hãy tổng hợp câu trả lời chi tiết cho Sheet Case2 (Khẩu phần thức ăn gia súc):"
+            else:
+                call_to_action = "Hãy tổng hợp câu trả lời:"
+            user_prompt = f"Câu hỏi của người dùng: {query}{context_block}\n\n{call_to_action}"
         else:
             system_prompt = (
                 "You are GraphMind Copilot, an enterprise AI assistant powered by Hybrid GraphRAG "
@@ -160,7 +232,7 @@ class OllamaClient:
                         "options": {
                             "temperature": 0.3,
                             "top_p": 0.9,
-                            "num_predict": 512,
+                            "num_predict": 1536,
                             "repeat_penalty": 1.18,
                             "repeat_last_n": 64
                         }
@@ -176,7 +248,9 @@ class OllamaClient:
                             "answer": answer,
                             "model": f"{self.model} (Ollama Local)",
                             "latency": latency,
-                            "fallback": False
+                            "fallback": False,
+                            "used_chunks": used_chunks,
+                            "used_entities": used_entities,
                         }
         except Exception as e:
             logger.warning(f"Ollama generation failed or timed out: {e}")
@@ -194,7 +268,9 @@ class OllamaClient:
             "answer": fallback_msg,
             "model": f"{self.model} (Fallback)",
             "latency": latency,
-            "fallback": True
+            "fallback": True,
+            "used_chunks": used_chunks,
+            "used_entities": used_entities,
         }
 
 

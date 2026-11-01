@@ -61,14 +61,14 @@ try:
     from app.api.v1.dashboard import router as dashboard_router
     from app.api.v1.sop import router as sop_router
     from app.api.v1.rbac import router as rbac_router
-    from app.core.rbac import get_user_scope, ScopeContext
+    from app.core.rbac import get_user_scope, ScopeContext, normalize_dept
 except ImportError:
     from api.v1.auth import router as auth_router
     from api.v1.copilot import router as copilot_router
     from api.v1.dashboard import router as dashboard_router
     from api.v1.sop import router as sop_router
     from api.v1.rbac import router as rbac_router
-    from core.rbac import get_user_scope, ScopeContext
+    from core.rbac import get_user_scope, ScopeContext, normalize_dept
 
 
 try:
@@ -81,6 +81,12 @@ except ImportError:
     from modules.m3_hybrid_copilot.query_engine.context_fusion import reciprocal_rank_fusion
     from modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
     from core.rbac import filter_search_documents_by_scope
+
+
+try:
+    from app.modules.m1_data_sync.pipeline import RestrictedSafeModeRegistry
+except ImportError:
+    from modules.m1_data_sync.pipeline import RestrictedSafeModeRegistry
 
 
 @asynccontextmanager
@@ -102,6 +108,44 @@ async def lifespan(app: FastAPI):
             node_cnt = neo4j_client.get_node_count()
             rel_cnt = neo4j_client.get_relationship_count()
             print(f"[OK] Neo4j connected successfully — {node_cnt} nodes, {rel_cnt} relationships")
+
+            # PR1 Safe Migration (F-02): Duplicate Document ID & Ambiguous Storage Path Audit
+            try:
+                dups = neo4j_client.run_cypher("""
+                    MATCH (d:Document)
+                    WHERE d.id IS NOT NULL
+                    WITH d.id AS doc_id, count(d) AS cnt
+                    WHERE cnt > 1
+                    RETURN doc_id, cnt
+                """)
+                dup_ids = {str(r["doc_id"]) for r in (dups or []) if r.get("doc_id")}
+
+                ambig_paths_res = neo4j_client.run_cypher("""
+                    MATCH (d:Document)
+                    WHERE d.storagePath IS NOT NULL AND trim(d.storagePath) <> ''
+                    WITH d.storagePath AS sp, count(d) AS cnt
+                    WHERE cnt > 1
+                    RETURN sp, cnt
+                """)
+                ambig_paths = {str(r["sp"]) for r in (ambig_paths_res or []) if r.get("sp")}
+
+                if dup_ids or ambig_paths:
+                    RestrictedSafeModeRegistry.set_duplicate_state(dup_ids, ambig_paths)
+                    logger.critical(
+                        f"[SafeMigration] CRITICAL: Found duplicate IDs ({len(dup_ids)}) / ambiguous paths ({len(ambig_paths)}). "
+                        f"Entering Restricted Safe Mode. Unique constraint creation skipped."
+                    )
+                    print(f"[SafeMigration] CRITICAL: Restricted Safe Mode activated. Duplicates: {len(dup_ids)}, Ambiguous paths: {len(ambig_paths)}.")
+                else:
+                    RestrictedSafeModeRegistry.set_duplicate_state(set(), set())
+                    try:
+                        neo4j_client.run_cypher("CREATE CONSTRAINT document_id_unique IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE")
+                        logger.info("[SafeMigration] Document id unique constraint verified/created.")
+                    except Exception as c_err:
+                        logger.warning(f"[SafeMigration] Unique constraint note: {c_err}")
+            except Exception as audit_err:
+                # Do NOT reset registry on query failure/timeout to preserve fail-closed state
+                logger.warning(f"[SafeMigration] Duplicate audit error (preserving existing Safe Mode): {audit_err}")
         else:
             print("[WARN] Neo4j connection failed")
     except Exception as e:
@@ -126,6 +170,19 @@ async def lifespan(app: FastAPI):
             print(f"[WARN] Ollama model '{llm_client.model}' not reachable at {llm_client.base_url}")
     except Exception as e:
         print(f"[WARN] Ollama startup check: {e}")
+
+    # 5. PR1 Crash Recovery Reconciliation (Runs before serving traffic)
+    try:
+        try:
+            from app.modules.m1_data_sync.pipeline import reconcile_crashed_operations
+        except ImportError:
+            from modules.m1_data_sync.pipeline import reconcile_crashed_operations
+        rec_res = await reconcile_crashed_operations()
+        print(f"[OK] PR1 Crash Recovery completed: {rec_res}")
+        logger.info(f"[Recovery] Crash recovery completed: {rec_res}")
+    except Exception as rec_err:
+        print(f"[WARN] PR1 Crash recovery notice: {rec_err}")
+        logger.warning(f"[Recovery] PR1 Crash recovery error: {rec_err}")
 
     yield
 
@@ -522,21 +579,27 @@ def get_neo4j_status():
 def get_knowledge_graph(
     limit: int = Query(default=100, ge=1, le=1000),
     rel_limit: int = Query(default=200, ge=1, le=2000),
-    label: Optional[str] = Query(default=None)
+    label: Optional[str] = Query(default=None),
+    domain: Optional[str] = Query(default=None),
+    rel_type: Optional[str] = Query(default=None)
 ):
-    """Returns nodes and relationships from live Neo4j database."""
+    """Returns nodes and relationships from live Neo4j database with domain and relationship filters."""
     connected = neo4j_client.is_connected or neo4j_client.connect()
     if not connected:
         raise HTTPException(status_code=503, detail="Neo4j database is currently offline or unreachable.")
     
-    nodes = neo4j_client.get_connected_nodes(limit=limit, label=label)
+    nodes = neo4j_client.get_connected_nodes(limit=limit, label=label, domain=domain, rel_type=rel_type)
     node_ids = [n["_id"] for n in nodes]
     rels = neo4j_client.get_relationships_for_nodes(node_ids=node_ids, limit=rel_limit)
+    if rel_type and rel_type != "ALL":
+        clean_rel = rel_type.strip().upper()
+        rels = [r for r in rels if r.get("type", "").upper() == clean_rel]
     label_counts = neo4j_client.get_label_counts()
 
     return {
         "success": True,
         "source": "neo4j",
+        "domain": domain or "all",
         "data": {
             "nodes": nodes,
             "relationships": rels,
@@ -548,6 +611,21 @@ def get_knowledge_graph(
                 "returned_relationships": len(rels)
             }
         }
+    }
+
+@app.get("/api/neo4j/expand/{node_id:path}")
+def expand_neo4j_node(node_id: str, limit: int = Query(default=25, ge=1, le=100)):
+    """Fetch 1-hop connected neighbor nodes and edges for expanding graph canvas."""
+    connected = neo4j_client.is_connected or neo4j_client.connect()
+    if not connected:
+        raise HTTPException(status_code=503, detail="Neo4j database is currently offline or unreachable.")
+    result = neo4j_client.expand_node_neighbors(node_id=node_id, limit=limit)
+    return {
+        "success": True,
+        "node_id": node_id,
+        "count_nodes": len(result.get("nodes", [])),
+        "count_relationships": len(result.get("relationships", [])),
+        "data": result
     }
 
 @app.get("/api/neo4j/node/{node_id:path}")
@@ -705,9 +783,18 @@ def get_qdrant_collections():
 def get_qdrant_points(
     collection: Optional[str] = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
+    include_inactive: bool = Query(default=False),
+    scope: ScopeContext = Depends(get_user_scope)
 ):
+    if include_inactive and getattr(scope, "role", "") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Chỉ quản trị viên (Admin) mới có quyền truy cập vector points chưa kích hoạt (include_inactive)."
+        )
     points = qdrant_client.scroll_points(collection_name=collection, limit=limit, offset=offset)
+    if not include_inactive:
+        points = [p for p in points if (p.get("payload") or {}).get("is_active") is True]
     return {"success": True, "count": len(points), "data": points}
 
 @app.post("/api/vector-search")
@@ -1696,7 +1783,7 @@ def get_repository_documents(
                 status_badge = "Cần lập lại chỉ mục"
                 status_state = "warning"
 
-            doc_id = (neo_info.get("id") if neo_info else None) or w_info.get("id") or f"DOC_{hashlib.md5(fname.encode()).hexdigest()[:8].upper()}"
+            doc_id = (neo_info.get("id") if neo_info else None) or w_info.get("id") or None
             file_hash = (neo_info.get("hash") if neo_info else None) or w_info.get("hash") or ""
             dept_name = (neo_info.get("dept") if neo_info else None) or inv["dept_name"]
             dept_key = (neo_info.get("deptKey") if neo_info else None) or inv["dept_key"]
@@ -1746,6 +1833,48 @@ def get_repository_documents(
                 "source": "central_storage",
                 "isNew": w_info.get("isNew", False)
             })
+
+        # Also include any newly ingested watcher/connector documents (e.g. Google Drive sync) not yet in raw inventory scan
+        inv_names = {inv["name"] for inv in inventory}
+        for w_name, w_info in watcher_map.items():
+            if w_name not in inv_names:
+                all_items.append({
+                    "id": w_info.get("id") or f"DOC_{hashlib.md5(w_name.encode()).hexdigest()[:8].upper()}",
+                    "raw_id": w_name,
+                    "name": w_name,
+                    "category": w_info.get("category", "Tài liệu Đồng bộ"),
+                    "category_en": w_info.get("category_en", "Synced Document"),
+                    "type": w_info.get("type", "TXT"),
+                    "ext": os.path.splitext(w_name)[1].lower(),
+                    "dept": w_info.get("dept", "Kinh doanh (Sales)"),
+                    "deptKey": w_info.get("deptKey", "sales"),
+                    "deptLabel": w_info.get("deptLabel", "Kinh doanh (Sales)"),
+                    "department": w_info.get("department", "Kinh doanh (Sales)"),
+                    "owner": w_info.get("owner", "Google Drive Sync"),
+                    "date": w_info.get("date", datetime.now().strftime("%d/%m/%Y")),
+                    "mtime": time.time(),
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "status": "INDEXED",
+                    "statusBadge": "Đã lập chỉ mục",
+                    "statusState": "active",
+                    "qdrant_indexed": True,
+                    "neo4j_synced": True,
+                    "qdrantIndexed": True,
+                    "neo4jSynced": True,
+                    "chunk_count": w_info.get("chunk_count", 1),
+                    "chunks": f"{w_info.get('chunk_count', 1)} Chunks",
+                    "storage_path": w_info.get("storage_path", f"/data/sales/{w_name}"),
+                    "hash": w_info.get("hash", ""),
+                    "fileHash": w_info.get("hash", ""),
+                    "file_hash": w_info.get("hash", ""),
+                    "size": w_info.get("size", "0.5 KB"),
+                    "size_bytes": w_info.get("size_bytes", 512),
+                    "risk": "Low",
+                    "riskLabel": "Khớp đồ thị & vector",
+                    "source": w_info.get("source", "aegis_local_file_watcher"),
+                    "isNew": w_info.get("isNew", True)
+                })
 
         indexed_count = sum(1 for it in all_items if it["status"] == "INDEXED")
         pending_count = sum(1 for it in all_items if it["status"] == "PENDING")
@@ -1847,6 +1976,7 @@ def get_repository_documents(
 @app.get("/api/documents/detail")
 def get_document_detail(
     doc_id: str = Query(...),
+    department: Optional[str] = Query(default=None),
     scope: ScopeContext = Depends(get_user_scope),
 ):
     """
@@ -1855,20 +1985,53 @@ def get_document_detail(
     Fast and accurate preview for all file types (.docx, .pdf, .csv, watcher docs).
     """
     doc_id_clean = (doc_id or "").strip()
+    dept_str = department if isinstance(department, str) and department.strip() else None
+
+    # Upfront department authorization check:
+    if dept_str:
+        dept_norm = normalize_dept(dept_str)
+        if not scope.is_department_allowed(dept_norm):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Truy cập bị từ chối: Người dùng không có quyền truy cập phòng ban '{dept_str}' (BR-02)."
+            )
 
     # 1. Check Watcher Ingested Docs FIRST (fastest in-memory cache < 1ms)
     watcher_doc = None
     try:
         from app.modules.m1_data_sync.webhook import get_watcher_ingested_docs
         watcher_docs = get_watcher_ingested_docs()
-        watcher_doc = next((
+        candidates = [
             d for d in watcher_docs
             if d.get("id") == doc_id_clean or
                d.get("name") == doc_id_clean or
                d.get("raw_id") == doc_id_clean or
                d.get("name", "").lower() == doc_id_clean.lower() or
                d.get("id", "").lower() == doc_id_clean.lower()
-        ), None)
+        ]
+        if dept_str:
+            target_dk = normalize_dept(dept_str)
+            candidates = [d for d in candidates if normalize_dept(d.get("deptKey") or d.get("dept_key") or d.get("department")) == target_dk]
+
+        if len(candidates) == 1:
+            watcher_doc = candidates[0]
+        elif len(candidates) > 1:
+            id_exact = [d for d in candidates if d.get("id") == doc_id_clean]
+            if len(id_exact) > 1:
+                raise HTTPException(status_code=409, detail=f"Phát hiện xung đột mã tài liệu: nhiều Document node có cùng ID '{doc_id_clean}'.")
+            visible_cands = [d for d in candidates if scope.is_department_allowed(d.get("deptKey") or d.get("dept_key") or "rnd")]
+            if len(visible_cands) > 1:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": f"Tên tài liệu '{doc_id_clean}' tồn tại ở nhiều phòng ban. Vui lòng chỉ định rõ department.",
+                        "candidates": [{"id": d.get("id"), "name": d.get("name"), "department": d.get("department"), "deptKey": d.get("deptKey")} for d in visible_cands]
+                    }
+                )
+            elif len(visible_cands) == 1:
+                watcher_doc = visible_cands[0]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"[DocumentDetail] Watcher doc lookup error: {e}")
 
@@ -2025,7 +2188,7 @@ def get_document_detail(
     scope.assert_document_access(doc_id_clean, dept_key)
 
     ext = os.path.splitext(fname)[1].lower()
-    final_id = (watcher_doc.get("id") if watcher_doc else None) or (storage_item.get("id") if storage_item else None) or f"DOC_{hashlib.md5(fname.encode()).hexdigest()[:8].upper()}"
+    final_id = (watcher_doc.get("id") if watcher_doc else None) or (storage_item.get("id") if storage_item else None) or None
     storage_path = (watcher_doc.get("storage_path") if watcher_doc else None) or (storage_item.get("storage_path") if storage_item else f"/data/{dept_key}/{fname}")
     file_hash = (watcher_doc.get("hash") or watcher_doc.get("file_hash") if watcher_doc else None) or (storage_item.get("hash") if storage_item else "")
     size_bytes = (watcher_doc.get("size_bytes") if watcher_doc else None) or (storage_item.get("size_bytes", 0) if storage_item else 0)
@@ -2061,52 +2224,181 @@ def get_document_detail(
     if not clauses and not companies:
         try:
             if neo4j_client.is_connected or neo4j_client.connect():
-                res = neo4j_client.run_cypher("""
+                # Step A: Exact ID search first
+                id_res = neo4j_client.run_cypher("""
                     MATCH (d:Document)
-                    WHERE d.id = $id OR d.name = $id OR d.oldName = $id OR d.name = $clean_id OR d.id = $clean_id
+                    WHERE d.id = $clean_id
                     OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
                     OPTIONAL MATCH (c:Company)-[:PARTY_TO]->(d)
                     RETURN d.id as id, d.name as name, d.department as dept, d.deptKey as deptKey,
-                           d.storagePath as storagePath, d.hash as hash, d.chunksCount as chunks,
+                           d.storagePath as storagePath, d.hash as hash, d.file_hash as file_hash,
+                           d.chunksCount as chunks, d.status as status, d.op_stage as op_stage,
+                           d.committed_op_id as committed_op_id, d.active_point_ids as active_point_ids,
                            d.ingestedAt as ingestedAt, d.lastModified as lastModified,
                            d.qdrantIndexed as qdrantIndexed, d.neo4jSynced as neo4jSynced,
                            collect(DISTINCT {id: cl.id, type: cl.type, title: cl.title, snippet: cl.snippet}) as clauses,
                            collect(DISTINCT c.name) as companies
-                    LIMIT 1
-                """, {"id": fname, "clean_id": doc_id_clean})
-                if res and res[0].get("id"):
-                    neo_doc = res[0]
+                    LIMIT 2
+                """, {"clean_id": doc_id_clean})
+                if len(id_res) > 1:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Phát hiện xung đột mã tài liệu: nhiều Document node có cùng ID '{doc_id_clean}'."
+                    )
+                if len(id_res) == 1:
+                    neo_doc = id_res[0]
+                    scope.assert_document_access(neo_doc.get("id"), neo_doc.get("deptKey"))
                     clauses = [cl for cl in neo_doc.get("clauses", []) if cl.get("id")]
                     companies = [cp for cp in neo_doc.get("companies", []) if cp]
+                else:
+                    # Step B: Query by document name
+                    search_name = fname or doc_id_clean
+                    if dept_str:
+                        target_dept = normalize_dept(dept_str)
+                        name_res = neo4j_client.run_cypher("""
+                            MATCH (d:Document)
+                            WHERE (d.name = $name OR d.oldName = $name)
+                              AND (d.deptKey = $dept_key OR d.department = $dept_key)
+                            OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
+                            OPTIONAL MATCH (c:Company)-[:PARTY_TO]->(d)
+                            RETURN d.id as id, d.name as name, d.department as dept, d.deptKey as deptKey,
+                                   d.storagePath as storagePath, d.hash as hash, d.file_hash as file_hash,
+                                   d.chunksCount as chunks, d.status as status, d.op_stage as op_stage,
+                                   d.committed_op_id as committed_op_id, d.active_point_ids as active_point_ids,
+                                   d.ingestedAt as ingestedAt, d.lastModified as lastModified,
+                                   d.qdrantIndexed as qdrantIndexed, d.neo4jSynced as neo4jSynced,
+                                   collect(DISTINCT {id: cl.id, type: cl.type, title: cl.title, snippet: cl.snippet}) as clauses,
+                                   collect(DISTINCT c.name) as companies
+                            LIMIT 2
+                        """, {"name": search_name, "dept_key": target_dept})
+                        if len(name_res) > 1:
+                            raise HTTPException(
+                                status_code=409,
+                                detail=f"Phát hiện xung đột tên tài liệu trong phòng ban '{dept_str}'."
+                            )
+                        if len(name_res) == 1:
+                            neo_doc = name_res[0]
+                            scope.assert_document_access(neo_doc.get("id"), neo_doc.get("deptKey"))
+                            clauses = [cl for cl in neo_doc.get("clauses", []) if cl.get("id")]
+                            companies = [cp for cp in neo_doc.get("companies", []) if cp]
+                    else:
+                        name_res = neo4j_client.run_cypher("""
+                            MATCH (d:Document)
+                            WHERE d.name = $name OR d.oldName = $name
+                            OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
+                            OPTIONAL MATCH (c:Company)-[:PARTY_TO]->(d)
+                            RETURN d.id as id, d.name as name, d.department as dept, d.deptKey as deptKey,
+                                   d.storagePath as storagePath, d.hash as hash, d.file_hash as file_hash,
+                                   d.chunksCount as chunks, d.status as status, d.op_stage as op_stage,
+                                   d.committed_op_id as committed_op_id, d.active_point_ids as active_point_ids,
+                                   d.ingestedAt as ingestedAt, d.lastModified as lastModified,
+                                   d.qdrantIndexed as qdrantIndexed, d.neo4jSynced as neo4jSynced,
+                                   collect(DISTINCT {id: cl.id, type: cl.type, title: cl.title, snippet: cl.snippet}) as clauses,
+                                   collect(DISTINCT c.name) as companies
+                            LIMIT 10
+                        """, {"name": search_name})
+                        visible_docs = [m for m in name_res if scope.is_department_allowed(m.get("deptKey"))]
+                        if len(visible_docs) > 1:
+                            cands = [{"id": m.get("id"), "name": m.get("name"), "department": m.get("dept"), "deptKey": m.get("deptKey")} for m in visible_docs]
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": f"Tên tài liệu '{search_name}' tồn tại ở nhiều phòng ban. Vui lòng chỉ định rõ department.",
+                                    "candidates": cands
+                                }
+                            )
+                        elif len(visible_docs) == 1:
+                            neo_doc = visible_docs[0]
+                            scope.assert_document_access(neo_doc.get("id"), neo_doc.get("deptKey"))
+                            clauses = [cl for cl in neo_doc.get("clauses", []) if cl.get("id")]
+                            companies = [cp for cp in neo_doc.get("companies", []) if cp]
+        except HTTPException:
+            raise
         except Exception as e:
             logger.warning(f"[DocumentDetail] Neo4j query error: {e}")
 
-    # Query Qdrant for real chunks if not already available from watcher
-    if not chunks and not records:
+    if neo_doc:
+        final_id = neo_doc.get("id") or final_id
+        fname = neo_doc.get("name") or fname
+        storage_path = neo_doc.get("storagePath") or storage_path
+        file_hash = neo_doc.get("hash") or neo_doc.get("file_hash") or file_hash
+
+    # Query Qdrant for real chunks only if document is in serving state (SYNCED / active) and not in transitional stages
+    doc_status = (neo_doc.get("status") if neo_doc else None) or (watcher_doc.get("statusBadge") if watcher_doc else None)
+    doc_stage = neo_doc.get("op_stage") if neo_doc else None
+    is_serving_state = doc_status in ["SYNCED", "Hoạt động (Synced)", "active"] or bool(neo_doc and neo_doc.get("neo4jSynced"))
+    is_transitional = doc_stage in ["STAGING", "RENAMING", "CLEANUP_PENDING", "CLEANUP_PENDING_AUDIT"]
+
+    if not chunks and not records and is_serving_state and not is_transitional:
         try:
             if qdrant_client.is_connected or qdrant_client.connect():
                 from qdrant_client.http import models
-                filter_cond = models.Filter(
-                    should=[
-                        models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname)),
-                        models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".pdf", ".txt"))),
-                        models.FieldCondition(key="contract_name", match=models.MatchValue(value=fname.replace(".PDF", ".pdf"))),
-                        models.FieldCondition(key="doc_id", match=models.MatchValue(value=final_id)),
-                        models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id_clean))
+                target_doc_id = (neo_doc.get("id") if neo_doc else None) or final_id or doc_id_clean
+                active_pts = neo_doc.get("active_point_ids") if neo_doc else []
+                committed_op = neo_doc.get("committed_op_id") if neo_doc else None
+                expected_hash = (neo_doc.get("file_hash") or neo_doc.get("hash") if neo_doc else None) or file_hash
+
+                pts = []
+                if active_pts:
+                    # Strategy 1: Retrieve exact verified active point IDs
+                    try:
+                        pts = qdrant_client._client.retrieve(
+                            collection_name=qdrant_client._collection,
+                            ids=active_pts[:30],
+                            with_payload=True,
+                            with_vectors=False
+                        )
+                        pts = [
+                            p for p in (pts or [])
+                            if (p.payload or {}).get("is_active") is True
+                            and (not expected_hash or (p.payload or {}).get("file_hash") == expected_hash)
+                            and (not committed_op or (p.payload or {}).get("operation_id") == committed_op)
+                        ]
+                    except Exception as ret_err:
+                        logger.warning(f"[DocumentDetail] Retrieve exact active points error: {ret_err}")
+                        pts = []
+
+                if not pts and target_doc_id:
+                    # Strategy 2: Scroll with strict nested filter enforcing is_active=True and committed metadata
+                    must_conditions = [
+                        models.FieldCondition(key="is_active", match=models.MatchValue(value=True)),
+                        models.FieldCondition(key="doc_id", match=models.MatchValue(value=target_doc_id))
                     ]
-                )
-                pts, _ = qdrant_client._client.scroll(
-                    collection_name=qdrant_client._collection,
-                    scroll_filter=filter_cond,
-                    limit=30,
-                    with_payload=True,
-                    with_vectors=False
-                )
+                    if expected_hash:
+                        must_conditions.append(models.FieldCondition(key="file_hash", match=models.MatchValue(value=expected_hash)))
+                    if committed_op:
+                        must_conditions.append(models.FieldCondition(key="operation_id", match=models.MatchValue(value=committed_op)))
+
+                    filter_cond = models.Filter(must=must_conditions)
+                    pts, _ = qdrant_client._client.scroll(
+                        collection_name=qdrant_client._collection,
+                        scroll_filter=filter_cond,
+                        limit=30,
+                        with_payload=True,
+                        with_vectors=False
+                    )
+
+                # Strategy 3: Legacy scroll for pre-PR1 documents without is_active tag
+                if not pts and target_doc_id and not committed_op and doc_stage in (None, ""):
+                    must_conditions_legacy = [
+                        models.FieldCondition(key="doc_id", match=models.MatchValue(value=target_doc_id))
+                    ]
+                    if expected_hash:
+                        must_conditions_legacy.append(models.FieldCondition(key="file_hash", match=models.MatchValue(value=expected_hash)))
+                    pts, _ = qdrant_client._client.scroll(
+                        collection_name=qdrant_client._collection,
+                        scroll_filter=models.Filter(must=must_conditions_legacy),
+                        limit=30,
+                        with_payload=True,
+                        with_vectors=False
+                    )
+
                 for p in pts:
+                    pl = p.payload or {}
                     chunks.append({
                         "id": str(p.id),
-                        "chunk_id": p.payload.get("chunk_id", 0),
-                        "text": p.payload.get("text", "")
+                        "chunk_id": pl.get("chunk_id", 0) if pl.get("chunk_id") is not None else pl.get("chunk_index", 0),
+                        "text": pl.get("text", "")
                     })
                 chunks.sort(key=lambda c: c.get("chunk_id", 0))
         except Exception as e:
@@ -2218,6 +2510,112 @@ def get_document_detail(
             "records": records
         }
     }
+
+
+@app.get("/api/documents/download")
+@app.get("/api/v1/documents/download")
+def download_document_file(
+    doc_id: Optional[str] = Query(default=None),
+    filename: Optional[str] = Query(default=None),
+    department: Optional[str] = Query(default=None),
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """
+    Downloads raw document bytes from Central Document Storage.
+    Enforces C4 Security Policy: Standard & Dept Manager accounts are restricted
+    from raw document downloading without Admin privileges, and actions are audit-logged.
+    """
+    try:
+        is_admin = getattr(scope, "is_unrestricted", False) or getattr(scope, "is_admin", False) or getattr(scope, "role", "") in ("admin", "it_admin")
+        if not is_admin:
+            raise HTTPException(
+                status_code=403,
+                detail="Chính sách bảo mật C4: Chỉ Quản trị viên (Admin) mới có quyền tải xuống tài liệu gốc."
+            )
+
+        target_name = (filename or doc_id or "").strip()
+        if not target_name:
+            raise HTTPException(status_code=400, detail="Thiếu tên tệp hoặc mã tài liệu cần tải xuống.")
+
+        # Path traversal prevention
+        target_name = os.path.basename(target_name)
+
+        from app.core.central_storage import read_file_from_storage, resolve_canonical_dept, CANONICAL_DEPARTMENTS
+        inventory = get_central_storage_inventory()
+
+        matched = next((
+            it for it in inventory
+            if it.get("name") == target_name or
+               it.get("name", "").lower() == target_name.lower() or
+               it.get("id") == target_name or
+               target_name.lower() in it.get("name", "").lower()
+        ), None)
+
+        real_fname = matched["name"] if matched else target_name
+        real_dept = matched["dept_key"] if matched else resolve_canonical_dept(department or "legal")
+
+        # 1. Try specified or matched department
+        content_bytes = read_file_from_storage(real_fname, real_dept)
+
+        # 2. If not found, try all canonical departments
+        if not content_bytes:
+            for d in CANONICAL_DEPARTMENTS:
+                content_bytes = read_file_from_storage(real_fname, d)
+                if content_bytes:
+                    real_dept = d
+                    break
+
+        # 3. Fallback: Search local filesystem
+        if not content_bytes:
+            backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            for cand_dir in [
+                os.path.join(backend_root, "data", real_dept),
+                os.path.join(backend_root, "storage", "incoming"),
+                os.path.join(backend_root, "backend", "storage", "incoming")
+            ]:
+                cand_path = os.path.join(cand_dir, real_fname)
+                if os.path.exists(cand_path):
+                    with open(cand_path, "rb") as f:
+                        content_bytes = f.read()
+                    if content_bytes:
+                        break
+
+        if not content_bytes:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Không tìm thấy tệp tài liệu gốc '{real_fname}' trong Central Storage."
+            )
+
+        ext = os.path.splitext(real_fname)[1].lower()
+        mime_types = {
+            ".pdf": "application/pdf",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".csv": "text/csv",
+            ".txt": "text/plain",
+            ".json": "application/json"
+        }
+        media_type = mime_types.get(ext, "application/octet-stream")
+
+        import urllib.parse
+        encoded_name = urllib.parse.quote(real_fname)
+        from fastapi.responses import Response
+        return Response(
+            content=content_bytes,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"[DownloadDoc] Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi hệ thống khi tải tệp: {str(e)}"
+        )
 
 
 @app.get("/api/contracts/assigned")

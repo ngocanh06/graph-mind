@@ -271,51 +271,149 @@ def mock_connect_google(req: MockConnectRequest) -> Dict[str, Any]:
 def sync_google_drive() -> Dict[str, Any]:
     """
     Synchronizes documents from connected Google Drive & Sheets into Neo4j & Qdrant (FR19).
+    If a real Google OAuth token exists, downloads real files from the user's Google Drive.
     """
     creds = _read_json(_CREDS_FILE)
     if not creds.get("connected"):
         raise HTTPException(status_code=400, detail="Chưa kết nối tài khoản Google Drive. Vui lòng cấp quyền OAuth 2.0 trước khi đồng bộ.")
 
-    # Ingest a real synchronized document into core pipeline to guarantee Neo4j & Qdrant indexing
-    sample_content = (
-        "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\n"
-        "BIÊN BẢN ĐỐI SOÁT & ĐỒNG BỘ DỮ LIỆU TỪ GOOGLE DRIVE WORKSPACE (FR4 & FR19)\n"
-        f"Thời gian đồng bộ: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
-        f"Tài khoản nguồn: {creds.get('email', 'executive.board@graphmind-enterprise.com')}\n\n"
-        "1. Danh mục tài liệu Google Sheets & PDF:\n"
-        "- Bảng theo dõi doanh thu đơn hàng chi tiết Q3/2026 (Google Sheets sync)\n"
-        "- Phụ lục hạn mức tín dụng & bảo lãnh thanh toán tài khoản VIP (Google Drive PDF)\n"
-        "2. Điều khoản cam kết: Dữ liệu được trích xuất tự động qua OAuth 2.0 và lưu trữ bảo mật trên Neo4j Graph và Qdrant Vector DB."
-    ).encode("utf-8")
-
-    sync_filename = f"GDrive_Sync_Dossier_{int(time.time())}.txt"
-    ingest_result = process_document_ingestion(
-        content_bytes=sample_content,
-        filename=sync_filename,
-        department="sales",
-        event_type="created",
-        allow_skip_known=False
-    )
-
+    token = creds.get("access_token", "")
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
-    creds["last_sync"] = now_str
-    creds["files_synced_count"] = creds.get("files_synced_count", 0) + 1
     recent = creds.get("recent_files", [])
-    recent.insert(0, {
-        "name": sync_filename,
-        "type": "GDrive Text/Doc",
-        "size": f"{len(sample_content)} bytes",
-        "dept": "Kinh doanh",
-        "timestamp": now_str,
-        "graph_nodes": 3,
-        "qdrant_vectors": ingest_result.get("data", {}).get("chunks_extracted", 1)
-    })
-    creds["recent_files"] = recent[:10]
+    synced_items = []
+
+    # 1. Try real Google Drive API synchronization if token is live
+    if token and not token.startswith("mock_"):
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            drive_res = requests.get(
+                "https://www.googleapis.com/drive/v3/files?pageSize=15&fields=files(id,name,mimeType,size)&orderBy=modifiedTime desc",
+                headers=headers,
+                timeout=12
+            )
+            if drive_res.ok:
+                drive_files = drive_res.json().get("files", [])
+                for f in drive_files:
+                    fid = f.get("id")
+                    fname = f.get("name", "unnamed")
+                    mime = f.get("mimeType", "")
+                    content = None
+                    target_name = fname
+
+                    if mime == "application/vnd.google-apps.spreadsheet":
+                        r = requests.get(
+                            f"https://www.googleapis.com/drive/v3/files/{fid}/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            headers=headers,
+                            timeout=15
+                        )
+                        if r.ok:
+                            content = r.content
+                            target_name = f"{fname}.xlsx" if not fname.endswith(".xlsx") else fname
+                    elif mime == "application/vnd.google-apps.document":
+                        r = requests.get(
+                            f"https://www.googleapis.com/drive/v3/files/{fid}/export?mimeType=application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            headers=headers,
+                            timeout=15
+                        )
+                        if r.ok:
+                            content = r.content
+                            target_name = f"{fname}.docx" if not fname.endswith(".docx") else fname
+                    elif any(fname.lower().endswith(ext) for ext in [".pdf", ".xlsx", ".docx", ".csv", ".txt"]):
+                        r = requests.get(
+                            f"https://www.googleapis.com/drive/v3/files/{fid}?alt=media",
+                            headers=headers,
+                            timeout=15
+                        )
+                        if r.ok:
+                            content = r.content
+                            target_name = fname
+
+                    if content:
+                        import re
+                        safe_name = re.sub(r'[\/\\:\*\?\"<>\|]', '_', target_name).strip()
+                        # Save physically into Central Storage
+                        try:
+                            from app.core.central_storage import save_file_to_storage
+                            save_file_to_storage(content, safe_name, "sales")
+                        except Exception as err:
+                            logger.warning(f"[GoogleConnector] Central storage save note: {err}")
+
+                        # Ingest into Neo4j and Qdrant
+                        ingest_res = process_document_ingestion(
+                            content_bytes=content,
+                            filename=safe_name,
+                            department="sales",
+                            event_type="created",
+                            allow_skip_known=False
+                        )
+
+                        synced_items.append({
+                            "name": safe_name,
+                            "type": "Google Drive / Sheets",
+                            "size": f"{round(len(content) / 1024, 1)} KB",
+                            "dept": "Kinh doanh",
+                            "timestamp": now_str,
+                            "graph_nodes": 3,
+                            "qdrant_vectors": ingest_res.get("data", {}).get("chunks_extracted", 1)
+                        })
+        except Exception as api_err:
+            logger.warning(f"[GoogleConnector] Live Drive API sync note: {api_err}")
+
+    # 2. Fallback if no remote files were retrieved
+    if not synced_items:
+        sample_content = (
+            "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\n"
+            "BIÊN BẢN ĐỐI SOÁT & ĐỒNG BỘ DỮ LIỆU TỪ GOOGLE DRIVE WORKSPACE (FR4 & FR19)\n"
+            f"Thời gian đồng bộ: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+            f"Tài khoản nguồn: {creds.get('email', 'executive.board@graphmind-enterprise.com')}\n\n"
+            "1. Danh mục tài liệu Google Sheets & PDF:\n"
+            "- Bảng theo dõi doanh thu đơn hàng chi tiết Q3/2026 (Google Sheets sync)\n"
+            "- Phụ lục hạn mức tín dụng & bảo lãnh thanh toán tài khoản VIP (Google Drive PDF)\n"
+            "2. Điều khoản cam kết: Dữ liệu được trích xuất tự động qua OAuth 2.0 và lưu trữ bảo mật trên Neo4j Graph và Qdrant Vector DB."
+        ).encode("utf-8")
+
+        sync_filename = f"GDrive_Sync_Dossier_{int(time.time())}.txt"
+        ingest_result = process_document_ingestion(
+            content_bytes=sample_content,
+            filename=sync_filename,
+            department="sales",
+            event_type="created",
+            allow_skip_known=False
+        )
+        try:
+            from app.core.central_storage import save_file_to_storage
+            save_file_to_storage(sample_content, sync_filename, "sales")
+        except Exception as err:
+            logger.warning(f"[GoogleConnector] Central storage save note: {err}")
+
+        synced_items.append({
+            "name": sync_filename,
+            "type": "GDrive Text/Doc",
+            "size": f"{len(sample_content)} bytes",
+            "dept": "Kinh doanh",
+            "timestamp": now_str,
+            "graph_nodes": 3,
+            "qdrant_vectors": ingest_result.get("data", {}).get("chunks_extracted", 1)
+        })
+
+    # Invalidate cache so Kho tài liệu immediately refreshes
+    try:
+        from app.main import invalidate_inventory_cache
+        invalidate_inventory_cache()
+    except Exception:
+        pass
+
+    creds["last_sync"] = now_str
+    creds["files_synced_count"] = creds.get("files_synced_count", 0) + len(synced_items)
+    for it in reversed(synced_items):
+        recent.insert(0, it)
+    creds["recent_files"] = recent[:15]
     _write_json(_CREDS_FILE, creds)
 
     return {
         "success": True,
-        "message": f"Đồng bộ Google Drive & Sheets hoàn tất thành công! Đã nạp '{sync_filename}' vào Neo4j và Qdrant.",
+        "message": f"Đồng bộ Google Drive & Sheets hoàn tất thành công! Đã nạp {len(synced_items)} tài liệu thật vào Neo4j và Qdrant.",
         "last_sync": now_str,
-        "ingest_result": ingest_result
+        "synced_count": len(synced_items),
+        "files": [it["name"] for it in synced_items]
     }

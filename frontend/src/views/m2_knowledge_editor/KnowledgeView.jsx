@@ -365,7 +365,7 @@ export default function KnowledgeView({
             }`}
           >
             <span>🕸️</span>
-            <span>{isVi ? "Neo4j Live (52.283 Nodes)" : "Neo4j Live (52,283 Nodes)"}</span>
+            <span>{isVi ? "Neo4j Live (55.342 Nodes)" : "Neo4j Live (55,342 Nodes)"}</span>
           </button>
         </div>
       </div>

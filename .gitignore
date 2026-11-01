@@ -3,9 +3,12 @@ dist/
 build/
 __pycache__/
 *.pyc
+*.py[cod]
+*$py.class
 .env
 *.env
 backend/.env
+.env*.local
 .DS_Store
 
 # Databases & local storage
@@ -14,6 +17,9 @@ neo4j_import/
 qdrant_data/
 postgres_data/
 pgadmin_data/
+*.sqlite3
+*.db
+backups/
 
 # Environments & logs
 venv/
@@ -26,6 +32,9 @@ mcp_config.json
 *.gguf
 *.bin
 *.safetensors
+*.onnx
+*.pt
+*.pth
 
 # Research raw/processed data (too large, not needed for running)
 research/data/raw/
@@ -41,6 +50,7 @@ frontend/node_modules/
 
 # Test & scratch caches
 .pytest_cache/
+*.pytest_cache/
 scratch/
 .cache_adv_csv/
 .demo_seed_cache/
@@ -53,9 +63,21 @@ scratch/
 *.zip
 DockerUploadVerification.pdf
 
+# Temporary audit and reconciliation reports
+*DRY_RUN.json
+audit_report.json
+FINAL_REVIEW_REPORT.md
+RELATIONSHIP_COUNT_RECONCILIATION_REPORT.md
+DOCUMENT_INGESTION_TRACEABILITY_REPORT.md
+
 # Monitored document directories (stored in Docker Central Storage volume)
 accounting_procurement/
 it/
 legal/
 rnd/
 sales/
+
+# Google Drive OAuth credentials & local runtime configs
+backend/app/modules/m1_data_sync/data/google_credentials.json
+backend/app/modules/m1_data_sync/data/google_oauth_config.json
+

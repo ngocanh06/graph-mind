@@ -9,131 +9,127 @@ import { fetchRiskAlerts } from "../../services/api";
 
 const ALL_ALERTS_DATA = (isVi) => [
   {
-    id: "ALERT-CUAD-087",
-    category: "contract_expiring", // Hợp đồng sắp hết hạn
-    dept: "sales",
+    id: "ALERT-LEGAL-LIAB",
+    category: "legal_risk",
+    dept: "legal",
     severity: "high",
     variant: "danger",
-    Icon: Clock,
-    badgeLabel: isVi ? "Hợp đồng sắp hết hạn (5 ngày)" : "Contract Expiring (5 days)",
-    detectedAt: isVi ? "Phát hiện từ đồ thị Neo4j" : "Detected from Neo4j graph",
+    Icon: ShieldAlert,
+    badgeLabel: isVi ? "Không có trần bồi thường (No Liability Cap)" : "No Liability Cap",
+    detectedAt: isVi ? "Phát hiện từ Neo4j Clause Graph" : "Detected from Neo4j Clause Graph",
     title: isVi
-      ? "Hợp đồng Cung cấp Linh kiện #087 hết hạn trong 5 ngày"
-      : "Component Supply Agreement #087 expiring in 5 days",
+      ? "Hợp đồng ADUROBIOTECHINC_03_28_2014-EX-10.1 thiếu điều khoản Giới hạn trách nhiệm"
+      : "Contract ADUROBIOTECHINC_03_28_2014-EX-10.1 lacks Limitation of Liability",
     description: isVi
-      ? "Hợp đồng nguyên tắc giữa Doanh nghiệp và Tập đoàn Viễn thông Alpha sẽ hết hiệu lực vào ngày 05/11/2026. Điều khoản gia hạn tự động không được kích hoạt trong tệp văn bản quét. Cần tái đàm phán hoặc gia hạn văn bản ngay để tránh gián đoạn chuỗi cung ứng."
-      : "Master framework agreement between Enterprise and Alpha Corp expires on Nov 5, 2026. Auto-renewal clause not activated in ingested scan. Urgent renegotiation needed to avoid contract lapse.",
+      ? "Phân tích đồ thị tri thức phát hiện hợp đồng thiếu điều khoản Giới hạn trách nhiệm bồi thường (Limitation of Liability). Khi có tranh chấp hoặc sự cố, doanh nghiệp đối mặt với rủi ro bồi thường vô hạn mức (74/510 hợp đồng có lỗ hổng này trong đồ thị Neo4j)."
+      : "Graph analysis reveals contract lacks a Limitation of Liability clause, exposing enterprise to uncapped damages in disputes (74/510 contracts affected).",
     meta: [
-      { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Kinh doanh & Bán hàng" : "Sales & BD" },
-      { label: isVi ? "Đối tác:" : "Partner:", value: "Tập đoàn Viễn thông Alpha (CUST-8491)" },
-      { label: isVi ? "Giá trị hợp đồng:" : "Contract Value:", value: "1,280,000,000 ₫", highlight: "var(--blue, #2563EB)" },
-      {
-        label: isVi ? "Trích dẫn nguồn:" : "Source citation:",
-        value: "CUAD_Contract_087.pdf",
-        isLink: true
-      },
+      { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Pháp chế & Rủi ro" : "Legal & Risk" },
+      { label: isVi ? "Rủi ro pháp lý:" : "Legal Risk:", value: isVi ? "Bồi thường không giới hạn (Uncapped Liability)" : "Uncapped Liability" },
+      { label: isVi ? "Tệp văn bản:" : "Document File:", value: "ADUROBIOTECHINC_03_28_2014-EX-10.1-COLLABORATION AGREEMENT.pdf" },
+      { label: isVi ? "Trích dẫn nguồn:" : "Source citation:", value: "ADUROBIOTECHINC_03_28_2014-EX-10.1-COLLABORATION AGREEMENT.pdf", isLink: true },
     ],
-    docId: "CUAD_087",
+    docId: "ADUROBIOTECHINC_03_28_2014-EX-10.1-COLLABORATION AGREEMENT.pdf",
+    aliasId: "CUAD_001",
   },
   {
-    id: "ALERT-CRM-3912",
-    category: "order_drop", // Sụt giảm đơn hàng
-    dept: "sales",
-    severity: "medium",
-    variant: "warning",
-    Icon: TrendingDown,
-    badgeLabel: isVi ? "Sụt giảm đơn hàng (-30%)" : "Order Cadence Drop (-30%)",
-    detectedAt: isVi ? "Phát hiện 1 ngày trước" : "Detected 1 day ago",
-    title: isVi
-      ? "Khách hàng VIP (Công ty Cơ khí Đông Nam) giảm 30% tần suất đặt hàng"
-      : "VIP Customer (Dong Nam Mechanics) 30% order cadence reduction",
-    description: isVi
-      ? "Mô hình phân tích đơn hàng từ AdventureWorks SalesOrderHeader ghi nhận số lượng đơn đặt hàng trung bình giảm từ 8 đơn/tháng xuống còn 2 đơn trong 45 ngày qua. Chưa ghi nhận khiếu nại chất lượng dịch vụ trong hệ thống SOP. Cần chuyên viên kinh doanh liên hệ tái chăm sóc."
-      : "Time-series order analytics from AdventureWorks SalesOrderHeader detects average monthly orders dropped from 8 to 2 over the past 45 days. No quality tickets recorded in SOP tracker. Sales rep re-engagement recommended.",
-    meta: [
-      { label: isVi ? "Khách hàng ID:" : "Customer ID:", value: "CUST-3912 (Cơ khí Đông Nam)" },
-      { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Kinh doanh & Bán hàng" : "Sales & BD" },
-      {
-        label: isVi ? "Doanh số sụt giảm dự kiến:" : "Projected revenue dip:",
-        value: "-285,000,000 ₫",
-        highlight: "var(--red, #DC2626)"
-      },
-    ],
-    docId: "CUAD_042",
-  },
-  {
-    id: "ALERT-EXP-104",
-    category: "contract_expiring", // Hợp đồng sắp hết hạn
-    dept: "sales",
-    severity: "high",
-    variant: "danger",
-    Icon: Clock,
-    badgeLabel: isVi ? "Hợp đồng sắp hết hạn (18 ngày)" : "Contract Expiring (18 days)",
-    detectedAt: isVi ? "Phát hiện hôm qua" : "Detected yesterday",
-    title: isVi
-      ? "Hợp đồng Đại lý Ủy quyền #104 (Logistics Toàn Cầu Tech) hết hạn trong 18 ngày"
-      : "Authorized Distributor Agreement #104 (Global Logistics Tech) expiring in 18 days",
-    description: isVi
-      ? "Hợp đồng phân phối đại lý độc quyền giữa Doanh nghiệp và Logistics Toàn Cầu Tech hết hiệu lực ngày 15/12/2026. Đối tác đề xuất mở rộng thêm danh mục phụ tùng mới, cần chuẩn bị phụ lục hợp đồng đính kèm trước khi đáo hạn."
-      : "Exclusive distributor contract expires Dec 15, 2026. Partner requested new parts catalogue expansion. Prepare contract renewal addendum prior to expiry.",
-    meta: [
-      { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Kinh doanh & Bán hàng" : "Sales & BD" },
-      { label: isVi ? "Đối tác:" : "Partner:", value: "Logistics Toàn Cầu Tech (CUST-1044)" },
-      { label: isVi ? "Giá trị hợp đồng:" : "Contract Value:", value: "740,000,000 ₫", highlight: "var(--blue, #2563EB)" },
-      {
-        label: isVi ? "Trích dẫn nguồn:" : "Source citation:",
-        value: "CUAD_Contract_104.pdf",
-        isLink: true
-      },
-    ],
-    docId: "CUAD_104",
-  },
-  {
-    id: "ALERT-ORDER-4102",
-    category: "order_drop", // Sụt giảm đơn hàng
-    dept: "sales",
-    severity: "medium",
-    variant: "warning",
-    Icon: TrendingDown,
-    badgeLabel: isVi ? "Sụt giảm đơn hàng (Chậm 30 ngày)" : "Order Lag (>30 days)",
-    detectedAt: isVi ? "Phát hiện 2 ngày trước" : "Detected 2 days ago",
-    title: isVi
-      ? "Đối tác Phân phối (Minh Phát Corp) chậm phát sinh đơn hàng mới quá 30 ngày"
-      : "Distribution Partner (Minh Phat Corp) no new orders for >30 days",
-    description: isVi
-      ? "Theo dõi chu kỳ mua hàng định kỳ ghi nhận Minh Phát Corp đã quá 30 ngày chưa phát sinh Purchase Order theo Hợp đồng nguyên tắc bán buôn CUAD_115. Đề xuất nhân viên phụ trách kiểm tra tình trạng tồn kho của đại lý."
-      : "Periodic replenishment cycle shows Minh Phat Corp overdue by >30 days without new Purchase Order under Master Wholesale Agreement CUAD_115. Recommend checking dealer stock levels.",
-    meta: [
-      { label: isVi ? "Khách hàng ID:" : "Customer ID:", value: "CUST-4102 (Minh Phát Corp)" },
-      { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Kinh doanh & Bán hàng" : "Sales & BD" },
-      {
-        label: isVi ? "Doanh số dự kiến ảnh hưởng:" : "Projected revenue impact:",
-        value: "-120,000,000 ₫",
-        highlight: "var(--amber, #D97706)"
-      },
-    ],
-    docId: "CUAD_115",
-  },
-  {
-    id: "ALERT-GRAPH-042",
-    category: "legal_anomaly", // Bất thường pháp lý (Pháp chế / Toàn doanh nghiệp)
+    id: "ALERT-LEGAL-TERM",
+    category: "legal_risk",
     dept: "legal",
     severity: "medium",
     variant: "purple",
     Icon: AlertTriangle,
-    badgeLabel: isVi ? "Bất thường Pháp lý" : "Contract Anomaly",
-    detectedAt: isVi ? "Phát hiện 2 ngày trước" : "Detected 2 days ago",
+    badgeLabel: isVi ? "Thiếu điều khoản chấm dứt (No Termination)" : "No Termination Clause",
+    detectedAt: isVi ? "Phát hiện từ Neo4j Clause Graph" : "Detected from Neo4j Clause Graph",
     title: isVi
-      ? "Điều khoản bất thường trong Hợp đồng CUAD_042"
-      : "Abnormal Clause Detected in Contract CUAD_042",
+      ? "Hợp đồng ATENTOSA_04_24_2017-EX-10.1 thiếu điều khoản Chấm dứt hợp đồng"
+      : "Contract ATENTOSA_04_24_2017-EX-10.1 lacks Termination clause",
     description: isVi
-      ? "Neo4j Schema Inspector phát hiện quan hệ HAS_RISK_LIABILITY liên kết giữa điều khoản thanh toán và rủi ro phạt hợp đồng không có mức trần (No Liability Cap)."
-      : "Neo4j Schema Inspector detected HAS_RISK_LIABILITY relationship linking payment terms to an uncapped indemnification clause (No Liability Cap).",
+      ? "Đồ thị tri thức ghi nhận hợp đồng không chứa điều khoản Chấm dứt (Termination Clause), khiến doanh nghiệp thiếu cơ chế đơn phương rút lui an toàn khi đối tác vi phạm cam kết (52/510 hợp đồng có lỗ hổng này)."
+      : "Knowledge graph reports absence of a Termination clause, restricting enterprise exit options upon partner breach (52/510 contracts affected).",
     meta: [
       { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Pháp chế & Rủi ro" : "Legal & Risk" },
-      { label: isVi ? "Thực thể liên quan:" : "Associated Entity:", value: "Node CUAD_042_Clause_19" },
+      { label: isVi ? "Rủi ro pháp lý:" : "Legal Risk:", value: isVi ? "Thiếu cơ chế rút lui an toàn" : "Safe Exit Missing" },
+      { label: isVi ? "Tệp văn bản:" : "Document File:", value: "ATENTOSA_04_24_2017-EX-10.1-SERVICES AGREEMENT.pdf" },
+      { label: isVi ? "Trích dẫn nguồn:" : "Source citation:", value: "ATENTOSA_04_24_2017-EX-10.1-SERVICES AGREEMENT.pdf", isLink: true },
     ],
-    docId: "CUAD_042",
+    docId: "ATENTOSA_04_24_2017-EX-10.1-SERVICES AGREEMENT.pdf",
+    aliasId: "CUAD_002",
+  },
+  {
+    id: "ALERT-FIN-LOSS-1",
+    category: "financial_risk",
+    dept: "sales",
+    severity: "high",
+    variant: "danger",
+    Icon: TrendingDown,
+    badgeLabel: isVi ? "Bán lỗ dưới giá vốn (-$15,100 USD)" : "Sold Below Standard Cost (-$15,100)",
+    detectedAt: isVi ? "Phát hiện từ Neo4j SalesOrder & Margin Analyzer" : "Detected from Neo4j SalesOrder & Margin",
+    title: isVi
+      ? "Đơn hàng #51823 (Metro Metals Co.) bán dưới giá vốn tiêu chuẩn"
+      : "Order #51823 (Metro Metals Co.) sold below standard cost",
+    description: isVi
+      ? "Phân tích biên lợi nhuận ghi nhận Đơn hàng #51823 bán 21 sản phẩm 'Touring-1000 Yellow, 60' với đơn giá sau chiết khấu 20% là $762.90 USD, thấp hơn đáng kể so với Giá vốn tiêu chuẩn $1,481.94 USD (StandardCost). Khoản lỗ gộp phát sinh: -$15,099.75 USD."
+      : "Margin analysis shows Order #51823 sold 21x 'Touring-1000 Yellow, 60' at net unit price $762.90 USD (after 20% discount) vs standard cost $1,481.94 USD, generating gross loss of -$15,099.75 USD.",
+    meta: [
+      { label: isVi ? "Khách hàng:" : "Customer:", value: "CUST-29615 (Metro Metals Co.)" },
+      { label: isVi ? "Mã đơn hàng:" : "Order ID:", value: "Order #51823" },
+      { label: isVi ? "Sản phẩm:" : "Product:", value: "Touring-1000 Yellow, 60 (SL: 21, Chiết khấu: 20%)" },
+      { label: isVi ? "Lỗ biên lợi nhuận:" : "Margin Loss:", value: "-$15,099.75 USD", highlight: "var(--red, #DC2626)" },
+    ],
+    orderId: 51823,
+    docId: "Sales_SalesOrderDetail.csv",
+    aliasId: "SO_51823",
+  },
+  {
+    id: "ALERT-FIN-LOSS-2",
+    category: "financial_risk",
+    dept: "sales",
+    severity: "high",
+    variant: "danger",
+    Icon: TrendingDown,
+    badgeLabel: isVi ? "Bán lỗ dưới giá vốn (-$14,846 USD)" : "Sold Below Standard Cost (-$14,846)",
+    detectedAt: isVi ? "Phát hiện từ Neo4j SalesOrder & Margin Analyzer" : "Detected from Neo4j SalesOrder & Margin",
+    title: isVi
+      ? "Đơn hàng #46380 (Golf and Cycle Store) bán dưới giá vốn tiêu chuẩn"
+      : "Order #46380 (Golf and Cycle Store) sold below standard cost",
+    description: isVi
+      ? "Đơn hàng #46380 bán 11 sản phẩm 'Mountain-100 Black, 42' với đơn giá sau chiết khấu 35% là $548.44 USD, thấp hơn giá vốn tiêu chuẩn $1,898.09 USD. Khoản lỗ gộp phát sinh: -$14,846.24 USD."
+      : "Order #46380 sold 11x 'Mountain-100 Black, 42' at net unit price $548.44 USD (after 35% discount) vs standard cost $1,898.09 USD, incurring -$14,846.24 USD gross loss.",
+    meta: [
+      { label: isVi ? "Khách hàng:" : "Customer:", value: "CUST-29562 (Golf and Cycle Store)" },
+      { label: isVi ? "Mã đơn hàng:" : "Order ID:", value: "Order #46380" },
+      { label: isVi ? "Sản phẩm:" : "Product:", value: "Mountain-100 Black, 42 (SL: 11, Chiết khấu: 35%)" },
+      { label: isVi ? "Lỗ biên lợi nhuận:" : "Margin Loss:", value: "-$14,846.24 USD", highlight: "var(--red, #DC2626)" },
+    ],
+    orderId: 46380,
+    docId: "Sales_SalesOrderDetail.csv",
+    aliasId: "SO_46380",
+  },
+  {
+    id: "ALERT-FIN-DISC",
+    category: "financial_risk",
+    dept: "sales",
+    severity: "medium",
+    variant: "warning",
+    Icon: TrendingDown,
+    badgeLabel: isVi ? "Chiết khấu đột biến (40%)" : "Abnormal Discount (40%)",
+    detectedAt: isVi ? "Phát hiện từ Neo4j SalesOrder Header" : "Detected from Neo4j SalesOrder Header",
+    title: isVi
+      ? "Đơn hàng #69471 (Brakes and Gears) chiết khấu vượt trần 40%"
+      : "Order #69471 (Brakes and Gears) discount spike 40%",
+    description: isVi
+      ? "Đơn hàng #69471 áp dụng mức giảm giá đơn giá lên tới 40% cho sản phẩm 'Mountain-500 Silver, 40', vượt ngưỡng chiết khấu thông thường cho khách hàng này. Doanh thu dòng: $677.99 USD."
+      : "Order #69471 applies a 40% discount on 'Mountain-500 Silver, 40', exceeding normal tier discount policies. Line revenue: $677.99 USD.",
+    meta: [
+      { label: isVi ? "Khách hàng:" : "Customer:", value: "CUST-29818 (Brakes and Gears)" },
+      { label: isVi ? "Mã đơn hàng:" : "Order ID:", value: "Order #69471" },
+      { label: isVi ? "Tỷ lệ chiết khấu:" : "Discount Rate:", value: "40%", highlight: "var(--amber, #D97706)" },
+      { label: isVi ? "Doanh thu dòng:" : "Line Revenue:", value: "$677.99 USD" },
+    ],
+    orderId: 69471,
+    docId: "Sales_SalesOrderDetail.csv",
+    aliasId: "SO_69471",
   },
 ];
 
@@ -182,48 +178,45 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
     ? sourceAlerts
     : isManager
     ? (isLegalDept
-        ? sourceAlerts.filter((a) => a.dept === "legal" || a.category === "legal_anomaly")
-        : sourceAlerts.filter((a) => a.dept === "sales" || a.category === "order_drop" || a.category === "contract_expiring"))
-    : sourceAlerts.filter((a) => a.dept === "sales" && (a.category === "order_drop" || a.category === "contract_expiring"));
+        ? sourceAlerts.filter((a) => a.dept === "legal" || a.category === "legal_risk")
+        : sourceAlerts.filter((a) => a.dept === "sales" || a.category === "financial_risk"))
+    : sourceAlerts.filter((a) => a.category === "financial_risk");
 
-  const countExpiring = rawAlerts.filter((a) => a.category === "contract_expiring").length;
-  const countOrderDrop = rawAlerts.filter((a) => a.category === "order_drop").length;
-  const countLegal = rawAlerts.filter((a) => a.category === "legal_anomaly" || a.category === "LEGAL_COMPLIANCE").length;
+  const countFinancial = rawAlerts.filter((a) => a.category === "financial_risk" || a.category === "order_drop").length;
+  const countLegal = rawAlerts.filter((a) => a.category === "legal_risk" || a.category === "legal_anomaly" || a.category === "LEGAL_COMPLIANCE").length;
   const countHigh = rawAlerts.filter((a) => a.severity === "high" || a.severity === "critical" || a.variant === "danger").length;
 
   const visible = showEmpty
     ? []
     : rawAlerts.filter((a) => {
         if (resolved[a.id]) return false;
-        if (filter === "contract_expiring") return a.category === "contract_expiring";
-        if (filter === "order_drop") return a.category === "order_drop";
-        if (filter === "legal_anomaly") return a.category === "legal_anomaly" || a.category === "LEGAL_COMPLIANCE";
+        if (filter === "financial_risk") return a.category === "financial_risk" || a.category === "order_drop";
+        if (filter === "legal_risk") return a.category === "legal_risk" || a.category === "legal_anomaly" || a.category === "LEGAL_COMPLIANCE";
         if (filter === "high") return a.severity === "high" || a.severity === "critical" || a.variant === "danger";
         return true;
       });
 
   const handleResolve = (id) => setResolved((prev) => ({ ...prev, [id]: true }));
 
-  // Filter Buttons theo tiêu chí phân quyền từng nhóm vai trò
+  // Filter Buttons theo tiêu chí phân quyền chuẩn hóa 2 trụ cột rủi ro thật: Pháp lý & Tài chính
   const filterBtns = isExecOrAdmin
     ? [
         { key: "all", label: `${isVi ? "Tất cả cảnh báo vĩ mô" : "All Enterprise Alerts"} (${rawAlerts.length})` },
         { key: "high", label: `${isVi ? "Mức độ Nghiêm trọng" : "Critical"} (${countHigh})`, variant: "danger" },
-        { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})` },
-        { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Drops"} (${countOrderDrop})` },
-        { key: "legal_anomaly", label: `${isVi ? "Bất thường Pháp lý" : "Legal Anomalies"} (${countLegal})`, variant: "purple" },
+        { key: "legal_risk", label: `${isVi ? "Rủi ro Pháp lý" : "Legal Risks"} (${countLegal})`, variant: "purple" },
+        { key: "financial_risk", label: `${isVi ? "Rủi ro Tài chính & Giá vốn" : "Financial & Margin Risks"} (${countFinancial})`, variant: "warning" },
       ]
     : isManager
     ? [
         { key: "all", label: `${isVi ? "Tất cả cảnh báo phòng ban" : "All Department Alerts"} (${rawAlerts.length})` },
         { key: "high", label: `${isVi ? "Mức độ Cao" : "Critical"} (${countHigh})`, variant: "danger" },
-        { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})` },
-        { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Drops"} (${countOrderDrop})` },
+        { key: "legal_risk", label: `${isVi ? "Rủi ro Pháp lý" : "Legal Risks"} (${countLegal})`, variant: "purple" },
+        { key: "financial_risk", label: `${isVi ? "Rủi ro Tài chính" : "Financial Risks"} (${countFinancial})`, variant: "warning" },
       ]
     : [
-        { key: "all", label: `${isVi ? "Cảnh báo Kinh doanh trong ca" : "All Sales Alerts"} (${rawAlerts.length})` },
-        { key: "contract_expiring", label: `${isVi ? "Hợp đồng sắp hết hạn" : "Expiring Contracts"} (${countExpiring})`, variant: "danger" },
-        { key: "order_drop", label: `${isVi ? "Sụt giảm đơn hàng" : "Order Cadence Dips"} (${countOrderDrop})`, variant: "warning" },
+        { key: "all", label: `${isVi ? "Cảnh báo Kinh doanh & Giá vốn" : "All Sales Alerts"} (${rawAlerts.length})` },
+        { key: "high", label: `${isVi ? "Mức độ Cao" : "Critical"} (${countHigh})`, variant: "danger" },
+        { key: "financial_risk", label: `${isVi ? "Rủi ro Giá vốn & Chiết khấu" : "Margin & Discount Risks"} (${countFinancial})`, variant: "warning" },
       ];
 
   const pageTitle = isExecOrAdmin
@@ -234,7 +227,7 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
 
   const pageSubtitle = isExecOrAdmin
     ? (isVi
-        ? "Đài quan sát rủi ro vĩ mô toàn diện: phát hiện sớm hợp đồng sắp mãn hạn, biến động tần suất đặt hàng VIP và bất thường pháp lý trên toàn bộ đồ thị tri thức (BR-05 / UC.20)."
+        ? "Đài quan sát rủi ro vĩ mô toàn diện: giám sát hợp đồng thiếu điều khoản bảo vệ pháp lý (CUAD) và đơn vị phát sinh thâm hụt biên lợi nhuận dưới giá vốn (AdventureWorks) từ đồ thị tri thức."
         : "Comprehensive enterprise risk center: early detection of expiring contracts, VIP order cadence drops and legal anomalies across knowledge graph (BR-05 / UC.20).")
     : isManager
     ? (isVi
@@ -317,7 +310,7 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
             gap: "16px",
           }}
         >
-          {/* Card 1: Hợp đồng sắp hết hạn */}
+{/* Card 1: Rủi ro Tài chính & Giá vốn (AdventureWorks) */}
           <div
             style={{
               background: "linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(220,38,38,0.02) 100%)",
@@ -342,22 +335,62 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                 flexShrink: 0,
               }}
             >
-              <Clock size={20} />
+              <TrendingDown size={20} />
             </div>
             <div>
               <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#991B1B" }}>
-                {isVi ? "HỢP ĐỒNG SẮP HẾT HẠN (15–30 NGÀY)" : "EXPIRING CONTRACTS (15-30 DAYS)"}
+                {isVi ? "RỦI RO TÀI CHÍNH & GIÁ VỐN (ADVENTUREWORKS)" : "FINANCIAL & MARGIN RISKS"}
               </div>
               <div style={{ fontSize: "20px", fontWeight: 800, color: "#991B1B", marginTop: "2px" }}>
-                {countExpiring} {isVi ? "Hợp đồng" : "Contracts"}
+                {countFinancial} {isVi ? "Đơn hàng bất thường" : "Anomalous Orders"}
               </div>
               <div style={{ fontSize: "11.5px", color: "#7F1D1D" }}>
-                {isVi ? "Tổng giá trị 2.02 Tỷ VNĐ cần tái đàm phán" : "2.02B VND pipeline to renegotiate"}
+                {isVi ? "Bán dưới StandardCost & chiết khấu đột biến" : "Sales below cost & discount spikes"}
               </div>
             </div>
           </div>
 
-          {/* Card 2: Sụt giảm đơn hàng */}
+          {/* Card 2: Rủi ro Pháp lý & Hợp đồng (CUAD) */}
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.02) 100%)",
+              border: "1px solid rgba(139,92,246,0.25)",
+              borderRadius: "14px",
+              padding: "16px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
+            }}
+          >
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: "10px",
+                background: "rgba(139,92,246,0.15)",
+                color: "#8B5CF6",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <ShieldAlert size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#5B21B6" }}>
+                {isVi ? "RỦI RO ĐIỀU KHOẢN PHÁP LÝ (CUAD)" : "LEGAL COMPLIANCE EXPOSURE"}
+              </div>
+              <div style={{ fontSize: "20px", fontWeight: 800, color: "#5B21B6", marginTop: "2px" }}>
+                {countLegal} {isVi ? "Hợp đồng thiếu điều khoản" : "Contracts Lacking Clauses"}
+              </div>
+              <div style={{ fontSize: "11.5px", color: "#4C1D95" }}>
+                {isVi ? "74 hợp đồng thiếu trần bồi thường, 52 thiếu chấm dứt" : "74 uncapped liability, 52 no termination"}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Cảnh báo Mức độ Nghiêm trọng */}
           <div
             style={{
               background: "linear-gradient(135deg, rgba(217,119,6,0.08) 0%, rgba(217,119,6,0.02) 100%)",
@@ -382,62 +415,20 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                 flexShrink: 0,
               }}
             >
-              <TrendingDown size={20} />
+              <AlertTriangle size={20} />
             </div>
             <div>
               <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#92400E" }}>
-                {isVi ? "KHÁCH HÀNG SỤT GIẢM ĐƠN HÀNG (-30%)" : "ORDER CADENCE DIPS (-30%)"}
+                {isVi ? "CẢNH BÁO MỨC ĐỘ NGHIÊM TRỌNG" : "CRITICAL SEVERITY ALERTS"}
               </div>
               <div style={{ fontSize: "20px", fontWeight: 800, color: "#92400E", marginTop: "2px" }}>
-                {countOrderDrop} {isVi ? "Đối tác trọng điểm" : "VIP Partners"}
+                {countHigh} {isVi ? "Cảnh báo ưu tiên cao" : "High Priority Alerts"}
               </div>
               <div style={{ fontSize: "11.5px", color: "#78350F" }}>
-                {isVi ? "Ước tính hụt -405 Triệu VNĐ doanh thu" : "-405M VND projected dip"}
+                {isVi ? "Cần phê duyệt & chỉ đạo xử lý từ Ban Điều hành" : "Requires Executive review & guidance"}
               </div>
             </div>
           </div>
-
-          {/* Card 3: Bất thường Pháp lý & Bồi thường (Dành riêng cho Executive & Admin) */}
-          {isExecOrAdmin && (
-            <div
-              style={{
-                background: "linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.02) 100%)",
-                border: "1px solid rgba(139,92,246,0.25)",
-                borderRadius: "14px",
-                padding: "16px 20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-              }}
-            >
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: "10px",
-                  background: "rgba(139,92,246,0.15)",
-                  color: "#8B5CF6",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <AlertTriangle size={20} />
-              </div>
-              <div>
-                <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#5B21B6" }}>
-                  {isVi ? "BẤT THƯỜNG ĐIỀU KHOẢN PHÁP LÝ" : "LEGAL COMPLIANCE EXPOSURE"}
-                </div>
-                <div style={{ fontSize: "20px", fontWeight: 800, color: "#5B21B6", marginTop: "2px" }}>
-                  {countLegal} {isVi ? "Cảnh báo" : "Anomalies"}
-                </div>
-                <div style={{ fontSize: "11.5px", color: "#4C1D95" }}>
-                  {isVi ? "Rủi ro bồi thường vô hạn (No Liability Cap)" : "Uncapped liability exposure"}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ── ALERTS LIST / EMPTY STATE ─────────────────────── */}
@@ -464,7 +455,7 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {visible.map((alert) => {
-              const AlertIcon = alert.Icon || (alert.category === "order_drop" ? TrendingDown : (alert.category === "legal_anomaly" ? AlertTriangle : Clock));
+              const AlertIcon = alert.Icon || (alert.category === "legal_risk" ? ShieldAlert : (alert.category === "financial_risk" ? TrendingDown : AlertTriangle));
               return (
                 <Card
                   key={alert.id}
@@ -566,17 +557,17 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                         size="sm"
                         icon={Bot}
                         onClick={() => {
-                          const query = alert.contractId
+                          const query = (alert.category === "legal_risk" || alert.contractId || alert.docId?.endsWith(".pdf") || alert.docId?.endsWith(".PDF"))
                             ? (isVi
-                                ? `Phân tích rủi ro pháp lý của hợp đồng ${alert.contractId} (${alert.title}) và đề xuất phương án xử lý theo dữ liệu đồ thị tri thức`
-                                : `Analyze the legal risk for contract ${alert.contractId} (${alert.title}) and recommend protective clause amendments based on knowledge graph`)
+                                ? `Phân tích rủi ro pháp lý của hợp đồng ${alert.docId || alert.contractId} (${alert.title}) và đề xuất phương án bổ sung điều khoản bảo vệ dựa trên đồ thị tri thức`
+                                : `Analyze legal risk for contract ${alert.docId || alert.contractId} (${alert.title}) and recommend protective clause amendments based on knowledge graph`)
                             : alert.orderId
                             ? (() => {
                                 const cust = alert.meta?.find(m => m.label?.includes("Khách hàng") || m.label?.includes("Customer"))?.value || "";
-                                const val = alert.meta?.find(m => m.label?.includes("Giá trị") || m.label?.includes("Value"))?.value || "";
+                                const val = alert.meta?.find(m => m.label?.includes("Lỗ") || m.label?.includes("Giá trị") || m.label?.includes("Chiết khấu"))?.value || "";
                                 return isVi
-                                  ? `Phân tích đơn hàng Order #${alert.orderId}${cust ? ` của khách hàng ${cust}` : ""}${val ? ` (giá trị ${val})` : ""} và kiểm tra danh mục sản phẩm, lịch sử giao dịch trên đồ thị tri thức Neo4j`
-                                  : `Analyze Order #${alert.orderId}${cust ? ` for customer ${cust}` : ""}${val ? ` (value ${val})` : ""} and review purchased products and transaction history in Neo4j`;
+                                  ? `Phân tích đơn hàng Order #${alert.orderId}${cust ? ` của khách hàng ${cust}` : ""}${val ? ` (${val})` : ""} và đề xuất giải pháp kiểm soát giá vốn, chiết khấu trên đồ thị tri thức Neo4j`
+                                  : `Analyze Order #${alert.orderId}${cust ? ` for customer ${cust}` : ""}${val ? ` (${val})` : ""} and review cost controls and discount policy in Neo4j`;
                               })()
                             : (isVi
                                 ? `Phân tích cảnh báo rủi ro: ${alert.title}`

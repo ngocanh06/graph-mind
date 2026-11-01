@@ -3,7 +3,7 @@
  * Communicates with Python FastAPI backend (port 5000) with offline fallback
  */
 
-const API_BASE = "http://localhost:5000/api";
+export const API_BASE = "http://localhost:5000/api";
 
 export async function fetchHealth() {
   try {
@@ -196,14 +196,26 @@ export async function fetchNeo4jStatus() {
   return null;
 }
 
-export async function fetchNeo4jGraph(limit = 100, relLimit = 200, label = null) {
+export async function fetchNeo4jGraph(limit = 100, relLimit = 200, label = null, domain = null, relType = null) {
   try {
     let url = `${API_BASE}/neo4j/graph?limit=${limit}&rel_limit=${relLimit}`;
-    if (label) url += `&label=${encodeURIComponent(label)}`;
+    if (label && label !== "ALL") url += `&label=${encodeURIComponent(label)}`;
+    if (domain && domain !== "ALL") url += `&domain=${encodeURIComponent(domain)}`;
+    if (relType && relType !== "ALL") url += `&rel_type=${encodeURIComponent(relType)}`;
     const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Neo4j] fetchNeo4jGraph error:", e);
+  }
+  return null;
+}
+
+export async function expandNeo4jNode(nodeId, limit = 25) {
+  try {
+    const res = await fetch(`${API_BASE}/neo4j/expand/${encodeURIComponent(nodeId)}?limit=${limit}`);
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("[Neo4j] expandNeo4jNode error:", e);
   }
   return null;
 }
@@ -336,20 +348,51 @@ export async function fetchRepositoryDocuments(params = {}, currentUser = null) 
   return null;
 }
 
-export async function fetchDocumentDetail(docId, currentUser = null) {
+export async function fetchDocumentDetail(docId, currentUser = null, department = null) {
   try {
-    const res = await fetch(`${API_BASE}/documents/detail?doc_id=${encodeURIComponent(docId)}`, {
+    let url = `${API_BASE}/documents/detail?doc_id=${encodeURIComponent(docId)}`;
+    if (department) url += `&department=${encodeURIComponent(department)}`;
+    const res = await fetch(url, {
       headers: getAuthHeaders(currentUser),
     });
     if (res.ok) return await res.json();
-    if (res.status === 403) {
+    if (res.status === 403 || res.status === 409 || res.status === 422) {
       const errData = await res.json().catch(() => ({}));
-      return { success: false, error: errData.detail || "Truy cập bị từ chối do vi phạm phạm vi phòng ban (BR-02)." };
+      return {
+        success: false,
+        status: res.status,
+        error: errData.error || errData.detail || `Yêu cầu thất bại với mã lỗi ${res.status}`,
+        candidates: errData.candidates || []
+      };
     }
   } catch (e) {
     console.warn("[Repository] fetchDocumentDetail error:", e);
   }
   return null;
+}
+
+export async function downloadDocumentFile(filename, department = "legal", currentUser = null) {
+  const sp = new URLSearchParams();
+  if (filename) sp.set("filename", filename);
+  if (department) sp.set("department", department);
+
+  const res = await fetch(`${API_BASE}/documents/download?${sp.toString()}`, {
+    headers: getAuthHeaders(currentUser),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Không thể tải tệp gốc.");
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  return true;
 }
 
 export async function uploadDocument(file, department = "legal", currentUser = null) {

@@ -52,6 +52,69 @@ def get_embed_model():
     return _EMBED_MODEL if _EMBED_MODEL is not False else None
 
 
+# ============================================================================
+# PR1: LAYER-1 SERVER-SIDE RETRIEVAL GUARD (MANDATORY is_active = True)
+# ============================================================================
+
+class InvalidQueryFilterError(ValueError):
+    """Raised when caller filter attempts to override or supply conditions on is_active."""
+    pass
+
+
+def validate_and_inject_layer1_guard(query_filter: Optional[Any], collection_name: str) -> Dict[str, Any]:
+    """
+    PR1 Layer-1 Server-Side Retrieval Guard (Backward Compatibility Enabled):
+    Enforces mandatory exclusion of `is_active = False` (blocking in-flight/failed staging points).
+    Allows legacy points (missing `is_active`) and PR1 V3 points (`is_active = True`)
+    into candidate retrieval. Layer 2 strictly validates doc identity, hash, and metadata against Neo4j.
+    Validates that caller filter does not attempt to override or filter on `is_active`.
+    """
+    if query_filter:
+        def check_active(node):
+            if isinstance(node, dict):
+                if node.get("key") == "is_active":
+                    raise InvalidQueryFilterError("Caller is not permitted to override or supply the 'is_active' filter condition.")
+                for v in node.values():
+                    check_active(v)
+            elif isinstance(node, (list, tuple)):
+                for item in node:
+                    check_active(item)
+            elif hasattr(node, "key") and getattr(node, "key") == "is_active":
+                raise InvalidQueryFilterError("Caller is not permitted to override or supply the 'is_active' filter condition.")
+            elif hasattr(node, "must") or hasattr(node, "should") or hasattr(node, "must_not"):
+                for field in ["must", "should", "must_not"]:
+                    val = getattr(node, field, None)
+                    if val:
+                        check_active(val)
+
+        check_active(query_filter)
+
+    guard_condition = {"key": "is_active", "match": {"value": False}}
+
+    if not query_filter:
+        return {"must_not": [guard_condition]}
+
+    if isinstance(query_filter, dict):
+        new_filter = dict(query_filter)
+        existing_must_not = list(new_filter.get("must_not") or [])
+        existing_must_not.append(guard_condition)
+        new_filter["must_not"] = existing_must_not
+        return new_filter
+
+    try:
+        from qdrant_client.http import models
+        if isinstance(query_filter, models.Filter):
+            filter_dict = query_filter.model_dump() if hasattr(query_filter, "model_dump") else query_filter.dict()
+            existing_must_not = list(filter_dict.get("must_not") or [])
+            existing_must_not.append(guard_condition)
+            filter_dict["must_not"] = existing_must_not
+            return filter_dict
+    except Exception:
+        pass
+
+    return {"must_not": [guard_condition]}
+
+
 class QdrantClientWrapper:
     def __init__(self):
         self._client = None
@@ -224,6 +287,9 @@ class QdrantClientWrapper:
                 must_conditions.append({"key": "table", "match": {"value": str(table)}})
             effective_filter = {"must": must_conditions}
 
+        # PR1 Layer-1 Server-Side Retrieval Guard: mandatory is_active = True
+        effective_filter = validate_and_inject_layer1_guard(effective_filter, col)
+
         model = get_embed_model()
         if model:
             try:
@@ -303,6 +369,10 @@ class QdrantClientWrapper:
             matched = []
             for r in results:
                 payload = r.payload or {}
+                # PR1 Layer-1 Candidate Retrieval: exclude points where is_active is explicitly False.
+                # Points with is_active=None (legacy) or is_active=True pass to Layer 2 for strict verification.
+                if payload.get("is_active") is False:
+                    continue
                 combined = " ".join(str(v) for v in payload.values()).lower()
                 score = 0.0
                 if q_lower in combined:
