@@ -20,8 +20,8 @@ AGENT_API_KEY = os.getenv("AEGIS_AGENT_API_KEY", os.getenv("AGENT_API_KEY", "dev
 WATCH_ROOT = os.getenv("WATCH_ROOT", os.getenv("AEGIS_WATCH_DIR", "/data"))
 WATCH_DIR = WATCH_ROOT  # backward-compatible alias
 
-# Strictly supported business document extensions (.txt and other files are ignored)
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv"}
+# Supported business document extensions
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
 
 # Canonical 5 departments
 CANONICAL_DEPARTMENTS = ["legal", "sales", "accounting_procurement", "it", "rnd"]

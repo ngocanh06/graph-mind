@@ -21,6 +21,29 @@ except ImportError:
 # Mutating keywords strictly forbidden
 FORBIDDEN_KEYWORDS = {"CREATE", "DELETE", "MERGE", "SET", "REMOVE", "DROP", "ALTER", "DETACH"}
 
+# Serving eligibility filter for Document nodes strictly aligned with PR1 V3 & Layer 2 (Backward Compatibility Enabled)
+CYPHER_SERVING_ELIGIBILITY_FILTER = (
+    "d.id IS NOT NULL AND trim(toString(d.id)) <> '' "
+    "AND (d.active_op_id IS NULL OR trim(toString(d.active_op_id)) = '') "
+    "AND (coalesce(trim(toString(d.file_hash)), '') <> '' OR coalesce(trim(toString(d.hash)), '') <> '') "
+    "AND (d.file_hash IS NULL OR d.hash IS NULL OR d.file_hash = d.hash) "
+    "AND ("
+        "("
+            "d.status IN ['SYNCED', 'Hoạt động (Synced)'] "
+            "AND d.op_stage = 'TERMINAL_SYNCED' "
+            "AND d.committed_op_id IS NOT NULL AND trim(toString(d.committed_op_id)) <> '' "
+            "AND d.committed_generation IS NOT NULL AND d.committed_generation > 0"
+        ") "
+        "OR ("
+            "(d.status IN ['SYNCED', 'Hoạt động (Synced)'] OR ((d.status = 'active' OR d.status IS NULL) AND d.neo4jSynced = true)) "
+            "AND (d.op_stage IS NULL OR trim(toString(d.op_stage)) = '') "
+            "AND (d.committed_op_id IS NULL OR trim(toString(d.committed_op_id)) = '') "
+            "AND d.committed_generation IS NULL"
+        ")"
+    ")"
+)
+
+
 
 def generate_cypher_from_query(query: str) -> str:
     """
@@ -57,26 +80,53 @@ def generate_cypher_from_query(query: str) -> str:
 
     # 0.05 Contract Category Distribution & Portfolio queries
     if any(k in q_lower for k in ["cơ cấu danh mục", "phân bố danh mục", "loại hợp đồng phổ biến", "cơ cấu hợp đồng", "danh mục hợp đồng", "loại hợp đồng"]):
-        return """
+        return f"""
         MATCH (d:Document)
-        WITH coalesce(d.department, 'Pháp chế (Legal)') AS rawType, count(d) AS cnt
+        WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
+        WITH d.id AS doc_id, count(d) AS occurrences, collect(d)[0] AS doc_node
+        WITH collect({{doc_id: doc_id, occurrences: occurrences, node: doc_node}}) AS doc_entries,
+             max(occurrences) AS max_occ,
+             count(doc_id) AS distinct_doc_count
+        UNWIND doc_entries AS entry
+        WITH entry.node AS d, max_occ, distinct_doc_count
+        WITH coalesce(d.department, 'Pháp chế (Legal)') AS rawType,
+             count(d) AS cnt,
+             collect(d.id) AS dept_doc_ids,
+             max_occ, distinct_doc_count
         ORDER BY cnt DESC
-        WITH collect({type: rawType, count: cnt}) AS typeList, sum(cnt) AS total
+        WITH collect({{type: rawType, count: cnt, doc_ids: dept_doc_ids}}) AS typeList,
+             sum(cnt) AS total,
+             max_occ,
+             distinct_doc_count
         RETURN 'Phân bố Danh mục ' + toString(total) + ' Văn bản trong Hệ thống' AS name,
                'Toàn hệ thống hiện có ' + toString(total) + ' văn bản/hợp đồng đã lập chỉ mục vào Neo4j & Qdrant, phân bổ theo các phòng ban chính: ' +
                reduce(s = '', item in typeList | s + (case when s = '' then '' else '; ' end) + item.type + ': ' + toString(item.count) + ' tài liệu') AS snippet,
-               'portfolio-breakdown' AS _id, ['ContractPortfolio', 'CUAD'] AS _labels
+               'portfolio-breakdown' AS _id,
+               ['ContractPortfolio', 'CUAD'] AS _labels,
+               reduce(acc = [], item in typeList | acc + item.doc_ids) AS source_doc_ids,
+               total AS total_verified_docs,
+               max_occ AS duplicate_detected
         """
 
     # 0. Compliance Rate & Missing Protection Clause queries (e.g. tỷ lệ tuân thủ điều khoản, thiếu điều khoản bảo vệ)
     if any(k in q_lower for k in ["tuân thủ", "compliance"]) or (
         any(k in q_lower for k in ["an toàn pháp lý", "thiếu điều khoản bảo vệ"])
     ):
-        return """
+        return f"""
         MATCH (d:Document)
+        WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
+        WITH d.id AS doc_id, count(d) AS occurrences, collect(d)[0] AS doc_node
+        WITH collect({{doc_id: doc_id, occurrences: occurrences, node: doc_node}}) AS doc_entries,
+             max(occurrences) AS max_occ,
+             count(doc_id) AS distinct_doc_count
+        UNWIND doc_entries AS entry
+        WITH entry.node AS d, max_occ, distinct_doc_count
         OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(cl:Clause)
-        WITH d, collect(DISTINCT cl.type) AS clauses
+        WITH d, max_occ, distinct_doc_count, collect(DISTINCT cl.type) AS clauses
         WITH count(d) AS total,
+             collect(d.id) AS doc_ids,
+             max_occ,
+             distinct_doc_count,
              count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Liability' OR c CONTAINS 'Trách nhiệm') THEN 1 END) AS liability_cnt,
              count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Governing' OR c CONTAINS 'Luật') THEN 1 END) AS governing_cnt,
              count(CASE WHEN any(c IN clauses WHERE c CONTAINS 'Indemnif' OR c CONTAINS 'Bồi thường') THEN 1 END) AS indemnity_cnt,
@@ -88,7 +138,11 @@ def generate_cypher_from_query(query: str) -> str:
                '2. Điều khoản Chấm dứt hợp đồng (Termination): ' + toString(termination_cnt) + '/' + toString(total) + ' văn bản. ' +
                '3. Điều khoản Bồi thường thiệt hại (Indemnification): ' + toString(indemnity_cnt) + '/' + toString(total) + ' văn bản. ' +
                '4. Điều khoản Giới hạn Trách nhiệm (Liability): ' + toString(liability_cnt) + '/' + toString(total) + ' văn bản.' AS snippet,
-               'compliance-stats' AS _id, ['ComplianceReport', 'CUAD'] AS _labels
+               'compliance-stats' AS _id,
+               ['ComplianceReport', 'CUAD'] AS _labels,
+               doc_ids AS source_doc_ids,
+               total AS total_verified_docs,
+               max_occ AS duplicate_detected
         """
 
     # 0.1 Specific Missing Clause queries
@@ -106,12 +160,14 @@ def generate_cypher_from_query(query: str) -> str:
         elif any(k in q_lower for k in ["luật", "governing"]):
             target_clause = "Governing Law"
 
+        missing_filter = CYPHER_SERVING_ELIGIBILITY_FILTER.replace("d.", "c.")
         return f"""
         MATCH (c:Document)
+        WHERE {missing_filter}
         OPTIONAL MATCH (c)-[:CONTAINS_CLAUSE]->(cl:Clause)
         WITH c, collect(cl.type) AS clauseTypes
         WHERE NOT any(t IN clauseTypes WHERE t =~ '(?i).*{target_clause}.*')
-        RETURN c.id AS id, c.name AS name, coalesce(c.department, 'Pháp chế (Legal)') AS contract_type,
+        RETURN c.id AS id, c.id AS source_document_id, c.name AS name, coalesce(c.department, 'Pháp chế (Legal)') AS contract_type,
                'Văn bản ' + c.name + ' thiếu điều khoản bảo vệ {target_clause}' AS snippet,
                elementId(c) AS _id, ['Document', 'CUAD'] AS _labels
         LIMIT 5
@@ -128,10 +184,13 @@ def generate_cypher_from_query(query: str) -> str:
             (clause_type == "Confidentiality" and any(k in q_lower for k in ["bảo mật", "bí mật"]))
         )
         if matched:
+            clause_doc_filter = CYPHER_SERVING_ELIGIBILITY_FILTER.replace("d.", "ctr.")
             return f"""
             MATCH (ctr:Document)-[:CONTAINS_CLAUSE]->(cls:Clause)
-            WHERE cls.type =~ '(?i).*{clause_type}.*'
-            RETURN ctr.name AS contract_name, coalesce(ctr.department, 'Pháp chế (Legal)') AS contract_type,
+            WHERE {clause_doc_filter}
+              AND cls.type =~ '(?i).*{clause_type}.*'
+            RETURN ctr.id AS document_id, ctr.id AS source_document_id,
+                   ctr.name AS contract_name, coalesce(ctr.department, 'Pháp chế (Legal)') AS department,
                    cls.type AS clause_type, cls.snippet AS snippet, elementId(cls) AS _id, ['Clause', 'Document'] AS _labels
             LIMIT 10
             """
@@ -152,16 +211,19 @@ def generate_cypher_from_query(query: str) -> str:
         }
         terms = [w for w in re.findall(r"[\w\.]+", query) if len(w) >= 3 and w.lower() not in stop_words]
         search_term = max(terms, key=len) if terms else ""
+        ctr_doc_filter = CYPHER_SERVING_ELIGIBILITY_FILTER.replace("d.", "ctr.")
         if search_term:
             return f"""
             MATCH (ctr:Document)
-            WHERE toLower(ctr.name) CONTAINS toLower('{search_term}')
-               OR toLower(coalesce(ctr.id, '')) CONTAINS toLower('{search_term}')
+            WHERE {ctr_doc_filter}
+               AND (toLower(ctr.name) CONTAINS toLower('{search_term}')
+               OR toLower(coalesce(ctr.id, '')) CONTAINS toLower('{search_term}'))
             RETURN ctr.name AS name, ctr.id AS id, coalesce(ctr.department, 'Chung') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
             LIMIT 8
             """
-        return """
+        return f"""
         MATCH (ctr:Document)
+        WHERE {ctr_doc_filter}
         RETURN ctr.name AS name, ctr.id AS id, coalesce(ctr.department, 'Chung') AS contract_type, elementId(ctr) AS _id, ['Document'] AS _labels
         LIMIT 8
         """
@@ -285,6 +347,10 @@ def execute_text_to_cypher(query: str) -> List[Dict[str, Any]]:
             item["_labels"] = labels if isinstance(labels, list) else [str(labels)]
             item["name"] = r.get("contract_name") or r.get("name") or r.get("company") or f"Entity #{item['_id']}"
             item["snippet"] = r.get("snippet") or str({k: v for k, v in r.items() if not k.startswith("_")})[:250]
+            # Preserve aggregate & provenance metadata for Layer-2 validation
+            for k in ["source_doc_ids", "duplicate_detected", "total_verified_docs", "source_document_id", "document_id", "department"]:
+                if k in r:
+                    item[k] = r[k]
             formatted.append(item)
         return formatted
     except Exception as e:

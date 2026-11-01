@@ -103,12 +103,13 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       return;
     }
     const ext = uploadFile.name.split(".").pop()?.toLowerCase();
-    if (!["pdf", "docx", "xlsx", "csv"].includes(ext)) {
-      setUploadError(isVi ? "Chỉ hỗ trợ các định dạng .pdf, .docx, .xlsx, .csv." : "Only .pdf, .docx, .xlsx, .csv are supported.");
+    if (!["pdf", "docx", "xlsx", "csv", "txt"].includes(ext)) {
+      setUploadError(isVi ? "Chỉ hỗ trợ các định dạng .pdf, .docx, .xlsx, .csv, .txt." : "Only .pdf, .docx, .xlsx, .csv, .txt are supported.");
       return;
     }
-    if (uploadFile.size > 50 * 1024 * 1024) {
-      setUploadError(isVi ? "Kích thước tệp vượt quá giới hạn 50MB." : "File exceeds 50MB limit.");
+    const maxAllowedSize = ext === "txt" ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (uploadFile.size > maxAllowedSize) {
+      setUploadError(isVi ? `Kích thước tệp vượt quá giới hạn ${maxAllowedSize / (1024 * 1024)}MB.` : `File exceeds ${maxAllowedSize / (1024 * 1024)}MB limit.`);
       return;
     }
 
@@ -1378,7 +1379,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       <Icon name="fa-solid fa-chevron-left text-[13px]" size={15} />
                     </button>
                     <span className="font-bold text-on-surface px-2">
-                      {isVi ? "Trang 16 / 42" : "Page 16 of 42"}
+                      {activeDocDetail?.chunks_list?.length > 0
+                        ? (isVi ? `Hiển thị ${activeDocDetail.chunks_list.length} Chunks` : `Showing ${activeDocDetail.chunks_list.length} Chunks`)
+                        : activeDocDetail?.records?.length > 0
+                        ? (isVi ? `Hiển thị ${activeDocDetail.records.length} bản ghi mẫu` : `Showing ${activeDocDetail.records.length} sample rows`)
+                        : (isVi ? "Trang 1 / 1" : "Page 1 of 1")}
                     </span>
                     <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Next Page">
                       <Icon name="fa-solid fa-chevron-right text-[13px]" size={15} />
@@ -1424,15 +1429,15 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       <p className="text-xs font-semibold">{isVi ? "Đang tải dữ liệu thực tế từ Neo4j / Qdrant..." : "Loading live data from Neo4j / Qdrant..."}</p>
                     </div>
                   ) : activeDocDetail?.records?.length > 0 ? (
-                    /* Real Live AdventureWorks Dataset Preview (Neo4j) */
+                    /* Real Live Dataset / Spreadsheet Preview (Neo4j / CSV) */
                     <div className="space-y-4">
                       <div className="text-center pb-3 border-b border-surface-container">
                         <p className="text-xs font-bold tracking-widest text-primary uppercase">
-                          {isVi ? "BẢN GHI ĐỒ THỊ THỰC TẾ — NEO4J ADVENTUREWORKS" : "LIVE GRAPH RECORDS — NEO4J ADVENTUREWORKS"}
+                          {isVi ? "BẢN GHI DỮ LIỆU THỰC TẾ — LIVE RECORDS" : "LIVE DATASET RECORDS"}
                         </p>
                         <h2 className="text-lg font-bold text-on-surface mt-1">{activeDoc.name}</h2>
                         <p className="text-xs text-on-surface-variant font-mono">
-                          {isVi ? `Hiển thị 25 bản ghi mẫu từ tập ${activeDoc.chunks || ""}` : `Showing 25 live sample records from ${activeDoc.chunks || ""}`}
+                          {isVi ? `Hiển thị ${activeDocDetail.records.length} bản ghi mẫu từ tập dữ liệu` : `Showing ${activeDocDetail.records.length} live sample records`}
                         </p>
                       </div>
 
@@ -1460,12 +1465,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       </div>
                     </div>
                   ) : activeDocDetail?.chunks_list?.length > 0 ? (
-                    /* Real Live CUAD Contract Preview (Qdrant Chunks) */
+                    /* Real Live Document Preview (Qdrant / Watcher Chunks) */
                     <div className="space-y-4">
                       <div className="text-center pb-4 border-b border-surface-container">
                         <p className="text-xs font-bold tracking-widest text-primary uppercase">
-                          {activeDoc.source === "aegis_local_file_watcher"
-                            ? (isVi ? "TÀI LIỆU NẠP TỰ ĐỘNG TỪ LOCAL FILE WATCHER (MÁY NHÂN VIÊN)" : "AUTO-INGESTED FROM LOCAL FILE WATCHER")
+                          {activeDoc.source === "aegis_local_file_watcher" || activeDocDetail?.source === "aegis_local_file_watcher"
+                            ? (isVi ? `TÀI LIỆU ${activeDoc.deptLabel || activeDoc.dept || "NỘI BỘ"} — NẠP TỪ FILE WATCHER` : `DOCUMENT — FILE WATCHER`)
+                            : (activeDoc.category || activeDocDetail?.category)
+                            ? (isVi ? `${(activeDoc.category || activeDocDetail?.category).toUpperCase()} — TRÍCH XUẤT TỪ HỆ THỐNG TRI THỨC` : `${(activeDoc.category || activeDocDetail?.category).toUpperCase()} — KNOWLEDGE BASE`)
                             : (isVi ? "VĂN BẢN HỢP ĐỒNG CUAD — TRÍCH XUẤT TỪ QDRANT" : "CUAD CONTRACT TEXT — EXTRACTED FROM QDRANT")}
                         </p>
                         <h2 className="text-xl font-bold text-on-surface mt-1">{activeDoc.name}</h2>
@@ -1482,7 +1489,9 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                                 <Icon name="fa-solid fa-highlighter text-amber-700" size={15} /> Chunk #{c.chunk_id !== undefined ? c.chunk_id : idx}
                               </span>
                               <span className="bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-full text-[11px]">
-                                Qdrant Vector Hit
+                                {activeDoc.source === "aegis_local_file_watcher" || activeDocDetail?.source === "aegis_local_file_watcher"
+                                  ? (isVi ? "Watcher Chunk" : "Watcher Chunk")
+                                  : "Qdrant Vector Hit"}
                               </span>
                             </div>
                             <p className="text-amber-950 text-sm font-normal leading-relaxed whitespace-pre-wrap font-sans">
@@ -1800,7 +1809,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               {/* File Dropzone */}
               <div>
                 <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
-                  {isVi ? "Tệp tài liệu (.pdf, .docx, .xlsx, .csv)" : "Document File (.pdf, .docx, .xlsx, .csv)"}
+                  {isVi ? "Tệp tài liệu (.pdf, .docx, .xlsx, .csv, .txt)" : "Document File (.pdf, .docx, .xlsx, .csv, .txt)"}
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
@@ -1813,7 +1822,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   <input
                     id="file-upload-input"
                     type="file"
-                    accept=".pdf,.docx,.xlsx,.csv"
+                    accept=".pdf,.docx,.xlsx,.csv,.txt"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
@@ -1849,7 +1858,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                         {isVi ? "Nhấp hoặc kéo thả tệp vào đây" : "Click or drag file here"}
                       </p>
                       <p className="text-xs text-on-surface-variant">
-                        {isVi ? "Hỗ trợ PDF, DOCX, XLSX, CSV (Tối đa 50MB)" : "Supports PDF, DOCX, XLSX, CSV (Max 50MB)"}
+                        {isVi ? "Hỗ trợ PDF, DOCX, XLSX, CSV, TXT (TXT tối đa 10MB, khác 50MB)" : "Supports PDF, DOCX, XLSX, CSV, TXT (TXT max 10MB, others 50MB)"}
                       </p>
                     </div>
                   )}
@@ -2051,7 +2060,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   <input
                     id="file-replace-input"
                     type="file"
-                    accept=".pdf,.docx,.xlsx,.csv"
+                    accept=".pdf,.docx,.xlsx,.csv,.txt"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
