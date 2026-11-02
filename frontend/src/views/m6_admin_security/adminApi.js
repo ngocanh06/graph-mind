@@ -175,3 +175,30 @@ export function resetGranularRbacMatrix() {
 export function fetchMyKnowledgeScope() {
   return apiFetch("/admin/rbac-matrix/user-scope/me");
 }
+
+// ── Document Upload Approvals (PB48, PB50, PB02) ───────────────────────────
+export function fetchUploadApprovals({ status = "ALL", department = "", resourceType = "" } = {}) {
+  const sp = new URLSearchParams();
+  if (status && status !== "ALL") sp.set("status", status);
+  if (department && department !== "ALL") sp.set("department", department);
+  if (resourceType && resourceType !== "ALL") sp.set("resource_type", resourceType);
+  return apiFetch(`/admin/upload-approvals?${sp.toString()}`);
+}
+
+export function approveUploadRequest(requestId) {
+  return apiFetch(`/admin/upload-approvals/${requestId}/approve`, {
+    method: "POST",
+  });
+}
+
+export function rejectUploadRequest(requestId, reviewNote = "") {
+  return apiFetch(`/admin/upload-approvals/${requestId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ review_note: reviewNote }),
+  });
+}
+
+export function previewUploadRequest(requestId) {
+  return apiFetch(`/admin/upload-approvals/${requestId}/preview`);
+}
+

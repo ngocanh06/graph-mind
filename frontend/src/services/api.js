@@ -374,6 +374,51 @@ export async function downloadDocumentFile(filename, department = "legal", curre
   return true;
 }
 
+export async function submitDocumentUpload(file, resourceType = "SALES", department = "sales", currentUser = null) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("resource_type", resourceType);
+    formData.append("department_code", department);
+    formData.append("action_type", "UPLOAD_NEW");
+
+    const headers = {};
+    const token = localStorage.getItem("aegis_token") || localStorage.getItem("access_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
+    if (currentUser?.username) headers["X-User-Name"] = currentUser.username;
+    if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
+    if (currentUser?.role || currentUser?.roleKey) headers["X-User-Role"] = currentUser.roleKey || currentUser.role;
+
+    const res = await fetch(`${API_BASE}/documents/submit-upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi tải lên (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Upload] submitDocumentUpload error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function fetchMyUploadApprovals(currentUser = null) {
+  try {
+    const headers = getAuthHeaders(currentUser);
+    const res = await fetch(`${API_BASE}/admin/upload-approvals`, {
+      headers,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return data;
+    return { success: false, items: [], error: data.detail || `HTTP ${res.status}` };
+  } catch (e) {
+    console.warn("[Approval] fetchMyUploadApprovals error:", e);
+    return { success: false, items: [], error: e.message };
+  }
+}
+
 export async function uploadDocument(file, department = "legal", currentUser = null) {
   try {
     const formData = new FormData();

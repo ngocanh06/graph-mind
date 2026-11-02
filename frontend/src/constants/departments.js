@@ -70,6 +70,34 @@ export const DEPARTMENTS = [
   }
 ];
 
+export const ROLE_ALLOWED_DEPT_KEYS = {
+  ADMIN: ["legal", "sales", "accounting_procurement", "it", "rnd"],
+  EXECUTIVE: ["legal", "sales", "accounting_procurement", "it", "rnd"],
+  DEPARTMENT_MANAGER: ["legal", "sales", "accounting_procurement", "rnd"], // Strictly excludes 'it'
+  STANDARD_USER: ["sales"] // Strictly isolated to own department (Sales)
+};
+
+export function resolveRoleGroup(role, currentUser) {
+  const r = String(role || currentUser?.id || currentUser?.roleKey || "").toLowerCase();
+  if (r === "admin" || r === "it_admin" || currentUser?.roleKey === "IT_ADMIN") return "ADMIN";
+  if (r === "executive" || currentUser?.roleKey === "EXECUTIVE") return "EXECUTIVE";
+  if (
+    r === "knowledge_manager" ||
+    r === "dept_manager" ||
+    r === "department_manager" ||
+    currentUser?.roleKey === "DEPT_MANAGER"
+  ) {
+    return "DEPARTMENT_MANAGER";
+  }
+  return "STANDARD_USER";
+}
+
+export function getAllowedDepartmentsForRole(role, currentUser) {
+  const group = resolveRoleGroup(role, currentUser);
+  const allowedKeys = ROLE_ALLOWED_DEPT_KEYS[group] || ROLE_ALLOWED_DEPT_KEYS.STANDARD_USER;
+  return DEPARTMENTS.filter((d) => allowedKeys.includes(d.key));
+}
+
 export function resolveDepartment(input) {
   if (!input) return DEPARTMENTS[1]; // default sales
   const clean = String(input).toLowerCase().trim();
@@ -95,4 +123,3 @@ export function getDepartmentDisplayName(input) {
 export function getAllDepartments() {
   return DEPARTMENTS;
 }
-

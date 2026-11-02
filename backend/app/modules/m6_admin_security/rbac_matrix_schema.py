@@ -7,15 +7,13 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-# 7 cột phân quyền: 5 phòng ban + Nhân viên + Ban lãnh đạo
+# 5 cột phân quyền tương ứng 5 phòng ban chuẩn
 RESOURCE_TYPES = [
     "LEGAL",
     "SALES",
     "ACCOUNTING_PROCUREMENT",
     "IT",
     "RND",
-    "EMPLOYEE",
-    "EXECUTIVE_BOARD",
 ]
 
 # Danh sách 4 vai trò chuẩn của dự án và 5 phòng ban
@@ -44,6 +42,7 @@ class PolicyItemOut(BaseModel):
     can_query: bool
     can_view_citation: bool
     can_edit: bool
+    can_upload: bool = False
     can_view_sensitive: bool
     data_scope: str
     updated_by: Optional[uuid.UUID] = None
@@ -60,6 +59,7 @@ class PolicyCellUpdate(BaseModel):
     can_query: bool = False
     can_view_citation: bool = False
     can_edit: bool = False
+    can_upload: bool = False
     can_view_sensitive: bool = False
     data_scope: str = "NONE"
 

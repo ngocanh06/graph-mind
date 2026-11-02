@@ -5,7 +5,7 @@ Enforces Row-Level / Node-Level Data Isolation as defined in SRS BR-02, BR-04, B
 Roles:
 - executive: Unrestricted full-access across the SME (BR-05).
 - it_admin: Full access to all telemetry, system configs & documents (BR-03).
-- knowledge_manager: Access to assigned department documents & oversight queues (BR-04).
+- knowledge_manager: Access to assigned business department documents & oversight queues (BR-04), strictly excluding internal IT department documents.
 - standard: Access strictly scoped to assigned department (Default: Sales / Kinh doanh).
 """
 
@@ -41,8 +41,8 @@ ROLE_STANDARD = "standard"
 ROLE_DEPARTMENT_SCOPE = {
     ROLE_EXECUTIVE: ["ALL"],
     ROLE_ADMIN: ["ALL"],
-    ROLE_MANAGER: ["Kinh doanh", "R&D", "Pháp chế"],
-    ROLE_STANDARD: ["Kinh doanh", "R&D"]  # Sales Specialist: Sales orders, customers, product catalog
+    ROLE_MANAGER: ["Kinh doanh", "R&D", "Pháp chế", "Kế toán / Thu mua"],
+    ROLE_STANDARD: ["Kinh doanh"]  # Sales Specialist: Sales orders, customers
 }
 
 # Entity labels allowed per role
@@ -105,13 +105,11 @@ def filter_graph_entities_by_scope(entities: List[Dict[str, Any]], role: str) ->
     if is_privileged_role(clean_role):
         return entities
 
-    allowed_labels = ALLOWED_ENTITY_LABELS.get(clean_role, ALLOWED_ENTITY_LABELS[ROLE_STANDARD])
     filtered = []
     for ent in entities:
         labels = ent.get("_labels") or []
         if isinstance(labels, str):
             labels = [labels]
-        # Nếu thực thể là Employee mà user là Standard User -> loại bỏ
         if "Employee" in labels and clean_role == ROLE_STANDARD:
             continue
         filtered.append(ent)
@@ -127,7 +125,6 @@ def filter_search_documents_by_scope(documents: List[Dict[str, Any]], role: str)
     filtered = []
     for doc in documents:
         doc_id = doc.get("id") or doc.get("code") or ""
-        # Ẩn Staff Directory khỏi Standard User
         if "EMPLOYEE" in doc_id.upper() or "STAFF" in doc_id.upper():
             continue
         filtered.append(doc)
@@ -138,6 +135,7 @@ def filter_search_documents_by_scope(documents: List[Dict[str, Any]], role: str)
 DEPT_CANONICAL: Dict[str, str] = {
     # Legal / Pháp chế
     "pháp chế": "legal",
+    "pháp chế (legal)": "legal",
     "legal": "legal",
     "pháp chế & r&d": "legal",
     "phòng pháp chế": "legal",
@@ -145,6 +143,7 @@ DEPT_CANONICAL: Dict[str, str] = {
     "cuad": "legal",
     # Sales / Kinh doanh
     "kinh doanh": "sales",
+    "kinh doanh (sales)": "sales",
     "sales": "sales",
     "bán hàng": "sales",
     "bán hàng (sales)": "sales",
@@ -152,11 +151,9 @@ DEPT_CANONICAL: Dict[str, str] = {
     "phòng kinh doanh & phát triển thị trường": "sales",
     "phòng kinh doanh & khách hàng doanh nghiệp": "sales",
     "khối kinh doanh & vận hành": "sales",
-    "khối quản lý phòng ban & bộ phận": "sales",
-    "khối quản lý phòng ban": "sales",
-    "quản lý phòng ban": "sales",
     # IT / Công nghệ thông tin
     "công nghệ / it": "it",
+    "công nghệ / it (it)": "it",
     "công nghệ thông tin": "it",
     "it": "it",
     "phòng cntt": "it",
@@ -170,37 +167,52 @@ DEPT_CANONICAL: Dict[str, str] = {
     "ops": "operations",
     # R&D
     "r&d": "rnd",
+    "r&d (rnd)": "rnd",
+    "rnd": "rnd",
     "nghiên cứu": "rnd",
-    # Accounting / Tài chính
+    # Accounting / Thu mua
     "kế toán": "accounting",
+    "kế toán / thu mua": "accounting",
     "accounting": "accounting",
+    "accounting_procurement": "accounting",
     "phòng kế toán & tài chính": "accounting",
     # HR / Nhân sự
     "nhân sự": "hr",
     "hr": "hr",
     "phòng nhân sự": "hr",
-    # Executive & Across Departments
+    # Executive & Across Business Departments (Strictly excludes IT)
     "ban giám đốc": "executive",
     "executive": "executive",
     "ban lãnh đạo": "executive",
     "ban giám đốc & hội đồng quản trị": "executive",
     "quản lý phòng ban": "all_departments",
+    "khối quản lý phòng ban": "all_departments",
     "khối quản lý phòng ban & bộ phận": "all_departments",
     "all": "all",
 }
 
-# Cross-department permitted scopes for each department
+# Cross-department permitted scopes for each department (BR-02)
+# NOTE: 'it' is strictly isolated to 'it', 'admin', and 'executive' — other departments NEVER see 'it' docs!
 DEPT_ALLOWED_SCOPES: Dict[str, Set[str]] = {
     "executive": {"*"},  # Full enterprise access (BR-05)
     "admin": {"*"},      # Full administrative access (BR-03)
-    "all_departments": {"legal", "sales", "operations", "rnd", "it", "accounting", "hr"},
+    "all_departments": {"legal", "sales", "operations", "rnd", "accounting", "accounting_procurement"},  # Excludes 'it' & 'hr'
     "legal": {"legal", "rnd"},
     "sales": {"sales", "operations"},
     "operations": {"operations", "rnd", "sales"},
     "rnd": {"rnd", "operations", "legal"},
-    "it": {"it", "hr", "operations"},
-    "accounting": {"accounting", "sales"},
-    "hr": {"hr", "it"},
+    "it": {"it"},        # Strictly isolated IT department
+    "accounting": {"accounting", "accounting_procurement", "sales"},
+    "accounting_procurement": {"accounting", "accounting_procurement", "sales"},
+    "hr": {"hr"},
+}
+
+RESOURCE_TO_DEPT_KEYS: Dict[str, Set[str]] = {
+    "LEGAL": {"legal"},
+    "SALES": {"sales", "operations"},
+    "ACCOUNTING_PROCUREMENT": {"accounting", "accounting_procurement"},
+    "IT": {"it"},
+    "RND": {"rnd"},
 }
 
 USER_ALIASES: Dict[str, str] = {
@@ -218,9 +230,21 @@ USER_ALIASES: Dict[str, str] = {
 def normalize_dept(dept: Optional[str]) -> str:
     """Normalize raw department string into canonical department key."""
     if not dept:
-        return "all"
+        return "sales"
     d = dept.strip().lower()
-    return DEPT_CANONICAL.get(d, d)
+    if d in DEPT_CANONICAL:
+        return DEPT_CANONICAL[d]
+    if "pháp chế" in d or "legal" in d:
+        return "legal"
+    if "kinh doanh" in d or "sales" in d:
+        return "sales"
+    if "kế toán" in d or "thu mua" in d or "accounting" in d or "procurement" in d:
+        return "accounting"
+    if "công nghệ" in d or d == "it" or "/it" in d:
+        return "it"
+    if "r&d" in d or "rnd" in d or "nghiên cứu" in d:
+        return "rnd"
+    return d
 
 
 @dataclass
@@ -243,7 +267,7 @@ class ScopeContext:
         if not target_dept or target_dept.upper() == "ALL":
             return True
         norm = normalize_dept(target_dept)
-        if norm in ("all", "all_departments"):
+        if norm == "all":
             return True
         return norm in self.allowed_depts or "*" in self.allowed_depts
 
@@ -251,7 +275,6 @@ class ScopeContext:
         """Check if specific document or dataset is allowed for current user."""
         if self.is_unrestricted:
             return True
-        # Public or general datasets
         if doc_id in ("AW_CATEGORIES", "AW_PRODUCTS") and self.canonical_dept in ("sales", "operations", "rnd"):
             return True
         return self.is_department_allowed(target_dept)
@@ -285,7 +308,10 @@ class ScopeContext:
             return documents
         return [
             doc for doc in documents
-            if self.is_document_allowed(doc.get("id", ""), doc.get("dept") or doc.get("deptLabel"))
+            if self.is_document_allowed(
+                doc.get("id", ""),
+                doc.get("deptKey") or doc.get("dept") or doc.get("deptLabel")
+            )
         ]
 
     def filter_citations(self, citations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -311,18 +337,15 @@ class ScopeContext:
                     redacted["text"] = f"[DỮ LIỆU ĐÃ ẨN]: Trích dẫn tài liệu thuộc phạm vi phòng ban {target_dept} (BR-02)."
                     redacted["match"] = "RESTRICTED (BR-02)"
                     filtered.append(redacted)
-            # CUAD contracts are legal scope
             elif "CUAD" in file_name or "cuad" in file_name.lower() or "Qdrant" in src_type:
                 if self.is_department_allowed("Pháp chế"):
                     filtered.append(c)
                 else:
-                    # Redact or mark as restricted citation
                     redacted = dict(c)
                     redacted["restricted"] = True
                     redacted["text"] = "[DỮ LIỆU ĐÃ ẨN]: Nội dung điều khoản hợp đồng ngoài phạm vi phòng ban được cấp phép (BR-02)."
                     redacted["match"] = "RESTRICTED (BR-02)"
                     filtered.append(redacted)
-            # Sales Orders / CRM
             elif "SalesOrder" in file_name or "Customer" in file_name:
                 if self.is_department_allowed("Kinh doanh"):
                     filtered.append(c)
@@ -348,14 +371,6 @@ async def get_request_user(
     user_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """
-    Unified resolver for requesting user:
-    1. JWT Bearer token
-    2. X-User-Id / Query user_id
-    3. X-User-Email
-    4. X-User-Name
-    5. Default fallback to executive user
-    """
     u = None
 
     # 1. Bearer Token
@@ -424,7 +439,6 @@ async def get_request_user(
             detail="Tài khoản đã bị khóa, liên hệ quản trị viên",
         )
 
-    # Cập nhật Online (Throttled 2 phút)
     now = datetime.now(timezone.utc)
     if u.last_active_at is None or (now - u.last_active_at).total_seconds() > 120:
         u.last_active_at = now
@@ -444,7 +458,8 @@ async def get_user_scope(
     db: AsyncSession = Depends(get_db),
 ) -> ScopeContext:
     """
-    Computes effective ScopeContext for current request enforcing BR-02 & BR-05.
+    Computes effective ScopeContext for current request enforcing BR-02 & BR-05,
+    and synchronizing with Granular RBAC Matrix policies in PostgreSQL.
     """
     user_role = (x_user_role or user.role or "").strip().lower()
     is_admin = (not x_user_role and user.is_superuser) or user_role in ["admin", "it_admin"]
@@ -468,14 +483,35 @@ async def get_user_scope(
         except Exception:
             pass
 
-    effective_dept = x_user_dept or dept_name or "Ban Giám Đốc"
+    default_dept_by_role = "Ban Giám Đốc" if is_unrestricted else (
+        "Khối Quản lý Phòng ban & Bộ phận" if user_role in ("knowledge_manager", "manager", "department_manager") else "Kinh doanh"
+    )
+    effective_dept = x_user_dept or dept_name or default_dept_by_role
     canonical = normalize_dept(effective_dept)
 
     # Allowed scopes
     if is_unrestricted:
         allowed = {"*"}
     else:
-        allowed = DEPT_ALLOWED_SCOPES.get(canonical, {canonical})
+        allowed = set(DEPT_ALLOWED_SCOPES.get(canonical, {canonical}))
+        # Synchronize with Granular RBAC Matrix in PostgreSQL when using role-level scope
+        if canonical in ("all_departments", "sales") and effective_dept in (
+            "Khối Quản lý Phòng ban & Bộ phận",
+            "Phòng Kinh doanh & Khách hàng Doanh nghiệp",
+        ):
+            try:
+                from app.modules.m6_admin_security.rbac_matrix_service import get_all_policies, normalize_role_code
+                matrix_role = normalize_role_code(user_role)
+                policies = await get_all_policies(db, auto_seed=True)
+                role_policies = [p for p in policies if p.role_code == matrix_role and p.department_code == "ALL"]
+                if role_policies:
+                    matrix_allowed: Set[str] = set()
+                    for p in role_policies:
+                        if p.can_query and p.resource_type in RESOURCE_TO_DEPT_KEYS:
+                            matrix_allowed.update(RESOURCE_TO_DEPT_KEYS[p.resource_type])
+                    allowed = matrix_allowed
+            except Exception:
+                pass
 
     return ScopeContext(
         user=user,

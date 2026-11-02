@@ -31,6 +31,8 @@ class KnowledgeAccessPolicy(Base):
     # Quyền bấm xem trích dẫn nguồn dữ liệu gốc (PDF/Excel/Bảng)
     can_edit: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Quyền biên tập/xuất bản
+    can_upload: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Quyền tải lên/cập nhật tài liệu tri thức (PB48, PB50)
     can_view_sensitive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Quyền xem dữ liệu/điều khoản hợp đồng nhạy cảm (phục vụ PB04)
 

@@ -248,6 +248,13 @@ except ImportError:
 app.include_router(rbac_matrix_router, prefix="/api/v1")
 app.include_router(rbac_matrix_router, prefix="/api")
 
+# Document Upload Approvals (PB48, PB50, PB02)
+try:
+    from app.modules.m6_admin_security.document_approval_router import router as document_approval_router
+except ImportError:
+    from modules.m6_admin_security.document_approval_router import router as document_approval_router
+app.include_router(document_approval_router, prefix="/api")
+
 # --- Pydantic Schemas ---
 class CopilotQueryRequest(BaseModel):
     query: str

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  ShoppingCart, Building2, UserCheck,
+  ShoppingCart, Building2,
   Scale, RotateCcw, Save, Shield, CheckCircle2,
-  Lock, AlertTriangle, Info, Sliders, Edit3, Cpu, FlaskConical, Crown
+  Lock, AlertTriangle, Info, Sliders, Edit3, Cpu, FlaskConical, UploadCloud
 } from "lucide-react";
 import {
   fetchGranularRbacMatrix,
@@ -10,7 +10,7 @@ import {
   resetGranularRbacMatrix
 } from "./adminApi";
 
-// 7 cột bên phải: 5 phòng ban + Nhân viên + Ban lãnh đạo
+// 5 cột bên phải: 5 phòng ban của dự án
 const RESOURCE_META = {
   LEGAL: {
     label: "Pháp chế (Legal)",
@@ -47,55 +47,45 @@ const RESOURCE_META = {
     color: "#7c3aed",
     bg: "rgba(124, 58, 237, 0.08)",
   },
-  EMPLOYEE: {
-    label: "Nhân viên",
-    icon: UserCheck,
-    desc: "Dữ liệu Nhân viên: Hồ sơ nhân sự, KPI & báo cáo ca làm việc",
-    color: "#0891b2",
-    bg: "rgba(8, 145, 178, 0.08)",
-  },
-  EXECUTIVE_BOARD: {
-    label: "Ban lãnh đạo",
-    icon: Crown,
-    desc: "Dữ liệu Ban lãnh đạo: Báo cáo chiến lược & điều hành C-Level",
-    color: "#db2777",
-    bg: "rgba(219, 39, 119, 0.08)",
-  },
 };
 
-// Cột bên trái: 4 Role chuẩn của dự án
+// Cột bên trái: 4 Role chuẩn của dự án theo đặc tả SRS (BR-02, BR-03, BR-04, BR-05, US19)
 const ROW_GROUPS = [
   {
     role_code: "ADMIN",
     department_code: "ALL",
     name: "Admin hệ thống (SecOps / IT)",
-    scopeLabel: "Toàn công ty",
+    scopeLabel: "Toàn công ty (BR-03)",
     scopeType: "ALL_DEPARTMENTS",
     isFull: true,
+    defaultDepts: ["LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"],
   },
   {
     role_code: "EXECUTIVE",
     department_code: "ALL",
     name: "Ban lãnh đạo (Executive Director)",
-    scopeLabel: "Toàn công ty",
+    scopeLabel: "Toàn công ty (BR-05)",
     scopeType: "ALL_DEPARTMENTS",
     isFull: true,
+    defaultDepts: ["LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"],
   },
   {
     role_code: "DEPARTMENT_MANAGER",
     department_code: "ALL",
     name: "Trưởng phòng (Department Manager)",
-    scopeLabel: "Nội bộ phòng ban",
+    scopeLabel: "Khối nghiệp vụ (BR-04)",
     scopeType: "OWN_DEPARTMENT",
     isFull: false,
+    defaultDepts: ["LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "RND"],
   },
   {
     role_code: "STANDARD_USER",
     department_code: "ALL",
     name: "Chuyên viên (Standard User)",
-    scopeLabel: "Nội bộ phòng ban",
+    scopeLabel: "Phòng Kinh doanh (BR-02)",
     scopeType: "OWN_DEPARTMENT",
     isFull: false,
+    defaultDepts: ["SALES"],
   },
 ];
 
@@ -150,6 +140,7 @@ export default function GranularRbacMatrix() {
         cur.can_query !== init.can_query ||
         cur.can_view_citation !== init.can_view_citation ||
         cur.can_edit !== init.can_edit ||
+        cur.can_upload !== init.can_upload ||
         cur.can_view_sensitive !== init.can_view_sensitive ||
         cur.data_scope !== init.data_scope
       ) {
@@ -314,7 +305,7 @@ export default function GranularRbacMatrix() {
                 Ma trận Phân quyền Tri thức chi tiết (Granular RBAC)
               </h2>
               <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "var(--text-3)" }}>
-                Cấu hình phân quyền hỏi đáp AI Copilot, tra cứu Knowledge Graph & xem trích dẫn dữ liệu nguồn theo vai trò và phòng ban
+                Cô lập quyền truy cập tài liệu 5 phòng ban theo đúng 4 vai trò dự án (BR-02, BR-03, BR-04, BR-05)
               </p>
             </div>
           </div>
@@ -468,7 +459,7 @@ export default function GranularRbacMatrix() {
                 Vai trò / Phạm vi phòng ban
               </th>
 
-              {/* 7 Columns: 5 phòng ban + Nhân viên + Ban lãnh đạo */}
+              {/* 5 Columns: 5 phòng ban */}
               {Object.keys(RESOURCE_META).map((resKey) => {
                 const item = RESOURCE_META[resKey];
                 const Icon = item.icon;
@@ -477,7 +468,7 @@ export default function GranularRbacMatrix() {
                     key={resKey}
                     title={item.desc}
                     style={{
-                      minWidth: 140,
+                      minWidth: 150,
                       padding: "12px 10px",
                       textAlign: "center",
                       color: "var(--text-1)",
@@ -569,21 +560,20 @@ export default function GranularRbacMatrix() {
                     </div>
                   </td>
 
-                  {/* 7 Resource Cells */}
+                  {/* 5 Department Resource Cells */}
                   {Object.keys(RESOURCE_META).map((resKey) => {
                     const k = makeKey(row.role_code, row.department_code, resKey);
-                    const defaultAllowed = isFullAccess || resKey !== "EXECUTIVE_BOARD";
+                    const defaultAllowed = (row.defaultDepts || []).includes(resKey);
                     const policy = policies[k] || {
                       can_query: defaultAllowed,
                       can_view_citation: defaultAllowed,
-                      can_edit: row.role_code === "ADMIN" || (row.role_code === "DEPARTMENT_MANAGER" && resKey !== "EMPLOYEE" && resKey !== "EXECUTIVE_BOARD"),
+                      can_edit: row.role_code === "ADMIN" || (row.role_code === "DEPARTMENT_MANAGER" && defaultAllowed),
                       can_view_sensitive: isFullAccess,
                       data_scope: defaultAllowed ? row.scopeType : "NONE",
                     };
 
                     const isChanged = changedKeys.includes(k);
-                    const canEditSupported = resKey !== "EXECUTIVE_BOARD" || row.role_code === "ADMIN";
-                    const isSensitiveSupported = resKey === "LEGAL" || resKey === "EMPLOYEE" || resKey === "EXECUTIVE_BOARD";
+                    const isSensitiveSupported = resKey === "LEGAL" || resKey === "ACCOUNTING_PROCUREMENT";
 
                     return (
                       <td
@@ -659,30 +649,52 @@ export default function GranularRbacMatrix() {
                             )}
 
                             {/* Edit badge toggle */}
-                            {canEditSupported && (
-                              <button
-                                type="button"
-                                onClick={() => updateCellField(row.role_code, row.department_code, resKey, "can_edit", !policy.can_edit)}
-                                title={policy.can_edit ? "Có quyền biên tập tài liệu phòng ban (Bấm để tắt)" : "Không có quyền biên tập (Bấm để bật)"}
-                                style={{
-                                  background: policy.can_edit ? "var(--green-soft, rgba(5, 150, 105, 0.09))" : "var(--surface-3, #edf2f7)",
-                                  border: policy.can_edit ? "1px solid rgba(5, 150, 105, 0.25)" : "1px solid var(--border-soft)",
-                                  borderRadius: 4,
-                                  padding: "2px 5px",
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 2,
-                                  color: policy.can_edit ? "var(--green, #059669)" : "var(--text-4, #94a3b8)",
-                                  fontSize: "9.5px",
-                                  fontWeight: 600,
-                                  transition: "all var(--transition-fast)",
-                                }}
-                              >
-                                <Edit3 size={9} />
-                                <span>Biên tập</span>
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => updateCellField(row.role_code, row.department_code, resKey, "can_edit", !policy.can_edit)}
+                              title={policy.can_edit ? "Có quyền biên tập tài liệu phòng ban (Bấm để tắt)" : "Không có quyền biên tập (Bấm để bật)"}
+                              style={{
+                                background: policy.can_edit ? "var(--green-soft, rgba(5, 150, 105, 0.09))" : "var(--surface-3, #edf2f7)",
+                                border: policy.can_edit ? "1px solid rgba(5, 150, 105, 0.25)" : "1px solid var(--border-soft)",
+                                borderRadius: 4,
+                                padding: "2px 5px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 2,
+                                color: policy.can_edit ? "var(--green, #059669)" : "var(--text-4, #94a3b8)",
+                                fontSize: "9.5px",
+                                fontWeight: 600,
+                                transition: "all var(--transition-fast)",
+                              }}
+                            >
+                              <Edit3 size={9} />
+                              <span>Biên tập</span>
+                            </button>
+
+                            {/* Upload badge toggle (PB48, PB50) */}
+                            <button
+                              type="button"
+                              onClick={() => updateCellField(row.role_code, row.department_code, resKey, "can_upload", !(policy.can_upload ?? policy.can_edit))}
+                              title={(policy.can_upload ?? policy.can_edit) ? "Có quyền gửi tài liệu tải lên (Bấm để tắt)" : "Không có quyền gửi tài liệu tải lên (Bấm để bật)"}
+                              style={{
+                                background: (policy.can_upload ?? policy.can_edit) ? "var(--blue-soft, rgba(37, 99, 235, 0.09))" : "var(--surface-3, #edf2f7)",
+                                border: (policy.can_upload ?? policy.can_edit) ? "1px solid rgba(37, 99, 235, 0.25)" : "1px solid var(--border-soft)",
+                                borderRadius: 4,
+                                padding: "2px 5px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 2,
+                                color: (policy.can_upload ?? policy.can_edit) ? "var(--blue, #2563eb)" : "var(--text-4, #94a3b8)",
+                                fontSize: "9.5px",
+                                fontWeight: 600,
+                                transition: "all var(--transition-fast)",
+                              }}
+                            >
+                              <UploadCloud size={9} />
+                              <span>Tải lên</span>
+                            </button>
                           </div>
                         </div>
                       </td>

@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ShieldCheck, Users, ClipboardList, TrendingUp, UserPlus,
   Check, Ban, AlertTriangle,
-  Lock, Unlock, KeyRound, Trash2, RefreshCw, Sliders
+  Lock, Unlock, KeyRound, Trash2, RefreshCw, Sliders, Clock, FileCheck
 } from "lucide-react";
 import GranularRbacMatrix from "./GranularRbacMatrix";
+import PendingApprovalsPanel from "./PendingApprovalsPanel";
 import {
   PageHeader, Tabs, Badge, Button, SearchInput, Card, StatCard, Alert
 } from "../../components/ui";
@@ -23,6 +24,7 @@ import {
   fetchAuditLogs,
   fetchKnowledgePermissions,
   updateKnowledgePermission,
+  fetchUploadApprovals,
 } from "./adminApi";
 
 const ACTION_VARIANT = {
@@ -111,6 +113,17 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
   const [permsForbidden, setPermsForbidden] = useState("");
 
   const [budgetLimit, setBudgetLimit] = useState(500);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+
+  useEffect(() => {
+    fetchUploadApprovals()
+      .then((res) => {
+        if (res && res.success) {
+          setPendingApprovalsCount(res.pending_count || 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const showToast = useCallback((msg, type = "ok") => {
     setToastMsg(msg); setToastType(type);
@@ -294,6 +307,12 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
 
   const adminTabs = [
     { id: "granular_rbac", label: isVi ? "Ma trận Phân quyền Tri thức" : "Granular RBAC Matrix", icon: Sliders },
+    {
+      id: "upload_approvals",
+      label: isVi ? "Phê duyệt Tài liệu" : "Pending Approvals",
+      icon: Clock,
+      badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined
+    },
     { id: "perms", label: isVi ? "Phân quyền Miền (Cơ bản)" : "Knowledge Domains", icon: ShieldCheck },
     { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: Users },
     { id: "audit", label: isVi ? "Nhật ký Kiểm toán" : "Audit Trail", icon: ClipboardList },
@@ -448,6 +467,14 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
 
         {activeTab === "granular_rbac" && (
           <GranularRbacMatrix />
+        )}
+
+        {activeTab === "upload_approvals" && (
+          <PendingApprovalsPanel
+            lang={lang}
+            showToast={showToast}
+            onPendingCountChange={setPendingApprovalsCount}
+          />
         )}
 
         {activeTab === "perms" && (
