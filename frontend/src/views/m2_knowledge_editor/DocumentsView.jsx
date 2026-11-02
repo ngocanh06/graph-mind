@@ -123,6 +123,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     if (res && res.success) {
       setUploadSuccessMsg(isVi ? `✓ Đã lưu ${uploadFile.name} vào Central Storage (/data/${uploadDept}/). Ingestion Pipeline đang phân tích...` : `✓ Saved ${uploadFile.name} to /data/${uploadDept}/. Ingestion Pipeline analyzing...`);
       showToast(isVi ? `Đã lưu ${uploadFile.name} vào Central Storage` : `Saved ${uploadFile.name} to Central Storage`);
+      setCurrentPage(1);
       setReloadTrigger((prev) => prev + 1);
       setTimeout(() => {
         setIsUploadModalOpen(false);
@@ -683,7 +684,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               }}
               className="w-full py-2 px-3 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary font-medium"
             >
-              <option value="ALL">{isVi ? "Sắp xếp: Mặc định" : "Sort: Default"}</option>
+              <option value="ALL">{isVi ? "Mới nhất trước (Mặc định)" : "Newest First (Default)"}</option>
               <option value="NEW_ONLY">{isVi ? "⚡ Chỉ tài liệu mới thêm" : "⚡ Only Recently Added"}</option>
               <option value="NEWEST_FIRST">{isVi ? "Mới nhất trước" : "Newest First"}</option>
               <option value="NAME_ASC">{isVi ? "Tên A → Z" : "Name A → Z"}</option>

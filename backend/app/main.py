@@ -1709,6 +1709,25 @@ def _format_size_bytes(size_bytes: int) -> str:
     return f"{size_bytes} B"
 
 
+def _parse_doc_timestamp(val: Any) -> float:
+    """Parse numeric, ISO string, or DD/MM/YYYY date into unix timestamp."""
+    if not val:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, str):
+        val_str = val.strip()
+        try:
+            return datetime.fromisoformat(val_str.replace("Z", "+00:00")).timestamp()
+        except Exception:
+            pass
+        try:
+            return datetime.strptime(val_str, "%d/%m/%Y").timestamp()
+        except Exception:
+            pass
+    return 0.0
+
+
 @app.get("/api/documents")
 @app.get("/api/v1/documents")
 def get_repository_documents(
@@ -1863,10 +1882,10 @@ def get_repository_documents(
                     "deptLabel": w_info.get("deptLabel", "Kinh doanh (Sales)"),
                     "department": w_info.get("department", "Kinh doanh (Sales)"),
                     "owner": w_info.get("owner", "Google Drive Sync"),
-                    "date": w_info.get("date", datetime.now().strftime("%d/%m/%Y")),
-                    "mtime": time.time(),
-                    "created_at": datetime.now().isoformat(),
-                    "updated_at": datetime.now().isoformat(),
+                    "date": (w_info.get("date") or (datetime.fromtimestamp(_parse_doc_timestamp(w_info.get("lastModified") or w_info.get("updated_at"))).strftime("%d/%m/%Y") if _parse_doc_timestamp(w_info.get("lastModified") or w_info.get("updated_at")) else "23/10/2026")),
+                    "mtime": _parse_doc_timestamp(w_info.get("lastModified") or w_info.get("updated_at")) or _parse_doc_timestamp(w_info.get("mtime")) or _parse_doc_timestamp(w_info.get("date")),
+                    "created_at": w_info.get("lastModified") or w_info.get("created_at") or w_info.get("date") or "",
+                    "updated_at": w_info.get("lastModified") or w_info.get("updated_at") or w_info.get("date") or "",
                     "status": "INDEXED",
                     "statusBadge": "Đã lập chỉ mục",
                     "statusState": "active",
@@ -1911,7 +1930,7 @@ def get_repository_documents(
             "neo4j_nodes": total_neo4j_nodes,
             "neo4j_relationships": total_neo4j_rels,
             "departments_count": len(set(it["deptKey"] for it in all_items)) or 5,
-            "new_docs_count": sum(1 for it in all_items if it["status"] == "INDEXED"),
+            "new_docs_count": sum(1 for it in all_items if it.get("mtime", 0.0) > 1792800000 or it.get("isNew", False)),
             "watcher_docs": len(watcher_map)
         }
         _DOCUMENTS_CACHE = (all_items, summary)
@@ -1955,17 +1974,14 @@ def get_repository_documents(
             if resolve_department(it.get("dept") or it.get("deptLabel") or it.get("category"))["key"] == target_dept_key
         ]
     if new_only_val:
-        # Sort by newest mtime / created_at first
-        filtered = sorted(filtered, key=lambda it: it.get("mtime", 0.0), reverse=True)
+        # Filter to only recently added items (added after baseline Oct 23 dataset)
+        filtered = [it for it in filtered if it.get("mtime", 0.0) > 1792800000 or it.get("isNew", False)]
 
-    # Sorting
-    if sort_by_val in ("newest", "NEWEST_FIRST") or new_only_val:
-        filtered = sorted(filtered, key=lambda it: it.get("mtime", 0.0), reverse=True)
-    elif sort_by_val in ("name_asc", "NAME_ASC"):
+    # Sorting: Default is ALWAYS newest first by mtime
+    if sort_by_val in ("name_asc", "NAME_ASC"):
         filtered = sorted(filtered, key=lambda it: it.get("name", "").lower())
     else:
-        # Default: newest first by mtime
-        filtered = sorted(filtered, key=lambda it: (1 if it["status"] == "INDEXED" else 0, it.get("mtime", 0.0)), reverse=True)
+        filtered = sorted(filtered, key=lambda it: it.get("mtime", 0.0), reverse=True)
 
     total = len(filtered)
     page_items = filtered[offset_val : offset_val + limit_val]
