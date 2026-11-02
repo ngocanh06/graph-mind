@@ -10,7 +10,7 @@ import {
   resetGranularRbacMatrix
 } from "./adminApi";
 
-// 7 cột bên phải: 5 phòng ban + Nhân viên + Ban lãnh đạo
+// 5 cột phòng ban thực tế trong kho tài liệu
 const RESOURCE_META = {
   LEGAL: {
     label: "Pháp chế (Legal)",
@@ -46,20 +46,6 @@ const RESOURCE_META = {
     desc: "Phòng Nghiên cứu & Phát triển: Sản phẩm & tài liệu kỹ thuật",
     color: "#7c3aed",
     bg: "rgba(124, 58, 237, 0.08)",
-  },
-  EMPLOYEE: {
-    label: "Nhân viên",
-    icon: UserCheck,
-    desc: "Dữ liệu Nhân viên: Hồ sơ nhân sự, KPI & báo cáo ca làm việc",
-    color: "#0891b2",
-    bg: "rgba(8, 145, 178, 0.08)",
-  },
-  EXECUTIVE_BOARD: {
-    label: "Ban lãnh đạo",
-    icon: Crown,
-    desc: "Dữ liệu Ban lãnh đạo: Báo cáo chiến lược & điều hành C-Level",
-    color: "#db2777",
-    bg: "rgba(219, 39, 119, 0.08)",
   },
 };
 
@@ -468,7 +454,7 @@ export default function GranularRbacMatrix() {
                 Vai trò / Phạm vi phòng ban
               </th>
 
-              {/* 7 Columns: 5 phòng ban + Nhân viên + Ban lãnh đạo */}
+              {/* 5 Columns: 5 phòng ban kho tài liệu */}
               {Object.keys(RESOURCE_META).map((resKey) => {
                 const item = RESOURCE_META[resKey];
                 const Icon = item.icon;
@@ -572,18 +558,21 @@ export default function GranularRbacMatrix() {
                   {/* 7 Resource Cells */}
                   {Object.keys(RESOURCE_META).map((resKey) => {
                     const k = makeKey(row.role_code, row.department_code, resKey);
-                    const defaultAllowed = isFullAccess || resKey !== "EXECUTIVE_BOARD";
+                    const isAllowed = row.role_code === "ADMIN" || row.role_code === "EXECUTIVE" ||
+                      (row.role_code === "DEPARTMENT_MANAGER" && resKey !== "LEGAL") ||
+                      (row.role_code === "STANDARD_USER" && (resKey === "SALES" || resKey === "IT" || resKey === "RND"));
+                    const canEdit = row.role_code === "ADMIN" || (row.role_code === "DEPARTMENT_MANAGER" && resKey !== "LEGAL");
                     const policy = policies[k] || {
-                      can_query: defaultAllowed,
-                      can_view_citation: defaultAllowed,
-                      can_edit: row.role_code === "ADMIN" || (row.role_code === "DEPARTMENT_MANAGER" && resKey !== "EMPLOYEE" && resKey !== "EXECUTIVE_BOARD"),
-                      can_view_sensitive: isFullAccess,
-                      data_scope: defaultAllowed ? row.scopeType : "NONE",
+                      can_query: isAllowed,
+                      can_view_citation: isAllowed,
+                      can_edit: canEdit,
+                      can_view_sensitive: row.role_code === "ADMIN" || row.role_code === "EXECUTIVE",
+                      data_scope: isAllowed ? row.scopeType : "NONE",
                     };
 
                     const isChanged = changedKeys.includes(k);
-                    const canEditSupported = resKey !== "EXECUTIVE_BOARD" || row.role_code === "ADMIN";
-                    const isSensitiveSupported = resKey === "LEGAL" || resKey === "EMPLOYEE" || resKey === "EXECUTIVE_BOARD";
+                    const canEditSupported = row.role_code !== "STANDARD_USER" && (resKey !== "LEGAL" || row.role_code === "ADMIN");
+                    const isSensitiveSupported = resKey === "LEGAL" && (row.role_code === "ADMIN" || row.role_code === "EXECUTIVE");
 
                     return (
                       <td
