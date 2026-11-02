@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from "d3-force";
-import { fetchNeo4jStatus, fetchNeo4jGraph, fetchNeo4jNode, runCypherQuery, searchNeo4jNodes } from "../../services/api";
+import { fetchNeo4jStatus, fetchNeo4jGraph, fetchNeo4jNode, runCypherQuery, searchNeo4jNodes, expandNeo4jNode } from "../../services/api";
 
 // Color map for real Neo4j labels in the dataset
 // Color map with vibrant Neo4j Bloom lighting gradients & circular orbs
@@ -42,11 +42,14 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
   const [activeTab, setActiveTab] = useState("visual"); // "visual" | "nodes" | "rels" | "cypher"
   
   // Filters & limits
+  const [selectedDomain, setSelectedDomain] = useState("ALL"); // "ALL" | "legal" | "adventureworks" | "demo"
   const [selectedLabel, setSelectedLabel] = useState("ALL");
+  const [selectedRelType, setSelectedRelType] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState(() => {
     return typeof initialSearch === "string" ? initialSearch : (initialSearch?.name || "");
   });
   const [nodeLimit, setNodeLimit] = useState(60);
+  const [expanding, setExpanding] = useState(false);
 
   // Cypher Console
   const [cypher, setCypher] = useState("MATCH (n:Product) RETURN n LIMIT 15");
@@ -71,12 +74,62 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
     setLoading(true);
     const [st, graph] = await Promise.all([
       fetchNeo4jStatus(),
-      fetchNeo4jGraph(nodeLimit, nodeLimit * 2, selectedLabel === "ALL" ? null : selectedLabel),
+      fetchNeo4jGraph(
+        nodeLimit,
+        nodeLimit * 2,
+        selectedLabel === "ALL" ? null : selectedLabel,
+        selectedDomain === "ALL" ? null : selectedDomain,
+        selectedRelType === "ALL" ? null : selectedRelType
+      ),
     ]);
     setStatus(st?.data || null);
     setGraphData(graph?.data || null);
     setLoading(false);
-  }, [nodeLimit, selectedLabel]);
+  }, [nodeLimit, selectedLabel, selectedDomain, selectedRelType]);
+
+  const handleExpandNode = async (nodeId) => {
+    if (!nodeId || expanding) return;
+    setExpanding(true);
+    try {
+      const res = await expandNeo4jNode(nodeId, 25);
+      if (res?.success && res.data) {
+        const newNodes = res.data.nodes || [];
+        const newRels = res.data.relationships || [];
+        if (newNodes.length > 0 || newRels.length > 0) {
+          setGraphData(prev => {
+            if (!prev) return res.data;
+            const existingIds = new Set(prev.nodes.map(n => n._id));
+            const mergedNodes = [...prev.nodes];
+            newNodes.forEach(n => {
+              if (!existingIds.has(n._id)) {
+                mergedNodes.push(n);
+                existingIds.add(n._id);
+              }
+            });
+            const relKey = r => `${r.source?.id ?? r.source}->${r.rel_type || r.type}->${r.target?.id ?? r.target}`;
+            const existingRels = new Set(prev.relationships.map(relKey));
+            const mergedRels = [...prev.relationships];
+            newRels.forEach(r => {
+              const k = relKey(r);
+              if (!existingRels.has(k)) {
+                mergedRels.push(r);
+                existingRels.add(k);
+              }
+            });
+            return {
+              ...prev,
+              nodes: mergedNodes,
+              relationships: mergedRels
+            };
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[GraphPanel] Expand error:", err);
+    } finally {
+      setExpanding(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -320,6 +373,59 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
           >
             {loading ? "⏳..." : "↻ Refresh"}
           </button>
+        </div>
+      </div>
+
+      {/* ── DOMAIN SELECTOR PILLS ─────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 12px", background: "var(--surface-raised, #f8fafc)", borderRadius: 10, border: "1px solid var(--border-soft, #e2e8f0)" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3, #64748b)" }}>
+          {isVi ? "Miền tri thức (Domain):" : "Knowledge Domain:"}
+        </span>
+        {[
+          { id: "ALL", label: isVi ? "🌐 Tất cả các miền" : "🌐 All Domains", color: "#0284c7" },
+          { id: "legal", label: isVi ? "⚖️ Pháp chế (CUAD Legal)" : "⚖️ CUAD Legal", color: "#4f46e5" },
+          { id: "adventureworks", label: isVi ? "🏢 ERP Doanh nghiệp (AdventureWorks)" : "🏢 AdventureWorks ERP", color: "#0891b2" },
+          { id: "demo", label: isVi ? "🧪 Mẫu / Demo" : "🧪 Demo / Sample", color: "#f59e0b" }
+        ].map(dom => (
+          <button
+            key={dom.id}
+            onClick={() => setSelectedDomain(dom.id)}
+            style={{
+              padding: "5px 13px", borderRadius: 16, fontSize: 11.5, fontWeight: 700,
+              cursor: "pointer", border: "1.5px solid",
+              background: selectedDomain === dom.id ? dom.color : "transparent",
+              color: selectedDomain === dom.id ? "#fff" : "var(--text-2, #334155)",
+              borderColor: selectedDomain === dom.id ? dom.color : "var(--border-soft, #cbd5e1)",
+              boxShadow: selectedDomain === dom.id ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+              transition: "all 0.15s"
+            }}
+          >
+            {dom.label}
+          </button>
+        ))}
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3, #64748b)" }}>
+            {isVi ? "Loại quan hệ:" : "Rel Type:"}
+          </span>
+          <select
+            value={selectedRelType}
+            onChange={e => setSelectedRelType(e.target.value)}
+            style={{
+              padding: "4px 8px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+              border: "1px solid var(--border-soft, #cbd5e1)", background: "var(--surface, #fff)",
+              color: "var(--text-1, #0f172a)", outline: "none"
+            }}
+          >
+            <option value="ALL">{isVi ? "Tất cả quan hệ" : "All Relationships"}</option>
+            <option value="CONTAINS_CLAUSE">CONTAINS_CLAUSE</option>
+            <option value="PARTY_TO">PARTY_TO</option>
+            <option value="PART_OF">PART_OF</option>
+            <option value="BELONGS_TO">BELONGS_TO</option>
+            <option value="CONTAINS_PRODUCT">CONTAINS_PRODUCT</option>
+            <option value="PLACED_ORDER">PLACED_ORDER</option>
+            <option value="PURCHASED">PURCHASED</option>
+          </select>
         </div>
       </div>
 
@@ -727,8 +833,58 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                 </div>
 
                 {/* ID badge */}
-                <div style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg-subtle, #f8fafc)", padding: "4px 8px", borderRadius: 6 }}>
-                  Neo4j ID: <span style={{ fontFamily: "monospace" }}>{selectedNode._id}</span>
+                <div style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg-subtle, #f8fafc)", padding: "4px 8px", borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Neo4j ID: <span style={{ fontFamily: "monospace" }}>{selectedNode._id}</span></span>
+                </div>
+
+                {/* 1-Hop Expansion Action Button */}
+                <button
+                  onClick={() => handleExpandNode(selectedNode._id)}
+                  disabled={expanding}
+                  style={{
+                    padding: "7px 12px", borderRadius: 8, fontSize: 11.5, fontWeight: 700,
+                    background: expanding ? "#94a3b8" : "#0284c7", color: "#fff",
+                    border: "none", cursor: expanding ? "wait" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    boxShadow: "0 2px 4px rgba(2,132,199,0.2)", transition: "all 0.15s"
+                  }}
+                >
+                  {expanding ? "⏳ Đang mở rộng..." : (isVi ? "🔍 Mở rộng liên kết (Expand 1-hop)" : "🔍 Expand Neighbors (1-hop)")}
+                </button>
+
+                {/* Provenance & Source Metadata Card */}
+                <div style={{
+                  padding: "8px 10px", borderRadius: 8,
+                  background: selectedNode.domain ? "var(--bg-subtle, #f0fdf4)" : "var(--bg-subtle, #fefce8)",
+                  border: `1px solid ${selectedNode.domain ? "#bbf7d0" : "#fef08a"}`,
+                  fontSize: 11
+                }}>
+                  <div style={{ fontWeight: 700, color: selectedNode.domain ? "#166534" : "#854d0e", marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{isVi ? "Nguồn dữ liệu & Provenance:" : "Data Provenance:"}</span>
+                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: selectedNode.domain ? "#dcfce7" : "#fef9c3", color: selectedNode.domain ? "#15803d" : "#a16207" }}>
+                      {selectedNode.domain ? `Domain: ${selectedNode.domain}` : (isVi ? "Chưa migrate domain" : "Unmigrated domain")}
+                    </span>
+                  </div>
+                  {selectedNode.source_file && (
+                    <div style={{ color: "var(--text-2, #334155)", wordBreak: "break-all", marginBottom: 2 }}>
+                      📁 File: <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{selectedNode.source_file}</span>
+                    </div>
+                  )}
+                  {selectedNode.source_table && (
+                    <div style={{ color: "var(--text-2, #334155)", marginBottom: 2 }}>
+                      📊 Table: <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{selectedNode.source_table}</span>
+                    </div>
+                  )}
+                  {selectedNode.evidence_text && (
+                    <div style={{ marginTop: 4, fontStyle: "italic", color: "var(--text-3, #64748b)", background: "rgba(255,255,255,0.7)", padding: 4, borderRadius: 4 }}>
+                      "{selectedNode.evidence_text.length > 120 ? selectedNode.evidence_text.slice(0, 117) + "…" : selectedNode.evidence_text}"
+                    </div>
+                  )}
+                  {!selectedNode.source_file && !selectedNode.source_table && (
+                    <div style={{ color: "var(--text-3, #64748b)", fontStyle: "italic", fontSize: 10.5 }}>
+                      {isVi ? "Dữ liệu runtime gốc (chờ Migration G1 để cập nhật chi tiết provenance)" : "Runtime node awaiting Migration G1 provenance tag"}
+                    </div>
+                  )}
                 </div>
 
                 {/* Properties Table */}

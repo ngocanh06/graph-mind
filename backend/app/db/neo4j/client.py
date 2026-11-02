@@ -183,24 +183,75 @@ class Neo4jClient:
             print(f"[Neo4j] get_all_relationships error: {e}")
             return []
 
-    def get_connected_nodes(self, limit: int = 60, label: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Fetch nodes from Neo4j, prioritizing connected hierarchy so products link to subcategories."""
+    def get_connected_nodes(
+        self,
+        limit: int = 60,
+        label: Optional[str] = None,
+        domain: Optional[str] = None,
+        rel_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Fetch nodes from Neo4j, prioritizing connected hierarchy based on domain and label filters."""
         if not self._connected and not self.connect():
             return []
         try:
+            clean_dom = (domain or "").lower().strip()
             if label and label != "ALL":
-                return self.get_all_nodes(limit=limit, label=label)
-            
-            # Hierarchical traversal: Category -> SubCategory -> Product (plus other entities)
-            cypher = """
-                MATCH (c:Category)<-[:PART_OF]-(s:SubCategory)
-                OPTIONAL MATCH (s)<-[:BELONGS_TO]-(p:Product)
-                WITH c, s, collect(p)[0..2] as prods
-                UNWIND ([c, s] + prods) as n
-                WITH DISTINCT n
-                RETURN n, labels(n) as labels
-                LIMIT $limit
-            """
+                clean_lbl = re.sub(r"[^a-zA-Z0-9_]", "", label)
+                cypher = f"""
+                    MATCH (n:`{clean_lbl}`)
+                    OPTIONAL MATCH (n)-[r]-(m)
+                    WITH n, collect(m)[0..1] as neighbors
+                    UNWIND ([n] + neighbors) as item
+                    WITH DISTINCT item
+                    RETURN item as n, labels(item) as labels
+                    LIMIT $limit
+                """
+            elif clean_dom == "legal":
+                # CUAD hierarchy: Document -> Clause, Company -> Document
+                cypher = """
+                    MATCH (d:Document)-[r:CONTAINS_CLAUSE]->(c:Clause)
+                    OPTIONAL MATCH (comp:Company)-[:PARTY_TO]->(d)
+                    WITH d, collect(c)[0..2] as clauses, collect(comp)[0..1] as comps
+                    UNWIND ([d] + clauses + comps) as n
+                    WITH DISTINCT n
+                    RETURN n, labels(n) as labels
+                    LIMIT $limit
+                """
+            elif clean_dom == "adventureworks":
+                # ERP hierarchy: Category -> SubCategory -> Product, Customer -> SalesOrder
+                cypher = """
+                    MATCH (c:Category)<-[:PART_OF]-(s:SubCategory)
+                    OPTIONAL MATCH (s)<-[:BELONGS_TO]-(p:Product)
+                    WITH c, s, collect(p)[0..2] as prods
+                    UNWIND ([c, s] + prods) as n
+                    WITH DISTINCT n
+                    RETURN n, labels(n) as labels
+                    LIMIT $limit
+                """
+            else:
+                # Balanced representation of both domains
+                half_limit = max(10, limit // 2)
+                cypher = f"""
+                    CALL {{
+                        MATCH (c:Category)<-[:PART_OF]-(s:SubCategory)
+                        OPTIONAL MATCH (s)<-[:BELONGS_TO]-(p:Product)
+                        WITH c, s, collect(p)[0..2] as prods
+                        UNWIND ([c, s] + prods) as n
+                        RETURN DISTINCT n, labels(n) as labels
+                        LIMIT {half_limit}
+                    }}
+                    RETURN n, labels
+                    UNION
+                    CALL {{
+                        MATCH (d:Document)-[r:CONTAINS_CLAUSE]->(cl:Clause)
+                        OPTIONAL MATCH (comp:Company)-[:PARTY_TO]->(d)
+                        WITH d, collect(cl)[0..2] as clauses, collect(comp)[0..1] as comps
+                        UNWIND ([d] + clauses + comps) as n
+                        RETURN DISTINCT n, labels(n) as labels
+                        LIMIT {half_limit}
+                    }}
+                    RETURN n, labels
+                """
             with self._driver.session() as session:
                 result = session.run(cypher, limit=limit)
                 nodes = []
@@ -218,7 +269,7 @@ class Neo4jClient:
                     })
                 # If less than limit, fill up with other connected nodes
                 if len(nodes) < limit:
-                    extra = self.get_all_nodes(limit=limit)
+                    extra = self.get_all_nodes(limit=limit, label=label)
                     seen = {n["_id"] for n in nodes}
                     for en in extra:
                         if en["_id"] not in seen and len(nodes) < limit:
@@ -228,6 +279,52 @@ class Neo4jClient:
         except Exception as e:
             print(f"[Neo4j] get_connected_nodes error: {e}")
             return self.get_all_nodes(limit=limit, label=label)
+
+    def expand_node_neighbors(self, node_id: str, limit: int = 25) -> Dict[str, Any]:
+        """Fetch 1-hop connected neighbor nodes and relationships for a specific node."""
+        if not self._connected and not self.connect():
+            return {"nodes": [], "relationships": []}
+        try:
+            cypher = """
+                MATCH (center)
+                WHERE elementId(center) = $node_id OR center.id = $node_id OR center.name = $node_id
+                MATCH (center)-[r]-(neighbor)
+                WITH center, r, neighbor
+                LIMIT $limit
+                RETURN
+                    elementId(neighbor) as n_id, labels(neighbor) as n_labels, properties(neighbor) as n_props,
+                    type(r) as rel_type, properties(r) as rel_props,
+                    elementId(startNode(r)) as start_id, elementId(endNode(r)) as end_id,
+                    elementId(center) as c_id, labels(center) as c_labels, properties(center) as c_props
+            """
+            with self._driver.session() as session:
+                records = list(session.run(cypher, node_id=node_id, limit=limit))
+                nodes = []
+                rels = []
+                seen_nodes = set()
+                for rec in records:
+                    n_id = rec["n_id"]
+                    if n_id not in seen_nodes:
+                        n_props = {k: _clean_val(v) for k, v in dict(rec["n_props"] or {}).items()}
+                        n_labels = rec["n_labels"] or []
+                        n_name = _extract_display_name(n_props, n_labels, n_id)
+                        nodes.append({
+                            "_id": n_id,
+                            "_labels": n_labels,
+                            "name": n_name,
+                            **n_props
+                        })
+                        seen_nodes.add(n_id)
+                    rels.append({
+                        "source": rec["start_id"],
+                        "target": rec["end_id"],
+                        "rel_type": rec["rel_type"],
+                        "rel_props": {k: _clean_val(v) for k, v in dict(rec["rel_props"] or {}).items()}
+                    })
+                return {"nodes": nodes, "relationships": rels}
+        except Exception as e:
+            print(f"[Neo4j] expand_node_neighbors error: {e}")
+            return {"nodes": [], "relationships": []}
 
     def get_relationships_for_nodes(self, node_ids: List[str], limit: int = 300) -> List[Dict[str, Any]]:
         """Fetch relationships between the provided node IDs."""
