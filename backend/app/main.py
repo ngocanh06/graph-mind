@@ -1693,7 +1693,7 @@ def get_central_storage_inventory() -> List[Dict[str, Any]]:
     """
     global _CENTRAL_STORAGE_CACHE, _CENTRAL_STORAGE_CACHE_TIME
     now = time.time()
-    if _CENTRAL_STORAGE_CACHE is not None and (now - _CENTRAL_STORAGE_CACHE_TIME < 300.0):
+    if _CENTRAL_STORAGE_CACHE is not None and (now - _CENTRAL_STORAGE_CACHE_TIME < 5.0):
         return _CENTRAL_STORAGE_CACHE
 
     try:
@@ -1755,7 +1755,7 @@ def get_repository_documents(
     global _DOCUMENTS_CACHE, _DOCUMENTS_CACHE_TIME
     now = time.time()
 
-    if _DOCUMENTS_CACHE is not None and (now - _DOCUMENTS_CACHE_TIME < 300.0):
+    if _DOCUMENTS_CACHE is not None and (now - _DOCUMENTS_CACHE_TIME < 5.0):
         all_items, summary = _DOCUMENTS_CACHE
     else:
         inventory = get_central_storage_inventory()
@@ -1768,6 +1768,7 @@ def get_repository_documents(
             if neo4j_client.is_connected or neo4j_client.connect():
                 neo_docs = neo4j_client.run_cypher("""
                     MATCH (d:Document)
+                    WHERE d.status IS NULL OR (d.status <> 'MISSING_PENDING_VERIFICATION' AND d.status <> 'DELETED')
                     RETURN d.name as name, d.id as id, d.hash as hash, d.chunksCount as chunks,
                            d.department as dept, d.deptKey as deptKey, d.storagePath as storagePath,
                            d.ingestedAt as ingestedAt, d.lastModified as lastModified,

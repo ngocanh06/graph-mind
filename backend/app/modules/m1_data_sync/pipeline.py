@@ -1279,7 +1279,8 @@ def process_document_deletion(
     filename: str,
     department: str = "sales",
     file_hash: Optional[str] = None,
-    event_timestamp: Optional[str] = None
+    event_timestamp: Optional[str] = None,
+    force_purge: bool = False
 ) -> Dict[str, Any]:
     """
     PR1 Fail-Closed Deletion Pipeline:
@@ -1289,6 +1290,7 @@ def process_document_deletion(
     - If verified, purges exact active_point_ids from Qdrant and safely deletes Document & Clauses,
       strictly preserving shared Company, Department, Customer nodes!
     """
+    global _WATCHER_INGESTED_DOCS, _WATCHER_SYNC_LOGS
     dept_def = resolve_department(department or filename)
     dept_name = dept_def["displayName"]
     dept_key = dept_def["key"]
@@ -1311,6 +1313,23 @@ def process_document_deletion(
         }
 
     if not doc_node:
+        if force_purge:
+            try:
+                if qdrant_client.is_connected or qdrant_client.connect():
+                    from qdrant_client.http import models
+                    qdrant_client._client.delete(
+                        collection_name=qdrant_client._collection,
+                        points_selector=models.Filter(
+                            should=[
+                                models.FieldCondition(key="contract_name", match=models.MatchValue(value=filename)),
+                                models.FieldCondition(key="source_file", match=models.MatchValue(value=filename))
+                            ]
+                        )
+                    )
+            except Exception as e:
+                logger.warning(f"[Pipeline] Qdrant delete error for non-node doc: {e}")
+            _WATCHER_INGESTED_DOCS = [d for d in _WATCHER_INGESTED_DOCS if d.get("name") != filename and d.get("raw_id") != filename and d.get("id") != filename]
+            _save_json(_DOCS_FILE, _WATCHER_INGESTED_DOCS)
         return {"success": True, "status": "not_found", "filename": filename}
 
     elem_id = doc_node.get("elem_id")
@@ -1318,7 +1337,7 @@ def process_document_deletion(
     active_point_ids = doc_node.get("points") or []
 
     # 2. Check for Stale Delete Event (Version Evidence Mismatch)
-    if file_hash and current_hash and file_hash != current_hash:
+    if not force_purge and file_hash and current_hash and file_hash != current_hash:
         logger.warning(
             f"[Pipeline] Stale delete event rejected for '{filename}': event hash {file_hash} does not match current DB hash {current_hash}."
         )
@@ -1330,7 +1349,7 @@ def process_document_deletion(
 
     # 3. Check physical file existence on disk
     file_on_disk = os.path.exists(storage_path) or os.path.exists(filename)
-    if not file_hash and not file_on_disk:
+    if not force_purge and not file_hash and not file_on_disk:
         # Event lacks hash evidence and file is missing on disk: mark MISSING_PENDING_VERIFICATION
         try:
             if elem_id and (neo4j_client.is_connected or neo4j_client.connect()):
@@ -1396,7 +1415,6 @@ def process_document_deletion(
         logger.warning(f"[Pipeline] Neo4j delete error: {e}")
 
     # 6. Update Ingested State
-    global _WATCHER_INGESTED_DOCS
     initial_len = len(_WATCHER_INGESTED_DOCS)
     _WATCHER_INGESTED_DOCS = [d for d in _WATCHER_INGESTED_DOCS if d.get("name") != filename and d.get("raw_id") != filename and d.get("id") != filename]
     removed_count = initial_len - len(_WATCHER_INGESTED_DOCS)

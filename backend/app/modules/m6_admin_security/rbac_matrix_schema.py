@@ -7,7 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-# 5 cột phân quyền tương ứng 5 phòng ban chuẩn
+# 5 cột phân quyền: 5 phòng ban kho tài liệu chuẩn
 RESOURCE_TYPES = [
     "LEGAL",
     "SALES",

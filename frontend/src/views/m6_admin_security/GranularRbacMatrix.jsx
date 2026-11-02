@@ -10,7 +10,7 @@ import {
   resetGranularRbacMatrix
 } from "./adminApi";
 
-// 5 cột bên phải: 5 phòng ban của dự án
+// 5 cột phòng ban thực tế trong kho tài liệu chuẩn
 const RESOURCE_META = {
   LEGAL: {
     label: "Pháp chế (Legal)",
@@ -459,7 +459,7 @@ export default function GranularRbacMatrix() {
                 Vai trò / Phạm vi phòng ban
               </th>
 
-              {/* 5 Columns: 5 phòng ban */}
+              {/* 5 Columns: 5 phòng ban kho tài liệu */}
               {Object.keys(RESOURCE_META).map((resKey) => {
                 const item = RESOURCE_META[resKey];
                 const Icon = item.icon;

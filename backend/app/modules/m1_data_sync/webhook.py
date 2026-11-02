@@ -431,7 +431,7 @@ def api_delete_document(payload: DeleteDocumentRequest):
     storage_path = f"/data/{dept}/{safe_name}"
 
     with acquire_ingestion_transaction_locks(storage_path, safe_name):
-        is_unique, err_msg, _ = RestrictedSafeModeRegistry.verify_unique_target(
+        is_unique, err_msg, doc_node = RestrictedSafeModeRegistry.verify_unique_target(
             neo4j_client,
             storage_path=storage_path,
             filename=safe_name,
@@ -447,8 +447,25 @@ def api_delete_document(payload: DeleteDocumentRequest):
         # Delete from Central Storage
         delete_file_from_storage(safe_name, dept)
 
-        # Delete from databases
-        del_res = process_document_deletion(safe_name, dept)
+        # Delete from databases with force_purge=True
+        effective_hash = (doc_node.get("file_hash") or doc_node.get("hash")) if doc_node else None
+        del_res = process_document_deletion(
+            filename=safe_name,
+            department=dept,
+            file_hash=effective_hash,
+            force_purge=True
+        )
+
+        # Force removal from watcher ingested state file and memory
+        try:
+            import app.modules.m1_data_sync.pipeline as pipe_mod
+            pipe_mod._WATCHER_INGESTED_DOCS = [
+                d for d in pipe_mod._WATCHER_INGESTED_DOCS
+                if d.get("name") != safe_name and d.get("raw_id") != safe_name and d.get("id") != safe_name
+            ]
+            pipe_mod._save_json(pipe_mod._DOCS_FILE, pipe_mod._WATCHER_INGESTED_DOCS)
+        except Exception:
+            pass
 
         try:
             try:

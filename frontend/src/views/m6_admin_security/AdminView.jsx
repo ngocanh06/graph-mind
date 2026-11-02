@@ -55,9 +55,9 @@ function toMatrix(rows) {
   return matrix;
 }
 
-function ForbiddenBanner({ message }) {
+function ForbiddenBanner({ message, title = "Truy cập bị từ chối" }) {
   return (
-    <Alert variant="danger" title="403">
+    <Alert variant="danger" title={title}>
       {message || "Chỉ Admin hệ thống mới có quyền"}
     </Alert>
   );
@@ -145,6 +145,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
     } catch (e) {
       setUsers([]);
       if (e.status === 403) setUsersForbidden(e.message || "Chỉ Admin hệ thống mới có quyền");
+      else if (e.status === 401) setUsersForbidden("Phiên đăng nhập đã hết hạn hoặc token không hợp lệ. Vui lòng đăng xuất và đăng nhập lại bằng tài khoản Admin (admin / 123456).");
       else showToast(errorText(e), "err");
     } finally {
       setUsersLoading(false);
@@ -164,6 +165,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
     } catch (e) {
       setAuditLogs([]);
       if (e.status === 403) setAuditForbidden(e.message || "Chỉ Admin hệ thống mới có quyền");
+      else if (e.status === 401) setAuditForbidden("Phiên đăng nhập đã hết hạn hoặc token không hợp lệ. Vui lòng đăng xuất và đăng nhập lại bằng tài khoản Admin (admin / 123456).");
       else showToast(errorText(e), "err");
     } finally {
       setAuditLoading(false);
@@ -177,6 +179,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
       setPermissions(toMatrix(rows));
     } catch (e) {
       if (e.status === 403) setPermsForbidden(e.message || "Chỉ Admin hệ thống mới có quyền");
+      else if (e.status === 401) setPermsForbidden("Phiên đăng nhập đã hết hạn hoặc token không hợp lệ. Vui lòng đăng xuất và đăng nhập lại bằng tài khoản Admin (admin / 123456).");
       else showToast(errorText(e), "err");
     }
   }, [showToast]);
