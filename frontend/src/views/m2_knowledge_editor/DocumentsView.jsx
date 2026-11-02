@@ -220,7 +220,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
         setIsDrawerOpen(false);
         setActiveDocDetail(null);
       }
+      const deletedName = deleteModalDoc.name;
+      const deletedId = deleteModalDoc.id;
       setDeleteModalDoc(null);
+      setDocsList((prev) => (prev || []).filter((d) => d.name !== deletedName && d.id !== deletedId && d.raw_id !== deletedName));
+      setTotalCount((prev) => Math.max(0, prev - 1));
       setReloadTrigger((prev) => prev + 1);
     } else {
       setDeleteError(res?.error || (isVi ? "Xóa tài liệu thất bại." : "Delete failed."));

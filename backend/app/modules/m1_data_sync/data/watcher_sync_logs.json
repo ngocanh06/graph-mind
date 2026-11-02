@@ -1,5 +1,16 @@
 [
   {
+    "id": "evt_1793592000487",
+    "eventType": "deleted",
+    "fileName": "test_img.docx",
+    "department": "R&D",
+    "timestamp": "2026-11-02T11:00:00.487497",
+    "formattedTime": "02/11/2026 11:00",
+    "status": "success",
+    "qdrantRemoved": true,
+    "neo4jRemoved": true
+  },
+  {
     "id": "evt_1793589748076",
     "eventType": "created",
     "fileName": "Dang_chinh_tac_QHTT.docx",
@@ -2780,20 +2791,6 @@
     "fileHash": "ecb8f17564e21a8ba541fc251bbc707dcbbfb86c3abedf7920377dd00c068c53",
     "chunksCount": 27,
     "timestamp": "2026-11-02T08:55:14.038549",
-    "formattedTime": "02/11/2026 08:55",
-    "status": "success",
-    "qdrantIndexed": false,
-    "neo4jSynced": true
-  },
-  {
-    "id": "evt_1793584513991",
-    "eventType": "created",
-    "fileName": "LinkPlusCorp_20050802_8-K_EX-10_3240252_EX-10_Affiliate Agreement.pdf",
-    "department": "Pháp chế (Legal)",
-    "docId": "DOC_D3D4D0B6",
-    "fileHash": "d3d4d0b6fae30ae4bc84d85ec30b745433e43f00d2aaab1487839a56eea2069c",
-    "chunksCount": 7,
-    "timestamp": "2026-11-02T08:55:13.592368",
     "formattedTime": "02/11/2026 08:55",
     "status": "success",
     "qdrantIndexed": false,
