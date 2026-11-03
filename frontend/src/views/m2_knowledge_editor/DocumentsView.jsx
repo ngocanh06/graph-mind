@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Icon from '../../components/ui/Icon';
 import {
   fetchRepositoryDocuments,
@@ -106,7 +106,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     } finally {
       setLoadingMyApprovals(false);
     }
-  }, [currentUser]);
+  }, [currentUser?.email, currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
     loadMyApprovals();
@@ -271,6 +271,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
   // Listen for realtime File Watcher events (CREATED, MODIFIED, DELETED, RENAMED)
   useEffect(() => {
+    let debounceTimer = null;
     const handleWatcherEvent = (e) => {
       const evt = e.detail;
       if (evt && evt.eventType === "deleted") {
@@ -280,11 +281,17 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           setIsDrawerOpen(false);
         }
       }
-      setReloadTrigger((prev) => prev + 1);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        setReloadTrigger((prev) => prev + 1);
+      }, 1500);
     };
 
     window.addEventListener("graphmind:watcher-event", handleWatcherEvent);
-    return () => window.removeEventListener("graphmind:watcher-event", handleWatcherEvent);
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      window.removeEventListener("graphmind:watcher-event", handleWatcherEvent);
+    };
   }, [selectedDocId]);
 
   // Fetch real documents & datasets from FastAPI backend

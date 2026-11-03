@@ -85,7 +85,7 @@ export const I18N = {
 
     // Admin
     admin_title: "System Administration",
-    admin_sub: "Users, permissions, and the operational cost of running AI over your knowledge",
+    admin_sub: "Users, roles, and granular RBAC permissions over your knowledge",
 
     // Landing & Login
     landing_h1: "Turn Enterprise Data into Actionable Knowledge.",
@@ -183,7 +183,7 @@ export const I18N = {
 
     // Admin
     admin_title: "Quản trị Hệ thống",
-    admin_sub: "Người dùng, phân quyền RBAC và chi phí vận hành AI (LLMOps) trên kho tri thức",
+    admin_sub: "Người dùng và phân quyền RBAC trên kho tri thức",
 
     // Landing & Login
     landing_h1: "Biến dữ liệu doanh nghiệp thành tri thức có thể hành động.",

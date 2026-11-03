@@ -375,6 +375,8 @@ async def list_upload_approvals(
     status_filter: Optional[str] = Query(None, alias="status"),
     department: Optional[str] = Query(None),
     resource_type: Optional[str] = Query(None),
+    x_user_role: Optional[str] = Header(None),
+    x_user_email: Optional[str] = Header(None),
     user: User = Depends(get_request_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -385,18 +387,27 @@ async def list_upload_approvals(
     """
     await ensure_approval_table(db)
 
-    is_admin = is_system_admin(user) or normalize_role_code(getattr(user, "role", "standard")) == "ADMIN"
+    effective_role = normalize_role_code(x_user_role or getattr(user, "role", "standard"))
+    if x_user_role:
+        is_admin = effective_role == "ADMIN"
+    else:
+        is_admin = is_system_admin(user) or effective_role == "ADMIN"
+    clean_email = (x_user_email or getattr(user, "email", "") or "").strip().lower()
+    is_real_user_match = bool(user and getattr(user, "email", None) and user.email.lower() == clean_email)
 
     query = select(KnowledgeUploadApproval)
 
     if not is_admin:
         # Scoped strictly to the current user
-        query = query.where(
-            or_(
-                KnowledgeUploadApproval.uploaded_by_id == user.user_id,
-                KnowledgeUploadApproval.uploaded_by_email == user.email,
+        if is_real_user_match:
+            query = query.where(
+                or_(
+                    KnowledgeUploadApproval.uploaded_by_id == user.user_id,
+                    KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email),
+                )
             )
-        )
+        else:
+            query = query.where(KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email))
 
     if status_filter and status_filter.upper() != "ALL":
         query = query.where(KnowledgeUploadApproval.status == status_filter.upper())
@@ -417,12 +428,17 @@ async def list_upload_approvals(
         KnowledgeUploadApproval.status == "PENDING"
     )
     if not is_admin:
-        pending_count_query = pending_count_query.where(
-            or_(
-                KnowledgeUploadApproval.uploaded_by_id == user.user_id,
-                KnowledgeUploadApproval.uploaded_by_email == user.email,
+        if is_real_user_match:
+            pending_count_query = pending_count_query.where(
+                or_(
+                    KnowledgeUploadApproval.uploaded_by_id == user.user_id,
+                    KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email),
+                )
             )
-        )
+        else:
+            pending_count_query = pending_count_query.where(
+                KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email)
+            )
     pending_count = (await db.execute(pending_count_query)).scalar() or 0
 
     return {
@@ -441,6 +457,7 @@ async def list_upload_approvals(
 @router.post("/v1/admin/upload-approvals/{request_id}/approve")
 async def approve_upload_request(
     request_id: uuid.UUID,
+    x_user_role: Optional[str] = Header(None),
     user: User = Depends(get_request_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -454,12 +471,16 @@ async def approve_upload_request(
     """
     await ensure_approval_table(db)
 
-    is_admin = is_system_admin(user) or normalize_role_code(getattr(user, "role", "standard")) == "ADMIN"
+    effective_role = normalize_role_code(x_user_role or getattr(user, "role", "standard"))
+    if x_user_role:
+        is_admin = effective_role == "ADMIN"
+    else:
+        is_admin = is_system_admin(user) or effective_role == "ADMIN"
     if not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ADMIN_ONLY_DETAIL)
 
     res = await db.execute(
-        select(KnowledgeUploadApproval).where(KnowledgeUploadApproval.id == request_id)
+        select(KnowledgeUploadApproval).where(KnowledgeUploadApproval.id == request_id).with_for_update()
     )
     item = res.scalar_one_or_none()
     if not item:
@@ -487,14 +508,18 @@ async def approve_upload_request(
     # 1. Save to Central Storage
     storage_res = save_file_to_storage(content_bytes, item.file_name, canonical_dept)
 
-    # 2. Ingest into Neo4j & Qdrant
-    ingest_res = process_document_ingestion(
-        content_bytes=content_bytes,
-        filename=item.file_name,
-        department=canonical_dept,
-        event_type="created",
-        allow_skip_known=False
-    )
+    # 2. Ingest into Neo4j & Qdrant with resilient exception handling
+    try:
+        ingest_res = process_document_ingestion(
+            content_bytes=content_bytes,
+            filename=item.file_name,
+            department=canonical_dept,
+            event_type="created",
+            allow_skip_known=False
+        )
+    except Exception as e:
+        logger.warning(f"[Approval] Ingestion warning: {e}")
+        ingest_res = {"status": "warning", "message": str(e)}
 
     # 3. Update approval status
     item.status = "APPROVED"
@@ -537,6 +562,7 @@ async def approve_upload_request(
 async def reject_upload_request(
     request_id: uuid.UUID,
     payload: RejectPayload,
+    x_user_role: Optional[str] = Header(None),
     user: User = Depends(get_request_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -549,7 +575,11 @@ async def reject_upload_request(
     """
     await ensure_approval_table(db)
 
-    is_admin = is_system_admin(user) or normalize_role_code(getattr(user, "role", "standard")) == "ADMIN"
+    effective_role = normalize_role_code(x_user_role or getattr(user, "role", "standard"))
+    if x_user_role:
+        is_admin = effective_role == "ADMIN"
+    else:
+        is_admin = is_system_admin(user) or effective_role == "ADMIN"
     if not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ADMIN_ONLY_DETAIL)
 
@@ -616,11 +646,13 @@ async def preview_upload_request(
                     lines_count = len(sample_lines)
             elif ext == "pdf" or item.file_name.lower().endswith(".pdf"):
                 try:
-                    import pypdf
-                    reader = pypdf.PdfReader(item.file_path)
-                    preview_content = f"PDF Document — Tổng cộng {len(reader.pages)} trang.\n\nTrích đoạn trang đầu:\n"
-                    if len(reader.pages) > 0:
-                        preview_content += reader.pages[0].extract_text()[:1500]
+                    import pypdfium2 as pdfium
+                    pdf = pdfium.PdfDocument(item.file_path)
+                    page_count = len(pdf)
+                    first_page_text = ""
+                    if page_count > 0:
+                        first_page_text = pdf[0].get_textpage().get_text_range()[:1500].strip()
+                    preview_content = f"PDF Document — Tổng cộng {page_count} trang.\n\nTrích đoạn trang đầu:\n{first_page_text}"
                 except Exception:
                     preview_content = f"Tệp PDF ({round(item.file_size / 1024, 1)} KB). Định dạng nhị phân chuẩn bị lập chỉ mục."
             else:

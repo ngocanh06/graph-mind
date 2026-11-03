@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  ShieldCheck, Users, ClipboardList, TrendingUp, UserPlus,
-  Check, Ban, AlertTriangle,
-  Lock, Unlock, KeyRound, Trash2, RefreshCw, Sliders, Clock, FileCheck
+  ShieldCheck, Users, ClipboardList, UserPlus,
+  AlertTriangle,
+  Lock, Unlock, KeyRound, Trash2, RefreshCw, Sliders, Clock
 } from "lucide-react";
 import GranularRbacMatrix from "./GranularRbacMatrix";
 import PendingApprovalsPanel from "./PendingApprovalsPanel";
 import {
-  PageHeader, Tabs, Badge, Button, SearchInput, Card, StatCard, Alert
+  PageHeader, Tabs, Badge, Button, SearchInput, Card, Alert
 } from "../../components/ui";
 import {
   ROLE_OPTIONS,
@@ -22,8 +22,6 @@ import {
   resetAdminUserPassword,
   deleteAdminUser,
   fetchAuditLogs,
-  fetchKnowledgePermissions,
-  updateKnowledgePermission,
   fetchUploadApprovals,
 } from "./adminApi";
 
@@ -34,26 +32,7 @@ const ACTION_VARIANT = {
   PERM_CHANGE: "info",
 };
 
-const PERM_PERSONAS = ["exec", "admin", "manager", "ops"];
-const EMPTY_MATRIX = {
-  customer: { exec: false, admin: false, manager: false, ops: false },
-  orders: { exec: false, admin: false, manager: false, ops: false },
-  payroll: { exec: false, admin: false, manager: false, ops: false },
-  contracts: { exec: false, admin: false, manager: false, ops: false },
-  risk: { exec: false, admin: false, manager: false, ops: false },
-  sop: { exec: false, admin: false, manager: false, ops: false },
-};
 
-function toMatrix(rows) {
-  const matrix = JSON.parse(JSON.stringify(EMPTY_MATRIX));
-  (rows || []).forEach((row) => {
-    if (!matrix[row.domain]) {
-      matrix[row.domain] = { exec: false, admin: false, manager: false, ops: false };
-    }
-    matrix[row.domain][row.role] = Boolean(row.allowed);
-  });
-  return matrix;
-}
 
 function ForbiddenBanner({ message, title = "Truy cập bị từ chối" }) {
   return (
@@ -109,10 +88,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
   const [auditSearch, setAuditSearch] = useState("");
   const [auditResourceType, setAuditResourceType] = useState("");
 
-  const [permissions, setPermissions] = useState(EMPTY_MATRIX);
-  const [permsForbidden, setPermsForbidden] = useState("");
 
-  const [budgetLimit, setBudgetLimit] = useState(500);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
 
   useEffect(() => {
@@ -172,21 +148,8 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
     }
   }, [auditSearch, auditResourceType, showToast]);
 
-  const loadPermissions = useCallback(async () => {
-    setPermsForbidden("");
-    try {
-      const rows = await fetchKnowledgePermissions();
-      setPermissions(toMatrix(rows));
-    } catch (e) {
-      if (e.status === 403) setPermsForbidden(e.message || "Chỉ Admin hệ thống mới có quyền");
-      else if (e.status === 401) setPermsForbidden("Phiên đăng nhập đã hết hạn hoặc token không hợp lệ. Vui lòng đăng xuất và đăng nhập lại bằng tài khoản Admin (admin / 123456).");
-      else showToast(errorText(e), "err");
-    }
-  }, [showToast]);
-
   useEffect(() => { if (activeTab === "roles") loadUsers(); }, [activeTab, loadUsers]);
   useEffect(() => { if (activeTab === "audit") loadAudit(); }, [activeTab, loadAudit]);
-  useEffect(() => { if (activeTab === "perms") loadPermissions(); }, [activeTab, loadPermissions]);
 
   const handleAddUser = async () => {
     try {
@@ -290,24 +253,6 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
     } catch (e) { showToast(errorText(e), "err"); }
   };
 
-  const togglePermission = async (domain, role) => {
-    const next = !permissions[domain]?.[role];
-    try {
-      await updateKnowledgePermission(domain, role, next);
-      setPermissions((prev) => ({
-        ...prev,
-        [domain]: { ...prev[domain], [role]: next },
-      }));
-      showToast(
-        isVi
-          ? `Đã cập nhật quyền truy cập cho miền [${domain}] - vai trò [${role}]`
-          : `Permission updated for [${domain}] - [${role}]`
-      );
-    } catch (e) {
-      showToast(errorText(e), "err");
-    }
-  };
-
   const adminTabs = [
     { id: "granular_rbac", label: isVi ? "Ma trận Phân quyền Tri thức" : "Granular RBAC Matrix", icon: Sliders },
     {
@@ -316,10 +261,8 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
       icon: Clock,
       badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined
     },
-    { id: "perms", label: isVi ? "Phân quyền Miền (Cơ bản)" : "Knowledge Domains", icon: ShieldCheck },
     { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: Users },
     { id: "audit", label: isVi ? "Nhật ký Kiểm toán" : "Audit Trail", icon: ClipboardList },
-    { id: "cost", label: isVi ? "Sử dụng AI & Chi phí" : "LLMOps & Cost", icon: TrendingUp },
   ];
 
   return (
@@ -448,10 +391,10 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
         )}
 
         <PageHeader
-          title={t.admin_title || (isVi ? "Quản trị Hệ thống & Quản trị Tri thức" : "Administration & LLMOps Governance")}
+          title={t.admin_title || (isVi ? "Quản trị Hệ thống & Quản trị Tri thức" : "System Administration")}
           subtitle={t.admin_sub || (isVi
-            ? "Phân quyền thực thể, danh bạ người dùng, nhật ký kiểm toán bất biến và điều phối chi phí mô hình AI"
-            : "Entity domain permissions, user roles, immutable audit trail, and LLMOps telemetry")}
+            ? "Phân quyền thực thể, danh bạ người dùng và nhật ký kiểm toán bất biến"
+            : "Entity domain permissions, user roles, and immutable audit trail")}
           breadcrumbs={[
             { label: "GraphMind", href: "#home" },
             { label: isVi ? "Hệ thống" : "System" },
@@ -480,57 +423,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
           />
         )}
 
-        {activeTab === "perms" && (
-          <Card
-            title={isVi ? "Ma trận Phân quyền Truy cập Miền Tri thức (RBAC Matrix)" : "Role-Based Knowledge Access Control (RBAC Matrix)"}
-            subtitle={isVi ? "Nhấp vào từng ô để lưu quyền lên PostgreSQL" : "Click cells to persist domain permissions"}
-            icon={ShieldCheck}
-          >
-            {permsForbidden ? (
-              <ForbiddenBanner message={permsForbidden} />
-            ) : (
-              <div style={{ overflowX: "auto", margin: "-6px -8px" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
-                  <thead>
-                    <tr style={{ background: "var(--surface-2)", color: "var(--text-3)", borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>
-                        {isVi ? "Miền Tri thức" : "Knowledge Domain"}
-                      </th>
-                      {["Ban lãnh đạo", "Admin hệ thống", "Quản lý", "Nhân viên"].map((h) => (
-                        <th key={h} style={{ padding: "12px 16px", textAlign: "center", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(permissions).map(([domain, roles]) => (
-                      <tr key={domain} style={{ borderBottom: "1px solid var(--border-soft)" }}>
-                        <td style={{ padding: "12px 16px", fontWeight: 600, textTransform: "capitalize" }}>{domain}</td>
-                        {PERM_PERSONAS.map((r) => {
-                          const hasPerm = roles[r];
-                          return (
-                            <td key={r} onClick={() => togglePermission(domain, r)}
-                              style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }}>
-                              <span style={{
-                                display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "4px 10px", borderRadius: "var(--r-xs)", fontWeight: 700, fontSize: 11,
-                                background: hasPerm ? "var(--green-soft)" : "var(--surface-3)",
-                                color: hasPerm ? "var(--green)" : "var(--text-4)",
-                                border: `1px solid ${hasPerm ? "rgba(5,150,105,0.25)" : "var(--border)"}`,
-                              }}>
-                                {hasPerm ? <Check size={12} strokeWidth={2.5} /> : <Ban size={12} strokeWidth={2.5} />}
-                                <span>{hasPerm ? "ALLOWED" : "DENIED"}</span>
-                              </span>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        )}
+
 
         {activeTab === "roles" && (
           <Card
@@ -872,40 +765,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
           </Card>
         )}
 
-        {activeTab === "cost" && (
-          <Card
-            title={isVi ? "Điều phối Mô hình AI & Quản trị Chi phí (LLMOps)" : "LLMOps AI Telemetry & Cost Governance"}
-            subtitle={isVi ? "Theo dõi lưu lượng token thời gian thực, độ trễ và hạn mức ngân sách phòng ban" : "Real-time token throughput, inference latency, and budget guardrails"}
-            icon={TrendingUp}
-            actions={<Badge variant="info">HYBRID GRAPHRAG ACTIVE</Badge>}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 20 }}>
-              <StatCard label={isVi ? "Tổng token (30 ngày)" : "Total Tokens (30D)"} value="18.4M" sub="Prompt: 11.2M · Completion: 7.2M" trend="12% vs last month" isPositive={true} color="blue" />
-              <StatCard label={isVi ? "Số truy vấn suy luận" : "AI Inferences"} value="54,180" sub="Avg. latency: 2.1s (Graph + Qdrant)" trend="Stable" color="cyan" />
-              <StatCard label={isVi ? "Ước tính chi phí" : "Estimated Cost"} value="$312" sub="Across 3 active business units" trend="Under monthly cap" isPositive={true} color="green" />
-              <StatCard label={isVi ? "Tỷ lệ trích dẫn bằng chứng" : "Citation Coverage"} value="94%" sub="Of answers cite ≥1 verified node" trend="+3.2% vs target" isPositive={true} color="amber" />
-            </div>
-            <div style={{
-              background: "var(--surface-2)", padding: "20px", borderRadius: "var(--r-md)",
-              border: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: 12
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
-                  {isVi ? "Hạn mức ngân sách hàng tháng:" : "Monthly Token Expenditure Limit:"}
-                </label>
-                <span style={{ fontFamily: "var(--f-mono)", fontWeight: 700, color: "var(--blue)", fontSize: 14 }}>
-                  ${budgetLimit} / mo
-                </span>
-              </div>
-              <input type="range" min="200" max="2000" step="50" value={budgetLimit}
-                onChange={(e) => setBudgetLimit(Number(e.target.value))}
-                style={{ width: "100%", cursor: "pointer", accentColor: "var(--blue)" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-4)" }}>
-                <span>$200 (Min)</span><span>$500 (Current Cap)</span><span>$2,000 (Enterprise Tier)</span>
-              </div>
-            </div>
-          </Card>
-        )}
+
 
       </div>
     </div>

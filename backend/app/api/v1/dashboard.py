@@ -96,12 +96,12 @@ def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
         return {
             "success": True,
             "data": {
-                "totalRevenue": round(float(data.get("totalRevenue", 0)), 2),
-                "totalOrders": int(data.get("totalOrders", 0)),
-                "avgOrderValue": round(float(data.get("avgOrder", 0)), 2),
-                "totalCustomers": int(data.get("totalCustomers", 0)),
-                "totalContracts": int(data.get("totalContracts", 0)),
-                "totalClauses": int(data.get("totalClauses", 0)),
+                "totalRevenue": round(float(data.get("totalRevenue") or 0.0), 2),
+                "totalOrders": int(data.get("totalOrders") or 0),
+                "avgOrderValue": round(float(data.get("avgOrder") or 0.0), 2),
+                "totalCustomers": int(data.get("totalCustomers") or 0),
+                "totalContracts": int(data.get("totalContracts") or 0),
+                "totalClauses": int(data.get("totalClauses") or 0),
                 "complianceRate": compliance_rate,
                 "timestamp": datetime.utcnow().isoformat()
             }

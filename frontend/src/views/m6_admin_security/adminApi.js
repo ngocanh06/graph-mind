@@ -201,4 +201,3 @@ export function rejectUploadRequest(requestId, reviewNote = "") {
 export function previewUploadRequest(requestId) {
   return apiFetch(`/admin/upload-approvals/${requestId}/preview`);
 }
-

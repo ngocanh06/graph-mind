@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   FileText, CheckCircle2, XCircle, Eye, Clock,
-  Filter, RefreshCw, AlertCircle, Search, ShieldAlert,
-  FileSpreadsheet, FileCode, Check, X, Building2, User
+  Filter, RefreshCw, AlertCircle, Search,
+  FileSpreadsheet, FileCode, Check, X, User
 } from "lucide-react";
 import {
   fetchUploadApprovals,
@@ -86,16 +86,14 @@ export default function PendingApprovalsPanel({ lang = "vi", showToast = () => {
     return { total, pending, approved, rejected };
   }, [items]);
 
-  // Handle Approve
+  // Handle Direct Approve (governed by Granular RBAC Matrix)
   const handleApprove = async (item) => {
-    if (!window.confirm(`Xác nhận phê duyệt và nạp tài liệu "${item.file_name}" vào Kho tri thức?`)) {
-      return;
-    }
+    if (!item) return;
     setApprovingId(item.id);
     try {
       const res = await approveUploadRequest(item.id);
       if (res && res.success) {
-        showToast(`✓ Đã phê duyệt và nạp thành công: ${item.file_name}`, "ok");
+        showToast(`✓ Đã phê duyệt và nạp Kho tri thức: ${item.file_name}`, "ok");
         await loadData();
       } else {
         showToast(res?.error || "Phê duyệt thất bại", "err");
@@ -492,7 +490,7 @@ export default function PendingApprovalsPanel({ lang = "vi", showToast = () => {
 
                         {item.status === "PENDING" && (
                           <>
-                            {/* Phê duyệt */}
+                            {/* Phê duyệt trực tiếp (tuân theo Ma trận RBAC) */}
                             <Button
                               variant="primary"
                               size="xs"
@@ -505,7 +503,7 @@ export default function PendingApprovalsPanel({ lang = "vi", showToast = () => {
                                 color: "#ffffff",
                               }}
                             >
-                              {approvingId === item.id ? "..." : "Duyệt"}
+                              {approvingId === item.id ? "Đang duyệt..." : "Duyệt"}
                             </Button>
 
                             {/* Từ chối */}
@@ -619,6 +617,7 @@ export default function PendingApprovalsPanel({ lang = "vi", showToast = () => {
                   <Button
                     variant="primary"
                     size="sm"
+                    disabled={approvingId === previewItem.id}
                     style={{ background: "#059669", borderColor: "#059669" }}
                     onClick={() => {
                       const item = previewItem;
@@ -626,7 +625,7 @@ export default function PendingApprovalsPanel({ lang = "vi", showToast = () => {
                       handleApprove(item);
                     }}
                   >
-                    Phê duyệt ngay
+                    Phê duyệt & Nạp Kho tri thức
                   </Button>
                 </>
               )}
