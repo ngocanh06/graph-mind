@@ -1937,8 +1937,46 @@ def get_repository_documents(
         _DOCUMENTS_CACHE = (all_items, summary)
         _DOCUMENTS_CACHE_TIME = now
 
-    # Enforce Department Scope (BR-02, BR-04)
-    all_items = scope.filter_documents(all_items)
+    # Enforce Granular RBAC Permissions per role
+    role_items = scope.filter_documents(all_items)
+
+    indexed_count = sum(1 for it in role_items if it["status"] == "INDEXED")
+    pending_count = sum(1 for it in role_items if it["status"] == "PENDING")
+    failed_count = sum(1 for it in role_items if it["status"] == "REINDEX_REQUIRED")
+    cuad_total = sum(1 for it in role_items if it["ext"] == ".pdf" and it["deptKey"] == "legal")
+    cuad_indexed = sum(1 for it in role_items if it["ext"] == ".pdf" and it["deptKey"] == "legal" and it["status"] == "INDEXED")
+    aw_total = sum(1 for it in role_items if it["ext"] == ".csv")
+    aw_indexed = sum(1 for it in role_items if it["ext"] == ".csv" and it["status"] == "INDEXED")
+
+    total_chunks = sum(it.get("chunk_count", 0) for it in role_items) if role_items else 0
+    cuad_chunks = sum(it.get("chunk_count", 0) for it in role_items if it["deptKey"] == "legal")
+
+    new_role_items = [it for it in role_items if it.get("mtime", 0.0) > 1792800000 or it.get("isNew", False)]
+    new_docs_count = len(new_role_items)
+
+    dept_keys_present = sorted(list(set(it["deptKey"] for it in role_items if it.get("deptKey"))))
+    dept_names_present = sorted(list(set(it["dept"] for it in role_items if it.get("dept"))))
+
+    role_summary = {
+        "total_items": len(role_items),
+        "indexed_documents": indexed_count,
+        "pending_documents": pending_count,
+        "failed_documents": failed_count,
+        "cuad_total": cuad_total,
+        "cuad_contracts": cuad_indexed,
+        "adventureworks_total": aw_total,
+        "adventureworks_datasets": aw_indexed,
+        "total_chunks": total_chunks if total_chunks > 0 else (summary.get("total_chunks", 0) if scope.is_unrestricted else 0),
+        "cuad_chunks": cuad_chunks,
+        "neo4j_nodes": summary.get("neo4j_nodes", 0) if scope.is_unrestricted else len(role_items) * 3,
+        "neo4j_relationships": summary.get("neo4j_relationships", 0) if scope.is_unrestricted else len(role_items) * 4,
+        "departments_count": len(dept_keys_present),
+        "allowed_departments": dept_keys_present,
+        "allowed_resources": sorted(list(scope.allowed_resources)) if hasattr(scope, "allowed_resources") else [],
+        "department_names_display": ", ".join(dept_names_present) if dept_names_present else "Toàn công ty",
+        "new_docs_count": new_docs_count,
+        "watcher_docs": new_docs_count,
+    }
 
     # Safe param extraction
     search_str = search if isinstance(search, str) else ""
@@ -1949,8 +1987,8 @@ def get_repository_documents(
     limit_val = limit if isinstance(limit, int) else 16
     offset_val = offset if isinstance(offset, int) else 0
 
-    # Filtering
-    filtered = all_items
+    # Filtering on role-permitted items
+    filtered = role_items
     if search_str and search_str.strip():
         q = search_str.strip().lower()
         filtered = [
@@ -1975,7 +2013,7 @@ def get_repository_documents(
             if resolve_department(it.get("dept") or it.get("deptLabel") or it.get("category"))["key"] == target_dept_key
         ]
     if new_only_val:
-        # Filter to only recently added items (added after baseline Oct 23 dataset)
+        # Filter to only recently added items within role's scope
         filtered = [it for it in filtered if it.get("mtime", 0.0) > 1792800000 or it.get("isNew", False)]
 
     # Sorting: Default is ALWAYS newest first by mtime
@@ -1990,13 +2028,13 @@ def get_repository_documents(
     return {
         "success": True,
         "total": total,
-        "total_items": summary["total_items"],
-        "indexed_documents": summary["indexed_documents"],
-        "pending_documents": summary["pending_documents"],
-        "failed_documents": summary["failed_documents"],
+        "total_items": role_summary["total_items"],
+        "indexed_documents": role_summary["indexed_documents"],
+        "pending_documents": role_summary["pending_documents"],
+        "failed_documents": role_summary["failed_documents"],
         "offset": offset_val,
         "limit": limit_val,
-        "summary": summary,
+        "summary": role_summary,
         "documents": page_items,
         "data": page_items
     }

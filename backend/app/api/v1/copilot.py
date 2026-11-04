@@ -835,9 +835,9 @@ async def ask_copilot(
         db.add(session_obj)
         await db.flush()
 
-    # 1.5. RBAC & Department Data Scope Security Gate (BR-02 / US19)
+    # 1.5. RBAC & Department Data Scope Security Gate (BR-02 / US19 / Admin Matrix)
     user_role = getattr(user, "role", "standard")
-    allowed, reject_reason = check_data_scope_permission(clean_query, user_role)
+    allowed, reject_reason = check_data_scope_permission(clean_query, user_role, scope=scope)
     if not allowed and reject_reason:
         blocked_msg = {
             "success": True,
@@ -1023,6 +1023,79 @@ async def ask_copilot(
                         break
 
         if active_target_doc:
+            from app.core.rbac import resolve_resource_type
+            target_res_type = resolve_resource_type(active_target_doc)
+            if scope.allowed_resources and target_res_type not in scope.allowed_resources and not scope.is_unrestricted:
+                role_label = getattr(user, "role", "user")
+                reject_msg = (
+                    f"Theo ma trận phân quyền của Quản trị viên (Admin RBAC Matrix), vai trò [{role_label}] "
+                    f"không có quyền truy vấn hoặc tra cứu tài liệu '{active_target_doc}' thuộc phạm vi [{target_res_type}]."
+                )
+                blocked_msg = {
+                    "success": True,
+                    "answer": reject_msg,
+                    "text": reject_msg,
+                    "evidenceChips": [
+                        {
+                            "id": "rbac-scope-guard",
+                            "label": f"RBAC Access Denied: {target_res_type}",
+                            "source": "Chính sách phân quyền Admin RBAC Matrix",
+                        }
+                    ],
+                    "citations": [
+                        {
+                            "docName": "Chính sách kiểm soát truy cập (Admin RBAC Matrix)",
+                            "file": f"Phạm vi {target_res_type}",
+                            "match": "RESTRICTED",
+                            "location": f"Phạm vi: {target_res_type} bị chặn đối với vai trò {role_label}",
+                            "startLine": 1,
+                            "endLine": 1,
+                            "text": reject_msg,
+                            "chunkId": "SEC-SCOPE-GUARD",
+                            "sourceType": "RBAC Security Gate",
+                            "score": 100.0,
+                        }
+                    ],
+                    "confidenceScore": 100,
+                    "latency": 0.05,
+                    "model": "GraphMind RBAC Matrix Guard",
+                    "query": clean_query,
+                    "sessionId": str(session_obj.id),
+                    "session_id": str(session_obj.id),
+                }
+                now_str = datetime.now().strftime("%H:%M")
+                user_label = getattr(user, "full_name", None) or getattr(user, "username", None) or "User"
+                new_msgs = list(session_obj.messages or [])
+                new_msgs.append({
+                    "id": f"u_{int(time.time()*1000)}",
+                    "sender": "user",
+                    "time": now_str,
+                    "userLabel": user_label,
+                    "text": clean_query,
+                })
+                new_msgs.append({
+                    "id": f"c_{int(time.time()*1000)}",
+                    "sender": "copilot",
+                    "time": now_str,
+                    "verifiedBadge": "RBAC Refusal",
+                    "confidence": "100%",
+                    "confidenceScore": 100,
+                    "citationCount": len(blocked_msg.get("citations", [])),
+                    "latency": "0.05s",
+                    "introText": reject_msg,
+                    "text": reject_msg,
+                    "answer": reject_msg,
+                    "evidenceChips": blocked_msg["evidenceChips"],
+                    "citations": blocked_msg["citations"],
+                    "model": blocked_msg["model"],
+                })
+                session_obj.messages = new_msgs
+                session_obj.updated_at = datetime.now()
+                await db.commit()
+                await db.refresh(session_obj)
+                blocked_msg["session"] = session_obj.to_dict()
+                return blocked_msg
+
             is_doc_repo_query = True
             doc_filter = {
                 "should": [
@@ -1146,6 +1219,21 @@ async def ask_copilot(
         aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
         combined = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.28] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.28]
         vector_hits = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)[:6]
+
+    # 2.1.0 Filter vector hits by scope.allowed_resources (Admin RBAC Matrix)
+    if scope.allowed_resources and not scope.is_unrestricted:
+        from app.core.rbac import resolve_resource_type
+        def _is_v_allowed(vh):
+            pl = vh.get("payload") if isinstance(vh.get("payload"), dict) else vh
+            if pl.get("source") == "adventureworks" or "entity_type" in pl:
+                e_type = pl.get("entity_type", "")
+                if e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail"]:
+                    return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
+                return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+            rt = resolve_resource_type(vh)
+            return rt in scope.allowed_resources
+
+        vector_hits = [vh for vh in vector_hits if _is_v_allowed(vh)]
 
     # 2.1.1 Document Chunk Consolidation & Exact Provenance:
     if not active_target_doc and vector_hits:
@@ -1333,8 +1421,20 @@ async def ask_copilot(
                     pass
                 break
 
-    # Lọc node thực thể theo Data Scope của vai trò (ví dụ: loại bỏ Employee/nhân sự khỏi kết quả của Standard User)
+    # Lọc node thực thể theo Data Scope & Admin RBAC Matrix của vai trò
     graph_hits = filter_graph_entities_by_scope(graph_hits, user_role)
+    if scope.allowed_resources and not scope.is_unrestricted:
+        from app.core.rbac import resolve_resource_type
+        def _is_g_allowed(gh):
+            labels = gh.get("_labels") or []
+            if any(l in ["Vendor", "PurchaseOrder"] for l in labels):
+                return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
+            if any(l in ["Customer", "SalesOrder"] for l in labels):
+                return "SALES" in scope.allowed_resources
+            rt = resolve_resource_type(gh)
+            return rt in scope.allowed_resources
+
+        graph_hits = [gh for gh in graph_hits if _is_g_allowed(gh)]
 
     # 2.5 GROUNDING GATE (Requirement 5)
     # Empirically calibrated threshold on all-MiniLM-L6-v2 cosine similarity:
