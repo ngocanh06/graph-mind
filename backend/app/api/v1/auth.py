@@ -7,7 +7,7 @@ Endpoints:
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,10 @@ try:
     from app.schemas.auth import LoginRequest, TokenResponse, UserOut
     from app.modules.m6_admin_security.audit_service import log_action
     from app.modules.m6_admin_security.rbac import canonical_role
+    from app.modules.m6_admin_security.session_service import (
+        ensure_sessions_table, upsert_active_session, get_active_jti,
+        ConcurrentLoginException, clear_active_session
+    )
 except ImportError:
     from core.security import create_access_token, decode_access_token, verify_password
     from db.postgres.database import get_db
@@ -26,6 +30,10 @@ except ImportError:
     from schemas.auth import LoginRequest, TokenResponse, UserOut
     from modules.m6_admin_security.audit_service import log_action
     from modules.m6_admin_security.rbac import canonical_role
+    from modules.m6_admin_security.session_service import (
+        ensure_sessions_table, upsert_active_session, get_active_jti,
+        ConcurrentLoginException, clear_active_session
+    )
 
 router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
@@ -46,6 +54,7 @@ def resolve_user_role(username: str, email: str, is_superuser: bool) -> str:
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
+    request: Request,
     payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -97,14 +106,27 @@ async def login(
     # Role JWT lấy từ cột users.role (canonical), không còn ánh xạ cứng theo username
     role = canonical_role(user)
 
-    # Sinh JWT Token
+    # Sinh JWT Token voi jti de kiem soat phien don (Single Active Session)
+    jti = str(uuid.uuid4())
     token_data = {
         "sub": str(user.user_id),
         "username": user.username or "",
         "email": user.email,
         "role": role,
+        "jti": jti,
     }
     access_token = create_access_token(token_data)
+
+    # Upsert phien hoat dong — van ng phien cu neu co
+    await ensure_sessions_table(db)
+    client_ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+    had_prev = await upsert_active_session(db, user.user_id, jti, client_ip, ua)
+    if had_prev:
+        await log_action(db, action="LOGIN_NEW_DEVICE_REPLACED_OLD_SESSION",
+                         actor_id=user.user_id, resource_type="user",
+                         resource_id=str(user.user_id),
+                         detail=f"email={user.email} ip={client_ip}")
 
     user_out = UserOut(
         id=user.user_id,
@@ -163,6 +185,14 @@ async def get_current_user(
     if not user.is_active or getattr(user, "status", "active") == "locked":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tài khoản đã bị khóa, liên hệ quản trị viên")
 
+    # Kiểm tra jti — phát hiện đăng nhập trùng tài khoản (Single Active Session)
+    token_jti = payload.get("jti")
+    if token_jti:
+        await ensure_sessions_table(db)
+        stored_jti = await get_active_jti(db, user_uuid)
+        if stored_jti and stored_jti != token_jti:
+            raise ConcurrentLoginException()
+
     role = canonical_role(user)
 
     return UserOut(
@@ -175,3 +205,20 @@ async def get_current_user(
         is_active=user.is_active,
         is_superuser=user.is_superuser,
     )
+
+
+@router.post("/logout")
+async def logout(
+    auth_header: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Đăng xuất tài khoản và vô hiệu hóa active session."""
+    if auth_header and auth_header.credentials:
+        try:
+            payload = decode_access_token(auth_header.credentials)
+            if payload and "sub" in payload:
+                uid = uuid.UUID(payload["sub"])
+                await clear_active_session(db, uid)
+        except Exception:
+            pass
+    return {"success": True, "message": "Đã đăng xuất thành công."}

@@ -981,75 +981,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       : "border-outline-variant/30 hover:border-primary"
                   }`}
                 >
-                  <div className="flex items-start justify-between relative">
+                  <div className="flex items-start justify-between">
                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shadow-2xs ${iconBoxClass}`}>
                       <Icon name={iconName} size={20} />
                     </div>
-                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDrawer(doc.id);
-                        }}
-                        className="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 hover:bg-primary hover:text-white transition-colors shadow-2xs cursor-pointer"
-                        title={isVi ? "Xem chi tiết" : "View Details"}
-                      >
-                        <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem" : "View"}
-                      </button>
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuDocId(activeMenuDocId === doc.id ? null : doc.id);
-                          }}
-                          className="w-7 h-7 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors border border-outline-variant/30 cursor-pointer"
-                          title={isVi ? "Thao tác tài liệu" : "Document Actions"}
-                        >
-                          <Icon name="fa-solid fa-ellipsis-vertical text-[13px]" size={13} />
-                        </button>
-
-                        {/* Action Dropdown Menu */}
-                        {activeMenuDocId === doc.id && (
-                          <div className="absolute right-0 top-8 z-30 w-44 bg-surface-container-lowest border border-outline-variant/40 rounded-xl shadow-xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenuDocId(null);
-                                handleOpenDrawer(doc.id);
-                              }}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-regular fa-eye text-primary" size={13} />
-                              <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
-                            </button>
-                            <button
-                              onClick={(e) => handleOpenRename(doc, e)}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
-                              <span>{isVi ? "Đổi tên" : "Rename"}</span>
-                            </button>
-                            <button
-                              onClick={(e) => handleOpenReplace(doc, e)}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
-                              <span>{isVi ? "Thay file" : "Replace File"}</span>
-                            </button>
-                            <div className="my-1 border-t border-outline-variant/20"></div>
-                            <button
-                              onClick={(e) => handleOpenDelete(doc, e)}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-error hover:bg-error/10 flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-regular fa-trash-can text-error" size={13} />
-                              <span>{isVi ? "Xóa" : "Delete"}</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 group-hover:bg-primary group-hover:text-white transition-colors shadow-2xs">
+                      <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem chi tiết" : "View Details"}
+                    </span>
                   </div>
-
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-semibold text-primary bg-primary-fixed/50 px-2 py-0.5 rounded-md">
@@ -1248,71 +1187,17 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                             {doc.riskLabel}
                           </span>
                         </td>
-                        <td className="p-3.5 text-center relative" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDrawer(doc.id);
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-primary-fixed text-primary hover:bg-primary hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
-                              title={isVi ? "Xem chi tiết" : "View Details"}
-                            >
-                              <Icon name="fa-regular fa-eye" size={13} />
-                              <span>{isVi ? "Xem" : "View"}</span>
-                            </button>
-                            <div className="relative">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveMenuDocId(activeMenuDocId === doc.id ? null : doc.id);
-                                }}
-                                className="w-7 h-7 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors border border-outline-variant/30 cursor-pointer"
-                                title={isVi ? "Thao tác" : "Actions"}
-                              >
-                                <Icon name="fa-solid fa-ellipsis-vertical text-[13px]" size={13} />
-                              </button>
-
-                              {/* Action Dropdown Menu */}
-                              {activeMenuDocId === doc.id && (
-                                <div className="absolute right-0 top-8 z-30 w-44 bg-surface-container-lowest border border-outline-variant/40 rounded-xl shadow-xl py-1.5 text-left animate-in fade-in zoom-in-95 duration-150">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveMenuDocId(null);
-                                      handleOpenDrawer(doc.id);
-                                    }}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-regular fa-eye text-primary" size={13} />
-                                    <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleOpenRename(doc, e)}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
-                                    <span>{isVi ? "Đổi tên" : "Rename"}</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleOpenReplace(doc, e)}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
-                                    <span>{isVi ? "Thay file" : "Replace File"}</span>
-                                  </button>
-                                  <div className="my-1 border-t border-outline-variant/20"></div>
-                                  <button
-                                    onClick={(e) => handleOpenDelete(doc, e)}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-error hover:bg-error/10 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-regular fa-trash-can text-error" size={13} />
-                                    <span>{isVi ? "Xóa" : "Delete"}</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                        <td className="p-3.5 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDrawer(doc.id);
+                            }}
+                            className="px-3 py-1 rounded-lg bg-primary-fixed text-primary hover:bg-primary hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Icon name="fa-regular fa-eye" size={13} />
+                            <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -1791,6 +1676,39 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       </span>
                     </button>
 
+                    {/* Quản lý tệp kho lưu trữ (Đổi tên, Thay file, Xóa) */}
+                    <div className="pt-2 border-t border-surface-container">
+                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider mb-2">
+                        {isVi ? "Quản lý tệp kho lưu trữ" : "File Management"}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={(e) => handleOpenRename(activeDoc, e)}
+                          className="py-2 px-2 rounded-xl bg-surface-container-low hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300 text-on-surface border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title={isVi ? "Đổi tên tài liệu" : "Rename"}
+                        >
+                          <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
+                          <span>{isVi ? "Đổi tên" : "Rename"}</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleOpenReplace(activeDoc, e)}
+                          className="py-2 px-2 rounded-xl bg-surface-container-low hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 text-on-surface border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title={isVi ? "Thay file mới" : "Replace File"}
+                        >
+                          <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
+                          <span>{isVi ? "Thay file" : "Replace"}</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleOpenDelete(activeDoc, e)}
+                          className="py-2 px-2 rounded-xl bg-surface-container-low hover:bg-error/10 hover:text-error hover:border-error/30 text-on-surface border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title={isVi ? "Xóa tài liệu" : "Delete"}
+                        >
+                          <Icon name="fa-regular fa-trash-can text-error" size={13} />
+                          <span>{isVi ? "Xóa" : "Delete"}</span>
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -1852,49 +1770,33 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
             {/* Modal Form */}
             <form onSubmit={handleUploadSubmit} className="p-6 space-y-4">
-              {/* Resource Type & Department Selectors */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
-                    {isVi ? "Loại tri thức (Resource Type)" : "Resource Type"}
-                  </label>
-                  <select
-                    value={uploadResourceType}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setUploadResourceType(val);
-                      if (val === "LEGAL") setUploadDept("legal");
-                      else if (val === "SALES") setUploadDept("sales");
-                      else if (val === "ACCOUNTING_PROCUREMENT") setUploadDept("accounting_procurement");
-                      else if (val === "IT") setUploadDept("it");
-                      else if (val === "RND") setUploadDept("rnd");
-                    }}
-                    className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
-                  >
-                    <option value="SALES">Kinh doanh (SALES)</option>
-                    <option value="LEGAL">Pháp chế (LEGAL)</option>
-                    <option value="ACCOUNTING_PROCUREMENT">Kế toán / Thu mua (ACCOUNTING)</option>
-                    <option value="IT">Công nghệ / IT (IT)</option>
-                    <option value="RND">Nghiên cứu & Phát triển (R&D)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
-                    {isVi ? "Phòng ban đích (/data/dept)" : "Target Department"}
-                  </label>
-                  <select
-                    value={uploadDept}
-                    onChange={(e) => setUploadDept(e.target.value)}
-                    className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
-                  >
-                    <option value="sales">Kinh doanh (sales)</option>
-                    <option value="legal">Pháp chế (legal)</option>
-                    <option value="accounting_procurement">Kế toán / Thu mua (accounting)</option>
-                    <option value="it">Công nghệ / IT (it)</option>
-                    <option value="rnd">Nghiên cứu & Phát triển (rnd)</option>
-                  </select>
-                </div>
+              {/* Phòng ban / Loại tri thức Selector (Gộp gọn 1 ô chuẩn UX) */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
+                  {isVi ? "Phòng ban / Loại tri thức" : "Department / Knowledge Type"}
+                </label>
+                <select
+                  value={uploadDept}
+                  onChange={(e) => {
+                    const dept = e.target.value;
+                    setUploadDept(dept);
+                    if (dept === "legal") setUploadResourceType("LEGAL");
+                    else if (dept === "sales") setUploadResourceType("SALES");
+                    else if (dept === "accounting_procurement") setUploadResourceType("ACCOUNTING_PROCUREMENT");
+                    else if (dept === "it") setUploadResourceType("IT");
+                    else if (dept === "rnd") setUploadResourceType("RND");
+                  }}
+                  className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
+                >
+                  <option value="sales">{isVi ? "Kinh doanh (Sales)" : "Sales"}</option>
+                  <option value="legal">{isVi ? "Pháp chế (Legal)" : "Legal"}</option>
+                  <option value="accounting_procurement">{isVi ? "Kế toán / Thu mua (Accounting & Procurement)" : "Accounting & Procurement"}</option>
+                  <option value="it">{isVi ? "Công nghệ / IT (Information Technology)" : "Information Technology (IT)"}</option>
+                  <option value="rnd">{isVi ? "Nghiên cứu & Phát triển (R&D)" : "Research & Development (R&D)"}</option>
+                </select>
+                <span className="text-[11px] text-on-surface-variant mt-1.5 block">
+                  {isVi ? "Tài liệu sẽ được phân bổ và áp dụng quyền kiểm duyệt theo Ma trận Phân quyền của phòng ban." : "Document will be routed and permissions applied according to department RBAC matrix."}
+                </span>
               </div>
 
               {/* Informational Policy Banner */}

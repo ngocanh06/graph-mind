@@ -14,7 +14,13 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Header, Depends
+from fastapi import FastAPI, HTTPException, Query, Header, Depends, Request
+from fastapi.responses import JSONResponse
+
+try:
+    from app.modules.m6_admin_security.session_service import ConcurrentLoginException
+except ImportError:
+    from modules.m6_admin_security.session_service import ConcurrentLoginException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -200,12 +206,26 @@ app = FastAPI(
 )
 
 # Enable CORS for frontend
+
+@app.exception_handler(ConcurrentLoginException)
+async def concurrent_login_exception_handler(request: Request, exc: ConcurrentLoginException):
+    detail_msg = "Tài khoản của bạn vừa được đăng nhập ở một thiết bị hoặc trình duyệt khác. Phiên làm việc này đã kết thúc."
+    return JSONResponse(
+        status_code=401,
+        content={
+            "detail": detail_msg,
+            "error_code": "CONCURRENT_LOGIN_KICKED",
+            "message": detail_msg,
+        },
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Error-Code"],
 )
 
 # Authentication routers (/api/v1/auth and /api/auth)

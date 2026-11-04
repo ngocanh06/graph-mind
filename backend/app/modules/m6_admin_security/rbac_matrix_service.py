@@ -76,16 +76,30 @@ async def ensure_table_created(db: AsyncSession) -> None:
     await db.commit()
 
 
-async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = None) -> List[KnowledgeAccessPolicy]:
-    """Khởi tạo ma trận phân quyền chuẩn theo đặc tả SRS (BR-02, BR-03, BR-04, BR-05, US19)."""
+async def seed_default_matrix(
+    db: AsyncSession,
+    admin_id: Optional[uuid.UUID] = None,
+    dept_scope: str = "SALES"
+) -> List[KnowledgeAccessPolicy]:
+    """
+    Khởi tạo ma trận phân quyền chuẩn theo đặc tả doanh nghiệp (Least Privilege & Department Isolation):
+    1. Admin hệ thống: Toàn công ty (BR-03), bật 5/5 phòng, có Biên tập & Tải lên, chỉ bật Nhạy cảm ở IT.
+    2. Ban lãnh đạo: Toàn công ty (BR-05), bật 5/5 phòng, bật Nhạy cảm ở cả 5 phòng, TẮT Biên tập & Tải lên (Read-only).
+    3. Trưởng phòng: Theo phòng ban chủ quản (BR-04), chỉ bật đúng phòng ban được chọn (mặc định SALES), bật đủ 3: Nhạy cảm, Biên tập, Tải lên. 4 phòng còn lại TẮT.
+    4. Chuyên viên: Theo phòng ban chủ quản (BR-02), chỉ bật đúng phòng ban được chọn, bật Biên tập & Tải lên, TẮT Nhạy cảm. 4 phòng còn lại TẮT.
+    """
     await ensure_table_created(db)
 
     await db.execute(delete(KnowledgeAccessPolicy))
     await db.commit()
 
+    target_dept = normalize_dept_code(dept_scope)
+    if target_dept not in RESOURCE_TYPES:
+        target_dept = "SALES"
+
     policies: List[KnowledgeAccessPolicy] = []
 
-    # 1. Admin hệ thống (BR-03): Toàn quyền truy cập & biên tập cả 5 phòng ban (bao gồm IT)
+    # 1. Admin hệ thống (BR-03): Toàn công ty, có Biên tập & Tải lên cả 5 phòng, chỉ bật Nhạy cảm ở IT
     for res in RESOURCE_TYPES:
         policies.append(
             KnowledgeAccessPolicy(
@@ -96,13 +110,13 @@ async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = 
                 can_view_citation=True,
                 can_edit=True,
                 can_upload=True,
-                can_view_sensitive=True,
+                can_view_sensitive=(res == "IT"),
                 data_scope="ALL_DEPARTMENTS",
                 updated_by=admin_id,
             )
         )
 
-    # 2. Ban lãnh đạo - Executive Director (BR-05): Toàn quyền đọc & xem nhạy cảm cả 5 phòng ban, được phép gửi tải lên
+    # 2. Ban lãnh đạo - Executive Director (BR-05): Toàn công ty, bật Nhạy cảm cả 5 phòng, TẮT Biên tập & Tải lên
     for res in RESOURCE_TYPES:
         policies.append(
             KnowledgeAccessPolicy(
@@ -112,49 +126,45 @@ async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = 
                 can_query=True,
                 can_view_citation=True,
                 can_edit=False,
-                can_upload=True,
+                can_upload=False,
                 can_view_sensitive=True,
                 data_scope="ALL_DEPARTMENTS",
                 updated_by=admin_id,
             )
         )
 
-    # 3. Trưởng phòng - Department Manager (BR-02, BR-04):
-    # Quản lý khối nghiệp vụ (LEGAL, SALES, ACCOUNTING_PROCUREMENT, RND), KHÔNG được xem tài liệu nội bộ phòng IT
-    mgr_allowed = {"LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "RND"}
+    # 3. Trưởng phòng - Department Manager (BR-04): Chỉ bật phòng ban chủ quản, bật cả 3 quyền
     for res in RESOURCE_TYPES:
-        allowed = res in mgr_allowed
+        is_active = (res == target_dept)
         policies.append(
             KnowledgeAccessPolicy(
                 role_code="DEPARTMENT_MANAGER",
                 department_code="ALL",
                 resource_type=res,
-                can_query=allowed,
-                can_view_citation=allowed,
-                can_edit=allowed,
-                can_upload=allowed,
-                can_view_sensitive=False,
-                data_scope="OWN_DEPARTMENT" if allowed else "NONE",
+                can_query=is_active,
+                can_view_citation=is_active,
+                can_edit=is_active,
+                can_upload=is_active,
+                can_view_sensitive=is_active,
+                data_scope="OWN_DEPARTMENT" if is_active else "NONE",
                 updated_by=admin_id,
             )
         )
 
-    # 4. Chuyên viên - Standard User (BR-02, US19):
-    # Chuyên viên Kinh doanh chỉ được xem tài liệu phòng Kinh doanh (SALES), chặn LEGAL, ACCOUNTING_PROCUREMENT, IT, RND
-    std_allowed = {"SALES"}
+    # 4. Chuyên viên - Standard User (BR-02): Chỉ bật phòng ban chủ quản, bật Biên tập & Tải lên, TẮT Nhạy cảm
     for res in RESOURCE_TYPES:
-        allowed = res in std_allowed
+        is_active = (res == target_dept)
         policies.append(
             KnowledgeAccessPolicy(
                 role_code="STANDARD_USER",
                 department_code="ALL",
                 resource_type=res,
-                can_query=allowed,
-                can_view_citation=allowed,
-                can_edit=False,
-                can_upload=allowed,
+                can_query=is_active,
+                can_view_citation=is_active,
+                can_edit=is_active,
+                can_upload=is_active,
                 can_view_sensitive=False,
-                data_scope="OWN_DEPARTMENT" if allowed else "NONE",
+                data_scope="OWN_DEPARTMENT" if is_active else "NONE",
                 updated_by=admin_id,
             )
         )
@@ -249,9 +259,9 @@ async def bulk_update_policies(
     return updated_count
 
 
-async def reset_matrix(db: AsyncSession, admin: User) -> List[KnowledgeAccessPolicy]:
+async def reset_matrix(db: AsyncSession, admin: User, dept_scope: str = "SALES") -> List[KnowledgeAccessPolicy]:
     """Khôi phục ma trận về cấu hình chuẩn mặc định và ghi Audit Log."""
-    policies = await seed_default_matrix(db, admin_id=admin.user_id)
+    policies = await seed_default_matrix(db, admin_id=admin.user_id, dept_scope=dept_scope)
     await log_action(
         db,
         action="RBAC_MATRIX_RESET",

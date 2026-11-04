@@ -1,5 +1,19 @@
 [
   {
+    "id": "evt_1793774867244",
+    "eventType": "created",
+    "fileName": "sample_sales_customers.csv",
+    "department": "Kinh doanh (Sales)",
+    "docId": "DOC_390B964F",
+    "fileHash": "390b964f2203a9132260a1a507f90761ad73b0f356baf261ae5065fafd7c2753",
+    "chunksCount": 1,
+    "timestamp": "2026-11-04T13:47:39.467202",
+    "formattedTime": "04/11/2026 13:47",
+    "status": "success",
+    "qdrantIndexed": true,
+    "neo4jSynced": true
+  },
+  {
     "id": "evt_1793612438800",
     "eventType": "created",
     "fileName": "sales_plan_1c0200.csv",
@@ -2780,20 +2794,6 @@
     "fileHash": "22fb54fbba2ee54534ab6ef7428ca13f523764ff10eaffbb1e0f79a60e1e6bee",
     "chunksCount": 6,
     "timestamp": "2026-11-02T11:07:25.834370",
-    "formattedTime": "02/11/2026 11:07",
-    "status": "success",
-    "qdrantIndexed": true,
-    "neo4jSynced": true
-  },
-  {
-    "id": "evt_1793592445796",
-    "eventType": "created",
-    "fileName": "ON4COMMUNICATIONSINC_07_02_2009-EX-10.1-PROMOTION AGREEMENT.PDF",
-    "department": "Pháp chế (Legal)",
-    "docId": "DOC_A9B066D1",
-    "fileHash": "a9b066d1f29d100987170a1249f4067126b8f3cffd016438e64007f63ae6fb65",
-    "chunksCount": 5,
-    "timestamp": "2026-11-02T11:07:24.053974",
     "formattedTime": "02/11/2026 11:07",
     "status": "success",
     "qdrantIndexed": true,

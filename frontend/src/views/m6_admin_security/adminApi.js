@@ -85,6 +85,17 @@ export async function apiFetch(path, opts = {}) {
   }
   if (!res.ok) {
     const detailMsg = extractDetail(data, `HTTP ${res.status}`);
+    if (res.status === 401 && (data?.error_code === "CONCURRENT_LOGIN_KICKED" || data?.detail?.error_code === "CONCURRENT_LOGIN_KICKED")) {
+      const kickMsg = data?.detail?.message || data?.detail || data?.message || "Tài khoản của bạn vừa được đăng nhập ở một thiết bị hoặc trình duyệt khác. Phiên làm việc này đã kết thúc.";
+      try {
+        localStorage.removeItem("aegis_token");
+        localStorage.removeItem("aegis_auth_user");
+        localStorage.removeItem("aegis_user");
+        localStorage.removeItem("access_token");
+        sessionStorage.setItem("aegis_kicked_notice", kickMsg);
+      } catch (e) {}
+      window.dispatchEvent(new CustomEvent("graphmind:concurrent-login-kicked", { detail: { message: kickMsg } }));
+    }
     if (res.status === 403 && detailMsg && detailMsg.includes("Tài khoản đã bị khóa")) {
       try {
         localStorage.removeItem("aegis_token");
@@ -166,8 +177,9 @@ export function updateGranularRbacMatrix(policies) {
   });
 }
 
-export function resetGranularRbacMatrix() {
-  return apiFetch("/admin/rbac-matrix/reset-default", {
+export function resetGranularRbacMatrix(scopeDept = "SALES") {
+  const query = scopeDept ? `?scope_dept=${encodeURIComponent(scopeDept)}` : "";
+  return apiFetch(`/admin/rbac-matrix/reset-default${query}`, {
     method: "POST",
   });
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { I18N } from "./data/i18n";
 import { INITIAL_DATA } from "./data/mockData";
 import { ENTERPRISE_ROLES } from "./data/roles";
-import { fetchHealth, fetchSignals, fetchEntities } from "./services/api";
+import { fetchHealth, fetchSignals, fetchEntities, getCurrentUserApi } from "./services/api";
 
 import Topbar from "./components/Topbar";
 import NavRail from "./components/NavRail";
@@ -119,6 +119,64 @@ export default function App() {
   const [selectedEntity, setSelectedEntity] = useState("29818");
   const [selectedDocId, setSelectedDocId] = useState(null);
   const [initialCopilotQuery, setInitialCopilotQuery] = useState("");
+
+  // State cảnh báo bảo mật khi bị đá phiên do đăng nhập đồng thời
+  const [kickedNotice, setKickedNotice] = useState(() => {
+    try {
+      const msg = sessionStorage.getItem("aegis_kicked_notice");
+      if (msg) {
+        sessionStorage.removeItem("aegis_kicked_notice");
+        return msg;
+      }
+    } catch (e) {}
+    return "";
+  });
+
+  // Lắng nghe sự kiện bị đá phiên (Concurrent Login Kicked)
+  useEffect(() => {
+    const handleKicked = (e) => {
+      const msg = e.detail?.message || "Tài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác. Bạn đã được tự động đăng xuất để bảo vệ dữ liệu.";
+      setKickedNotice(msg);
+      setPageMode("login");
+    };
+    window.addEventListener("graphmind:concurrent-login-kicked", handleKicked);
+    return () => window.removeEventListener("graphmind:concurrent-login-kicked", handleKicked);
+  }, []);
+
+  // Heartbeat kiểm tra phiên hoạt động định kỳ mỗi 3 giây + kiểm tra tức thì khi quay lại tab (focus / visibility)
+  useEffect(() => {
+    if (pageMode !== "app") return;
+
+    const checkSession = async () => {
+      const currentToken = localStorage.getItem("aegis_token");
+      if (!currentToken) return;
+      await getCurrentUserApi(currentToken);
+    };
+
+    // Kiểm tra ngay 1 lần sau 500ms
+    const initialTimer = setTimeout(checkSession, 500);
+
+    // Chu kỳ định kỳ mỗi 3 giây
+    const intervalId = setInterval(checkSession, 3000);
+
+    // Kiểm tra tức thì ngay khi người dùng chuyển focus hoặc active lại tab
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        checkSession();
+      }
+    };
+
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalId);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+    };
+  }, [pageMode]);
+
 
   const {
     events: notifEvents,
@@ -271,7 +329,10 @@ export default function App() {
   if (pageMode === "login") {
     return (
       <LoginPage
+        kickedNotice={kickedNotice}
+        onClearKickedNotice={() => setKickedNotice("")}
         onEnterPlatform={(authenticatedUser) => {
+          setKickedNotice("");
           const user = (authenticatedUser && authenticatedUser.id)
             ? authenticatedUser
             : (ENTERPRISE_ROLES[authenticatedUser] || ENTERPRISE_ROLES.executive);

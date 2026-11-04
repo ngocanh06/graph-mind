@@ -1,5 +1,53 @@
 [
   {
+    "id": "DOC_390B964F",
+    "raw_id": "sample_sales_customers.csv",
+    "name": "sample_sales_customers.csv",
+    "category": "Tài liệu Kinh doanh",
+    "category_en": "Kinh doanh (Sales) Document",
+    "type": "CSV",
+    "dept": "Kinh doanh (Sales)",
+    "deptKey": "sales",
+    "deptLabel": "Kinh doanh (Sales)",
+    "department": "Kinh doanh (Sales)",
+    "owner": "AEGIS File Watcher",
+    "date": "04/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Kinh doanh (Sales) Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "spreadsheet",
+    "source": "aegis_local_file_watcher",
+    "hash": "390b964f2203a9132260a1a507f90761ad73b0f356baf261ae5065fafd7c2753",
+    "file_hash": "390b964f2203a9132260a1a507f90761ad73b0f356baf261ae5065fafd7c2753",
+    "fileHash": "390b964f2203a9132260a1a507f90761ad73b0f356baf261ae5065fafd7c2753",
+    "storage_path": "/data/sales/sample_sales_customers.csv",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_390B964F_0",
+        "chunk_id": 0,
+        "text": "CustomerID,FullName,Email,Phone,Gender,City,CustomerSegment,SignupDate,TotalOrders,TotalSpend,LastOrderDate,Status\nCUST-1001,Nguyen Van An,an.nguyen@example.com,0901234567,Male,Hanoi,VIP,2023-01-15,12,24500000,2024-10-20,Active\nCUST-1002,Tran Thi Mai,mai.tran@example.com,0912345678,Female,Ho Chi Minh,Regular,2023-03-22,5,7800000,2024-08-11,Active\nCUST-1003,Le Hoang Nam,nam.le@example.com,0987654321,Male,Da Nang,New,2024-09-01,1,1200000,2024-09-02,Active\nCUST-1004,Pham Minh Chau,chau.pham@example.com,0934567890,Female,Can Tho,Loyal,2022-11-05,18,36200000,2024-11-01,Active\nCUST-1005,Do Quoc Bao,bao.do@example.com,0945678901,Male,Hai Phong,Churned,2023-05-18,2,2100000,2023-09-14,Inactive\nCUST-1006,Vu Thi Bich,bich.vu@example.com,0978901234,Female,Hanoi,Regular,2023-08-10,4,5400000,2024-07-29,Active\nCUST-1007,Hoang Gia Huy,huy.hoang@example.com,0967890123,Male,Ho Chi Minh,VIP,2022-06-30,22,52000000,2024-10-30,Active\nCUST-1008,Dang Thu Thao,thao.dang@example.com,0923456789,Female,Da Nang,New,2024-10-15,1,850000,2024-10-15,Active"
+      }
+    ],
+    "lastModified": "2026-11-04T13:47:39.467202"
+  },
+  {
     "id": "DOC_4763E3C9",
     "raw_id": "sales_plan_1c0200.csv",
     "name": "sales_plan_1c0200.csv",

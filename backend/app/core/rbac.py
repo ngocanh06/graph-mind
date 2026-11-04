@@ -41,7 +41,7 @@ ROLE_STANDARD = "standard"
 ROLE_DEPARTMENT_SCOPE = {
     ROLE_EXECUTIVE: ["ALL"],
     ROLE_ADMIN: ["ALL"],
-    ROLE_MANAGER: ["Kinh doanh", "R&D", "Pháp chế", "Kế toán / Thu mua"],
+    ROLE_MANAGER: ["Kinh doanh"],  # Scoped to assigned department (Least Privilege & Department Isolation)
     ROLE_STANDARD: ["Kinh doanh"]  # Sales Specialist: Sales orders, customers
 }
 
@@ -379,8 +379,19 @@ async def get_request_user(
             payload = decode_access_token(auth_header.credentials)
             if payload and "sub" in payload:
                 uid = uuid.UUID(payload["sub"])
+                token_jti = payload.get("jti")
+                if token_jti:
+                    try:
+                        from app.modules.m6_admin_security.session_service import get_active_jti, ConcurrentLoginException
+                    except ImportError:
+                        from modules.m6_admin_security.session_service import get_active_jti, ConcurrentLoginException
+                    stored_jti = await get_active_jti(db, uid)
+                    if stored_jti and stored_jti != token_jti:
+                        raise ConcurrentLoginException()
                 res = await db.execute(select(User).where(User.user_id == uid))
                 u = res.scalar_one_or_none()
+        except HTTPException:
+            raise
         except Exception:
             pass
 
