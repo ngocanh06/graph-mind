@@ -23,11 +23,11 @@ from app.modules.m6_admin_security.audit_service import log_action
 
 def normalize_role_code(role: str) -> str:
     r = (role or "").strip().lower()
-    if r in ("admin", "it_admin", "administrator"):
+    if r in ("admin", "it_admin", "administrator", "secops", "it"):
         return "ADMIN"
-    if r in ("executive", "exec", "lanh_dao", "leadership"):
+    if r in ("executive", "exec", "lanh_dao", "leadership", "ceo", "cfo"):
         return "EXECUTIVE"
-    if r in ("department_manager", "knowledge_manager", "manager", "quan_ly"):
+    if r in ("department_manager", "knowledge_manager", "knowledge_mgr", "manager", "quan_ly", "mgr", "tp", "lead"):
         return "DEPARTMENT_MANAGER"
     return "STANDARD_USER"
 

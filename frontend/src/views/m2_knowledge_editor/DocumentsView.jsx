@@ -322,6 +322,34 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     return docsList || [];
   }, [docsList]);
 
+  const visibleDepartments = useMemo(() => {
+    const allowedDepts = summary?.allowed_departments;
+    const allowedRes = summary?.allowed_resources;
+    if (!allowedDepts && !allowedRes) return DEPARTMENTS;
+    return DEPARTMENTS.filter((d) => {
+      if (allowedDepts && (allowedDepts.includes(d.key) || allowedDepts.includes(d.folder))) return true;
+      if (allowedRes && (allowedRes.includes(d.key.toUpperCase()) || (d.key === "accounting_procurement" && allowedRes.includes("ACCOUNTING_PROCUREMENT")))) return true;
+      return false;
+    });
+  }, [summary?.allowed_departments, summary?.allowed_resources]);
+
+  const isLegalAllowed = useMemo(() => {
+    if (summary?.allowed_resources && summary.allowed_resources.length > 0) {
+      return summary.allowed_resources.includes("LEGAL");
+    }
+    if (summary?.allowed_departments && summary.allowed_departments.length > 0) {
+      return summary.allowed_departments.includes("legal");
+    }
+    return (summary?.cuad_contracts || 0) > 0;
+  }, [summary?.allowed_resources, summary?.allowed_departments, summary?.cuad_contracts]);
+
+  // Ensure uploadDept defaults to an allowed department
+  useEffect(() => {
+    if (visibleDepartments.length > 0 && !visibleDepartments.some((d) => (d.folder || d.key) === uploadDept)) {
+      setUploadDept(visibleDepartments[0].folder || visibleDepartments[0].key);
+    }
+  }, [visibleDepartments, uploadDept]);
+
   const newDocsCount = summary.new_docs_count ?? summary.watcher_docs ?? 0;
   const filteredDocs = accessibleDocs;
 
@@ -421,8 +449,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           </h1>
           <p className="text-sm text-on-surface-variant leading-relaxed">
             {isVi
-              ? `Khám phá ${summary.cuad_contracts} tài liệu hợp đồng CUAD (${summary.cuad_chunks?.toLocaleString()} vector chunks trong Qdrant) và dữ liệu AdventureWorks (${summary.neo4j_nodes?.toLocaleString()} thực thể trong Neo4j). Click vào thẻ để mở bảng xem trước chi tiết.`
-              : `Explore ${summary.cuad_contracts} CUAD contracts (${summary.cuad_chunks?.toLocaleString()} vector chunks in Qdrant) and AdventureWorks data (${summary.neo4j_nodes?.toLocaleString()} entities in Neo4j). Click any card to open the preview inspector.`}
+              ? isLegalAllowed
+                ? `Khám phá ${summary.total_items || totalCount} tài liệu (${summary.cuad_contracts || 0} hợp đồng CUAD & dữ liệu AdventureWorks) với ${summary.total_chunks?.toLocaleString() || 0} vector chunks trong Qdrant. Click vào thẻ để mở bảng xem trước chi tiết.`
+                : `Khám phá ${summary.total_items || totalCount} tài liệu tri thức phòng ban (${summary.departments_count || visibleDepartments.length} phòng ban: ${summary.department_names_display || "Kinh doanh, IT, R&D"}). Click vào thẻ để mở bảng xem trước chi tiết.`
+              : `Explore ${summary.total_items || totalCount} documents across ${summary.departments_count || visibleDepartments.length} departments. Click any card to open the preview inspector.`}
           </p>
         </div>
 
@@ -581,8 +611,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             <div className="text-2xl font-bold text-on-surface font-mono">
               {summary.total_items || totalCount}
             </div>
-            <p className="text-[11px] text-outline mt-0.5">
-              {summary.cuad_contracts || 0} CUAD + {summary.adventureworks_datasets || 0} AW
+            <p className="text-[11px] text-outline mt-0.5 truncate">
+              {isLegalAllowed
+                ? `${summary.cuad_contracts || 0} CUAD + ${summary.adventureworks_datasets || 0} AW`
+                : `${summary.total_items || totalCount} ${isVi ? "tài liệu nội bộ" : "internal documents"}`}
             </p>
           </div>
         </div>
@@ -679,10 +711,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           </div>
           <div className="mt-2">
             <div className="text-2xl font-bold text-on-surface font-mono">
-              {summary.departments_count || 5}
+              {summary.departments_count || visibleDepartments.length}
             </div>
-            <p className="text-[11px] text-outline mt-0.5">
-              Legal, Sales, Fin, R&D, IT
+            <p className="text-[11px] text-outline mt-0.5 truncate" title={summary.department_names_display || "Phòng ban được phân quyền"}>
+              {summary.department_names_display || visibleDepartments.map(d => d.shortName).join(", ")}
             </p>
           </div>
         </div>
@@ -716,10 +748,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               className="w-full py-2 px-3 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="ALL">{isVi ? "Loại: Tất cả" : "Type: All"}</option>
-              <option value="PDF">{isVi ? "Hợp đồng CUAD (PDF)" : "CUAD Contracts (PDF)"}</option>
+              {isLegalAllowed && <option value="PDF">{isVi ? "Hợp đồng CUAD (PDF)" : "CUAD Contracts (PDF)"}</option>}
               <option value="Sheets">{isVi ? "Dữ liệu CRM/ERP (XLSX)" : "CRM/ERP Data (XLSX)"}</option>
               <option value="SOP">{isVi ? "Quy trình SOP (DOCX)" : "SOP Procedures (DOCX)"}</option>
-              <option value="NDA">{isVi ? "Thỏa thuận bảo mật (NDA)" : "NDA Agreements"}</option>
+              {isLegalAllowed && <option value="NDA">{isVi ? "Thỏa thuận bảo mật (NDA)" : "NDA Agreements"}</option>}
               <option value="JSON">{isVi ? "Dữ liệu JSON Graph" : "JSON Graph Data"}</option>
             </select>
           </div>
@@ -732,7 +764,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               className="w-full py-2 px-3 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="ALL">{isVi ? "Phòng ban: Tất cả" : "Dept: All"}</option>
-              {DEPARTMENTS.map((d) => (
+              {visibleDepartments.map((d) => (
                 <option key={d.key} value={d.filterValue}>
                   {isVi ? d.displayName : d.shortName}
                 </option>
@@ -855,21 +887,23 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             <span>{isVi ? "Mới nhất trước" : "Newest First"}</span>
           </button>
 
-          {/* Chip 4: Hợp đồng CUAD */}
-          <button
-            onClick={() => {
-              setDocFilter(docFilter === "PDF" ? "ALL" : "PDF");
-              setCurrentPage(1);
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              docFilter === "PDF"
-                ? "bg-rose-600 text-white shadow-xs"
-                : "bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30"
-            }`}
-          >
-            <Icon name="fa-solid fa-file-pdf text-rose-500 text-[11px]" size={11} />
-            <span>CUAD PDF ({summary.cuad_contracts || 0})</span>
-          </button>
+          {/* Chip 4: Hợp đồng CUAD (Chỉ hiện khi role có quyền xem Pháp chế) */}
+          {isLegalAllowed && (
+            <button
+              onClick={() => {
+                setDocFilter(docFilter === "PDF" ? "ALL" : "PDF");
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                docFilter === "PDF"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30"
+              }`}
+            >
+              <Icon name="fa-solid fa-file-pdf text-rose-500 text-[11px]" size={11} />
+              <span>CUAD PDF ({summary.cuad_contracts || 0})</span>
+            </button>
+          )}
 
           {/* Active filter badge if filtering */}
           {(filterNewest !== "ALL" || docFilter !== "ALL" || deptFilter !== "ALL" || searchQuery) && (
@@ -892,7 +926,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             </span>
             <span className="inline-block w-1 h-1 rounded-full bg-outline-variant"></span>
             <span className="flex items-center gap-1.5 text-primary font-semibold">
-              <span className="w-2 h-2 rounded-full bg-primary inline-block"></span> {summary.cuad_contracts} {isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}
+              <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
+              {isLegalAllowed
+                ? `${summary.cuad_contracts || 0} ${isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}`
+                : `${summary.total_items || totalCount} ${isVi ? "Tài liệu phòng ban" : "Department Documents"}`}
             </span>
             <span className="flex items-center gap-1.5 text-tertiary font-semibold">
               <span className="w-2 h-2 rounded-full bg-tertiary inline-block"></span> {summary.cuad_chunks?.toLocaleString()} {isVi ? "Vector Chunks" : "Vector Chunks"}
@@ -1788,11 +1825,21 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   }}
                   className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
                 >
-                  <option value="sales">{isVi ? "Kinh doanh (Sales)" : "Sales"}</option>
-                  <option value="legal">{isVi ? "Pháp chế (Legal)" : "Legal"}</option>
-                  <option value="accounting_procurement">{isVi ? "Kế toán / Thu mua (Accounting & Procurement)" : "Accounting & Procurement"}</option>
-                  <option value="it">{isVi ? "Công nghệ / IT (Information Technology)" : "Information Technology (IT)"}</option>
-                  <option value="rnd">{isVi ? "Nghiên cứu & Phát triển (R&D)" : "Research & Development (R&D)"}</option>
+                  {visibleDepartments && visibleDepartments.length > 0 ? (
+                    visibleDepartments.map((d) => (
+                      <option key={d.key} value={d.folder || d.key}>
+                        {isVi ? d.displayName : d.shortName} — /data/{d.folder || d.key}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="sales">{isVi ? "Kinh doanh (Sales)" : "Sales"}</option>
+                      <option value="legal">{isVi ? "Pháp chế (Legal)" : "Legal"}</option>
+                      <option value="accounting_procurement">{isVi ? "Kế toán / Thu mua (Accounting & Procurement)" : "Accounting & Procurement"}</option>
+                      <option value="it">{isVi ? "Công nghệ / IT (Information Technology)" : "Information Technology (IT)"}</option>
+                      <option value="rnd">{isVi ? "Nghiên cứu & Phát triển (R&D)" : "Research & Development (R&D)"}</option>
+                    </>
+                  )}
                 </select>
                 <span className="text-[11px] text-on-surface-variant mt-1.5 block">
                   {isVi ? "Tài liệu sẽ được phân bổ và áp dụng quyền kiểm duyệt theo Ma trận Phân quyền của phòng ban." : "Document will be routed and permissions applied according to department RBAC matrix."}
