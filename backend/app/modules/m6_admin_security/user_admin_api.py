@@ -5,9 +5,9 @@ Yêu cầu: Bearer token + role it_admin hoặc is_superuser
 """
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -29,6 +29,7 @@ from app.modules.m6_admin_security.rbac import (
 from app.schemas.user_admin import (
     UserCreateRequest,
     UserRoleUpdateRequest,
+    UserDepartmentUpdateRequest,
     PasswordResetRequest,
     UserAdminOut,
     AuditLogOut,
@@ -36,6 +37,81 @@ from app.schemas.user_admin import (
 )
 
 router = APIRouter(prefix="/admin", tags=["M6 Admin"])
+
+# Mapping chuẩn 5 phòng ban doanh nghiệp
+DEPT_CODE_TO_ID = {
+    "SALES": uuid.UUID("6d04d700-56e6-4d50-88b2-6594013fc8cd"),
+    "LEGAL": uuid.UUID("dd99cb37-49d1-4543-99c6-f4787dd19a08"),
+    "FINANCE": uuid.UUID("aa7d6633-dc3f-44b3-a5ad-cb2e08f891cd"),
+    "IT": uuid.UUID("1c51042f-0345-4467-90ca-ef5845822712"),
+    "RND": uuid.UUID("eafa81ed-53a7-4275-ba0f-f9ac57eb1ce5"),
+}
+
+
+def normalize_dept_label_and_code(raw_name: Optional[str]) -> Tuple[str, str]:
+    if not raw_name:
+        return "Kinh doanh (SALES)", "SALES"
+    r = raw_name.lower().strip()
+    if "legal" in r or "pháp chế" in r:
+        return "Pháp chế (LEGAL)", "LEGAL"
+    if "accounting" in r or "kế toán" in r or "thu mua" in r or "finance" in r:
+        return "Kế toán / Thu mua (FINANCE)", "FINANCE"
+    if "công nghệ" in r or "it" in r or "cntt" in r:
+        return "Công nghệ / IT", "IT"
+    if "r&d" in r or "rnd" in r or "nghiên cứu" in r:
+        return "R&D", "RND"
+    if "sales" in r or "kinh doanh" in r:
+        return "Kinh doanh (SALES)", "SALES"
+    if "ban giám đốc" in r or "executive" in r:
+        return "Toàn công ty (Global)", "GLOBAL"
+    return raw_name, "SALES"
+
+
+async def serialize_user_admin_out(
+    u: User,
+    dept_map: Optional[dict] = None,
+    db: Optional[AsyncSession] = None,
+) -> UserAdminOut:
+    dept_name = None
+    dept_code = None
+    if u.department_id:
+        if dept_map and str(u.department_id) in dept_map:
+            raw_name = dept_map[str(u.department_id)]
+            dept_name, dept_code = normalize_dept_label_and_code(raw_name)
+        elif db:
+            dept_res = await db.execute(
+                text("SELECT name FROM departments WHERE department_id = :did"),
+                {"did": u.department_id},
+            )
+            row = dept_res.fetchone()
+            if row:
+                dept_name, dept_code = normalize_dept_label_and_code(row[0])
+
+    u_role = canonical_role(u.role)
+    if u_role in ("it_admin", "executive"):
+        dept_code = "GLOBAL"
+        dept_name = "Toàn công ty (Global)"
+    elif not dept_code:
+        dept_code = "SALES"
+        dept_name = "Kinh doanh (SALES)"
+
+    return UserAdminOut(
+        user_id=u.user_id,
+        email=u.email,
+        username=u.username,
+        full_name=u.full_name,
+        role=u.role,
+        department_id=u.department_id,
+        department_name=dept_name,
+        department_code=dept_code,
+        status=getattr(u, "status", "active") or ("active" if u.is_active else "locked"),
+        is_active=u.is_active,
+        is_superuser=u.is_superuser,
+        created_at=u.created_at,
+        last_login_at=u.last_login_at,
+        last_active_at=u.last_active_at,
+        deleted_at=u.deleted_at,
+    )
 
 
 async def count_active_admins(db: AsyncSession) -> int:
@@ -93,7 +169,10 @@ async def list_users(
     result = await db.execute(
         select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.desc())
     )
-    return result.scalars().all()
+    users = result.scalars().all()
+    dept_res = await db.execute(text("SELECT department_id, name FROM departments"))
+    dept_map = {str(r[0]): r[1] for r in dept_res.fetchall()}
+    return [await serialize_user_admin_out(u, dept_map=dept_map) for u in users]
 
 
 # ── POST /admin/users ─────────────────────────────────────────────────────────
@@ -114,12 +193,19 @@ async def create_user(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email hoặc username đã tồn tại")
 
+    dept_id = body.department_id
+    if not dept_id and body.department_code:
+        dept_id = DEPT_CODE_TO_ID.get(body.department_code.upper())
+    if not dept_id and canonical_role(body.role) in ("knowledge_manager", "standard"):
+        dept_id = DEPT_CODE_TO_ID.get("SALES")
+
     new_user = User(
         email=body.email.lower().strip(),
         username=username,
         password_hash=get_password_hash(body.password),
         full_name=body.full_name,
         role=body.role,
+        department_id=dept_id,
         is_active=True,
         is_superuser=is_superuser_for_role(body.role),
     )
@@ -132,11 +218,11 @@ async def create_user(
         actor_id=actor.user_id,
         resource_type="user",
         resource_id=str(new_user.user_id),
-        detail=f"email={new_user.email} role={new_user.role}",
+        detail=f"email={new_user.email} role={new_user.role} dept_id={dept_id}",
     )
-    await db.flush()
+    await db.commit()
     await db.refresh(new_user)
-    return new_user
+    return await serialize_user_admin_out(new_user, db=db)
 
 
 # ── PATCH /admin/users/{user_id}/role ────────────────────────────────────────
@@ -179,7 +265,42 @@ async def change_role(
     )
     await db.commit()
     await db.refresh(target)
-    return target
+    return await serialize_user_admin_out(target, db=db)
+
+
+# ── PATCH /admin/users/{user_id}/department ──────────────────────────────────
+
+@router.patch("/users/{user_id}/department", response_model=UserAdminOut)
+async def change_department(
+    user_id: uuid.UUID,
+    body: UserDepartmentUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(get_admin_user),
+):
+    """Cập nhật phòng ban trực thuộc cho người dùng."""
+    result = await db.execute(select(User).where(User.user_id == user_id, User.deleted_at.is_(None)))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tài khoản.")
+
+    target_dept_id = body.department_id
+    if not target_dept_id and body.department_code:
+        target_dept_id = DEPT_CODE_TO_ID.get(body.department_code.upper())
+
+    old_dept_id = target.department_id
+    target.department_id = target_dept_id
+
+    await log_action(
+        db,
+        action="DEPARTMENT_CHANGE",
+        actor_id=actor.user_id,
+        resource_type="user",
+        resource_id=str(target.user_id),
+        detail=f"Phòng ban: {old_dept_id} → {target_dept_id} (code: {body.department_code})",
+    )
+    await db.commit()
+    await db.refresh(target)
+    return await serialize_user_admin_out(target, db=db)
 
 
 # ── PATCH /admin/users/{user_id}/lock ────────────────────────────────────────
@@ -217,7 +338,7 @@ async def lock_user(
     )
     await db.commit()
     await db.refresh(target)
-    return target
+    return await serialize_user_admin_out(target, db=db)
 
 
 # ── PATCH /admin/users/{user_id}/unlock ──────────────────────────────────────
@@ -245,7 +366,7 @@ async def unlock_user(
     )
     await db.commit()
     await db.refresh(target)
-    return target
+    return await serialize_user_admin_out(target, db=db)
 
 
 # ── PATCH /admin/users/{user_id}/reset-password ──────────────────────────────
@@ -274,7 +395,7 @@ async def reset_password(
     )
     await db.commit()
     await db.refresh(target)
-    return target
+    return await serialize_user_admin_out(target, db=db)
 
 
 # ── DELETE /admin/users/{user_id} ─────────────────────────────────────────────

@@ -30,6 +30,15 @@ export const ROLE_OPTIONS = Object.entries(ROLE_META).map(([value, { label }]) =
   label,
 }));
 
+
+export const DEPARTMENT_OPTIONS = [
+  { value: "SALES", label: "Kinh doanh (SALES)", dbName: "Sales", id: "6d04d700-56e6-4d50-88b2-6594013fc8cd" },
+  { value: "LEGAL", label: "Pháp chế (LEGAL)", dbName: "Legal", id: "dd99cb37-49d1-4543-99c6-f4787dd19a08" },
+  { value: "FINANCE", label: "Kế toán / Thu mua (FINANCE)", dbName: "Accounting", id: "aa7d6633-dc3f-44b3-a5ad-cb2e08f891cd" },
+  { value: "IT", label: "Công nghệ / IT", dbName: "Công Nghệ Thông Tin", id: "1c51042f-0345-4467-90ca-ef5845822712" },
+  { value: "RND", label: "R&D", dbName: "R&D", id: "eafa81ed-53a7-4275-ba0f-f9ac57eb1ce5" },
+];
+
 export const RESOURCE_TYPES = [
   { value: "", label: "Tất cả loại đối tượng" },
   { value: "user", label: "USER" },
@@ -116,6 +125,17 @@ export function fetchAdminUsers() {
 
 export function createAdminUser(payload) {
   return apiFetch("/admin/users", { method: "POST", body: JSON.stringify(payload) });
+}
+
+
+export function changeAdminUserDepartment(userId, departmentCode, departmentId) {
+  return apiFetch(`/admin/users/${userId}/department`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      department_code: departmentCode,
+      department_id: departmentId || undefined,
+    }),
+  });
 }
 
 export function changeAdminUserRole(userId, role) {

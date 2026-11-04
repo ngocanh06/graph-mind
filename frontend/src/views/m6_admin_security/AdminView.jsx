@@ -17,6 +17,8 @@ import {
   fetchAdminUsers,
   createAdminUser,
   changeAdminUserRole,
+  changeAdminUserDepartment,
+  DEPARTMENT_OPTIONS,
   lockAdminUser,
   unlockAdminUser,
   resetAdminUserPassword,
@@ -78,7 +80,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
   const [showLockConfirm, setShowLockConfirm] = useState(null);
   const [showResetModal, setShowResetModal] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-  const [addForm, setAddForm] = useState({ email: "", password: "", full_name: "", role: "standard" });
+  const [addForm, setAddForm] = useState({ email: "", password: "", full_name: "", role: "standard", department_code: "SALES" });
   const [resetPwd, setResetPwd] = useState("");
 
   const [auditLogs, setAuditLogs] = useState([]);
@@ -156,7 +158,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
       await createAdminUser(addForm);
       showToast("Đã tạo tài khoản");
       setShowAddModal(false);
-      setAddForm({ email: "", password: "", full_name: "", role: "standard" });
+      setAddForm({ email: "", password: "", full_name: "", role: "standard", department_code: "SALES" });
       loadUsers();
     } catch (e) {
       showToast(errorText(e), "err");
@@ -170,6 +172,30 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
         prev.map((u) => (u.user_id === user.user_id ? { ...u, role: newRole } : u))
       );
       showToast("Đã đổi vai trò");
+      await loadUsers();
+    } catch (e) {
+      showToast(errorText(e), "err");
+    }
+  };
+
+
+  const handleDepartmentChange = async (user, newDeptCode) => {
+    try {
+      const deptObj = DEPARTMENT_OPTIONS.find((d) => d.value === newDeptCode);
+      await changeAdminUserDepartment(user.user_id, newDeptCode, deptObj?.id);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.user_id === user.user_id
+            ? {
+                ...u,
+                department_code: newDeptCode,
+                department_name: deptObj?.label || newDeptCode,
+                department_id: deptObj?.id || u.department_id,
+              }
+            : u
+        )
+      );
+      showToast("Đã cập nhật phòng ban");
       await loadUsers();
     } catch (e) {
       showToast(errorText(e), "err");
@@ -305,7 +331,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                 />
               </div>
             ))}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 5 }}>Vai trò</label>
               <select
                 value={addForm.role}
@@ -321,6 +347,40 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                 ))}
               </select>
             </div>
+            {(addForm.role === "knowledge_manager" || addForm.role === "standard") ? (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 5 }}>
+                  Phòng ban (Department)
+                </label>
+                <select
+                  value={addForm.department_code || "SALES"}
+                  onChange={e => setAddForm(f => ({ ...f, department_code: e.target.value }))}
+                  style={{
+                    width: "100%", padding: "9px 12px", background: "var(--surface-2)",
+                    border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
+                    color: "var(--text-1)", fontSize: 13
+                  }}
+                >
+                  {DEPARTMENT_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 5 }}>
+                  Phòng ban (Department)
+                </label>
+                <div style={{
+                  padding: "9px 12px", background: "var(--surface-2)", border: "1px solid var(--border)",
+                  borderRadius: "var(--r-sm)", color: "#2563eb", fontSize: 13, display: "flex", alignItems: "center", gap: 8,
+                  fontWeight: 600
+                }}>
+                  <span>🌐 Toàn công ty (Global)</span>
+                  <span style={{ fontSize: 11, color: "var(--text-4)", fontWeight: 400 }}>(Quyền xuyên suốt toàn hệ thống)</span>
+                </div>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <Button variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>Hủy</Button>
               <Button variant="primary" size="sm" onClick={handleAddUser}>Tạo tài khoản</Button>
@@ -490,7 +550,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
                   <thead>
                     <tr style={{ background: "var(--surface-2)", color: "var(--text-3)", borderBottom: "1px solid var(--border)" }}>
-                      {["Người dùng", "Email", "Vai trò", "Trạng thái", "Thao tác"].map((h) => (
+                      {["Người dùng", "Email", "Phòng ban", "Vai trò", "Trạng thái", "Thao tác"].map((h) => (
                         <th key={h} style={{ padding: "12px 16px", fontWeight: 700, fontSize: 11, textTransform: "uppercase" }}>{h}</th>
                       ))}
                     </tr>
@@ -554,6 +614,56 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                           </td>
                           <td style={{ padding: "12px 16px", color: "var(--text-3)", fontFamily: "var(--f-mono)", fontSize: 12 }}>
                             {u.email}
+                          </td>
+                          <td style={{ padding: "12px 16px" }}>
+                            {(role === "it_admin" || role === "executive") ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  padding: "4px 10px",
+                                  borderRadius: "12px",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  background: "rgba(59, 130, 246, 0.1)",
+                                  color: "#2563eb",
+                                  border: "1px solid rgba(59, 130, 246, 0.25)",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                🌐 Toàn công ty (Global)
+                              </span>
+                            ) : (
+                              <select
+                                disabled={isLocked}
+                                value={
+                                  u.department_code || (
+                                    u.department_name && u.department_name.toLowerCase().includes("legal") ? "LEGAL" :
+                                    u.department_name && u.department_name.toLowerCase().includes("pháp chế") ? "LEGAL" :
+                                    u.department_name && (u.department_name.toLowerCase().includes("accounting") || u.department_name.toLowerCase().includes("kế toán")) ? "FINANCE" :
+                                    u.department_name && (u.department_name.toLowerCase().includes("it") || u.department_name.toLowerCase().includes("công nghệ")) ? "IT" :
+                                    u.department_name && (u.department_name.toLowerCase().includes("r&d") || u.department_name.toLowerCase().includes("rnd")) ? "RND" :
+                                    "SALES"
+                                  )
+                                }
+                                onChange={(e) => handleDepartmentChange(u, e.target.value)}
+                                style={{
+                                  padding: "5px 8px",
+                                  borderRadius: "var(--r-xs)",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  background: "var(--surface-2)",
+                                  border: "1px solid var(--border)",
+                                  color: "var(--text-1)",
+                                  cursor: isLocked ? "not-allowed" : "pointer",
+                                }}
+                              >
+                                {DEPARTMENT_OPTIONS.map(({ value, label }) => (
+                                  <option key={value} value={value}>{label}</option>
+                                ))}
+                              </select>
+                            )}
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <select

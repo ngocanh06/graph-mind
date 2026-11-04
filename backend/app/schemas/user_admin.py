@@ -19,6 +19,8 @@ class UserCreateRequest(BaseModel):
     password: str
     full_name: Optional[str] = None
     role: str = "standard"
+    department_id: Optional[uuid.UUID] = None
+    department_code: Optional[str] = None
 
     @field_validator("email")
     @classmethod
@@ -54,6 +56,11 @@ class UserRoleUpdateRequest(BaseModel):
         return v
 
 
+class UserDepartmentUpdateRequest(BaseModel):
+    department_id: Optional[uuid.UUID] = None
+    department_code: Optional[str] = None
+
+
 class PasswordResetRequest(BaseModel):
     new_password: str
 
@@ -71,6 +78,9 @@ class UserAdminOut(BaseModel):
     username: Optional[str] = None
     full_name: Optional[str] = None
     role: str
+    department_id: Optional[uuid.UUID] = None
+    department_name: Optional[str] = None
+    department_code: Optional[str] = None
     status: str = "active"
     is_active: bool
     is_superuser: bool
