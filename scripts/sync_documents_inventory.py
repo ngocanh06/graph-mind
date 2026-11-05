@@ -118,3 +118,4 @@ with driver.session() as s:
         print(f"  {item['dept']}: {item['count']}")
 
 driver.close()
+

@@ -1015,7 +1015,8 @@ async def ask_copilot(
         "thanh", "vien", "nao", "sao", "cho", "du", "an", "van", "ban", "ve", "gi", "ai",
         "he", "thong", "quy", "dinh", "bao", "cao", "nguoi", "phu", "trach", "giam", "doc",
         "systems", "system", "corp", "corporation", "company", "agreement", "inc", "ltd", "llc",
-        "group", "holdings", "media", "services", "service", "contract", "contracts"
+        "group", "holdings", "media", "services", "service", "contract", "contracts",
+        "cuad", "adventureworks", "erp", "dataset", "datasets", "chi", "so", "co", "cau", "muc", "loai"
     }
     try:
         # A. Explicit document_id passed in request
@@ -1187,13 +1188,18 @@ async def ask_copilot(
             # 2.0.1 ENTITY EXISTENCE GATE: If user explicitly asks about a specific named document/file/contract
             # but it does not exist anywhere in Neo4j or Qdrant, refuse immediately to avoid false-positive hallucinations
             targeted_doc_term = None
-            t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
-            if t_match:
-                cand = t_match.group(1).strip()
-                if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
-                    targeted_doc_term = cand
-            elif candidate_tokens and is_doc_repo_query:
-                targeted_doc_term = candidate_tokens[0]
+            is_agg_query = any(k in q_lower for k in [
+                "cơ cấu", "phân bố", "danh mục", "bao nhiêu", "thống kê", "tổng cộng", "tổng số",
+                "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số"
+            ])
+            if not is_inventory_query and not is_agg_query:
+                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
+                if t_match:
+                    cand = t_match.group(1).strip()
+                    if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
+                        targeted_doc_term = cand
+                elif candidate_tokens and is_doc_repo_query:
+                    targeted_doc_term = candidate_tokens[0]
 
             if targeted_doc_term:
                 term_in_docs = False
@@ -1395,7 +1401,7 @@ async def ask_copilot(
 
         # If query is a system inventory summary (e.g. total documents count),
         # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
-        if any(gh.get("_id") == "total-documents-summary" for gh in graph_hits):
+        if any(gh.get("_id") in ["total-documents-summary", "portfolio-breakdown"] for gh in graph_hits):
             vector_hits = []
 
         # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
@@ -1513,7 +1519,7 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
-            if any(l in ["DocumentSummary", "SystemStats"] for l in labels) or gh.get("_id") == "total-documents-summary":
+            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "CUAD"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
                 return True
             if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
@@ -1529,7 +1535,7 @@ async def ask_copilot(
     # Out-of-domain queries score < 0.22, whereas valid in-domain queries score >= 0.28.
     GROUNDING_MIN_SCORE = 0.28
     top_vec_score = max([float(vh.get("score") or 0.0) for vh in vector_hits], default=0.0)
-    has_valid_graph = any(gh.get("_id") not in ["portfolio-breakdown", "compliance-stats"] for gh in graph_hits)
+    has_valid_graph = len(graph_hits) > 0
 
     if top_vec_score < GROUNDING_MIN_SCORE and not has_valid_graph:
         safe_reply = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức để trả lời câu hỏi này."
@@ -1691,30 +1697,19 @@ async def ask_copilot(
             raw_id = str(ent.get("id") or ent.get("_id") or "")
             node_clean_id = raw_id.split(":")[-1] if ":" in raw_id else raw_id
 
-            # A. Aggregate: add chip, NEVER add text citation
-            is_agg = (
-                ent.get("type") in ["portfolio-breakdown", "compliance-stats"] or
-                ent.get("_id") in ["portfolio-breakdown", "compliance-stats"] or
-                "ContractPortfolio" in ent_labels or
-                "ComplianceReport" in ent_labels
-            )
-            if is_agg:
-                evidence_chips.append({
-                    "id": f"graph_{node_clean_id}",
-                    "label": f"Báo cáo: {ent_name}"[:36],
-                    "source": "Neo4j Graph (Aggregate)",
-                })
-                continue
-
-            # A2. System Document Inventory / Summary
-            if ent.get("is_system_summary") or any(l in ["DocumentSummary", "SystemStats"] for l in ent_labels) or node_clean_id == "total-documents-summary":
+            # A2. System Document Inventory / Summary / Portfolio Breakdown
+            if (
+                ent.get("is_system_summary") or
+                any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio"] for l in ent_labels) or
+                node_clean_id in ["total-documents-summary", "portfolio-breakdown"]
+            ):
                 evidence_chips.append({
                     "id": f"graph_{node_clean_id}",
                     "label": f"Hệ thống: {ent_name}"[:36],
                     "source": "Neo4j Graph (Thống kê hệ thống)",
                 })
                 citations_detail.append({
-                    "docName": f"Thống kê kho tri thức: {ent_name}",
+                    "docName": f"Thống kê danh mục: {ent_name}",
                     "file": "Neo4j Graph (DocumentSummary)",
                     "source_file": "Neo4j.DocumentSummary",
                     "document_id": "SYSTEM-DOCS-SUMMARY",
@@ -1725,11 +1720,25 @@ async def ask_copilot(
                     "retrieval_score": 100.0,
                     "match": "GRAPH CYPHER VERIFIED",
                     "location": "Toàn hệ thống (Enterprise Overview)",
-                    "text": ent.get("snippet") or "Thống kê tổng số tài liệu trong hệ thống Neo4j",
+                    "text": ent.get("snippet") or "Thống kê danh mục tài liệu & hợp đồng trong hệ thống Neo4j",
                     "chunkId": "#SYSTEM-DOCS",
                     "sourceType": "Neo4j Graph DB",
-                    "neo4jNode": "DocumentSummary:SystemStats",
+                    "neo4jNode": "DocumentSummary:ContractPortfolio",
                     "score": 100.0,
+                })
+                continue
+
+            # A. Other Aggregate (e.g. compliance-stats): add chip only
+            is_agg = (
+                ent.get("type") in ["compliance-stats"] or
+                ent.get("_id") in ["compliance-stats"] or
+                "ComplianceReport" in ent_labels
+            )
+            if is_agg:
+                evidence_chips.append({
+                    "id": f"graph_{node_clean_id}",
+                    "label": f"Báo cáo: {ent_name}"[:36],
+                    "source": "Neo4j Graph (Aggregate)",
                 })
                 continue
 

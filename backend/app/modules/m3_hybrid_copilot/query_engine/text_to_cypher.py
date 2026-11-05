@@ -114,33 +114,33 @@ def generate_cypher_from_query(query: str) -> str:
         """
 
     # 0.05 Contract Category Distribution & Portfolio queries
-    if any(k in q_lower for k in ["cơ cấu danh mục", "phân bố danh mục", "loại hợp đồng phổ biến", "cơ cấu hợp đồng", "danh mục hợp đồng", "loại hợp đồng"]):
+    if any(k in q_lower for k in [
+        "cơ cấu danh mục", "phân bố danh mục", "loại hợp đồng phổ biến", "cơ cấu hợp đồng", 
+        "danh mục hợp đồng", "loại hợp đồng", "phân bố hợp đồng", "cơ cấu tài liệu", 
+        "phân bố tài liệu", "danh mục tài liệu", "phân tích cơ cấu", "hợp đồng cuad", "cuad",
+        "theo phòng ban"
+    ]):
         return f"""
         MATCH (d:Document)
         WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
-        WITH d.id AS doc_id, count(d) AS occurrences, collect(d)[0] AS doc_node
-        WITH collect({{doc_id: doc_id, occurrences: occurrences, node: doc_node}}) AS doc_entries,
-             max(occurrences) AS max_occ,
-             count(doc_id) AS distinct_doc_count
-        UNWIND doc_entries AS entry
-        WITH entry.node AS d, max_occ, distinct_doc_count
-        WITH coalesce(d.department, 'Pháp chế (Legal)') AS rawType,
-             count(d) AS cnt,
-             collect(d.id) AS dept_doc_ids,
-             max_occ, distinct_doc_count
-        ORDER BY cnt DESC
-        WITH collect({{type: rawType, count: cnt, doc_ids: dept_doc_ids}}) AS typeList,
-             sum(cnt) AS total,
-             max_occ,
-             distinct_doc_count
-        RETURN 'Phân bố Danh mục ' + toString(total) + ' Văn bản trong Hệ thống' AS name,
-               'Toàn hệ thống hiện có ' + toString(total) + ' văn bản/hợp đồng đã lập chỉ mục vào Neo4j & Qdrant, phân bổ theo các phòng ban chính: ' +
-               reduce(s = '', item in typeList | s + (case when s = '' then '' else '; ' end) + item.type + ': ' + toString(item.count) + ' tài liệu') AS snippet,
+        WITH d, 
+             CASE 
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(pháp chế|legal|hợp đồng).*' THEN 'Pháp chế (Legal)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(kinh doanh|sales).*' THEN 'Kinh doanh (Sales)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(r&d|nghiên cứu|rnd).*' THEN 'Nghiên cứu & Phát triển (R&D)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(kế toán|thu mua|accounting|procurement).*' THEN 'Kế toán & Thu mua'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(công nghệ|it|cntt).*' THEN 'Công nghệ thông tin (IT)'
+               ELSE 'Phòng ban khác'
+             END AS canon_dept
+        WITH canon_dept, count(d) AS doc_count
+        ORDER BY doc_count DESC
+        WITH collect({{dept: canon_dept, count: doc_count}}) AS deptList, sum(doc_count) AS totalDocs
+        RETURN 'Phân bố Danh mục ' + toString(totalDocs) + ' Tài liệu & Hợp đồng theo Phòng ban' AS name,
+               totalDocs,
+               'Toàn hệ thống hiện có ' + toString(totalDocs) + ' tài liệu/văn bản đang hoạt động trong kho tri thức, phân bổ theo 5 phòng ban chính: ' +
+               reduce(s = '', item in deptList | s + (case when s = '' then '' else '; ' end) + item.dept + ': ' + toString(item.count) + ' tài liệu (' + toString(round(toFloat(item.count) * 100.0 / toFloat(totalDocs), 1)) + '%)') AS snippet,
                'portfolio-breakdown' AS _id,
-               ['ContractPortfolio', 'CUAD'] AS _labels,
-               reduce(acc = [], item in typeList | acc + item.doc_ids) AS source_doc_ids,
-               total AS total_verified_docs,
-               max_occ AS duplicate_detected
+               ['ContractPortfolio', 'DocumentSummary', 'CUAD'] AS _labels
         """
 
     # 0. Compliance Rate & Missing Protection Clause queries (e.g. tỷ lệ tuân thủ điều khoản, thiếu điều khoản bảo vệ)

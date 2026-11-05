@@ -768,123 +768,166 @@ export default function ExecutiveView({
             </div>
           </div>
 
-          {/* 3. PHÂN BỐ HỢP ĐỒNG CUAD */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)",
-            padding: "22px",
-            boxShadow: "var(--shadow-xs)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "14px"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }}></span>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
-                  {isVi ? "Phân bố Danh mục Hợp đồng (CUAD Ingestion)" : "Contract Category Distribution (CUAD)"}
-                </h3>
-              </div>
-              <button
-                onClick={() => onNavigate?.("copilot", isVi ? "Phân tích cơ cấu danh mục hợp đồng CUAD và các loại hợp đồng phổ biến nhất" : "Analyze the CUAD contract portfolio breakdown and dominant agreement types")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "5px 10px",
-                  borderRadius: "var(--r-md)",
-                  background: "var(--blue-soft)",
-                  border: "1px solid rgba(37,99,235,0.2)",
-                  color: "var(--blue)",
-                  fontSize: 11.5,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease"
-                }}
-              >
-                <Sparkles size={12} />
-                <span>{isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}</span>
-              </button>
-            </div>
+          {/* 3. PHÂN BỐ HỢP ĐỒNG & TÀI LIỆU THEO PHÒNG BAN */}
+          {(() => {
+            const deptColorMap = {
+              "Pháp chế (Legal)": "#2563EB",
+              "Kinh doanh (Sales)": "#059669",
+              "Nghiên cứu & Phát triển (R&D)": "#8B5CF6",
+              "Kế toán & Thu mua": "#F59E0B",
+              "Công nghệ thông tin (IT)": "#06B6D4"
+            };
 
-            <div style={{
-              flex: 1,
-              display: "grid",
-              gridTemplateColumns: "140px 1fr",
-              gap: 20,
-              alignItems: "center",
-              padding: "10px 0"
-            }}>
-              {/* Donut chart */}
-              <div style={{ position: "relative", width: 130, height: 130, margin: "0 auto" }}>
-                <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="var(--surface-3)" strokeWidth="4.5" />
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#2563EB" strokeWidth="4.5"
-                    strokeDasharray="23.3 100" />
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#8B5CF6" strokeWidth="4.5"
-                    strokeDasharray="16.7 100" strokeDashoffset="-23.3" />
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#059669" strokeWidth="4.5"
-                    strokeDasharray="16.7 100" strokeDashoffset="-40" />
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#F59E0B" strokeWidth="4.5"
-                    strokeDasharray="43.3 100" strokeDashoffset="-56.7" />
-                </svg>
+            const defaultDeptDist = [
+              { type: isVi ? "Pháp chế (Legal)" : "Legal", count: 519 },
+              { type: isVi ? "Kinh doanh (Sales)" : "Sales", count: 33 },
+              { type: isVi ? "Nghiên cứu & Phát triển (R&D)" : "R&D", count: 27 },
+              { type: isVi ? "Kế toán & Thu mua" : "Accounting & Procurement", count: 12 },
+              { type: isVi ? "Công nghệ thông tin (IT)" : "IT", count: 4 }
+            ];
+
+            const rawDeptList = (contractDist?.byContractType && contractDist.byContractType.length > 0)
+              ? contractDist.byContractType
+              : defaultDeptDist;
+
+            const totalDeptDocs = rawDeptList.reduce((acc, curr) => acc + (curr.count || 0), 0) || 595;
+
+            let runningOffset = 0;
+            const computedDeptDist = rawDeptList.map((item) => {
+              const count = item.count || 0;
+              const pct = totalDeptDocs > 0 ? (count / totalDeptDocs) * 100 : 0;
+              const offset = runningOffset;
+              runningOffset += pct;
+              const color = deptColorMap[item.type] || "#3B82F6";
+              return {
+                type: item.type,
+                count,
+                pct,
+                pctDisplay: `${pct.toFixed(1)}% (${count})`,
+                color,
+                offset
+              };
+            });
+
+            return (
+              <div style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-lg)",
+                padding: "22px",
+                boxShadow: "var(--shadow-xs)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }}></span>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
+                      {isVi ? "Phân bố Danh mục Tài liệu & Hợp đồng (5 Phòng ban)" : "Document & Contract Distribution by Department"}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => onNavigate?.("copilot", isVi ? "Phân tích cơ cấu danh mục tài liệu và hợp đồng theo 5 phòng ban" : "Analyze document and contract distribution across 5 departments")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 10px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--blue-soft)",
+                      border: "1px solid rgba(37,99,235,0.2)",
+                      color: "var(--blue)",
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease"
+                    }}
+                  >
+                    <Sparkles size={12} />
+                    <span>{isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}</span>
+                  </button>
+                </div>
+
                 <div style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "flex",
-                  flexDirection: "column",
+                  flex: 1,
+                  display: "grid",
+                  gridTemplateColumns: "140px 1fr",
+                  gap: 20,
                   alignItems: "center",
-                  justifyContent: "center",
-                  pointerEvents: "none"
+                  padding: "10px 0"
                 }}>
-                  <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>
-                    {kpis ? kpis.totalContracts : 30}
-                  </span>
-                  <span style={{ fontSize: 9.5, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
-                    {isVi ? "Hợp đồng" : "Contracts"}
-                  </span>
+                  {/* Donut chart */}
+                  <div style={{ position: "relative", width: 130, height: 130, margin: "0 auto" }}>
+                    <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
+                      <circle cx="18" cy="18" r="14" fill="none" stroke="var(--surface-3)" strokeWidth="4.5" />
+                      {computedDeptDist.map((item, idx) => (
+                        <circle
+                          key={item.type || idx}
+                          cx="18"
+                          cy="18"
+                          r="14"
+                          fill="none"
+                          stroke={item.color}
+                          strokeWidth="4.5"
+                          strokeDasharray={`${item.pct.toFixed(2)} 100`}
+                          strokeDashoffset={idx === 0 ? "0" : `-${item.offset.toFixed(2)}`}
+                        />
+                      ))}
+                    </svg>
+                    <div style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      pointerEvents: "none"
+                    }}>
+                      <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>
+                        {totalDeptDocs}
+                      </span>
+                      <span style={{ fontSize: 9.5, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
+                        {isVi ? "Tài liệu" : "Documents"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11.5 }}>
+                    {computedDeptDist.map((item) => (
+                      <div key={item.type} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-2)" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }}></span>
+                          {item.type}
+                        </span>
+                        <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)", fontSize: 11 }}>{item.pctDisplay}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
+                  <span>{isVi ? "Trích xuất tự động qua Entity Extractor v1.2 & Neo4j" : "Auto-extracted via Entity Extractor & Neo4j"}</span>
+                  <button
+                    onClick={() => onNavigate?.("knowledge")}
+                    style={{
+                      color: "var(--blue)",
+                      fontWeight: 600,
+                      fontSize: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
+                      cursor: "pointer"
+                    }}
+                  >
+                    <span>{isVi ? "Mở Knowledge Base" : "Open Knowledge Base"}</span>
+                    <ChevronRight size={13} />
+                  </button>
                 </div>
               </div>
-
-              {/* Legend */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11.5 }}>
-                {[
-                  { color: "#2563EB", label: isVi ? "Dịch vụ & Thuê ngoài (Service/Outsourcing)" : "Service & Outsourcing", pct: "23.3% (7)" },
-                  { color: "#8B5CF6", label: isVi ? "Liên minh chiến lược & SHTT (Alliance/IP)" : "Strategic Alliance & IP", pct: "16.7% (5)" },
-                  { color: "#059669", label: isVi ? "Phân phối & Đại lý (Reseller/Distribution)" : "Reseller & Distribution", pct: "16.7% (5)" },
-                  { color: "#F59E0B", label: isVi ? "Hợp đồng thương mại khác" : "Other Commercial", pct: "43.3% (13)" },
-                ].map((item) => (
-                  <div key={item.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-2)" }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }}></span>
-                      {item.label}
-                    </span>
-                    <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)", fontSize: 11 }}>{item.pct}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
-              <span>{isVi ? "Trích xuất tự động qua Entity Extractor v1.2" : "Auto-extracted via Entity Extractor"}</span>
-              <button
-                onClick={() => onNavigate?.("knowledge")}
-                style={{
-                  color: "var(--blue)",
-                  fontWeight: 600,
-                  fontSize: 12,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  cursor: "pointer"
-                }}
-              >
-                <span>{isVi ? "Mở Knowledge Base" : "Open Knowledge Base"}</span>
-                <ChevronRight size={13} />
-              </button>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* 4. TỶ LỆ TUÂN THỦ PHÁP LÝ */}
           <div style={{
