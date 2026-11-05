@@ -228,20 +228,70 @@ def generate_cypher_from_query(query: str) -> str:
         LIMIT 8
         """
 
-    # 3. AdventureWorks Customer queries (ranked by revenue for VIPs/Top accounts)
-    if any(k in q_lower for k in ["khách hàng", "customer", "crm", "vip", "đối tác mua hàng"]):
+    # 3. AdventureWorks Customer queries (separated by product volume vs order count vs revenue)
+    if any(k in q_lower for k in ["khách hàng", "customer", "crm", "vip", "đối tác mua hàng", "ai mua", "người mua"]):
+        # 3A. Product quantity / volume (e.g. "mua nhiều sản phẩm nhất", "số lượng sản phẩm")
+        if any(k in q_lower for k in ["nhiều sản phẩm", "sản phẩm nhiều", "số lượng sản phẩm", "số lượng mua", "món hàng", "loại sản phẩm", "product", "quantity", "volume"]) or ("sản phẩm" in q_lower and any(w in q_lower for w in ["nhiều", "cao nhất", "lớn nhất", "top", "mua"])):
+            return """
+            MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p:Product)
+            WITH c, count(DISTINCT o) AS order_count,
+                 sum(coalesce(r.OrderQty, 0)) AS totalQty,
+                 count(DISTINCT p) AS distinctProducts,
+                 round(sum(coalesce(r.lineTotal, 0.0)), 2) AS totalProductSpent
+            WITH c, order_count, totalQty, distinctProducts, totalProductSpent,
+                 CASE
+                   WHEN c.FirstName IS NOT NULL AND c.LastName IS NOT NULL THEN c.FirstName + ' ' + c.LastName + ' (#' + toString(c.id) + ')'
+                   WHEN c.name IS NOT NULL THEN c.name
+                   ELSE 'Customer #' + toString(c.id)
+                 END AS custName
+            RETURN custName AS name,
+                   c.id AS CustomerID,
+                   order_count,
+                   totalQty,
+                   distinctProducts,
+                   totalProductSpent,
+                   'Khách hàng ' + custName + ': Mua nhiều sản phẩm nhất với tổng cộng ' + toString(totalQty) + ' sản phẩm (' + toString(distinctProducts) + ' loại sản phẩm khác nhau) qua ' + toString(order_count) + ' đơn hàng, tổng giá trị sản phẩm $' + toString(totalProductSpent) + ' USD.' AS snippet,
+                   elementId(c) AS _id, ['Customer'] AS _labels
+            ORDER BY totalQty DESC, distinctProducts DESC
+            LIMIT 6
+            """
+
+        # 3B. Order count (e.g. "nhiều đơn hàng nhất", "lượng đơn", "số đơn")
+        if any(k in q_lower for k in ["nhiều đơn", "số đơn", "lượng đơn", "order count", "most orders", "lần mua"]):
+            return """
+            MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
+            WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
+            WITH c, order_count, totalSpent,
+                 CASE
+                   WHEN c.FirstName IS NOT NULL AND c.LastName IS NOT NULL THEN c.FirstName + ' ' + c.LastName + ' (#' + toString(c.id) + ')'
+                   WHEN c.name IS NOT NULL THEN c.name
+                   ELSE 'Customer #' + toString(c.id)
+                 END AS custName
+            RETURN custName AS name,
+                   c.id AS CustomerID,
+                   order_count,
+                   totalSpent,
+                   'Khách hàng ' + custName + ': Đứng đầu về số lượng đơn hàng với ' + toString(order_count) + ' đơn hàng, tổng chi tiêu $' + toString(totalSpent) + ' USD.' AS snippet,
+                   elementId(c) AS _id, ['Customer'] AS _labels
+            ORDER BY order_count DESC, totalSpent DESC
+            LIMIT 6
+            """
+
+        # 3C. Revenue / Financial spending / VIP (default customer ranking)
         return """
         MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
-
-
         WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
-
-
-        RETURN coalesce(c.name, c.title, 'Customer #' + toString(c.id)) AS name,
+        WITH c, order_count, totalSpent,
+             CASE
+               WHEN c.FirstName IS NOT NULL AND c.LastName IS NOT NULL THEN c.FirstName + ' ' + c.LastName + ' (#' + toString(c.id) + ')'
+               WHEN c.name IS NOT NULL THEN c.name
+               ELSE 'Customer #' + toString(c.id)
+             END AS custName
+        RETURN custName AS name,
                c.id AS CustomerID,
                order_count,
                totalSpent,
-               'Khách hàng ' + coalesce(c.name, 'Customer #' + toString(c.id)) + ' (' + coalesce(c.tier, 'Khách hàng') + '): Tổng chi tiêu $' + toString(totalSpent) + ' USD với ' + toString(order_count) + ' đơn hàng.' AS snippet,
+               'Khách hàng ' + custName + ' (' + 'VIP' + '): Đứng đầu về doanh thu với tổng chi tiêu $' + toString(totalSpent) + ' USD qua ' + toString(order_count) + ' đơn hàng.' AS snippet,
                elementId(c) AS _id, ['Customer'] AS _labels
         ORDER BY totalSpent DESC
         LIMIT 6
@@ -298,7 +348,8 @@ def generate_cypher_from_query(query: str) -> str:
         "thế", "nào", "có", "bao", "nhiêu", "với", "theo", "được", "trên", "dưới", "khi", "tại", "sau", "trước",
         "chính", "thì", "đến", "nào", "ở", "ra", "sao", "thực", "hiện", "như", "đã", "đang", "sẽ", "biết", "tôi",
         "bạn", "hỏi", "đáp", "thông", "tin", "mô", "hình", "bài", "toán", "quy", "hoạch", "tuyến", "tính",
-        "điều", "kiện", "biến", "hàm", "mục", "tiêu", "ràng", "buộc", "order", "sales", "công", "ty"
+        "điều", "kiện", "biến", "hàm", "mục", "tiêu", "ràng", "buộc", "order", "sales", "công", "ty",
+        "xin", "chào", "chao", "hello", "hey", "alo", "cảm", "cam", "cám", "nhé", "nhe", "nha", "giúp", "vui", "lòng", "anh", "chị",
     }
     candidate_terms = [
         w for w in re.findall(r"[\w\.-]+", query)
@@ -311,13 +362,16 @@ def generate_cypher_from_query(query: str) -> str:
     # Pick the most specific term (e.g. DOC_..., numbers, capitalized entities or longest word)
     specific_terms = [w for w in candidate_terms if any(c.isupper() or c.isdigit() for c in w)]
     term = specific_terms[0] if specific_terms else max(candidate_terms, key=len)
+    safe_term = re.escape(term)
+    # Require whole-word boundaries for short alphabetic words so e.g. 'XIN' never matches 'Boxing'
+    regex_pat = f"(?iu).*\\b{safe_term}\\b.*" if (len(term) <= 5 and term.isalpha()) else f"(?i).*{safe_term}.*"
 
     return f"""
     MATCH (n)
     WHERE any(prop IN keys(n) WHERE 
         CASE 
-            WHEN n[prop] IS :: LIST<ANY> THEN any(item IN n[prop] WHERE toString(item) =~ '(?i).*{term}.*')
-            ELSE toString(n[prop]) =~ '(?i).*{term}.*'
+            WHEN n[prop] IS :: LIST<ANY> THEN any(item IN n[prop] WHERE toString(item) =~ '{regex_pat}')
+            ELSE toString(n[prop]) =~ '{regex_pat}'
         END
     )
     RETURN n, labels(n) AS _labels, elementId(n) AS _id
@@ -341,16 +395,29 @@ def execute_text_to_cypher(query: str) -> List[Dict[str, Any]]:
         raw_results = neo4j_client.run_cypher(cypher)
         formatted = []
         for r in raw_results:
-            # Flatten into uniform node structure
-            item = {"_id": r.get("_id")}
-            labels = r.get("_labels") or ["Entity"]
+            # Flatten into uniform node structure (unpacking nested `n` node dict if present)
+            n_node = r.get("n") if isinstance(r.get("n"), dict) else {}
+            n_props = n_node.get("properties") if isinstance(n_node.get("properties"), dict) else {}
+            item = {"_id": r.get("_id") or n_node.get("_id")}
+            labels = r.get("_labels") or n_node.get("_labels") or ["Entity"]
             item["_labels"] = labels if isinstance(labels, list) else [str(labels)]
-            item["name"] = r.get("contract_name") or r.get("name") or r.get("company") or f"Entity #{item['_id']}"
-            item["snippet"] = r.get("snippet") or str({k: v for k, v in r.items() if not k.startswith("_")})[:250]
-            # Preserve aggregate & provenance metadata for Layer-2 validation
-            for k in ["source_doc_ids", "duplicate_detected", "total_verified_docs", "source_document_id", "document_id", "department"]:
+            item["name"] = (
+                r.get("contract_name")
+                or r.get("name")
+                or r.get("company")
+                or n_props.get("name")
+                or n_props.get("Name")
+                or n_props.get("title")
+                or n_props.get("company")
+                or f"Entity #{item['_id']}"
+            )
+            item["snippet"] = r.get("snippet") or str(n_props or {k: v for k, v in r.items() if not k.startswith("_")})[:250]
+            # Preserve aggregate & provenance metadata for Layer-2 & RBAC validation
+            for k in ["source_doc_ids", "duplicate_detected", "total_verified_docs", "source_document_id", "document_id", "department", "domain", "id", "CustomerID", "totalQty", "distinctProducts", "order_count", "totalSpent", "totalProductSpent"]:
                 if k in r:
                     item[k] = r[k]
+                elif k in n_props:
+                    item[k] = n_props[k]
             formatted.append(item)
         return formatted
     except Exception as e:

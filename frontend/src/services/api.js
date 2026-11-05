@@ -61,18 +61,54 @@ export async function verifyEntityApi(entityId, verified, auditor = "Dieu Hoang 
   return null;
 }
 
-export function getAuthHeaders(currentUser = null) {
-  const headers = { "Content-Type": "application/json" };
+export function getValidTokenForUser(currentUser = null) {
   const token = localStorage.getItem("aegis_token");
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  if (!token) return "";
   let user = currentUser;
   if (!user) {
     try {
       const saved = localStorage.getItem("aegis_user");
       if (saved) user = JSON.parse(saved);
     } catch (e) {}
+  }
+  if (!user) return token;
+  try {
+    const payload = JSON.parse(
+      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+    );
+    const tokenRole = (payload.role || "").toLowerCase();
+    const tokenUser = (payload.username || "").toLowerCase();
+    const tokenEmail = (payload.email || "").toLowerCase();
+    const userRole = (user.id || user.role || "").toLowerCase();
+    const aliases = (user.aliases || []).map((a) => String(a).toLowerCase());
+    const sameRole = !tokenRole || !userRole || tokenRole === userRole;
+    const sameIdentity =
+      !tokenUser ||
+      tokenUser === (user.username || "").toLowerCase() ||
+      (tokenEmail && tokenEmail === (user.email || "").toLowerCase()) ||
+      aliases.includes(tokenUser) ||
+      (tokenEmail && aliases.includes(tokenEmail));
+    if (!sameRole || !sameIdentity) {
+      localStorage.removeItem("aegis_token");
+      localStorage.removeItem("aegis_auth_user");
+      return "";
+    }
+  } catch (e) {}
+  return token;
+}
+
+export function getAuthHeaders(currentUser = null) {
+  const headers = { "Content-Type": "application/json" };
+  let user = currentUser;
+  if (!user) {
+    try {
+      const saved = localStorage.getItem("aegis_user");
+      if (saved) user = JSON.parse(saved);
+    } catch (e) {}
+  }
+  const token = getValidTokenForUser(user);
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
   if (user) {
     if (user.email) headers["X-User-Email"] = user.email;
@@ -486,7 +522,7 @@ export async function uploadDocument(file, department = "legal", currentUser = n
     formData.append("department", department);
 
     const headers = {};
-    const token = localStorage.getItem("aegis_token");
+    const token = getValidTokenForUser(currentUser);
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
     if (currentUser?.username) headers["X-User-Name"] = currentUser.username;
@@ -534,7 +570,7 @@ export async function replaceDocument(file, oldName, department = "legal", curre
     formData.append("department", department);
 
     const headers = {};
-    const token = localStorage.getItem("aegis_token");
+    const token = getValidTokenForUser(currentUser);
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
     if (currentUser?.username) headers["X-User-Name"] = currentUser.username;

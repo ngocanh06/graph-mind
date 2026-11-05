@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { I18N } from "./data/i18n";
 import { INITIAL_DATA } from "./data/mockData";
 import { ENTERPRISE_ROLES } from "./data/roles";
-import { fetchHealth, fetchSignals, fetchEntities, getCurrentUserApi } from "./services/api";
+import { fetchHealth, fetchSignals, fetchEntities, getCurrentUserApi, getValidTokenForUser } from "./services/api";
 
 import Topbar from "./components/Topbar";
 import NavRail from "./components/NavRail";
@@ -289,8 +289,17 @@ export default function App() {
     setCurrentUser(user);
     try {
       localStorage.setItem("aegis_user", JSON.stringify(user));
+      getValidTokenForUser(user);
     } catch (e) {}
     setView("home");
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("aegis_token");
+      localStorage.removeItem("aegis_auth_user");
+    } catch (e) {}
+    setPageMode("login");
   };
 
   const handleDemoStep = (step) => {
@@ -390,7 +399,7 @@ export default function App() {
         onLangChange={setLang}
         onRoleChange={handleRoleChange}
         onOpenLanding={() => setPageMode("landing")}
-        onLogout={() => setPageMode("login")}
+        onLogout={handleLogout}
         onNavigate={handleNavigate}
         t={t}
         apiConnected={apiConnected}
@@ -407,7 +416,7 @@ export default function App() {
           currentView={view}
           onNavigate={handleNavigate}
           onOpenLanding={() => setPageMode("landing")}
-          onLogout={() => setPageMode("login")}
+          onLogout={handleLogout}
           isOpen={isRailOpen}
           onToggleOpen={() => setIsRailOpen(!isRailOpen)}
           t={t}
