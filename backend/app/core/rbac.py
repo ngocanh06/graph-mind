@@ -77,24 +77,127 @@ def is_privileged_role(role: str) -> bool:
     return clean_role in [ROLE_EXECUTIVE, ROLE_ADMIN, "admin", "cfo", "ceo"]
 
 
-def check_data_scope_permission(query: str, role: str) -> Tuple[bool, Optional[str]]:
+CANONICAL_RESOURCE_TYPES = ["LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"]
+
+RESOURCE_TO_FOLDER = {
+    "LEGAL": "legal",
+    "SALES": "sales",
+    "ACCOUNTING_PROCUREMENT": "accounting_procurement",
+    "IT": "it",
+    "RND": "rnd",
+}
+
+FOLDER_TO_RESOURCE = {
+    "legal": "LEGAL",
+    "sales": "SALES",
+    "accounting_procurement": "ACCOUNTING_PROCUREMENT",
+    "accounting": "ACCOUNTING_PROCUREMENT",
+    "it": "IT",
+    "rnd": "RND",
+}
+
+
+def resolve_resource_type(val: Any) -> str:
+    """
+    Resolves any department name, folder, key, doc dict, or path to one of the 5 canonical RESOURCE_TYPES:
+    LEGAL, SALES, ACCOUNTING_PROCUREMENT, IT, RND.
+    """
+    if isinstance(val, dict):
+        # 0. Check ERP structured labels and types (Product, Customer, SalesOrder -> SALES; Vendor, PO -> ACCOUNTING_PROCUREMENT)
+        labels = val.get("_labels") or []
+        if isinstance(labels, str):
+            labels = [labels]
+        e_type = str(val.get("entity_type") or "")
+        if any(l in ["Product", "ProductCategory", "ProductSubcategory", "Customer", "SalesOrder", "SalesOrderDetail"] for l in labels) or e_type in ["Product", "ProductCategory", "ProductSubcategory", "Customer", "SalesOrder", "SalesOrderDetail"]:
+            return "SALES"
+        if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels) or e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"]:
+            return "ACCOUNTING_PROCUREMENT"
+        if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or str(val.get("document_id", "")).startswith("SYSTEM-") or val.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+            return "SALES"
+
+        dk = (val.get("deptKey") or val.get("dept_key") or "").strip().lower()
+        if dk in FOLDER_TO_RESOURCE:
+            return FOLDER_TO_RESOURCE[dk]
+        path = (val.get("storage_path") or val.get("file") or val.get("source_file") or "").strip().lower()
+        for f, res in FOLDER_TO_RESOURCE.items():
+            if f"/data/{f}" in path or f"\\data\\{f}" in path or f"/{f}/" in path:
+                return res
+        val = (
+            val.get("dept")
+            or val.get("department")
+            or val.get("deptLabel")
+            or val.get("domain")
+            or val.get("category")
+            or val.get("name")
+            or ""
+        )
+
+    s = str(val or "").strip()
+    s_upper = s.upper()
+    if s_upper in CANONICAL_RESOURCE_TYPES:
+        return s_upper
+
+    s_lower = s.lower()
+    if any(k in s_lower for k in ["legal", "pháp chế", "phap che", "cuad", "hợp đồng", "contract"]) or re.search(r"(?<![a-z0-9])nda(?![a-z0-9])", s_lower):
+        return "LEGAL"
+    if any(k in s_lower for k in ["sales", "kinh doanh", "kinh_doanh", "bán hàng", "ban hang", "order", "sản phẩm", "product", "hàng hóa", "khách hàng", "customer"]) or re.search(r"(?<![a-z0-9])crm(?![a-z0-9])", s_lower):
+        return "SALES"
+    if any(k in s_lower for k in ["accounting", "procurement", "kế toán", "ke toan", "thu mua", "thu_mua", "hóa đơn", "invoice", "công nợ", "vendor"]):
+        return "ACCOUNTING_PROCUREMENT"
+    if any(k in s_lower for k in ["công nghệ", "cong nghe", "cntt", "secops"]) or re.search(r"(?<![a-z0-9])it(?![a-z0-9])", s_lower):
+        return "IT"
+    if any(k in s_lower for k in ["r&d", "nghiên cứu", "nghien cuu"]) or re.search(r"(?<![a-z0-9])rnd(?![a-z0-9])", s_lower):
+        return "RND"
+    return "LEGAL"
+
+
+def check_data_scope_permission(query: str, role: str, scope: Optional[Any] = None) -> Tuple[bool, Optional[str]]:
     """
     Kiểm tra xem câu hỏi hoặc truy vấn của người dùng có vi phạm phạm vi dữ liệu RBAC không.
-    Đối với Standard User (Kinh doanh): Không được phép tra cứu bảng lương nhân viên / nhân sự nội bộ (HR).
+    Kiểm tra cả từ khóa cấm (HR payroll) và quyền truy vấn các phòng ban theo Admin Matrix.
     """
     clean_role = (role or "").strip().lower()
-    if is_privileged_role(clean_role) or clean_role == ROLE_MANAGER:
-        return True, None
-
     clean_query = (query or "").lower()
-    for pattern in STANDARD_RESTRICTED_KEYWORDS:
-        if re.search(pattern, clean_query, re.IGNORECASE):
-            return False, (
-                "Theo chính sách phân quyền dữ liệu RBAC (Quy tắc BR-02 / US19), tài khoản Standard User "
-                "(Chuyên viên Kinh doanh) chỉ có quyền tra cứu trong phạm vi Dữ liệu Kinh doanh (Khách hàng, "
-                "Đơn hàng, Danh mục sản phẩm và Hợp đồng thương mại liên quan). Dữ liệu nhân sự / tiền lương "
-                "thuộc phạm vi bảo mật của phòng Nhân sự (HR) và Ban Giám Đốc."
-            )
+
+    # 1. Check HR / Payroll restricted keywords
+    if not (is_privileged_role(clean_role) or clean_role == ROLE_MANAGER):
+        for pattern in STANDARD_RESTRICTED_KEYWORDS:
+            if re.search(pattern, clean_query, re.IGNORECASE):
+                return False, (
+                    "Theo chính sách phân quyền dữ liệu RBAC (Quy tắc BR-02 / US19), tài khoản Standard User "
+                    "(Chuyên viên Kinh doanh) chỉ có quyền tra cứu trong phạm vi Dữ liệu Kinh doanh (Khách hàng, "
+                    "Đơn hàng, Danh mục sản phẩm và Hợp đồng thương mại liên quan). Dữ liệu nhân sự / tiền lương "
+                    "thuộc phạm vi bảo mật của phòng Nhân sự (HR) và Ban Giám Đốc."
+                )
+
+    # 2. Check Admin RBAC Matrix resource permissions if scope provided
+    if scope and getattr(scope, "allowed_resources", None) and not getattr(scope, "is_unrestricted", False):
+        allowed_res = scope.allowed_resources
+        # Check Legal / CUAD contracts
+        if "LEGAL" not in allowed_res:
+            legal_keywords = [
+                r"\bcuad\b", r"\bhợp đồng\b", r"\bcontract\b", r"\bđiều khoản\b", r"\bclause\b",
+                r"\bnda\b", r"\bthỏa thuận bảo mật\b", r"\bpháp chế\b", r"\blegal\b",
+                r"\bliability\b", r"\bindemnif\b", r"\btermination\b", r"\bgoverning law\b"
+            ]
+            if any(re.search(pat, clean_query) for pat in legal_keywords):
+                return False, (
+                    "Theo ma trận phân quyền của Quản trị viên (Admin RBAC Matrix), vai trò của bạn "
+                    "chưa được cấp quyền truy vấn hoặc tra cứu tài liệu thuộc phạm vi Pháp chế / Hợp đồng CUAD (LEGAL)."
+                )
+
+        # Check Accounting / Procurement
+        if "ACCOUNTING_PROCUREMENT" not in allowed_res:
+            acct_keywords = [
+                r"\bkế toán\b", r"\bthu mua\b", r"\bhóa đơn\b", r"\bprocurement\b",
+                r"\baccounting\b", r"\bnhà cung cấp\b", r"\bvendor\b", r"\bcông nợ\b",
+                r"\bledger\b", r"\bpurchase\s*order\b"
+            ]
+            if any(re.search(pat, clean_query) for pat in acct_keywords):
+                return False, (
+                    "Theo ma trận phân quyền của Quản trị viên (Admin RBAC Matrix), vai trò của bạn "
+                    "chưa được cấp quyền truy vấn tài liệu thuộc phạm vi Kế toán / Thu mua (ACCOUNTING_PROCUREMENT)."
+                )
 
     return True, None
 
@@ -231,39 +334,43 @@ class ScopeContext:
     department_name: str
     canonical_dept: str
     allowed_depts: Set[str] = field(default_factory=set)
+    allowed_resources: Set[str] = field(default_factory=set)
 
     @property
     def department(self) -> str:
         return self.canonical_dept
 
     def is_department_allowed(self, target_dept: Optional[str]) -> bool:
-        """Check if access to target department data is permitted under BR-02."""
-        if self.is_unrestricted:
+        """Check if access to target department data is permitted under Admin RBAC."""
+        if not target_dept or str(target_dept).upper() in ("ALL", "ALL_DEPARTMENTS"):
             return True
-        if not target_dept or target_dept.upper() == "ALL":
+        if self.is_unrestricted and "*" in self.allowed_depts:
             return True
-        norm = normalize_dept(target_dept)
-        if norm in ("all", "all_departments"):
-            return True
-        return norm in self.allowed_depts or "*" in self.allowed_depts
+        res_type = resolve_resource_type(target_dept)
+        if self.allowed_resources:
+            return res_type in self.allowed_resources
+        return self.is_unrestricted
 
-    def is_document_allowed(self, doc_id: str, target_dept: Optional[str]) -> bool:
+    def is_document_allowed(self, doc_id: str, target_dept: Optional[str] = None, doc_dict: Optional[Dict[str, Any]] = None) -> bool:
         """Check if specific document or dataset is allowed for current user."""
-        if self.is_unrestricted:
+        if self.is_unrestricted and "*" in self.allowed_depts:
             return True
         # Public or general datasets
-        if doc_id in ("AW_CATEGORIES", "AW_PRODUCTS") and self.canonical_dept in ("sales", "operations", "rnd"):
+        if doc_id in ("AW_CATEGORIES", "AW_PRODUCTS") and any(r in self.allowed_resources for r in ["SALES", "RND"]):
             return True
-        return self.is_department_allowed(target_dept)
+        res_type = resolve_resource_type(doc_dict if doc_dict else (target_dept or doc_id))
+        if self.allowed_resources:
+            return res_type in self.allowed_resources
+        return self.is_unrestricted
 
-    def assert_document_access(self, doc_id: str, target_dept: Optional[str]):
-        """Raises 403 Forbidden if document is outside the user's Department Scope (BR-02)."""
-        if not self.is_document_allowed(doc_id, target_dept):
+    def assert_document_access(self, doc_id: str, target_dept: Optional[str], doc_dict: Optional[Dict[str, Any]] = None):
+        """Raises 403 Forbidden if document is outside the user's Department Scope (BR-02/RBAC)."""
+        if not self.is_document_allowed(doc_id, target_dept, doc_dict):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
-                    f"Theo quy định BR-02: Truy cập bị từ chối do vi phạm phạm vi dữ liệu phòng ban (Department Scope). "
-                    f"Tài khoản [{self.user.username}] thuộc phòng ban [{self.department_name}] "
+                    f"Theo phân quyền của Quản trị viên (Admin RBAC Matrix): Truy cập bị từ chối. "
+                    f"Tài khoản [{self.user.username}] với vai trò [{self.role}] "
                     f"không có quyền truy cập tài liệu [{doc_id}] thuộc phạm vi [{target_dept}]."
                 ),
             )
@@ -280,60 +387,33 @@ class ScopeContext:
             )
 
     def filter_documents(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Filters list of documents strictly according to user's Department Scope."""
-        if self.is_unrestricted:
+        """Filters list of documents strictly according to user's permitted Resource Types."""
+        if self.is_unrestricted and "*" in self.allowed_depts and not self.allowed_resources:
             return documents
         return [
             doc for doc in documents
-            if self.is_document_allowed(doc.get("id", ""), doc.get("dept") or doc.get("deptLabel"))
+            if self.is_document_allowed(doc.get("id", "") or doc.get("raw_id", ""), doc.get("dept") or doc.get("deptLabel"), doc_dict=doc)
         ]
 
     def filter_citations(self, citations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         SRS FR32 (BR-02): 'Citations must not expose data out of scope.
-        Display source citations within the allowed range.'
+        Filter citations to only allowed resource types.'
         """
-        if self.is_unrestricted:
+        if self.is_unrestricted and "*" in self.allowed_depts and not self.allowed_resources:
             return citations
 
         filtered = []
         for c in citations:
-            src_type = c.get("sourceType", "")
-            file_name = c.get("file", "") or c.get("docName", "")
-            target_dept = c.get("department") or c.get("dept")
-
-            if target_dept:
-                if self.is_department_allowed(target_dept):
-                    filtered.append(c)
-                else:
-                    redacted = dict(c)
-                    redacted["restricted"] = True
-                    redacted["text"] = f"[DỮ LIỆU ĐÃ ẨN]: Trích dẫn tài liệu thuộc phạm vi phòng ban {target_dept} (BR-02)."
-                    redacted["match"] = "RESTRICTED (BR-02)"
-                    filtered.append(redacted)
-            # CUAD contracts are legal scope
-            elif "CUAD" in file_name or "cuad" in file_name.lower() or "Qdrant" in src_type:
-                if self.is_department_allowed("Pháp chế"):
-                    filtered.append(c)
-                else:
-                    # Redact or mark as restricted citation
-                    redacted = dict(c)
-                    redacted["restricted"] = True
-                    redacted["text"] = "[DỮ LIỆU ĐÃ ẨN]: Nội dung điều khoản hợp đồng ngoài phạm vi phòng ban được cấp phép (BR-02)."
-                    redacted["match"] = "RESTRICTED (BR-02)"
-                    filtered.append(redacted)
-            # Sales Orders / CRM
-            elif "SalesOrder" in file_name or "Customer" in file_name:
-                if self.is_department_allowed("Kinh doanh"):
-                    filtered.append(c)
-                else:
-                    redacted = dict(c)
-                    redacted["restricted"] = True
-                    redacted["text"] = "[DỮ LIỆU ĐÃ ẨN]: Dữ liệu giao dịch CRM ngoài phạm vi phòng ban (BR-02)."
-                    redacted["match"] = "RESTRICTED (BR-02)"
-                    filtered.append(redacted)
-            else:
+            res_type = resolve_resource_type(c)
+            if not self.allowed_resources or res_type in self.allowed_resources:
                 filtered.append(c)
+            else:
+                redacted = dict(c)
+                redacted["restricted"] = True
+                redacted["text"] = f"[DỮ LIỆU ĐÃ ẨN]: Trích dẫn tài liệu thuộc phạm vi {res_type} bị giới hạn bởi phân quyền quản trị (Admin RBAC)."
+                redacted["match"] = "RESTRICTED (RBAC)"
+                filtered.append(redacted)
 
         return filtered
 
@@ -444,16 +524,22 @@ async def get_user_scope(
     db: AsyncSession = Depends(get_db),
 ) -> ScopeContext:
     """
-    Computes effective ScopeContext for current request enforcing BR-02 & BR-05.
+    Computes effective ScopeContext for current request dynamically reading Granular RBAC Matrix.
     """
-    user_role = (x_user_role or user.role or "").strip().lower()
-    is_admin = (not x_user_role and user.is_superuser) or user_role in ["admin", "it_admin"]
-    is_exec = user_role in ["executive", "ceo", "cfo"]
+    user_role = (x_user_role or user.role or "").strip()
+    try:
+        from app.modules.m6_admin_security.rbac_matrix_service import normalize_role_code
+        role_code = normalize_role_code(user_role)
+    except Exception:
+        role_code = "STANDARD_USER"
+
+    is_admin = role_code == "ADMIN" or (not x_user_role and getattr(user, "is_superuser", False))
+    is_exec = role_code == "EXECUTIVE"
     is_unrestricted = is_admin or is_exec
 
     # Resolve Department Name
     dept_name = None
-    if user.department_id:
+    if getattr(user, "department_id", None):
         dept_res = await db.execute(
             text("SELECT name FROM departments WHERE department_id = :d_id"),
             {"d_id": user.department_id},
@@ -471,11 +557,33 @@ async def get_user_scope(
     effective_dept = x_user_dept or dept_name or "Ban Giám Đốc"
     canonical = normalize_dept(effective_dept)
 
-    # Allowed scopes
+    # Dynamically read policies from PostgreSQL knowledge_access_policies
+    allowed_resources = set()
+    try:
+        from app.modules.m6_admin_security.rbac_matrix_model import KnowledgeAccessPolicy
+        stmt = select(KnowledgeAccessPolicy).where(
+            KnowledgeAccessPolicy.role_code == role_code
+        )
+        res = await db.execute(stmt)
+        policies = res.scalars().all()
+        if not policies:
+            from app.modules.m6_admin_security.rbac_matrix_service import seed_default_matrix
+            policies = await seed_default_matrix(db)
+            policies = [p for p in policies if p.role_code == role_code]
+
+        allowed_resources = {p.resource_type for p in policies if p.can_query}
+    except Exception as e:
+        # Fallback to standard defaults
+        if is_unrestricted:
+            allowed_resources = set(CANONICAL_RESOURCE_TYPES)
+        elif role_code == "DEPARTMENT_MANAGER":
+            allowed_resources = {"SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"}
+        else:
+            allowed_resources = {"SALES", "IT", "RND"}
+
+    allowed_depts = {RESOURCE_TO_FOLDER[r] for r in allowed_resources if r in RESOURCE_TO_FOLDER}
     if is_unrestricted:
-        allowed = {"*"}
-    else:
-        allowed = DEPT_ALLOWED_SCOPES.get(canonical, {canonical})
+        allowed_depts.add("*")
 
     return ScopeContext(
         user=user,
@@ -483,5 +591,6 @@ async def get_user_scope(
         is_unrestricted=is_unrestricted,
         department_name=effective_dept,
         canonical_dept=canonical,
-        allowed_depts=allowed,
+        allowed_depts=allowed_depts,
+        allowed_resources=allowed_resources,
     )

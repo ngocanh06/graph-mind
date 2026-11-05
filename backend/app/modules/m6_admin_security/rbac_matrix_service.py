@@ -18,11 +18,11 @@ from app.modules.m6_admin_security.audit_service import log_action
 
 def normalize_role_code(role: str) -> str:
     r = (role or "").strip().lower()
-    if r in ("admin", "it_admin", "administrator"):
+    if r in ("admin", "it_admin", "administrator", "secops", "it"):
         return "ADMIN"
-    if r in ("executive", "exec", "lanh_dao", "leadership"):
+    if r in ("executive", "exec", "lanh_dao", "leadership", "ceo", "cfo", "executive_director", "executive director", "director"):
         return "EXECUTIVE"
-    if r in ("department_manager", "knowledge_manager", "manager", "quan_ly"):
+    if r in ("department_manager", "knowledge_manager", "knowledge_mgr", "manager", "quan_ly", "mgr", "tp", "lead"):
         return "DEPARTMENT_MANAGER"
     return "STANDARD_USER"
 
@@ -111,11 +111,10 @@ async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = 
             )
         )
 
-    # 3. Department Manager (dept ALL - phạm vi phòng ban)
-    mgr_allowed = {"LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND", "EMPLOYEE"}
+    # 3. Department Manager (dept ALL - quản lý 4 phòng ban hoạt động; Pháp chế bảo mật C-Level/Admin)
+    mgr_allowed = {"SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"}
     for res in RESOURCE_TYPES:
         allowed = res in mgr_allowed
-        is_dept_vol = res in {"LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"}
         policies.append(
             KnowledgeAccessPolicy(
                 role_code="DEPARTMENT_MANAGER",
@@ -123,15 +122,15 @@ async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = 
                 resource_type=res,
                 can_query=allowed,
                 can_view_citation=allowed,
-                can_edit=is_dept_vol,
+                can_edit=allowed,
                 can_view_sensitive=False,
                 data_scope="OWN_DEPARTMENT" if allowed else "NONE",
                 updated_by=admin_id,
             )
         )
 
-    # 4. Standard User (dept ALL - chuyên viên nghiệp vụ)
-    std_allowed = {"LEGAL", "SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND", "EMPLOYEE"}
+    # 4. Standard User (dept ALL - chuyên viên chỉ tra cứu Sales, IT, R&D; chặn Kế toán & Pháp chế; không biên tập)
+    std_allowed = {"SALES", "IT", "RND"}
     for res in RESOURCE_TYPES:
         allowed = res in std_allowed
         policies.append(

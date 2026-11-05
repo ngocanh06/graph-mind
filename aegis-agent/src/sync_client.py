@@ -40,11 +40,21 @@ class SyncClient:
         if self.fallback_endpoint and self.fallback_endpoint != self.endpoint:
             endpoints_to_try.append(self.fallback_endpoint)
 
+        ext = os.path.splitext(file_name)[1].lower()
+        mime_types = {
+            ".pdf": "application/pdf",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".csv": "text/csv",
+            ".txt": "text/plain",
+        }
+        content_type = mime_types.get(ext, "application/octet-stream")
+
         last_error = "Unknown error"
         for ep in endpoints_to_try:
             try:
                 with open(file_path, "rb") as f:
-                    files = {"file": (file_name, f)}
+                    files = {"file": (file_name, f, content_type)}
                     data = {
                         "file_hash": file_hash,
                         "department": department,

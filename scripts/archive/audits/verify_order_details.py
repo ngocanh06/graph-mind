@@ -11,7 +11,13 @@ if hasattr(sys.stdout, "reconfigure"):
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(os.path.dirname(__file__), "..", "backend", ".env"))
+    for p in [
+        os.path.join(os.path.dirname(__file__), "..", "..", "backend", ".env"),
+        os.path.join(os.path.dirname(__file__), "..", "backend", ".env")
+    ]:
+        if os.path.exists(p):
+            load_dotenv(p)
+            break
 except ImportError:
     pass
 

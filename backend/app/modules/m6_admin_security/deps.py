@@ -20,11 +20,11 @@ async def get_admin_user(
 ) -> User:
     payload = decode_access_token(creds.credentials)
     if not payload or "sub" not in payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token không hợp lệ.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token không hợp lệ hoặc đã hết hạn.")
     try:
         uid = uuid.UUID(payload["sub"])
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token không hợp lệ.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token không hợp lệ hoặc đã hết hạn.")
 
     result = await db.execute(select(User).where(User.user_id == uid))
     actor = result.scalar_one_or_none()

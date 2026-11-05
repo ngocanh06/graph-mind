@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Icon from '../../components/ui/Icon';
 import GraphPanel from "../m5_multifacet_search/GraphPanel";
 import { verifyEntityApi } from "../../services/api";
@@ -18,6 +18,13 @@ export default function KnowledgeView({
 
   // Sub-tab navigation: "neo4j_live" | "canvas" | "queue"
   const [activeTab, setActiveTab] = useState("neo4j_live");
+
+  // Auto-switch to live Neo4j tab if selectedEntity is passed (e.g. from Copilot deep-link)
+  useEffect(() => {
+    if (selectedEntity) {
+      setActiveTab("neo4j_live");
+    }
+  }, [selectedEntity]);
 
   // Filter chips selection
   const [selectedEntityFilter, setSelectedEntityFilter] = useState("ALL");
@@ -365,7 +372,7 @@ export default function KnowledgeView({
             }`}
           >
             <span>🕸️</span>
-            <span>{isVi ? "Neo4j Live (52.283 Nodes)" : "Neo4j Live (52,283 Nodes)"}</span>
+            <span>{isVi ? "Neo4j Live (55.342 Nodes)" : "Neo4j Live (55,342 Nodes)"}</span>
           </button>
         </div>
       </div>
@@ -375,7 +382,7 @@ export default function KnowledgeView({
       {/* ========================================================================= */}
       {activeTab === "neo4j_live" && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5 shadow-xs min-h-[650px]">
-          <GraphPanel lang={lang} onSelectNode={onSelectEntity} />
+          <GraphPanel lang={lang} onSelectNode={onSelectEntity} initialSearch={selectedEntity} />
         </div>
       )}
 

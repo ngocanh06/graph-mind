@@ -23,6 +23,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 try:
+    from app.db.neo4j.client import neo4j_client
     from app.core.departments import resolve_department, get_department_display_name, get_department_key
     from app.modules.m1_data_sync.pipeline import (
         process_document_ingestion,
@@ -35,8 +36,12 @@ try:
         register_sse_subscriber,
         unregister_sse_subscriber,
         SUPPORTED_EXTENSIONS,
+        RestrictedSafeModeRegistry,
+        acquire_ingestion_transaction_locks,
+        acquire_rename_transaction_locks,
     )
 except ImportError:
+    from db.neo4j.client import neo4j_client
     from core.departments import resolve_department, get_department_display_name, get_department_key
     from modules.m1_data_sync.pipeline import (
         process_document_ingestion,
@@ -49,6 +54,9 @@ except ImportError:
         register_sse_subscriber,
         unregister_sse_subscriber,
         SUPPORTED_EXTENSIONS,
+        RestrictedSafeModeRegistry,
+        acquire_ingestion_transaction_locks,
+        acquire_rename_transaction_locks,
     )
 
 logger = logging.getLogger(__name__)
@@ -158,50 +166,78 @@ async def upload_document_to_central_storage(
             detail=f"Định dạng tệp '{ext}' không được hỗ trợ. Chỉ chấp nhận: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
         )
 
-    content_bytes = await file.read()
-    if len(content_bytes) > MAX_UPLOAD_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kích thước tệp vượt quá giới hạn cho phép (50 MB)."
-        )
+    # PR1 Streaming Upload Validation (64 KiB chunks, 10 MiB limit for .txt, HTTP 413)
+    max_upload_bytes = 10 * 1024 * 1024 if ext == ".txt" else MAX_UPLOAD_SIZE
+    chunk_size = 64 * 1024
+    chunks = []
+    total_size = 0
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Kích thước tệp vượt quá giới hạn cho phép ({max_upload_bytes // (1024*1024)} MB)."
+            )
+        chunks.append(chunk)
+    content_bytes = b"".join(chunks)
 
     canonical_dept = resolve_canonical_dept(department)
     file_hash = hashlib.sha256(content_bytes).hexdigest()
+    storage_path = f"/data/{canonical_dept}/{safe_name}"
+    doc_id = f"DOC_{file_hash[:8].upper()}"
 
-    try:
-        storage_res = save_file_to_storage(content_bytes, safe_name, canonical_dept)
-    except Exception as e:
-        logger.error(f"[Upload] Central Storage write failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi ghi tệp vào Central Storage: {str(e)}"
-        )
-
-    # Immediately ingest into Qdrant & Neo4j with stable document_id & provenance
-    try:
-        ingest_res = process_document_ingestion(
-            content_bytes=content_bytes,
+    # Acquire lock before identity verification and hold through physical storage write and ingestion
+    with acquire_ingestion_transaction_locks(storage_path, doc_id):
+        is_unique, err_msg, _ = RestrictedSafeModeRegistry.verify_unique_target(
+            neo4j_client,
+            storage_path=storage_path,
             filename=safe_name,
-            department=canonical_dept,
-            event_type="created",
-            allow_skip_known=False
+            dept_key=canonical_dept,
+            doc_id=doc_id
         )
-        logger.info(f"[Upload] File '{safe_name}' successfully indexed into Qdrant & Neo4j (doc_id={ingest_res.get('data', {}).get('doc_id')})")
-    except Exception as ing_err:
-        logger.warning(f"[Upload] Immediate indexing notice for '{safe_name}': {ing_err}")
-        ingest_res = {"success": False, "error": str(ing_err)}
+        if not is_unique:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Restricted Safe Mode: {err_msg}"
+            )
 
-    # Invalidate repository inventory cache so subsequent GET reflects it immediately
-    try:
         try:
-            from app.main import invalidate_inventory_cache
-        except ImportError:
-            from main import invalidate_inventory_cache
-        invalidate_inventory_cache()
-    except Exception:
-        pass
+            storage_res = save_file_to_storage(content_bytes, safe_name, canonical_dept)
+        except Exception as e:
+            logger.error(f"[Upload] Central Storage write failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Lỗi ghi tệp vào Central Storage: {str(e)}"
+            )
 
-    logger.info(f"[Upload] File '{safe_name}' successfully committed to {storage_res['storage_path']}")
+        # Immediately ingest into Qdrant & Neo4j with stable document_id & provenance
+        try:
+            ingest_res = process_document_ingestion(
+                content_bytes=content_bytes,
+                filename=safe_name,
+                department=canonical_dept,
+                event_type="created",
+                allow_skip_known=False
+            )
+            logger.info(f"[Upload] File '{safe_name}' successfully indexed into Qdrant & Neo4j (doc_id={ingest_res.get('data', {}).get('doc_id')})")
+        except Exception as ing_err:
+            logger.warning(f"[Upload] Immediate indexing notice for '{safe_name}': {ing_err}")
+            ingest_res = {"success": False, "error": str(ing_err)}
+
+        # Invalidate repository inventory cache so subsequent GET reflects it immediately
+        try:
+            try:
+                from app.main import invalidate_inventory_cache
+            except ImportError:
+                from main import invalidate_inventory_cache
+            invalidate_inventory_cache()
+        except Exception:
+            pass
+
+        logger.info(f"[Upload] File '{safe_name}' successfully committed to {storage_res['storage_path']}")
 
     return {
         "success": True,
@@ -243,43 +279,64 @@ def api_rename_document(payload: RenameDocumentRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     dept = resolve_canonical_dept(payload.department)
+    old_path = f"/data/{dept}/{safe_old}"
+    new_path = f"/data/{dept}/{safe_new}"
 
-    # Check extension match
-    old_ext = os.path.splitext(safe_old)[1].lower()
-    new_ext = os.path.splitext(safe_new)[1].lower()
-    if not new_ext:
-        safe_new += old_ext
-    elif new_ext != old_ext:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Phần mở rộng tệp mới ('{new_ext}') phải khớp với phần mở rộng tệp cũ ('{old_ext}')."
+    with acquire_rename_transaction_locks(old_path, new_path, safe_old):
+        is_unique, err_msg, _ = RestrictedSafeModeRegistry.verify_unique_target(
+            neo4j_client,
+            storage_path=old_path,
+            filename=safe_old,
+            dept_key=dept,
+            doc_id=None
         )
+        if not is_unique:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Restricted Safe Mode: {err_msg}"
+            )
 
-    # Rename in storage
-    renamed = rename_file_in_storage(safe_old, safe_new, dept)
-    if not renamed:
-        logger.warning(f"[Rename] Storage rename returned False for {safe_old} -> {safe_new}")
+        # Check extension match
+        old_ext = os.path.splitext(safe_old)[1].lower()
+        new_ext = os.path.splitext(safe_new)[1].lower()
+        if not new_ext:
+            safe_new += old_ext
+        elif new_ext != old_ext:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Phần mở rộng tệp mới ('{new_ext}') phải khớp với phần mở rộng tệp cũ ('{old_ext}')."
+            )
 
-    # Update databases
-    res = process_document_rename(safe_old, safe_new, dept)
+        # Rename in storage
+        renamed = rename_file_in_storage(safe_old, safe_new, dept)
+        if not renamed:
+            logger.warning(f"[Rename] Storage rename returned False for {safe_old} -> {safe_new}")
 
-    try:
+        # Update databases
+        res = process_document_rename(safe_old, safe_new, dept)
+        if not res.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT if res.get("status") in ["conflict", "fenced_out", "rename_fenced_out"] else status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=res.get("error", "Rename operation failed")
+            )
+
         try:
-            from app.main import invalidate_inventory_cache
-        except ImportError:
-            from main import invalidate_inventory_cache
-        invalidate_inventory_cache()
-    except Exception:
-        pass
+            try:
+                from app.main import invalidate_inventory_cache
+            except ImportError:
+                from main import invalidate_inventory_cache
+            invalidate_inventory_cache()
+        except Exception:
+            pass
 
-    return {
-        "success": True,
-        "old_name": safe_old,
-        "new_name": safe_new,
-        "department": dept,
-        "storage_path": f"/data/{dept}/{safe_new}",
-        "data": res
-    }
+        return {
+            "success": True,
+            "old_name": safe_old,
+            "new_name": safe_new,
+            "department": dept,
+            "storage_path": f"/data/{dept}/{safe_new}",
+            "data": res
+        }
 
 
 @router.post("/documents/replace")
@@ -301,9 +358,23 @@ async def api_replace_document(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     dept = resolve_canonical_dept(department)
-    content_bytes = await file.read()
-    if len(content_bytes) > MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Kích thước tệp vượt quá 50MB.")
+    ext = os.path.splitext(safe_name)[1].lower()
+    max_upload_bytes = 10 * 1024 * 1024 if ext == ".txt" else MAX_UPLOAD_SIZE
+    chunk_size = 64 * 1024
+    chunks = []
+    total_size = 0
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Kích thước tệp vượt quá giới hạn cho phép ({max_upload_bytes // (1024*1024)} MB)."
+            )
+        chunks.append(chunk)
+    content_bytes = b"".join(chunks)
 
     # Overwrite in Central Storage
     storage_res = save_file_to_storage(content_bytes, safe_name, dept)
@@ -357,28 +428,60 @@ def api_delete_document(payload: DeleteDocumentRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     dept = resolve_canonical_dept(payload.department)
+    storage_path = f"/data/{dept}/{safe_name}"
 
-    # Delete from Central Storage
-    delete_file_from_storage(safe_name, dept)
+    with acquire_ingestion_transaction_locks(storage_path, safe_name):
+        is_unique, err_msg, doc_node = RestrictedSafeModeRegistry.verify_unique_target(
+            neo4j_client,
+            storage_path=storage_path,
+            filename=safe_name,
+            dept_key=dept,
+            doc_id=None
+        )
+        if not is_unique:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Restricted Safe Mode: {err_msg}"
+            )
 
-    # Delete from databases
-    del_res = process_document_deletion(safe_name, dept)
+        # Delete from Central Storage
+        delete_file_from_storage(safe_name, dept)
 
-    try:
+        # Delete from databases with force_purge=True
+        effective_hash = (doc_node.get("file_hash") or doc_node.get("hash")) if doc_node else None
+        del_res = process_document_deletion(
+            filename=safe_name,
+            department=dept,
+            file_hash=effective_hash,
+            force_purge=True
+        )
+
+        # Force removal from watcher ingested state file and memory
         try:
-            from app.main import invalidate_inventory_cache
-        except ImportError:
-            from main import invalidate_inventory_cache
-        invalidate_inventory_cache()
-    except Exception:
-        pass
+            import app.modules.m1_data_sync.pipeline as pipe_mod
+            pipe_mod._WATCHER_INGESTED_DOCS = [
+                d for d in pipe_mod._WATCHER_INGESTED_DOCS
+                if d.get("name") != safe_name and d.get("raw_id") != safe_name and d.get("id") != safe_name
+            ]
+            pipe_mod._save_json(pipe_mod._DOCS_FILE, pipe_mod._WATCHER_INGESTED_DOCS)
+        except Exception:
+            pass
 
-    return {
-        "success": True,
-        "filename": safe_name,
-        "department": dept,
-        "data": del_res
-    }
+        try:
+            try:
+                from app.main import invalidate_inventory_cache
+            except ImportError:
+                from main import invalidate_inventory_cache
+            invalidate_inventory_cache()
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "filename": safe_name,
+            "department": dept,
+            "data": del_res
+        }
 
 
 # ============================================================================
@@ -406,9 +509,26 @@ async def ingest_file_from_watcher(
     """
     _verify_agent_key(authorization)
 
-    content_bytes = await file.read()
     actual_name = file_name or file.filename or "unknown_file"
     actual_name = _sanitize_filename(actual_name)
+    ext = os.path.splitext(actual_name)[1].lower()
+
+    max_upload_bytes = 10 * 1024 * 1024 if ext == ".txt" else MAX_UPLOAD_SIZE
+    chunk_size = 64 * 1024
+    chunks = []
+    total_size = 0
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Kích thước tệp vượt quá giới hạn cho phép ({max_upload_bytes // (1024*1024)} MB)."
+            )
+        chunks.append(chunk)
+    content_bytes = b"".join(chunks)
 
     result = process_document_ingestion(
         content_bytes=content_bytes,
@@ -447,22 +567,39 @@ def handle_file_deleted(payload: DeleteEventPayload, authorization: Optional[str
     """
     _verify_agent_key(authorization or payload.authorization)
     safe_name = _sanitize_filename(payload.file_name)
+    dept = resolve_canonical_dept(payload.department)
+    storage_path = f"/data/{dept}/{safe_name}"
 
-    result = process_document_deletion(
-        filename=safe_name,
-        department=payload.department
-    )
+    with acquire_ingestion_transaction_locks(storage_path, safe_name):
+        is_unique, err_msg, _ = RestrictedSafeModeRegistry.verify_unique_target(
+            neo4j_client,
+            storage_path=storage_path,
+            filename=safe_name,
+            dept_key=dept,
+            doc_id=None
+        )
+        if not is_unique:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Restricted Safe Mode: {err_msg}"
+            )
 
-    try:
+        result = process_document_deletion(
+            filename=safe_name,
+            department=dept,
+            file_hash=payload.file_hash
+        )
+
         try:
-            from app.main import invalidate_cuad_cache
-        except ImportError:
-            from main import invalidate_cuad_cache
-        invalidate_cuad_cache()
-    except Exception:
-        pass
+            try:
+                from app.main import invalidate_cuad_cache
+            except ImportError:
+                from main import invalidate_cuad_cache
+            invalidate_cuad_cache()
+        except Exception:
+            pass
 
-    return result
+        return result
 
 
 class RenameEventPayload(BaseModel):
@@ -481,23 +618,40 @@ def handle_file_renamed(payload: RenameEventPayload, authorization: Optional[str
     _verify_agent_key(authorization or payload.authorization)
     old_name = _sanitize_filename(payload.old_name)
     new_name = _sanitize_filename(payload.new_name)
+    dept = resolve_canonical_dept(payload.department)
+    old_path = f"/data/{dept}/{old_name}"
+    new_path = f"/data/{dept}/{new_name}"
 
-    result = process_document_rename(
-        old_name=old_name,
-        new_name=new_name,
-        department=payload.department
-    )
+    with acquire_rename_transaction_locks(old_path, new_path, old_name):
+        is_unique, err_msg, _ = RestrictedSafeModeRegistry.verify_unique_target(
+            neo4j_client,
+            storage_path=old_path,
+            filename=old_name,
+            dept_key=dept,
+            doc_id=None
+        )
+        if not is_unique:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Restricted Safe Mode: {err_msg}"
+            )
 
-    try:
+        result = process_document_rename(
+            old_name=old_name,
+            new_name=new_name,
+            department=dept
+        )
+
         try:
-            from app.main import invalidate_cuad_cache
-        except ImportError:
-            from main import invalidate_cuad_cache
-        invalidate_cuad_cache()
-    except Exception:
-        pass
+            try:
+                from app.main import invalidate_cuad_cache
+            except ImportError:
+                from main import invalidate_cuad_cache
+            invalidate_cuad_cache()
+        except Exception:
+            pass
 
-    return result
+        return result
 
 
 @router.get("/file-watcher/status")

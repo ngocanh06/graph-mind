@@ -103,12 +103,13 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       return;
     }
     const ext = uploadFile.name.split(".").pop()?.toLowerCase();
-    if (!["pdf", "docx", "xlsx", "csv"].includes(ext)) {
-      setUploadError(isVi ? "Chỉ hỗ trợ các định dạng .pdf, .docx, .xlsx, .csv." : "Only .pdf, .docx, .xlsx, .csv are supported.");
+    if (!["pdf", "docx", "xlsx", "csv", "txt"].includes(ext)) {
+      setUploadError(isVi ? "Chỉ hỗ trợ các định dạng .pdf, .docx, .xlsx, .csv, .txt." : "Only .pdf, .docx, .xlsx, .csv, .txt are supported.");
       return;
     }
-    if (uploadFile.size > 50 * 1024 * 1024) {
-      setUploadError(isVi ? "Kích thước tệp vượt quá giới hạn 50MB." : "File exceeds 50MB limit.");
+    const maxAllowedSize = ext === "txt" ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (uploadFile.size > maxAllowedSize) {
+      setUploadError(isVi ? `Kích thước tệp vượt quá giới hạn ${maxAllowedSize / (1024 * 1024)}MB.` : `File exceeds ${maxAllowedSize / (1024 * 1024)}MB limit.`);
       return;
     }
 
@@ -122,6 +123,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     if (res && res.success) {
       setUploadSuccessMsg(isVi ? `✓ Đã lưu ${uploadFile.name} vào Central Storage (/data/${uploadDept}/). Ingestion Pipeline đang phân tích...` : `✓ Saved ${uploadFile.name} to /data/${uploadDept}/. Ingestion Pipeline analyzing...`);
       showToast(isVi ? `Đã lưu ${uploadFile.name} vào Central Storage` : `Saved ${uploadFile.name} to Central Storage`);
+      setCurrentPage(1);
       setReloadTrigger((prev) => prev + 1);
       setTimeout(() => {
         setIsUploadModalOpen(false);
@@ -218,7 +220,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
         setIsDrawerOpen(false);
         setActiveDocDetail(null);
       }
+      const deletedName = deleteModalDoc.name;
+      const deletedId = deleteModalDoc.id;
       setDeleteModalDoc(null);
+      setDocsList((prev) => (prev || []).filter((d) => d.name !== deletedName && d.id !== deletedId && d.raw_id !== deletedName));
+      setTotalCount((prev) => Math.max(0, prev - 1));
       setReloadTrigger((prev) => prev + 1);
     } else {
       setDeleteError(res?.error || (isVi ? "Xóa tài liệu thất bại." : "Delete failed."));
@@ -270,6 +276,34 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
   const accessibleDocs = useMemo(() => {
     return docsList || [];
   }, [docsList]);
+
+  const visibleDepartments = useMemo(() => {
+    const allowedDepts = summary?.allowed_departments;
+    const allowedRes = summary?.allowed_resources;
+    if (!allowedDepts && !allowedRes) return DEPARTMENTS;
+    return DEPARTMENTS.filter((d) => {
+      if (allowedDepts && (allowedDepts.includes(d.key) || allowedDepts.includes(d.folder))) return true;
+      if (allowedRes && (allowedRes.includes(d.key.toUpperCase()) || (d.key === "accounting_procurement" && allowedRes.includes("ACCOUNTING_PROCUREMENT")))) return true;
+      return false;
+    });
+  }, [summary?.allowed_departments, summary?.allowed_resources]);
+
+  const isLegalAllowed = useMemo(() => {
+    if (summary?.allowed_resources && summary.allowed_resources.length > 0) {
+      return summary.allowed_resources.includes("LEGAL");
+    }
+    if (summary?.allowed_departments && summary.allowed_departments.length > 0) {
+      return summary.allowed_departments.includes("legal");
+    }
+    return (summary?.cuad_contracts || 0) > 0;
+  }, [summary?.allowed_resources, summary?.allowed_departments, summary?.cuad_contracts]);
+
+  // Ensure uploadDept defaults to an allowed department
+  useEffect(() => {
+    if (visibleDepartments.length > 0 && !visibleDepartments.some((d) => (d.folder || d.key) === uploadDept)) {
+      setUploadDept(visibleDepartments[0].folder || visibleDepartments[0].key);
+    }
+  }, [visibleDepartments, uploadDept]);
 
   const newDocsCount = summary.new_docs_count ?? summary.watcher_docs ?? 0;
   const filteredDocs = accessibleDocs;
@@ -370,8 +404,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           </h1>
           <p className="text-sm text-on-surface-variant leading-relaxed">
             {isVi
-              ? `Khám phá ${summary.cuad_contracts} tài liệu hợp đồng CUAD (${summary.cuad_chunks?.toLocaleString()} vector chunks trong Qdrant) và dữ liệu AdventureWorks (${summary.neo4j_nodes?.toLocaleString()} thực thể trong Neo4j). Click vào thẻ để mở bảng xem trước chi tiết.`
-              : `Explore ${summary.cuad_contracts} CUAD contracts (${summary.cuad_chunks?.toLocaleString()} vector chunks in Qdrant) and AdventureWorks data (${summary.neo4j_nodes?.toLocaleString()} entities in Neo4j). Click any card to open the preview inspector.`}
+              ? isLegalAllowed
+                ? `Khám phá ${summary.total_items || totalCount} tài liệu (${summary.cuad_contracts || 0} hợp đồng CUAD & dữ liệu AdventureWorks) với ${summary.total_chunks?.toLocaleString() || 0} vector chunks trong Qdrant. Click vào thẻ để mở bảng xem trước chi tiết.`
+                : `Khám phá ${summary.total_items || totalCount} tài liệu tri thức phòng ban (${summary.departments_count || visibleDepartments.length} phòng ban: ${summary.department_names_display || "Kinh doanh, IT, R&D"}). Click vào thẻ để mở bảng xem trước chi tiết.`
+              : `Explore ${summary.total_items || totalCount} documents across ${summary.departments_count || visibleDepartments.length} departments. Click any card to open the preview inspector.`}
           </p>
         </div>
 
@@ -513,8 +549,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             <div className="text-2xl font-bold text-on-surface font-mono">
               {summary.total_items || totalCount}
             </div>
-            <p className="text-[11px] text-outline mt-0.5">
-              {summary.cuad_contracts || 0} CUAD + {summary.adventureworks_datasets || 0} AW
+            <p className="text-[11px] text-outline mt-0.5 truncate">
+              {isLegalAllowed
+                ? `${summary.cuad_contracts || 0} CUAD + ${summary.adventureworks_datasets || 0} AW`
+                : `${summary.total_items || totalCount} ${isVi ? "tài liệu nội bộ" : "internal documents"}`}
             </p>
           </div>
         </div>
@@ -611,10 +649,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           </div>
           <div className="mt-2">
             <div className="text-2xl font-bold text-on-surface font-mono">
-              {summary.departments_count || 5}
+              {summary.departments_count || visibleDepartments.length}
             </div>
-            <p className="text-[11px] text-outline mt-0.5">
-              Legal, Sales, Fin, R&D, IT
+            <p className="text-[11px] text-outline mt-0.5 truncate" title={summary.department_names_display || "Phòng ban được phân quyền"}>
+              {summary.department_names_display || visibleDepartments.map(d => d.shortName).join(", ")}
             </p>
           </div>
         </div>
@@ -648,10 +686,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               className="w-full py-2 px-3 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="ALL">{isVi ? "Loại: Tất cả" : "Type: All"}</option>
-              <option value="PDF">{isVi ? "Hợp đồng CUAD (PDF)" : "CUAD Contracts (PDF)"}</option>
+              {isLegalAllowed && <option value="PDF">{isVi ? "Hợp đồng CUAD (PDF)" : "CUAD Contracts (PDF)"}</option>}
               <option value="Sheets">{isVi ? "Dữ liệu CRM/ERP (XLSX)" : "CRM/ERP Data (XLSX)"}</option>
               <option value="SOP">{isVi ? "Quy trình SOP (DOCX)" : "SOP Procedures (DOCX)"}</option>
-              <option value="NDA">{isVi ? "Thỏa thuận bảo mật (NDA)" : "NDA Agreements"}</option>
+              {isLegalAllowed && <option value="NDA">{isVi ? "Thỏa thuận bảo mật (NDA)" : "NDA Agreements"}</option>}
               <option value="JSON">{isVi ? "Dữ liệu JSON Graph" : "JSON Graph Data"}</option>
             </select>
           </div>
@@ -664,7 +702,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               className="w-full py-2 px-3 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="ALL">{isVi ? "Phòng ban: Tất cả" : "Dept: All"}</option>
-              {DEPARTMENTS.map((d) => (
+              {visibleDepartments.map((d) => (
                 <option key={d.key} value={d.filterValue}>
                   {isVi ? d.displayName : d.shortName}
                 </option>
@@ -682,7 +720,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               }}
               className="w-full py-2 px-3 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary font-medium"
             >
-              <option value="ALL">{isVi ? "Sắp xếp: Mặc định" : "Sort: Default"}</option>
+              <option value="ALL">{isVi ? "Mới nhất trước (Mặc định)" : "Newest First (Default)"}</option>
               <option value="NEW_ONLY">{isVi ? "⚡ Chỉ tài liệu mới thêm" : "⚡ Only Recently Added"}</option>
               <option value="NEWEST_FIRST">{isVi ? "Mới nhất trước" : "Newest First"}</option>
               <option value="NAME_ASC">{isVi ? "Tên A → Z" : "Name A → Z"}</option>
@@ -787,21 +825,23 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             <span>{isVi ? "Mới nhất trước" : "Newest First"}</span>
           </button>
 
-          {/* Chip 4: Hợp đồng CUAD */}
-          <button
-            onClick={() => {
-              setDocFilter(docFilter === "PDF" ? "ALL" : "PDF");
-              setCurrentPage(1);
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              docFilter === "PDF"
-                ? "bg-rose-600 text-white shadow-xs"
-                : "bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30"
-            }`}
-          >
-            <Icon name="fa-solid fa-file-pdf text-rose-500 text-[11px]" size={11} />
-            <span>CUAD PDF ({summary.cuad_contracts || 0})</span>
-          </button>
+          {/* Chip 4: Hợp đồng CUAD (Chỉ hiện khi role có quyền xem Pháp chế) */}
+          {isLegalAllowed && (
+            <button
+              onClick={() => {
+                setDocFilter(docFilter === "PDF" ? "ALL" : "PDF");
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                docFilter === "PDF"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30"
+              }`}
+            >
+              <Icon name="fa-solid fa-file-pdf text-rose-500 text-[11px]" size={11} />
+              <span>CUAD PDF ({summary.cuad_contracts || 0})</span>
+            </button>
+          )}
 
           {/* Active filter badge if filtering */}
           {(filterNewest !== "ALL" || docFilter !== "ALL" || deptFilter !== "ALL" || searchQuery) && (
@@ -824,7 +864,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             </span>
             <span className="inline-block w-1 h-1 rounded-full bg-outline-variant"></span>
             <span className="flex items-center gap-1.5 text-primary font-semibold">
-              <span className="w-2 h-2 rounded-full bg-primary inline-block"></span> {summary.cuad_contracts} {isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}
+              <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
+              {isLegalAllowed
+                ? `${summary.cuad_contracts || 0} ${isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}`
+                : `${summary.total_items || totalCount} ${isVi ? "Tài liệu phòng ban" : "Department Documents"}`}
             </span>
             <span className="flex items-center gap-1.5 text-tertiary font-semibold">
               <span className="w-2 h-2 rounded-full bg-tertiary inline-block"></span> {summary.cuad_chunks?.toLocaleString()} {isVi ? "Vector Chunks" : "Vector Chunks"}
@@ -1378,7 +1421,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       <Icon name="fa-solid fa-chevron-left text-[13px]" size={15} />
                     </button>
                     <span className="font-bold text-on-surface px-2">
-                      {isVi ? "Trang 16 / 42" : "Page 16 of 42"}
+                      {activeDocDetail?.chunks_list?.length > 0
+                        ? (isVi ? `Hiển thị ${activeDocDetail.chunks_list.length} Chunks` : `Showing ${activeDocDetail.chunks_list.length} Chunks`)
+                        : activeDocDetail?.records?.length > 0
+                        ? (isVi ? `Hiển thị ${activeDocDetail.records.length} bản ghi mẫu` : `Showing ${activeDocDetail.records.length} sample rows`)
+                        : (isVi ? "Trang 1 / 1" : "Page 1 of 1")}
                     </span>
                     <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Next Page">
                       <Icon name="fa-solid fa-chevron-right text-[13px]" size={15} />
@@ -1424,15 +1471,15 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       <p className="text-xs font-semibold">{isVi ? "Đang tải dữ liệu thực tế từ Neo4j / Qdrant..." : "Loading live data from Neo4j / Qdrant..."}</p>
                     </div>
                   ) : activeDocDetail?.records?.length > 0 ? (
-                    /* Real Live AdventureWorks Dataset Preview (Neo4j) */
+                    /* Real Live Dataset / Spreadsheet Preview (Neo4j / CSV) */
                     <div className="space-y-4">
                       <div className="text-center pb-3 border-b border-surface-container">
                         <p className="text-xs font-bold tracking-widest text-primary uppercase">
-                          {isVi ? "BẢN GHI ĐỒ THỊ THỰC TẾ — NEO4J ADVENTUREWORKS" : "LIVE GRAPH RECORDS — NEO4J ADVENTUREWORKS"}
+                          {isVi ? "BẢN GHI DỮ LIỆU THỰC TẾ — LIVE RECORDS" : "LIVE DATASET RECORDS"}
                         </p>
                         <h2 className="text-lg font-bold text-on-surface mt-1">{activeDoc.name}</h2>
                         <p className="text-xs text-on-surface-variant font-mono">
-                          {isVi ? `Hiển thị 25 bản ghi mẫu từ tập ${activeDoc.chunks || ""}` : `Showing 25 live sample records from ${activeDoc.chunks || ""}`}
+                          {isVi ? `Hiển thị ${activeDocDetail.records.length} bản ghi mẫu từ tập dữ liệu` : `Showing ${activeDocDetail.records.length} live sample records`}
                         </p>
                       </div>
 
@@ -1460,12 +1507,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       </div>
                     </div>
                   ) : activeDocDetail?.chunks_list?.length > 0 ? (
-                    /* Real Live CUAD Contract Preview (Qdrant Chunks) */
+                    /* Real Live Document Preview (Qdrant / Watcher Chunks) */
                     <div className="space-y-4">
                       <div className="text-center pb-4 border-b border-surface-container">
                         <p className="text-xs font-bold tracking-widest text-primary uppercase">
-                          {activeDoc.source === "aegis_local_file_watcher"
-                            ? (isVi ? "TÀI LIỆU NẠP TỰ ĐỘNG TỪ LOCAL FILE WATCHER (MÁY NHÂN VIÊN)" : "AUTO-INGESTED FROM LOCAL FILE WATCHER")
+                          {activeDoc.source === "aegis_local_file_watcher" || activeDocDetail?.source === "aegis_local_file_watcher"
+                            ? (isVi ? `TÀI LIỆU ${activeDoc.deptLabel || activeDoc.dept || "NỘI BỘ"} — NẠP TỪ FILE WATCHER` : `DOCUMENT — FILE WATCHER`)
+                            : (activeDoc.category || activeDocDetail?.category)
+                            ? (isVi ? `${(activeDoc.category || activeDocDetail?.category).toUpperCase()} — TRÍCH XUẤT TỪ HỆ THỐNG TRI THỨC` : `${(activeDoc.category || activeDocDetail?.category).toUpperCase()} — KNOWLEDGE BASE`)
                             : (isVi ? "VĂN BẢN HỢP ĐỒNG CUAD — TRÍCH XUẤT TỪ QDRANT" : "CUAD CONTRACT TEXT — EXTRACTED FROM QDRANT")}
                         </p>
                         <h2 className="text-xl font-bold text-on-surface mt-1">{activeDoc.name}</h2>
@@ -1482,7 +1531,9 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                                 <Icon name="fa-solid fa-highlighter text-amber-700" size={15} /> Chunk #{c.chunk_id !== undefined ? c.chunk_id : idx}
                               </span>
                               <span className="bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-full text-[11px]">
-                                Qdrant Vector Hit
+                                {activeDoc.source === "aegis_local_file_watcher" || activeDocDetail?.source === "aegis_local_file_watcher"
+                                  ? (isVi ? "Watcher Chunk" : "Watcher Chunk")
+                                  : "Qdrant Vector Hit"}
                               </span>
                             </div>
                             <p className="text-amber-950 text-sm font-normal leading-relaxed whitespace-pre-wrap font-sans">
@@ -1786,11 +1837,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   onChange={(e) => setUploadDept(e.target.value)}
                   className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
                 >
-                  <option value="legal">Pháp chế (Legal) — /data/legal</option>
-                  <option value="sales">Kinh doanh (Sales) — /data/sales</option>
-                  <option value="accounting_procurement">Kế toán / Thu mua (Accounting & Procurement) — /data/accounting_procurement</option>
-                  <option value="it">Công nghệ / IT (Information Technology) — /data/it</option>
-                  <option value="rnd">Nghiên cứu & Phát triển (R&D) — /data/rnd</option>
+                  {visibleDepartments.map((d) => (
+                    <option key={d.key} value={d.folder || d.key}>
+                      {isVi ? d.displayName : d.shortName} — /data/{d.folder || d.key}
+                    </option>
+                  ))}
                 </select>
                 <span className="text-[11px] text-on-surface-variant mt-1 block">
                   {isVi ? "Tệp sẽ được phân bổ vào thư mục chuẩn xác định theo RBAC của GraphMind." : "File will be saved to canonical folder mapped to RBAC scope."}
@@ -1800,7 +1851,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               {/* File Dropzone */}
               <div>
                 <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
-                  {isVi ? "Tệp tài liệu (.pdf, .docx, .xlsx, .csv)" : "Document File (.pdf, .docx, .xlsx, .csv)"}
+                  {isVi ? "Tệp tài liệu (.pdf, .docx, .xlsx, .csv, .txt)" : "Document File (.pdf, .docx, .xlsx, .csv, .txt)"}
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
@@ -1813,7 +1864,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   <input
                     id="file-upload-input"
                     type="file"
-                    accept=".pdf,.docx,.xlsx,.csv"
+                    accept=".pdf,.docx,.xlsx,.csv,.txt"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
@@ -1849,7 +1900,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                         {isVi ? "Nhấp hoặc kéo thả tệp vào đây" : "Click or drag file here"}
                       </p>
                       <p className="text-xs text-on-surface-variant">
-                        {isVi ? "Hỗ trợ PDF, DOCX, XLSX, CSV (Tối đa 50MB)" : "Supports PDF, DOCX, XLSX, CSV (Max 50MB)"}
+                        {isVi ? "Hỗ trợ PDF, DOCX, XLSX, CSV, TXT (TXT tối đa 10MB, khác 50MB)" : "Supports PDF, DOCX, XLSX, CSV, TXT (TXT max 10MB, others 50MB)"}
                       </p>
                     </div>
                   )}
@@ -2051,7 +2102,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   <input
                     id="file-replace-input"
                     type="file"
-                    accept=".pdf,.docx,.xlsx,.csv"
+                    accept=".pdf,.docx,.xlsx,.csv,.txt"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {

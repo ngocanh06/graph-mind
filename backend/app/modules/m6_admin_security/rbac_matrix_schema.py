@@ -7,15 +7,13 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-# 7 cột phân quyền: 5 phòng ban + Nhân viên + Ban lãnh đạo
+# 5 cột phân quyền: 5 phòng ban kho tài liệu
 RESOURCE_TYPES = [
     "LEGAL",
     "SALES",
     "ACCOUNTING_PROCUREMENT",
     "IT",
     "RND",
-    "EMPLOYEE",
-    "EXECUTIVE_BOARD",
 ]
 
 # Danh sách 4 vai trò chuẩn của dự án và 5 phòng ban

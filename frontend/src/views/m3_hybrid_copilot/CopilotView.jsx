@@ -219,6 +219,19 @@ export default function CopilotView({
   onClearInitialQuery
 }) {
   const isVi = lang === "vi";
+  const DEFAULT_PERSONA_NAMES = new Set([
+    "Trần Thị Thu Hương", "Trần M. Anh", "SecOps Admin", "Nguyễn V. Nam",
+    "Executive (Lãnh đạo)", "Administrator", "Manager (Quản lý)", "Operations (Nhân viên nghiệp vụ)"
+  ]);
+  const ROLE_CHAT_LABELS_VI = {
+    executive: "Executive (Lãnh đạo)",
+    it_admin: "Admin (Quản trị viên)",
+    knowledge_manager: "Trưởng phòng (Quản lý)",
+    standard: "Chuyên viên (Nghiệp vụ)"
+  };
+  const activeUserLabel = (currentUser?.name && !DEFAULT_PERSONA_NAMES.has(currentUser.name))
+    ? currentUser.name
+    : (isVi ? (ROLE_CHAT_LABELS_VI[role] || currentUser?.name || "Người dùng") : (currentUser?.badgeEn || currentUser?.name || "User"));
 
   // Sessions state (per-user database persistence + US37 department shared documents)
   const [sessionTab, setSessionTab] = useState("personal"); // "personal" | "department"
@@ -447,7 +460,7 @@ export default function CopilotView({
       id: `u_${Date.now()}`,
       sender: "user",
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      userLabel: currentUser?.name || currentUser?.username || "Executive User",
+      userLabel: activeUserLabel,
       text: userText
     };
 
@@ -468,7 +481,7 @@ export default function CopilotView({
             verifiedBadge: m.verifiedBadge || m.model || "GraphMind AI",
             confidence: m.confidence || (m.confidenceScore !== undefined ? `${m.confidenceScore}%` : "0%"),
             time: m.time || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
-            userLabel: m.userLabel || (m.sender === "user" ? (currentUser?.name || currentUser?.username || "Executive User") : "AI Copilot")
+            userLabel: m.userLabel || (m.sender === "user" ? activeUserLabel : "AI Copilot")
           }));
           setMessages(normalized);
         } else {
@@ -508,7 +521,7 @@ export default function CopilotView({
         }
 
         // Refresh sessions list in left drawer
-        const sData = await fetchCopilotSessions(currentUser);
+        const sData = await fetchCopilotSessions(sessionTab === "department" ? "pinned" : "personal", currentUser);
         if (sData && sData.sessions) {
           setSessions(sData.sessions);
         }
@@ -1100,7 +1113,7 @@ export default function CopilotView({
                 gap: 6
               }}>
                 <ShieldCheck size={13} color="var(--blue)" />
-                <span>{isVi ? "Phạm vi:" : "Scope:"} <strong>{isVi ? "Hợp đồng CUAD" : "CUAD Contracts"}</strong> & <strong>AdventureWorks ERP</strong> (RBAC: Executive)</span>
+                <span>{isVi ? "Phạm vi:" : "Scope:"} <strong>{role === "executive" || role === "it_admin" ? (isVi ? "Hợp đồng CUAD & AdventureWorks ERP" : "CUAD Contracts & AdventureWorks ERP") : (isVi ? "Kho Tri thức Phòng ban & AdventureWorks ERP" : "Department Knowledge & AdventureWorks ERP")}</strong> (RBAC: {isVi ? (currentUser?.badge || role) : (currentUser?.badgeEn || role)})</span>
               </div>
             </div>
 
@@ -1439,7 +1452,23 @@ export default function CopilotView({
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <button
-                            onClick={() => onNavigate?.("knowledge")}
+                            onClick={() => {
+                              let targetEntity = null;
+                              if (msg.evidenceChips && msg.evidenceChips.length > 0) {
+                                const chip = msg.evidenceChips[0];
+                                targetEntity = chip.entityName || (chip.label ? chip.label.replace(/^(ERP:\s*|Graph:\s*|Báo cáo:\s*|Đối tác:\s*)/, "").trim() : "") || chip.entityId;
+                              }
+                              if (!targetEntity && msg.citations && msg.citations.length > 0) {
+                                const cit = msg.citations[0];
+                                targetEntity = (cit.neo4jNode ? cit.neo4jNode.split(":")[1] : "") || (cit.docName ? cit.docName.replace(/^(Đồ thị thực thể ERP:\s*|Đồ thị tri thức:\s*)/, "").trim() : "") || cit.source_file;
+                              }
+                              if (!targetEntity) {
+                                const textToScan = msg.introText || msg.text || msg.answer || "";
+                                const idMatch = textToScan.match(/#(\d+)/);
+                                if (idMatch) targetEntity = idMatch[1];
+                              }
+                              onNavigate?.("knowledge", targetEntity || "Customer");
+                            }}
                             style={{
                               display: "flex",
                               alignItems: "center",
