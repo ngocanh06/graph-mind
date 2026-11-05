@@ -110,7 +110,15 @@ def resolve_resource_type(val: Any) -> str:
         for f, res in FOLDER_TO_RESOURCE.items():
             if f"/data/{f}" in path or f"\\data\\{f}" in path or f"/{f}/" in path:
                 return res
-        val = val.get("dept") or val.get("department") or val.get("deptLabel") or val.get("category") or val.get("name") or ""
+        val = (
+            val.get("dept")
+            or val.get("department")
+            or val.get("deptLabel")
+            or val.get("domain")
+            or val.get("category")
+            or val.get("name")
+            or ""
+        )
 
     s = str(val or "").strip()
     s_upper = s.upper()
@@ -118,15 +126,15 @@ def resolve_resource_type(val: Any) -> str:
         return s_upper
 
     s_lower = s.lower()
-    if any(k in s_lower for k in ["legal", "pháp chế", "phap che", "cuad", "hợp đồng", "contract", "nda"]):
+    if any(k in s_lower for k in ["legal", "pháp chế", "phap che", "cuad", "hợp đồng", "contract"]) or re.search(r"(?<![a-z0-9])nda(?![a-z0-9])", s_lower):
         return "LEGAL"
-    if any(k in s_lower for k in ["sales", "kinh doanh", "kinh_doanh", "bán hàng", "ban hang", "crm", "order"]):
+    if any(k in s_lower for k in ["sales", "kinh doanh", "kinh_doanh", "bán hàng", "ban hang", "order"]) or re.search(r"(?<![a-z0-9])crm(?![a-z0-9])", s_lower):
         return "SALES"
     if any(k in s_lower for k in ["accounting", "procurement", "kế toán", "ke toan", "thu mua", "thu_mua", "hóa đơn", "invoice", "công nợ"]):
         return "ACCOUNTING_PROCUREMENT"
-    if any(k in s_lower for k in ["it", "công nghệ", "cong nghe", "cntt", "secops"]):
+    if any(k in s_lower for k in ["công nghệ", "cong nghe", "cntt", "secops"]) or re.search(r"(?<![a-z0-9])it(?![a-z0-9])", s_lower):
         return "IT"
-    if any(k in s_lower for k in ["rnd", "r&d", "nghiên cứu", "nghien cuu"]):
+    if any(k in s_lower for k in ["r&d", "nghiên cứu", "nghien cuu"]) or re.search(r"(?<![a-z0-9])rnd(?![a-z0-9])", s_lower):
         return "RND"
     return "LEGAL"
 

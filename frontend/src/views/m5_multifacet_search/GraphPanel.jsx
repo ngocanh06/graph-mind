@@ -139,6 +139,67 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
   const nodes = useMemo(() => graphData?.nodes || [], [graphData]);
   const rels = useMemo(() => graphData?.relationships || [], [graphData]);
 
+  const handleSearchAndFocus = useCallback(async (query) => {
+    if (!query || typeof query !== "string") return;
+    const clean = query.replace(/^(ERP:\s*|Graph:\s*|Báo cáo:\s*|Đối tác:\s*)/, "").trim();
+    if (!clean) return;
+    setSearchTerm(clean);
+
+    // 1. Check local nodes in current graphData
+    const lower = clean.toLowerCase();
+    const idMatch = clean.match(/\d+/)?.[0];
+    const local = nodes.find(n => {
+      const nm = (n.name || "").toLowerCase();
+      const nid = String(n.id || n.CustomerID || n.ProductID || n.SalesOrderID || n._id || "");
+      return nm.includes(lower) || (idMatch && nid === idMatch);
+    });
+
+    if (local) {
+      handleNodeClick(local);
+      return;
+    }
+
+    // 2. Query Neo4j live backend to find the exact node and expand its neighborhood
+    try {
+      const searchKey = idMatch || clean;
+      const res = await searchNeo4jNodes(searchKey, 5);
+      const target = res?.data?.[0];
+      if (target && target._id) {
+        const exp = await expandNeo4jNode(target._id, 20);
+        const newN = exp?.data?.nodes || [];
+        const newR = exp?.data?.relationships || [];
+
+        setGraphData(prev => {
+          const existingIds = new Set(prev?.nodes?.map(n => n._id) || []);
+          const mergedN = [...(prev?.nodes || [])];
+          if (!existingIds.has(target._id)) mergedN.unshift(target);
+          newN.forEach(n => { if (!existingIds.has(n._id)) mergedN.push(n); });
+
+          const relKey = r => `${r.source?.id ?? r.source}->${r.rel_type || r.type}->${r.target?.id ?? r.target}`;
+          const existingRels = new Set((prev?.relationships || []).map(relKey));
+          const mergedR = [...(prev?.relationships || [])];
+          newR.forEach(r => {
+            const k = relKey(r);
+            if (!existingRels.has(k)) mergedR.push(r);
+          });
+          return { nodes: mergedN, relationships: mergedR };
+        });
+
+        handleNodeClick(target);
+      }
+    } catch (err) {
+      console.warn("[GraphPanel] handleSearchAndFocus error:", err);
+    }
+  }, [nodes]);
+
+  // Auto-focus when initialSearch prop changes (e.g. clicked from Copilot message)
+  useEffect(() => {
+    if (initialSearch) {
+      const term = typeof initialSearch === "string" ? initialSearch : (initialSearch?.name || initialSearch?.id || "");
+      if (term) handleSearchAndFocus(term);
+    }
+  }, [initialSearch, handleSearchAndFocus]);
+
   // Degrees and neighbors for Neo4j Bloom dandelion layout & interactions
   const { nodeDegrees, nodeNeighbors } = useMemo(() => {
     const degs = {};
@@ -158,18 +219,36 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
     return { nodeDegrees: degs, nodeNeighbors: adj };
   }, [nodes, rels]);
 
-  // Filter nodes by local search
+  // Filter nodes by search (including 1-hop neighbors of matched nodes for visual graph context)
   const filteredNodes = useMemo(() => {
     const raw = typeof searchTerm === "string" ? searchTerm : (searchTerm?.name || "");
     if (!raw.trim()) return nodes;
     const term = raw.toLowerCase();
-    return nodes.filter(n => {
+    const idMatch = raw.match(/\d+/)?.[0];
+
+    const matchIds = new Set();
+    nodes.forEach(n => {
       const name = (n.name || "").toLowerCase();
       const labels = (n._labels || []).join(" ").toLowerCase();
+      const nId = String(n.id || n.CustomerID || n.ProductID || n.SalesOrderID || n._id || "");
       const props = Object.values(n).map(v => String(v).toLowerCase()).join(" ");
-      return name.includes(term) || labels.includes(term) || props.includes(term);
+      if (name.includes(term) || labels.includes(term) || props.includes(term) || (idMatch && nId === idMatch)) {
+        matchIds.add(n._id);
+      }
     });
-  }, [nodes, searchTerm]);
+
+    if (matchIds.size === 0) return nodes;
+
+    const visibleIds = new Set(matchIds);
+    matchIds.forEach(id => {
+      const neighbors = nodeNeighbors[id];
+      if (neighbors) {
+        neighbors.forEach(nId => visibleIds.add(nId));
+      }
+    });
+
+    return nodes.filter(n => visibleIds.has(n._id));
+  }, [nodes, searchTerm, nodeNeighbors]);
 
   // D3-Force simulation layout for organic Bloom dandelion clustering (scalable to 2,000+ nodes)
   useEffect(() => {
@@ -508,7 +587,12 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder={isVi ? "Tìm entity / node..." : "Search entities..."}
+            onKeyDown={e => {
+              if (e.key === "Enter" && searchTerm.trim()) {
+                handleSearchAndFocus(searchTerm.trim());
+              }
+            }}
+            placeholder={isVi ? "Tìm entity / node (Enter)..." : "Search entities (Enter)..."}
             style={{
               padding: "5px 12px", borderRadius: 8, border: "1px solid var(--border-soft, #cbd5e1)",
               fontSize: 12, outline: "none", width: 180,
