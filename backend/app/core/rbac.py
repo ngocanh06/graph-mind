@@ -112,6 +112,8 @@ def resolve_resource_type(val: Any) -> str:
             return "SALES"
         if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels) or e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"]:
             return "ACCOUNTING_PROCUREMENT"
+        if any(l in ["DocumentSummary", "SystemStats"] for l in labels) or str(val.get("document_id", "")).startswith("SYSTEM-") or val.get("_id") == "total-documents-summary":
+            return "SALES"
 
         dk = (val.get("deptKey") or val.get("dept_key") or "").strip().lower()
         if dk in FOLDER_TO_RESOURCE:

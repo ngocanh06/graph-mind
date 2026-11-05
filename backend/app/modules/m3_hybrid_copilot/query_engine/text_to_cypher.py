@@ -78,6 +78,42 @@ def generate_cypher_from_query(query: str) -> str:
         LIMIT 1
         """
 
+    # 0.04 Total Documents & System Inventory queries
+    if any(k in q_lower for k in [
+        "bao nhiêu tài liệu", "bao nhiêu văn bản", "bao nhiêu hợp đồng",
+        "tổng số tài liệu", "tổng số văn bản", "tổng số hợp đồng",
+        "số lượng tài liệu", "số lượng văn bản", "số lượng hợp đồng",
+        "tổng cộng hiện tại có bao nhiêu", "tổng cộng có bao nhiêu tài liệu",
+        "tổng cộng có bao nhiêu văn bản", "hiện tại có bao nhiêu tài liệu",
+        "hệ thống có bao nhiêu tài liệu", "hệ thống có bao nhiêu văn bản",
+        "thống kê tài liệu", "thống kê văn bản", "thống kê hợp đồng",
+        "có bao nhiêu tài liệu trong hệ thống", "có bao nhiêu văn bản trong hệ thống",
+        "tổng số tài liệu trong hệ thống", "tổng tài liệu"
+    ]) or (("bao nhiêu" in q_lower or "tổng" in q_lower or "số lượng" in q_lower or "thống kê" in q_lower) and any(w in q_lower for w in ["tài liệu", "văn bản", "hợp đồng", "document", "hồ sơ"])):
+        return f"""
+        MATCH (d:Document)
+        WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
+        OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+        WITH d, 
+             CASE 
+               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(pháp chế|legal|hợp đồng).*' THEN 'Pháp chế (Legal)'
+               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(kinh doanh|sales).*' THEN 'Kinh doanh (Sales)'
+               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(r&d|nghiên cứu|rnd).*' THEN 'Nghiên cứu & Phát triển (R&D)'
+               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(kế toán|thu mua|accounting|procurement).*' THEN 'Kế toán & Thu mua'
+               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(công nghệ|it|cntt).*' THEN 'Công nghệ thông tin (IT)'
+               ELSE 'Phòng ban khác'
+             END AS canon_dept
+        WITH canon_dept, count(d) AS doc_count
+        ORDER BY doc_count DESC
+        WITH collect({{dept: canon_dept, count: doc_count}}) AS deptList, sum(doc_count) AS totalDocs
+        RETURN 'Thống kê tổng số tài liệu trong hệ thống' AS name,
+               totalDocs,
+               'Toàn hệ thống hiện có tổng cộng ' + toString(totalDocs) + ' tài liệu/văn bản đang hoạt động trong kho tri thức, phân bổ theo các phòng ban chính: ' +
+               reduce(s = '', item in deptList | s + (case when s = '' then '' else '; ' end) + item.dept + ': ' + toString(item.count) + ' tài liệu') AS snippet,
+               'total-documents-summary' AS _id,
+               ['DocumentSummary', 'SystemStats'] AS _labels
+        """
+
     # 0.05 Contract Category Distribution & Portfolio queries
     if any(k in q_lower for k in ["cơ cấu danh mục", "phân bố danh mục", "loại hợp đồng phổ biến", "cơ cấu hợp đồng", "danh mục hợp đồng", "loại hợp đồng"]):
         return f"""

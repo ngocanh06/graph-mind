@@ -402,6 +402,18 @@ def apply_layer2_context_gate(
             verified_entities.append(ent)
             continue
 
+        # B2. System & Document Summary entities
+        is_summary = (
+            "DocumentSummary" in ent_labels or
+            "SystemStats" in ent_labels or
+            ent_id == "total-documents-summary" or
+            ent_type == "total-documents-summary"
+        )
+        if is_summary:
+            ent["is_system_summary"] = True
+            verified_entities.append(ent)
+            continue
+
         # C. Company entities
         if "Company" in ent_labels or ent.get("company"):
             c_doc_ids = ent.get("source_doc_ids")
@@ -1302,7 +1314,10 @@ async def ask_copilot(
         vector_hits = [vh for vh in vector_hits if _is_v_allowed(vh)]
 
     # 2.1.1 Document Chunk Consolidation & Exact Provenance:
-    if not active_target_doc and vector_hits:
+    is_inventory_query = any(k in q_lower for k in [
+        "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục"
+    ])
+    if not active_target_doc and vector_hits and not is_inventory_query and not is_business_semantic_query:
         top_hit = vector_hits[0]
         top_name = top_hit.get("source_file") or top_hit.get("contract_name")
         top_doc_id = top_hit.get("document_id") or top_hit.get("doc_id")
@@ -1377,6 +1392,11 @@ async def ask_copilot(
                 if matches:
                     graph_hits.extend(matches)
                     break
+
+        # If query is a system inventory summary (e.g. total documents count),
+        # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
+        if any(gh.get("_id") == "total-documents-summary" for gh in graph_hits):
+            vector_hits = []
 
         # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
         for vh in vector_hits:
@@ -1493,6 +1513,8 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
+            if any(l in ["DocumentSummary", "SystemStats"] for l in labels) or gh.get("_id") == "total-documents-summary":
+                return True
             if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
             if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory"] for l in labels):
@@ -1681,6 +1703,33 @@ async def ask_copilot(
                     "id": f"graph_{node_clean_id}",
                     "label": f"Báo cáo: {ent_name}"[:36],
                     "source": "Neo4j Graph (Aggregate)",
+                })
+                continue
+
+            # A2. System Document Inventory / Summary
+            if ent.get("is_system_summary") or any(l in ["DocumentSummary", "SystemStats"] for l in ent_labels) or node_clean_id == "total-documents-summary":
+                evidence_chips.append({
+                    "id": f"graph_{node_clean_id}",
+                    "label": f"Hệ thống: {ent_name}"[:36],
+                    "source": "Neo4j Graph (Thống kê hệ thống)",
+                })
+                citations_detail.append({
+                    "docName": f"Thống kê kho tri thức: {ent_name}",
+                    "file": "Neo4j Graph (DocumentSummary)",
+                    "source_file": "Neo4j.DocumentSummary",
+                    "document_id": "SYSTEM-DOCS-SUMMARY",
+                    "dept": "Chung",
+                    "deptKey": "general",
+                    "domain": "EXECUTIVE",
+                    "chunk_index": 0,
+                    "retrieval_score": 100.0,
+                    "match": "GRAPH CYPHER VERIFIED",
+                    "location": "Toàn hệ thống (Enterprise Overview)",
+                    "text": ent.get("snippet") or "Thống kê tổng số tài liệu trong hệ thống Neo4j",
+                    "chunkId": "#SYSTEM-DOCS",
+                    "sourceType": "Neo4j Graph DB",
+                    "neo4jNode": "DocumentSummary:SystemStats",
+                    "score": 100.0,
                 })
                 continue
 

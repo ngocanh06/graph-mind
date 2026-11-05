@@ -175,6 +175,7 @@ class OllamaClient:
                 "1. Tuyệt đối chỉ sử dụng dữ kiện và số liệu có thật trong ngữ cảnh. Không tự suy diễn hay bịa đặt số liệu.\n"
                 "2. ĐỊNH DẠNG TRÌNH BÀY:\n"
                 "   - Với câu hỏi hỏi về khách hàng/sản phẩm đứng đầu hoặc mua nhiều nhất: Nêu rõ khách hàng [Xếp hạng #1] ở câu đầu tiên kèm các số liệu chính xác (số lượng sản phẩm, số đơn hàng, chi tiêu), sau đó liệt kê các vị trí kế tiếp rõ ràng.\n"
+                "   - Với câu hỏi hỏi về số lượng hoặc thống kê tài liệu/văn bản trong hệ thống: BẮT BUỘC nêu rõ tổng số lượng tài liệu ngay câu đầu tiên (ví dụ: 'Toàn hệ thống hiện có tổng cộng X tài liệu...'), sau đó liệt kê chi tiết số lượng theo từng phòng ban.\n"
                 "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò hoặc điều khoản cụ thể: Trả lời trực tiếp thông tin đó ngay dòng đầu tiên.\n"
                 "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
                 + (excel_rules + "\n" if excel_rules else "") +
