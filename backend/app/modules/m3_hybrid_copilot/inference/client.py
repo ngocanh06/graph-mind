@@ -257,12 +257,14 @@ class OllamaClient:
         if is_vi:
             if graph_entities:
                 top1 = graph_entities[0]
-                top1_snippet = top1.get("snippet") or f"{top1.get('name', 'Khách hàng')} là đối tượng ghi nhận cao nhất trong cơ sở dữ liệu."
+                top1_snippet = top1.get("snippet") or f"{top1.get('name', 'Bản ghi')} là đối tượng ghi nhận trong cơ sở dữ liệu."
                 other_lines = []
                 for idx, ge in enumerate(graph_entities[1:5], 2):
                     s = ge.get("snippet") or ge.get("name")
                     other_lines.append(f"{idx}. {s}")
-                runners_up = ("\n\nCác khách hàng tiếp theo trong danh sách thống kê:\n" + "\n".join(other_lines)) if other_lines else ""
+                is_customer_list = any("Customer" in (ge.get("_labels") or []) or "khách hàng" in (ge.get("name", "")).lower() for ge in graph_entities)
+                heading = "Các khách hàng tiếp theo trong danh sách thống kê:" if is_customer_list else "Các thông tin ghi nhận tiếp theo từ hệ thống:"
+                runners_up = (f"\n\n{heading}\n" + "\n".join(other_lines)) if other_lines else ""
                 fallback_msg = (
                     f"Theo dữ liệu vận hành thực tế từ hệ thống Neo4j GraphDB:\n"
                     f"• {top1_snippet}{runners_up}"

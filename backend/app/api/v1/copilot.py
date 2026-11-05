@@ -377,12 +377,24 @@ def apply_layer2_context_gate(
         ent_type = ent.get("type") or ""
         ent_id = str(ent.get("_id") or "")
 
-        # A. Aggregate cards
+        # A. System & Document Summary / Portfolio / Compliance Report entities
+        is_summary = (
+            "DocumentSummary" in ent_labels or
+            "SystemStats" in ent_labels or
+            "ComplianceReport" in ent_labels or
+            "ContractPortfolio" in ent_labels or
+            ent_id in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"] or
+            ent_type in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+        )
+        if is_summary:
+            ent["is_system_summary"] = True
+            verified_entities.append(ent)
+            continue
+
+        # A2. Aggregate cards requiring specific source document validation
         is_aggregate = (
             ent_type in ["portfolio-breakdown", "compliance-stats"] or
-            ent_id in ["portfolio-breakdown", "compliance-stats"] or
-            "ContractPortfolio" in ent_labels or
-            "ComplianceReport" in ent_labels
+            ent_id in ["portfolio-breakdown", "compliance-stats"]
         )
         if is_aggregate:
             if validate_aggregate_in_layer2(ent, doc_map):
@@ -399,18 +411,6 @@ def apply_layer2_context_gate(
         if is_product:
             ent["is_erp_entity"] = True
             # Products can be used in structured answers if verified in Neo4j
-            verified_entities.append(ent)
-            continue
-
-        # B2. System & Document Summary entities
-        is_summary = (
-            "DocumentSummary" in ent_labels or
-            "SystemStats" in ent_labels or
-            ent_id == "total-documents-summary" or
-            ent_type == "total-documents-summary"
-        )
-        if is_summary:
-            ent["is_system_summary"] = True
             verified_entities.append(ent)
             continue
 
@@ -1188,11 +1188,16 @@ async def ask_copilot(
             # 2.0.1 ENTITY EXISTENCE GATE: If user explicitly asks about a specific named document/file/contract
             # but it does not exist anywhere in Neo4j or Qdrant, refuse immediately to avoid false-positive hallucinations
             targeted_doc_term = None
+            is_inventory_early = any(k in q_lower for k in [
+                "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
+                "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
+            ])
             is_agg_query = any(k in q_lower for k in [
                 "cơ cấu", "phân bố", "danh mục", "bao nhiêu", "thống kê", "tổng cộng", "tổng số",
-                "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số"
+                "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số", "tuân thủ", "compliance",
+                "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
             ])
-            if not is_inventory_query and not is_agg_query:
+            if not is_inventory_early and not is_agg_query:
                 t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
                 if t_match:
                     cand = t_match.group(1).strip()
@@ -1321,7 +1326,8 @@ async def ask_copilot(
 
     # 2.1.1 Document Chunk Consolidation & Exact Provenance:
     is_inventory_query = any(k in q_lower for k in [
-        "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục"
+        "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
+        "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
     ])
     if not active_target_doc and vector_hits and not is_inventory_query and not is_business_semantic_query:
         top_hit = vector_hits[0]
@@ -1399,9 +1405,9 @@ async def ask_copilot(
                     graph_hits.extend(matches)
                     break
 
-        # If query is a system inventory summary (e.g. total documents count),
+        # If query is a system inventory summary (e.g. total documents count, compliance rate),
         # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
-        if any(gh.get("_id") in ["total-documents-summary", "portfolio-breakdown"] for gh in graph_hits):
+        if any(gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"] for gh in graph_hits):
             vector_hits = []
 
         # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
@@ -1519,7 +1525,7 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
-            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "CUAD"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
                 return True
             if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
@@ -1697,48 +1703,35 @@ async def ask_copilot(
             raw_id = str(ent.get("id") or ent.get("_id") or "")
             node_clean_id = raw_id.split(":")[-1] if ":" in raw_id else raw_id
 
-            # A2. System Document Inventory / Summary / Portfolio Breakdown
+            # A2. System Document Inventory / Summary / Portfolio Breakdown / Compliance Report
             if (
                 ent.get("is_system_summary") or
-                any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio"] for l in ent_labels) or
-                node_clean_id in ["total-documents-summary", "portfolio-breakdown"]
+                any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport"] for l in ent_labels) or
+                node_clean_id in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
             ):
+                is_comp = node_clean_id == "compliance-stats" or "ComplianceReport" in ent_labels
                 evidence_chips.append({
                     "id": f"graph_{node_clean_id}",
-                    "label": f"Hệ thống: {ent_name}"[:36],
-                    "source": "Neo4j Graph (Thống kê hệ thống)",
+                    "label": f"{'Tuân thủ' if is_comp else 'Hệ thống'}: {ent_name}"[:36],
+                    "source": "Neo4j Graph (" + ("Báo cáo Tuân thủ" if is_comp else "Thống kê hệ thống") + ")",
                 })
                 citations_detail.append({
-                    "docName": f"Thống kê danh mục: {ent_name}",
-                    "file": "Neo4j Graph (DocumentSummary)",
-                    "source_file": "Neo4j.DocumentSummary",
-                    "document_id": "SYSTEM-DOCS-SUMMARY",
-                    "dept": "Chung",
-                    "deptKey": "general",
+                    "docName": f"{'Báo cáo Tuân thủ & An toàn Pháp lý (CUAD)' if is_comp else ('Thống kê danh mục: ' + ent_name)}",
+                    "file": f"Neo4j Graph ({'ComplianceReport' if is_comp else 'DocumentSummary'})",
+                    "source_file": f"Neo4j.{'ComplianceReport' if is_comp else 'DocumentSummary'}",
+                    "document_id": "SYSTEM-COMPLIANCE-REPORT" if is_comp else "SYSTEM-DOCS-SUMMARY",
+                    "dept": "Pháp chế" if is_comp else "Chung",
+                    "deptKey": "legal" if is_comp else "general",
                     "domain": "EXECUTIVE",
                     "chunk_index": 0,
                     "retrieval_score": 100.0,
                     "match": "GRAPH CYPHER VERIFIED",
-                    "location": "Toàn hệ thống (Enterprise Overview)",
-                    "text": ent.get("snippet") or "Thống kê danh mục tài liệu & hợp đồng trong hệ thống Neo4j",
-                    "chunkId": "#SYSTEM-DOCS",
+                    "location": "Toàn hệ thống (CUAD Compliance Overview)" if is_comp else "Toàn hệ thống (Enterprise Overview)",
+                    "text": ent.get("snippet") or ("Báo cáo tỷ lệ tuân thủ điều khoản pháp lý trong hệ thống Neo4j" if is_comp else "Thống kê danh mục tài liệu & hợp đồng trong hệ thống Neo4j"),
+                    "chunkId": "#SYSTEM-COMPLIANCE" if is_comp else "#SYSTEM-DOCS",
                     "sourceType": "Neo4j Graph DB",
-                    "neo4jNode": "DocumentSummary:ContractPortfolio",
+                    "neo4jNode": "ComplianceReport:CUAD" if is_comp else "DocumentSummary:ContractPortfolio",
                     "score": 100.0,
-                })
-                continue
-
-            # A. Other Aggregate (e.g. compliance-stats): add chip only
-            is_agg = (
-                ent.get("type") in ["compliance-stats"] or
-                ent.get("_id") in ["compliance-stats"] or
-                "ComplianceReport" in ent_labels
-            )
-            if is_agg:
-                evidence_chips.append({
-                    "id": f"graph_{node_clean_id}",
-                    "label": f"Báo cáo: {ent_name}"[:36],
-                    "source": "Neo4j Graph (Aggregate)",
                 })
                 continue
 

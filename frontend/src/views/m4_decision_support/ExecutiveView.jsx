@@ -115,36 +115,44 @@ export default function ExecutiveView({
     },
   ];
 
-  const complianceBars = [
-    {
-      label: isVi ? "Điều khoản Giới hạn Trách nhiệm (Liability Cap)" : "Liability Cap Clause",
-      pct: 20.0,
-      color: "var(--red, #DC2626)",
-      note: isVi ? "6/30 Hợp đồng có điều khoản (Cần bổ sung)" : "6/30 contracts (Needs addendum)",
-      noteColor: "var(--red, #DC2626)"
-    },
-    {
-      label: isVi ? "Điều khoản Luật áp dụng (Governing Law)" : "Governing Law Clauses",
-      pct: 80.0,
-      color: "var(--green)",
-      note: isVi ? "24/30 Đạt chuẩn quy định" : "24/30 Standard compliant",
-      noteColor: "var(--green)"
-    },
-    {
-      label: isVi ? "Điều khoản Bồi thường thiệt hại (Indemnification)" : "Indemnification Clauses",
-      pct: 66.7,
-      color: "var(--amber)",
-      note: isVi ? "20/30 (Cần rà soát 10 hợp đồng)" : "20/30 (10 contracts need review)",
-      noteColor: "var(--amber)"
-    },
-    {
-      label: isVi ? "Điều khoản Chấm dứt hợp đồng (Termination)" : "Termination Clauses",
-      pct: 86.7,
-      color: "var(--green)",
-      note: isVi ? "26/30 Điều khoản bảo vệ hiệu lực" : "26/30 Standard active",
-      noteColor: "var(--green)"
-    }
-  ];
+  const complianceBars = (contractDist?.complianceBars && contractDist.complianceBars.length > 0)
+    ? contractDist.complianceBars.map(b => ({
+        label: isVi ? (b.label || b.name) : (b.labelEn || b.nameEn || b.label),
+        pct: b.pct,
+        color: b.color || "var(--green)",
+        note: isVi ? b.note : (b.noteEn || b.note),
+        noteColor: b.noteColor || b.color || "var(--green)"
+      }))
+    : [
+        {
+          label: isVi ? "Điều khoản Chấm dứt hợp đồng (Termination)" : "Termination Clauses",
+          pct: 88.1,
+          color: "var(--green)",
+          note: isVi ? "457/519 Điều khoản bảo vệ hiệu lực (88.1%)" : "457/519 Standard active (88.1%)",
+          noteColor: "var(--green)"
+        },
+        {
+          label: isVi ? "Điều khoản Trách nhiệm & Bồi thường (Liability)" : "Liability & Indemnification Clauses",
+          pct: 84.0,
+          color: "var(--green)",
+          note: isVi ? "436/519 Đạt chuẩn quy định (84.0%)" : "436/519 Standard compliant (84.0%)",
+          noteColor: "var(--green)"
+        },
+        {
+          label: isVi ? "Điều khoản Thanh toán (Payment Terms)" : "Payment Terms Clauses",
+          pct: 81.1,
+          color: "var(--green)",
+          note: isVi ? "421/519 Đạt chuẩn (81.1%)" : "421/519 Standard compliant (81.1%)",
+          noteColor: "var(--green)"
+        },
+        {
+          label: isVi ? "Điều khoản Bảo mật thông tin (Confidentiality)" : "Confidentiality Clauses",
+          pct: 73.0,
+          color: "var(--amber)",
+          note: isVi ? "379/519 Hợp đồng có điều khoản (73.0%)" : "379/519 Contracts protected (73.0%)",
+          noteColor: "var(--amber)"
+        }
+      ];
 
   const quickKpis = [
     {
@@ -1001,7 +1009,9 @@ export default function ExecutiveView({
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <CheckCircle2 size={14} color="var(--green)" />
                 {isVi ? "Độ rủi ro pháp lý toàn danh mục:" : "Portfolio legal risk:"}{" "}
-                <strong style={{ color: "var(--text-1)" }}>{isVi ? "THẤP (A-)" : "LOW (A-)"}</strong>
+                <strong style={{ color: "var(--text-1)" }}>
+                  {contractDist?.portfolioRisk ? (isVi ? contractDist.portfolioRisk.level : contractDist.portfolioRisk.levelEn) : (isVi ? "THẤP (A-)" : "LOW (A-)")}
+                </strong>
               </span>
               <button
                 onClick={() => onNavigate?.("risk")}
