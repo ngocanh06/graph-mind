@@ -325,11 +325,24 @@ def read_file_from_storage(filename: str, department: str) -> Optional[bytes]:
         if os.path.exists(target_path):
             with open(target_path, "rb") as f:
                 return f.read()
+        root_path = os.path.join(DATA_ROOT, safe_name)
+        if os.path.exists(root_path):
+            with open(root_path, "rb") as f:
+                return f.read()
         return None
 
     try:
         proc = subprocess.run(
             ["docker", "exec", CONTAINER_NAME, "cat", f"/data/{dept_key}/{safe_name}"],
+            capture_output=True, check=True
+        )
+        return proc.stdout
+    except Exception:
+        pass
+
+    try:
+        proc = subprocess.run(
+            ["docker", "exec", CONTAINER_NAME, "cat", f"/data/{safe_name}"],
             capture_output=True, check=True
         )
         return proc.stdout

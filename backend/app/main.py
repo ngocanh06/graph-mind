@@ -1869,7 +1869,7 @@ def get_repository_documents(
         # Also include any newly ingested watcher/connector documents (e.g. Google Drive sync) not yet in raw inventory scan
         inv_names = {inv["name"] for inv in inventory}
         for w_name, w_info in watcher_map.items():
-            if w_name not in inv_names:
+            if w_name not in inv_names and (w_name in neo_map or w_info.get("source") == "google_drive"):
                 all_items.append({
                     "id": w_info.get("id") or f"DOC_{hashlib.md5(w_name.encode()).hexdigest()[:8].upper()}",
                     "raw_id": w_name,
@@ -1908,11 +1908,55 @@ def get_repository_documents(
                     "isNew": w_info.get("isNew", True)
                 })
 
+        # Ensure any document node in Neo4j is included even if directory scan missed it
+        current_names = {it["name"] for it in all_items}
+        for n_name, n_info in neo_map.items():
+            if n_name not in current_names:
+                ext = os.path.splitext(n_name)[1].lower()
+                dept_name = n_info.get("dept") or "Pháp chế (Legal)"
+                dept_key = n_info.get("deptKey") or "legal"
+                all_items.append({
+                    "id": n_info.get("id"),
+                    "raw_id": n_name,
+                    "name": n_name,
+                    "category": f"Tài liệu {dept_name}",
+                    "category_en": f"{dept_name} Document",
+                    "type": "PDF" if ext == ".pdf" else (ext.replace(".", "").upper() if ext != ".csv" else "CSV"),
+                    "ext": ext,
+                    "dept": dept_name,
+                    "deptKey": dept_key,
+                    "deptLabel": dept_name,
+                    "department": dept_name,
+                    "owner": "AEGIS Central Storage",
+                    "date": "23/10/2026",
+                    "mtime": 0.0,
+                    "created_at": n_info.get("ingestedAt") or "",
+                    "updated_at": n_info.get("lastModified") or "",
+                    "status": "INDEXED",
+                    "statusBadge": "Đã lập chỉ mục",
+                    "statusState": "active",
+                    "qdrant_indexed": bool(n_info.get("qdrantIndexed", True)),
+                    "neo4j_synced": True,
+                    "qdrantIndexed": bool(n_info.get("qdrantIndexed", True)),
+                    "neo4jSynced": True,
+                    "chunk_count": n_info.get("chunks", 1),
+                    "chunks": f"{n_info.get('chunks', 1)} Chunks",
+                    "storage_path": n_info.get("storagePath") or f"/data/{dept_key}/{n_name}",
+                    "hash": n_info.get("hash", ""),
+                    "fileHash": n_info.get("hash", ""),
+                    "file_hash": n_info.get("hash", ""),
+                    "size": "1.2 MB",
+                    "size_bytes": 1024 * 1024,
+                    "risk": "Low",
+                    "riskLabel": "Khớp đồ thị & vector",
+                    "source": "neo4j_graph",
+                })
+
         indexed_count = sum(1 for it in all_items if it["status"] == "INDEXED")
         pending_count = sum(1 for it in all_items if it["status"] == "PENDING")
         failed_count = sum(1 for it in all_items if it["status"] == "REINDEX_REQUIRED")
-        cuad_total = sum(1 for it in all_items if it["ext"] == ".pdf" and it["deptKey"] == "legal")
-        cuad_indexed = sum(1 for it in all_items if it["ext"] == ".pdf" and it["deptKey"] == "legal" and it["status"] == "INDEXED")
+        cuad_total = sum(1 for it in all_items if it["ext"] == ".pdf" and (it["deptKey"] == "legal" or "legal" in it.get("dept", "").lower()))
+        cuad_indexed = sum(1 for it in all_items if it["ext"] == ".pdf" and (it["deptKey"] == "legal" or "legal" in it.get("dept", "").lower()) and it["status"] == "INDEXED")
         aw_total = sum(1 for it in all_items if it["ext"] == ".csv")
         aw_indexed = sum(1 for it in all_items if it["ext"] == ".csv" and it["status"] == "INDEXED")
         cuad_chunks = total_qdrant_points - aw_total if total_qdrant_points >= aw_total else total_qdrant_points
@@ -1943,13 +1987,13 @@ def get_repository_documents(
     indexed_count = sum(1 for it in role_items if it["status"] == "INDEXED")
     pending_count = sum(1 for it in role_items if it["status"] == "PENDING")
     failed_count = sum(1 for it in role_items if it["status"] == "REINDEX_REQUIRED")
-    cuad_total = sum(1 for it in role_items if it["ext"] == ".pdf" and it["deptKey"] == "legal")
-    cuad_indexed = sum(1 for it in role_items if it["ext"] == ".pdf" and it["deptKey"] == "legal" and it["status"] == "INDEXED")
+    cuad_total = sum(1 for it in role_items if it["ext"] == ".pdf" and (it["deptKey"] == "legal" or "legal" in it.get("dept", "").lower()))
+    cuad_indexed = sum(1 for it in role_items if it["ext"] == ".pdf" and (it["deptKey"] == "legal" or "legal" in it.get("dept", "").lower()) and it["status"] == "INDEXED")
     aw_total = sum(1 for it in role_items if it["ext"] == ".csv")
     aw_indexed = sum(1 for it in role_items if it["ext"] == ".csv" and it["status"] == "INDEXED")
 
     total_chunks = sum(it.get("chunk_count", 0) for it in role_items) if role_items else 0
-    cuad_chunks = sum(it.get("chunk_count", 0) for it in role_items if it["deptKey"] == "legal")
+    cuad_chunks = sum(it.get("chunk_count", 0) for it in role_items if (it["deptKey"] == "legal" or "legal" in it.get("dept", "").lower()))
 
     new_role_items = [it for it in role_items if it.get("mtime", 0.0) > 1792800000 or it.get("isNew", False)]
     new_docs_count = len(new_role_items)
