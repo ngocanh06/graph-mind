@@ -366,10 +366,11 @@ def generate_cypher_from_query(query: str) -> str:
               count(s) AS totalOrders,
               round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)), 2) AS totalDueExact,
               round(sum(coalesce(s.subTotal, s.SubTotal, 0.0)), 2) AS subTotalExact,
-              round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)) / 1000000.0, 2) AS totalMillions
+              round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)) / 1000000.0, 2) AS totalMillions,
+              round(sum(coalesce(s.subTotal, s.SubTotal, 0.0)) / 1000000.0, 2) AS subTotalMillions
         RETURN 'Doanh thu năm ' + year AS name,
-               'Năm ' + year + ': Doanh thu gộp (TotalDue) đạt $' + toString(totalDueExact) + ' USD (~$' + toString(totalMillions) + 'M), doanh thu thuần sản phẩm (SubTotal) đạt $' + toString(subTotalExact) + ' USD qua ' + toString(totalOrders) + ' đơn hàng.' AS snippet,
-               year, totalDueExact, subTotalExact, totalMillions, totalOrders,
+               'Năm ' + year + ': Doanh thu gộp (TotalDue) đạt $' + toString(totalMillions) + 'M USD, doanh thu thuần sản phẩm (SubTotal) đạt $' + toString(subTotalMillions) + 'M USD qua ' + toString(totalOrders) + ' đơn hàng.' AS snippet,
+               year, totalDueExact, subTotalExact, totalMillions, subTotalMillions, totalOrders,
                'trend-' + year AS _id, ['FinancialTrend', 'SalesOrder'] AS _labels
         ORDER BY year ASC
         """
