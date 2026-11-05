@@ -103,6 +103,16 @@ def resolve_resource_type(val: Any) -> str:
     LEGAL, SALES, ACCOUNTING_PROCUREMENT, IT, RND.
     """
     if isinstance(val, dict):
+        # 0. Check ERP structured labels and types (Product, Customer, SalesOrder -> SALES; Vendor, PO -> ACCOUNTING_PROCUREMENT)
+        labels = val.get("_labels") or []
+        if isinstance(labels, str):
+            labels = [labels]
+        e_type = str(val.get("entity_type") or "")
+        if any(l in ["Product", "ProductCategory", "ProductSubcategory", "Customer", "SalesOrder", "SalesOrderDetail"] for l in labels) or e_type in ["Product", "ProductCategory", "ProductSubcategory", "Customer", "SalesOrder", "SalesOrderDetail"]:
+            return "SALES"
+        if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels) or e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"]:
+            return "ACCOUNTING_PROCUREMENT"
+
         dk = (val.get("deptKey") or val.get("dept_key") or "").strip().lower()
         if dk in FOLDER_TO_RESOURCE:
             return FOLDER_TO_RESOURCE[dk]
@@ -128,9 +138,9 @@ def resolve_resource_type(val: Any) -> str:
     s_lower = s.lower()
     if any(k in s_lower for k in ["legal", "pháp chế", "phap che", "cuad", "hợp đồng", "contract"]) or re.search(r"(?<![a-z0-9])nda(?![a-z0-9])", s_lower):
         return "LEGAL"
-    if any(k in s_lower for k in ["sales", "kinh doanh", "kinh_doanh", "bán hàng", "ban hang", "order"]) or re.search(r"(?<![a-z0-9])crm(?![a-z0-9])", s_lower):
+    if any(k in s_lower for k in ["sales", "kinh doanh", "kinh_doanh", "bán hàng", "ban hang", "order", "sản phẩm", "product", "hàng hóa", "khách hàng", "customer"]) or re.search(r"(?<![a-z0-9])crm(?![a-z0-9])", s_lower):
         return "SALES"
-    if any(k in s_lower for k in ["accounting", "procurement", "kế toán", "ke toan", "thu mua", "thu_mua", "hóa đơn", "invoice", "công nợ"]):
+    if any(k in s_lower for k in ["accounting", "procurement", "kế toán", "ke toan", "thu mua", "thu_mua", "hóa đơn", "invoice", "công nợ", "vendor"]):
         return "ACCOUNTING_PROCUREMENT"
     if any(k in s_lower for k in ["công nghệ", "cong nghe", "cntt", "secops"]) or re.search(r"(?<![a-z0-9])it(?![a-z0-9])", s_lower):
         return "IT"

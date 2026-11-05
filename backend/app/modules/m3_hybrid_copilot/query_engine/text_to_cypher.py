@@ -340,15 +340,69 @@ def generate_cypher_from_query(query: str) -> str:
 
     # 5. AdventureWorks Product queries
     if any(k in q_lower for k in ["sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike"]):
+        # 5A. Best-selling products by quantity / sales volume
+        if any(k in q_lower for k in ["bán chạy", "doanh số", "số lượng bán", "lượng bán", "chạy nhất", "mua nhiều"]):
+            return """
+            MATCH (o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p:Product)
+            WITH p, coalesce(p.name, p.title, p.Name) AS prod_name,
+                 sum(coalesce(r.OrderQty, 0)) AS totalQty,
+                 count(DISTINCT o) AS orderCount,
+                 round(sum(coalesce(r.lineTotal, 0.0)), 2) AS totalSales
+            ORDER BY totalQty DESC, totalSales DESC
+            LIMIT 6
+            WITH collect({p: p, prod_name: prod_name, totalQty: totalQty, orderCount: orderCount, totalSales: totalSales}) AS rows
+            UNWIND range(0, size(rows)-1) AS idx
+            WITH rows[idx] AS r, (idx + 1) AS rank
+            RETURN r.prod_name AS name,
+                   coalesce(r.p.id, r.p.ProductID) AS ProductID,
+                   r.totalQty AS TotalQty,
+                   r.totalSales AS TotalSales,
+                   rank,
+                   CASE
+                     WHEN rank = 1 THEN 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #1 - Bán chạy nhất]: Đã bán ' + toString(r.totalQty) + ' sản phẩm qua ' + toString(r.orderCount) + ' đơn hàng, tổng doanh thu $' + toString(r.totalSales) + ' USD.'
+                     ELSE 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #' + toString(rank) + ']: Đã bán ' + toString(r.totalQty) + ' sản phẩm qua ' + toString(r.orderCount) + ' đơn hàng, tổng doanh thu $' + toString(r.totalSales) + ' USD.'
+                   END AS snippet,
+                   elementId(r.p) AS _id, ['Product'] AS _labels
+            ORDER BY rank ASC
+            """
+
+        # 5B. Lowest price / cheapest products
+        if any(k in q_lower for k in ["giá rẻ", "rẻ nhất", "thấp nhất", "ít tiền nhất"]):
+            return """
+            MATCH (p:Product)
+            WHERE coalesce(p.ListPrice, p.listPrice, p.price, 0.0) > 0.0
+            WITH p, coalesce(p.name, p.title, p.Name) AS prod_name, round(coalesce(p.ListPrice, p.listPrice, p.price, 0.0), 2) AS price_val
+            ORDER BY price_val ASC, prod_name ASC
+            LIMIT 6
+            WITH collect({p: p, prod_name: prod_name, price_val: price_val}) AS rows
+            UNWIND range(0, size(rows)-1) AS idx
+            WITH rows[idx] AS r, (idx + 1) AS rank
+            RETURN r.prod_name AS name, coalesce(r.p.id, r.p.ProductID) AS ProductID, r.price_val AS ListPrice, rank,
+                   CASE
+                     WHEN rank = 1 THEN 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #1 - Giá thấp nhất]: Giá niêm yết $' + toString(r.price_val) + ' USD (Mã SP #' + toString(coalesce(r.p.id, r.p.ProductID)) + ').'
+                     ELSE 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #' + toString(rank) + ']: Giá niêm yết $' + toString(r.price_val) + ' USD.'
+                   END AS snippet,
+                   elementId(r.p) AS _id, ['Product'] AS _labels
+            ORDER BY rank ASC
+            """
+
+        # 5C. Highest price / highest value / default product ranking
         return """
         MATCH (p:Product)
-        WHERE coalesce(p.listPrice, p.ListPrice, p.price, 0) > 0
-        WITH p, coalesce(p.name, p.title, p.Name) AS prod_name, coalesce(p.listPrice, p.ListPrice, p.price) AS price_val
-        RETURN prod_name AS name, coalesce(p.id, p.ProductID) AS ProductID, price_val AS ListPrice,
-               'Sản phẩm ' + prod_name + ': Giá niêm yết $' + toString(price_val) + ' USD' AS snippet,
-               elementId(p) AS _id, ['Product'] AS _labels
-        ORDER BY price_val DESC
+        WHERE coalesce(p.ListPrice, p.listPrice, p.price, 0.0) > 0.0
+        WITH p, coalesce(p.name, p.title, p.Name) AS prod_name, round(coalesce(p.ListPrice, p.listPrice, p.price, 0.0), 2) AS price_val
+        ORDER BY price_val DESC, prod_name ASC
         LIMIT 6
+        WITH collect({p: p, prod_name: prod_name, price_val: price_val}) AS rows
+        UNWIND range(0, size(rows)-1) AS idx
+        WITH rows[idx] AS r, (idx + 1) AS rank
+        RETURN r.prod_name AS name, coalesce(r.p.id, r.p.ProductID) AS ProductID, r.price_val AS ListPrice, rank,
+               CASE
+                 WHEN rank = 1 THEN 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #1 - Giá trị cao nhất]: Giá niêm yết $' + toString(r.price_val) + ' USD (Mã SP #' + toString(coalesce(r.p.id, r.p.ProductID)) + ').'
+                 ELSE 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #' + toString(rank) + ']: Giá niêm yết $' + toString(r.price_val) + ' USD.'
+               END AS snippet,
+               elementId(r.p) AS _id, ['Product'] AS _labels
+        ORDER BY rank ASC
         """
 
     # 6. AdventureWorks SalesOrder queries

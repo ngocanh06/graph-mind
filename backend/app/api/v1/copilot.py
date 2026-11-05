@@ -1493,10 +1493,10 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
-            if any(l in ["Vendor", "PurchaseOrder"] for l in labels):
+            if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
-            if any(l in ["Customer", "SalesOrder"] for l in labels):
-                return "SALES" in scope.allowed_resources
+            if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory"] for l in labels):
+                return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
             rt = resolve_resource_type(gh)
             return rt in scope.allowed_resources
 
