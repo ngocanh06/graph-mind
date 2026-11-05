@@ -66,7 +66,7 @@ services:
       - AEGIS_AGENT_API_KEY=dev-agent-key
       - PYTHONUNBUFFERED=1
     volumes:
-      - graphmind_documents:/data
+      - D:/data:/data
     depends_on:
       neo4j:
         condition: service_healthy
@@ -112,7 +112,7 @@ services:
       - AGENT_API_KEY=dev-agent-key
       - PYTHONUNBUFFERED=1
     volumes:
-      - graphmind_documents:/data
+      - D:/data:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
