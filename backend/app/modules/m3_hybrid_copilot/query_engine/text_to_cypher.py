@@ -35,7 +35,7 @@ CYPHER_SERVING_ELIGIBILITY_FILTER = (
             "AND d.committed_generation IS NOT NULL AND d.committed_generation > 0"
         ") "
         "OR ("
-            "(d.status IN ['SYNCED', 'Hoạt động (Synced)'] OR ((d.status = 'active' OR d.status IS NULL) AND d.neo4jSynced = true)) "
+            "(d.status IN ['SYNCED', 'Hoạt động (Synced)', 'INDEXED', 'Đã lập chỉ mục'] OR ((d.status = 'active' OR d.status IS NULL) AND d.neo4jSynced = true)) "
             "AND (d.op_stage IS NULL OR trim(toString(d.op_stage)) = '') "
             "AND (d.committed_op_id IS NULL OR trim(toString(d.committed_op_id)) = '') "
             "AND d.committed_generation IS NULL"
@@ -93,14 +93,13 @@ def generate_cypher_from_query(query: str) -> str:
         return f"""
         MATCH (d:Document)
         WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
-        OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
         WITH d, 
              CASE 
-               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(pháp chế|legal|hợp đồng).*' THEN 'Pháp chế (Legal)'
-               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(kinh doanh|sales).*' THEN 'Kinh doanh (Sales)'
-               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(r&d|nghiên cứu|rnd).*' THEN 'Nghiên cứu & Phát triển (R&D)'
-               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(kế toán|thu mua|accounting|procurement).*' THEN 'Kế toán & Thu mua'
-               WHEN coalesce(dept.name, d.department, '') =~ '(?i).*(công nghệ|it|cntt).*' THEN 'Công nghệ thông tin (IT)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(pháp chế|legal|hợp đồng).*' THEN 'Pháp chế (Legal)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(kinh doanh|sales).*' THEN 'Kinh doanh (Sales)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(r&d|nghiên cứu|rnd).*' THEN 'Nghiên cứu & Phát triển (R&D)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(kế toán|thu mua|accounting|procurement).*' THEN 'Kế toán & Thu mua'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(công nghệ|it|cntt).*' THEN 'Công nghệ thông tin (IT)'
                ELSE 'Phòng ban khác'
              END AS canon_dept
         WITH canon_dept, count(d) AS doc_count
