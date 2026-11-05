@@ -75,7 +75,20 @@ def test_document_synchronization():
     assert dept_counts.get("Kế toán / Thu mua") == 9, f"Expected 9 Accounting, got {dept_counts.get('Kế toán / Thu mua')}"
     assert dept_counts.get("Công nghệ / IT") == 4, f"Expected 4 IT, got {dept_counts.get('Công nghệ / IT')}"
 
-    print("\n>>> ALL CHECKS PASSED: 100% SYNCHRONIZED ACROSS NEO4J, DASHBOARD, AND REPOSITORY! <<<")
+    # 5. Copilot Natural Language Text-to-Cypher queries
+    from app.modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
+
+    cuad_hits = execute_text_to_cypher("có tổng cộng bao nhiêu hợp đồng pháp lý CUAD")
+    assert len(cuad_hits) > 0, "Expected hits for CUAD contracts count query"
+    assert "509" in cuad_hits[0]["snippet"], f"Expected 509 in snippet, got: {cuad_hits[0]['snippet']}"
+    print("[5/5] Copilot CUAD Contracts Query verified:", cuad_hits[0]["snippet"])
+
+    sys_hits = execute_text_to_cypher("có tổng cộng bao nhiêu tài liệu trong hệ thống")
+    assert len(sys_hits) > 0, "Expected hits for system documents count query"
+    assert "611" in sys_hits[0]["snippet"], f"Expected 611 in snippet, got: {sys_hits[0]['snippet']}"
+    print("[5/5] Copilot System Documents Query verified:", sys_hits[0]["snippet"])
+
+    print("\n>>> ALL CHECKS PASSED: 100% SYNCHRONIZED ACROSS NEO4J, DASHBOARD, REPOSITORY, AND COPILOT! <<<")
 
 
 if __name__ == "__main__":

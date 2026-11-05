@@ -116,7 +116,7 @@ def _is_serving_eligible(d_meta: Optional[Dict[str, Any]]) -> bool:
 
     if op_stage == "TERMINAL_SYNCED":
         # PR1 V3 Terminal Committed: requires committed_op_id and valid committed_generation
-        if not (status in ["SYNCED", "Hoạt động (Synced)"]):
+        if not (status in ["SYNCED", "Hoạt động (Synced)", "active", "INDEXED"]):
             return False
         if not has_valid_committed_op or not has_valid_committed_gen:
             return False
@@ -1407,7 +1407,7 @@ async def ask_copilot(
 
         # If query is a system inventory summary (e.g. total documents count, compliance rate),
         # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
-        if any(gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"] for gh in graph_hits):
+        if any(gh.get("_id") in ["total-documents-summary", "cuad-contracts-summary", "portfolio-breakdown", "compliance-stats"] for gh in graph_hits):
             vector_hits = []
 
         # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
@@ -1525,7 +1525,7 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
-            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or gh.get("_id") in ["total-documents-summary", "cuad-contracts-summary", "portfolio-breakdown", "compliance-stats"]:
                 return True
             if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources

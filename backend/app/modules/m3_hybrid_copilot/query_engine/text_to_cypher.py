@@ -29,7 +29,7 @@ CYPHER_SERVING_ELIGIBILITY_FILTER = (
     "AND (d.file_hash IS NULL OR d.hash IS NULL OR d.file_hash = d.hash) "
     "AND ("
         "("
-            "d.status IN ['SYNCED', 'Hoạt động (Synced)'] "
+            "d.status IN ['SYNCED', 'Hoạt động (Synced)', 'active', 'INDEXED'] "
             "AND d.op_stage = 'TERMINAL_SYNCED' "
             "AND d.committed_op_id IS NOT NULL AND trim(toString(d.committed_op_id)) <> '' "
             "AND d.committed_generation IS NOT NULL AND d.committed_generation > 0"
@@ -76,6 +76,32 @@ def generate_cypher_from_query(query: str) -> str:
                'Đơn hàng #{order_num} của khách hàng ' + custName + ' (Mã KH: ' + toString(custId) + ', Tổng tiền TotalDue $' + toString(round(coalesce(o.totalDue, o.TotalDue, 0.0), 2)) + ' USD, Ngày đặt: ' + toString(coalesce(o.orderDate, o.OrderDate, '')) + '). Danh mục sản phẩm đã đặt: ' + reduce(s = '', name in products | s + (case when s = '' then '' else ', ' end) + name) AS snippet,
                elementId(o) AS _id, ['SalesOrder', 'Customer', 'Product'] AS _labels
         LIMIT 1
+        """
+
+    # 0.035 CUAD Legal Contracts count query (e.g. "bao nhiêu hợp đồng pháp lý CUAD", "tổng số hợp đồng CUAD", "hợp đồng pháp lý")
+    is_cuad_contracts_count = (
+        any(k in q_lower for k in [
+            "hợp đồng pháp lý cuad", "hợp đồng cuad", "hợp đồng của cuad",
+            "bao nhiêu hợp đồng pháp lý", "tổng số hợp đồng pháp lý", "số lượng hợp đồng pháp lý",
+            "có bao nhiêu hợp đồng pháp lý", "hợp đồng pháp lý có bao nhiêu"
+        ]) or (
+            any(w in q_lower for w in ["cuad"]) and any(w in q_lower for w in ["hợp đồng", "contract", "pháp lý"]) and any(w in q_lower for w in ["bao nhiêu", "tổng", "số lượng", "thống kê"])
+        )
+    )
+    if is_cuad_contracts_count:
+        return f"""
+        MATCH (d:Document)
+        WHERE (d.deptKey = 'legal' OR d.department CONTAINS 'Legal' OR d.department CONTAINS 'Pháp chế')
+          AND toLower(d.name) ENDS WITH '.pdf'
+          AND {CYPHER_SERVING_ELIGIBILITY_FILTER}
+        WITH count(d) AS totalContracts
+        OPTIONAL MATCH (cl:Clause)
+        RETURN 'Thống kê Hợp đồng Pháp lý CUAD' AS name,
+               totalContracts,
+               count(cl) AS totalClauses,
+               'Hệ thống hiện có tổng cộng ' + toString(totalContracts) + ' hợp đồng pháp lý CUAD đang hoạt động trong kho tri thức của CUAD (đã lập chỉ mục đầy đủ vào Neo4j và Qdrant, với ' + toString(count(cl)) + ' điều khoản pháp lý vector hóa).' AS snippet,
+               'cuad-contracts-summary' AS _id,
+               ['DocumentSummary', 'CUAD', 'ContractPortfolio'] AS _labels
         """
 
     # 0.04 Total Documents & System Inventory queries
