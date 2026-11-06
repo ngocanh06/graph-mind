@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     PORT: int = 5000
     FRONTEND_PORT: int = 5173
 
+    # Feature Flags
+    PB56_WORKSTATIONS_ENABLED: bool = False
+
     # Security & Authentication
     SECRET_KEY: str = "change-me"
     ALGORITHM: str = "HS256"

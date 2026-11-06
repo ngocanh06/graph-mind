@@ -286,6 +286,20 @@ except ImportError:
     except Exception as e:
         logger.warning(f"[M1 Data Sync] Could not load google_connector_router: {e}")
 
+# PB56 — AEGIS Local Agent & Workstations Management Dashboard
+try:
+    from app.core.config import settings
+    pb56_enabled = getattr(settings, "PB56_WORKSTATIONS_ENABLED", False)
+except Exception:
+    pb56_enabled = os.getenv("PB56_WORKSTATIONS_ENABLED", "false").lower() in ("true", "1", "yes")
+
+if pb56_enabled:
+    try:
+        from app.api.v1.pb56_workstations import router as pb56_workstations_router
+        app.include_router(pb56_workstations_router, prefix="/api/v1/workstations", tags=["PB56 Workstations"])
+    except Exception as e:
+        logger.warning(f"[PB56 Workstations] Could not load pb56_workstations router: {e}")
+
 # Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
