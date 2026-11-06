@@ -6,6 +6,9 @@ import {
 } from "lucide-react";
 import GranularRbacMatrix from "./GranularRbacMatrix";
 import PendingApprovalsPanel from "./PendingApprovalsPanel";
+import { Server } from "lucide-react";
+import WorkstationsPanel from "../m1_data_sync/pb56_workstations/WorkstationsPanel";
+import { fetchPb56Status } from "../m1_data_sync/pb56_workstations/workstationsApi";
 import {
   PageHeader, Tabs, Badge, Button, SearchInput, Card, Alert
 } from "../../components/ui";
@@ -92,6 +95,15 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
 
 
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+  const [isPb56Enabled, setIsPb56Enabled] = useState(false);
+
+  useEffect(() => {
+    fetchPb56Status()
+      .then((res) => {
+        if (res && res.enabled !== undefined) setIsPb56Enabled(Boolean(res.enabled));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchUploadApprovals()
@@ -287,6 +299,11 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
       icon: Clock,
       badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined
     },
+    ...(isPb56Enabled ? [{
+      id: "workstations",
+      label: isVi ? "Quản lý Máy trạm & Agent" : "Workstations & Agents",
+      icon: Server
+    }] : []),
     { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: Users },
     { id: "audit", label: isVi ? "Nhật ký Kiểm toán" : "Audit Trail", icon: ClipboardList },
   ];
@@ -481,6 +498,10 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
             showToast={showToast}
             onPendingCountChange={setPendingApprovalsCount}
           />
+        )}
+
+        {isPb56Enabled && activeTab === "workstations" && (
+          <WorkstationsPanel lang={lang} showToast={showToast} />
         )}
 
 
