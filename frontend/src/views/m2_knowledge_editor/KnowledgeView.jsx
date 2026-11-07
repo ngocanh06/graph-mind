@@ -16,6 +16,22 @@ export default function KnowledgeView({
 }) {
   const isVi = lang === "vi";
 
+  // Derive role and permissions per RBAC Matrix
+  // - Executive & Admin: Full access (Customer, Product, Order, Employee, Vendor, Contract, Clause)
+  // - Knowledge Manager: Excludes Employee (HR payroll / internal personnel)
+  // - Standard (Sales): Excludes Employee & Vendor (Suppliers)
+  const rawRole = (role || currentUser?.id || currentUser?.roleKey || currentUser?.username || "standard").toString().toLowerCase();
+  const isPrivileged = ["executive", "admin", "it_admin", "secops", "cfo", "ceo", "it"].some(r => rawRole.includes(r));
+  const isManager = !isPrivileged && ["manager", "knowledge_manager", "lead", "tp", "truongphong", "mgr"].some(r => rawRole.includes(r));
+  const isStandard = !isPrivileged && !isManager;
+  const effectiveRole = isPrivileged ? "executive" : (isManager ? "knowledge_manager" : "standard");
+
+  const allowedTaxonomies = isPrivileged
+    ? ["Customer", "Product", "Order", "Employee", "Vendor", "Contract", "Clause"]
+    : isManager
+    ? ["Customer", "Product", "Order", "Vendor", "Contract", "Clause"]
+    : ["Customer", "Product", "Order", "Contract", "Clause"];
+
   // Sub-tab navigation: "neo4j_live" | "canvas" | "queue"
   const [activeTab, setActiveTab] = useState("neo4j_live");
 
@@ -30,6 +46,13 @@ export default function KnowledgeView({
   const [selectedEntityFilter, setSelectedEntityFilter] = useState("ALL");
   const [zoomLevel, setZoomLevel] = useState(100);
   const [toastMsg, setToastMsg] = useState("");
+
+  // Reset selectedEntityFilter if restricted under new role
+  useEffect(() => {
+    if (selectedEntityFilter !== "ALL" && !allowedTaxonomies.includes(selectedEntityFilter)) {
+      setSelectedEntityFilter("ALL");
+    }
+  }, [effectiveRole, allowedTaxonomies, selectedEntityFilter]);
 
   // Quick Entity creation modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -145,7 +168,27 @@ export default function KnowledgeView({
     { key: "Clause", label: "Clause", count: 103, bg: "bg-rose-50 text-rose-900 border-rose-200 font-bold", dot: "bg-rose-600" },
   ];
 
+  // Filter chips visible according to user RBAC scope
+  const visibleChips = ENTITY_CHIPS.filter(chip => allowedTaxonomies.includes(chip.key));
+
+  // Filter queue items according to user RBAC scope
+  const visibleQueueItems = queueItems.filter(item => {
+    if (!allowedTaxonomies.includes("Employee")) {
+      if (item.sourceType === "Employee" || item.targetType === "Employee") return false;
+    }
+    if (!allowedTaxonomies.includes("Vendor")) {
+      if (["Organization", "Vendor", "Company"].includes(item.sourceType) || ["Organization", "Vendor", "Company"].includes(item.targetType)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   const handleVerifyNode = async () => {
+    if (isStandard) {
+      showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có thẩm quyền duyệt thực thể vào Neo4j!" : "Read-only: Only Admin and Manager can verify nodes to Neo4j!");
+      return;
+    }
     const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
     try {
       await verifyEntityApi(selectedNode.id, true, auditorName);
@@ -160,6 +203,10 @@ export default function KnowledgeView({
   };
 
   const handleSaveAttributeChanges = async () => {
+    if (isStandard) {
+      showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền chỉnh sửa thuộc tính." : "Read-only: Only Admin and Manager can save attributes.");
+      return;
+    }
     const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
     try {
       await verifyEntityApi(selectedNode.id, true, auditorName);
@@ -168,17 +215,26 @@ export default function KnowledgeView({
   };
 
   const handleDeleteEntity = () => {
+    if (isStandard) {
+      showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền xóa thực thể." : "Read-only: Only Admin and Manager can delete entities.");
+      return;
+    }
     showToast(isVi ? `Đã xóa thực thể ${selectedNode.id} khỏi đồ thị Neo4j.` : `Deleted entity ${selectedNode.id} from Neo4j.`);
   };
 
   const handleBatchApprove = async () => {
-    const pendingSelected = queueItems.filter((q) => q.selected && q.status === "pending");
+    if (isStandard) {
+      showToast(isVi ? "Chế độ xem (Read-only): Chuyên viên kinh doanh không có quyền phê duyệt trích xuất." : "Read-only: Sales specialists cannot approve extractions.");
+      return;
+    }
+    const pendingSelected = visibleQueueItems.filter((q) => q.selected && q.status === "pending");
     if (pendingSelected.length === 0) {
       showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
       return;
     }
+    const selectedIds = new Set(pendingSelected.map(p => p.id));
     setQueueItems((prev) =>
-      prev.map((item) => (item.selected ? { ...item, status: "approved" } : item))
+      prev.map((item) => (selectedIds.has(item.id) ? { ...item, status: "approved" } : item))
     );
     const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
     for (const item of pendingSelected) {
@@ -192,13 +248,18 @@ export default function KnowledgeView({
   };
 
   const handleBatchReject = async () => {
-    const pendingSelected = queueItems.filter((q) => q.selected && q.status === "pending");
+    if (isStandard) {
+      showToast(isVi ? "Chế độ xem (Read-only): Chuyên viên kinh doanh không có quyền từ chối trích xuất." : "Read-only: Sales specialists cannot reject extractions.");
+      return;
+    }
+    const pendingSelected = visibleQueueItems.filter((q) => q.selected && q.status === "pending");
     if (pendingSelected.length === 0) {
       showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
       return;
     }
+    const selectedIds = new Set(pendingSelected.map(p => p.id));
     setQueueItems((prev) =>
-      prev.map((item) => (item.selected ? { ...item, status: "rejected" } : item))
+      prev.map((item) => (selectedIds.has(item.id) ? { ...item, status: "rejected" } : item))
     );
     const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
     for (const item of pendingSelected) {
@@ -212,6 +273,10 @@ export default function KnowledgeView({
   };
 
   const handleRowAction = async (id, newStatus) => {
+    if (isStandard) {
+      showToast(isVi ? "Chế độ xem (Read-only): Chuyên viên kinh doanh không có quyền duyệt/từ chối." : "Read-only: Sales specialists cannot approve/reject.");
+      return;
+    }
     setQueueItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
     );
@@ -238,12 +303,18 @@ export default function KnowledgeView({
   };
 
   const toggleSelectAllQueue = () => {
-    const allSelected = queueItems.every((q) => q.selected);
-    setQueueItems((prev) => prev.map((item) => ({ ...item, selected: !allSelected })));
+    const allVisibleSelected = visibleQueueItems.length > 0 && visibleQueueItems.every((q) => q.selected);
+    const visibleIds = new Set(visibleQueueItems.map(q => q.id));
+    setQueueItems((prev) => prev.map((item) => (visibleIds.has(item.id) ? { ...item, selected: !allVisibleSelected } : item)));
   };
 
   const handleCreateNewEntity = (e) => {
     e.preventDefault();
+    if (isStandard) {
+      showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền tạo thực thể mới." : "Read-only: Only Admin and Manager can create new entities.");
+      setIsAddModalOpen(false);
+      return;
+    }
     if (!newEntityName.trim()) return;
     showToast(isVi ? `Đã khởi tạo thực thể [${newEntityType}: ${newEntityName}] trong Neo4j!` : `Created entity [${newEntityType}: ${newEntityName}] in Neo4j!`);
     setIsAddModalOpen(false);
@@ -282,14 +353,26 @@ export default function KnowledgeView({
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              if (isStandard) {
+                showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền thêm thực thể mới." : "Read-only: Only Admin and Manager can create new entities.");
+                return;
+              }
+              setIsAddModalOpen(true);
+            }}
             className="px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow hover:bg-blue-700 transition-all flex items-center gap-1.5"
           >
             <Icon name="fa-solid fa-plus text-[14px]" size={14} />
             <span>{isVi ? "Thực thể mới" : "New Entity"}</span>
           </button>
           <button
-            onClick={() => showToast(isVi ? "Kéo thả giữa 2 node trên canvas để tạo quan hệ mới" : "Drag between 2 nodes on canvas to create relation")}
+            onClick={() => {
+              if (isStandard) {
+                showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền thêm quan hệ mới." : "Read-only: Only Admin and Manager can add relations.");
+                return;
+              }
+              showToast(isVi ? "Kéo thả giữa 2 node trên canvas để tạo quan hệ mới" : "Drag between 2 nodes on canvas to create relation");
+            }}
             className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5"
           >
             <Icon name="fa-solid fa-link text-[14px]" size={14} />
@@ -303,7 +386,13 @@ export default function KnowledgeView({
             <span>{isVi ? "Hoàn tác" : "Undo"}</span>
           </button>
           <button
-            onClick={() => showToast(isVi ? "Đã lưu và đồng bộ toàn bộ đồ thị vào Neo4j + Qdrant!" : "Committed all graph changes to Neo4j + Qdrant!")}
+            onClick={() => {
+              if (isStandard) {
+                showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền ghi dữ liệu vào Neo4j + Qdrant." : "Read-only: Only Admin and Manager can commit to Neo4j + Qdrant.");
+                return;
+              }
+              showToast(isVi ? "Đã lưu và đồng bộ toàn bộ đồ thị vào Neo4j + Qdrant!" : "Committed all graph changes to Neo4j + Qdrant!");
+            }}
             className="px-3.5 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-semibold shadow hover:bg-purple-700 transition-all flex items-center gap-1.5"
           >
             <Icon name="fa-solid fa-rotate text-[14px]" size={14} />
@@ -319,8 +408,34 @@ export default function KnowledgeView({
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-on-surface-variant px-1">{isVi ? "Lọc thực thể:" : "Filter:"}</span>
 
-          {/* 7 Taxonomies Chips */}
-          {ENTITY_CHIPS.map((chip) => {
+          {/* RBAC Scope Badge */}
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border flex items-center gap-1 mr-1 ${
+              isPrivileged
+                ? "bg-cyan-50 text-cyan-800 border-cyan-300"
+                : isManager
+                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                : "bg-blue-50 text-blue-800 border-blue-300"
+            }`}
+            title={
+              isPrivileged
+                ? "Toàn quyền quản trị tri thức (Full RBAC Scope)"
+                : isManager
+                ? "Phân quyền Quản lý: Đã ẩn bảo mật Thực thể Nhân sự (Employee / HR Payroll)"
+                : "Phân quyền Chuyên viên: Đã ẩn bảo mật Thực thể Nhân sự (Employee) & Nhà cung cấp (Vendor)"
+            }
+          >
+            <span>🔒</span>
+            <span>
+              RBAC: {currentUser?.badge || (isPrivileged ? "ADMIN / EXECUTIVE" : isManager ? "TRƯỞNG PHÒNG" : "CHUYÊN VIÊN")}
+            </span>
+            <span className="text-[10px] opacity-75">
+              ({visibleChips.length}/7 loại)
+            </span>
+          </span>
+
+          {/* Taxonomies Chips filtered by RBAC */}
+          {visibleChips.map((chip) => {
             const isActive = selectedEntityFilter === chip.key || selectedEntityFilter === "ALL";
             return (
               <span
@@ -361,6 +476,9 @@ export default function KnowledgeView({
           >
             <Icon name="fa-solid fa-list-check text-[14px]" size={14} />
             <span>{isVi ? "Hàng chờ duyệt NER" : "Review Queue"}</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-200/80 text-[10px] text-amber-900 font-bold">
+              {visibleQueueItems.length}
+            </span>
           </button>
 
           <button
@@ -382,7 +500,7 @@ export default function KnowledgeView({
       {/* ========================================================================= */}
       {activeTab === "neo4j_live" && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5 shadow-xs min-h-[650px]">
-          <GraphPanel lang={lang} onSelectNode={onSelectEntity} initialSearch={selectedEntity} />
+          <GraphPanel lang={lang} onSelectNode={onSelectEntity} initialSearch={selectedEntity} role={effectiveRole} currentUser={currentUser} />
         </div>
       )}
 
@@ -450,6 +568,9 @@ export default function KnowledgeView({
                   </marker>
                   <marker id="arrow-red" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
                     <polygon points="0 0, 7 3.5, 0 7" fill="#BA1A1A" />
+                  </marker>
+                  <marker id="arrow-orange" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
+                    <polygon points="0 0, 7 3.5, 0 7" fill="#EA580C" />
                   </marker>
                 </defs>
 
@@ -688,6 +809,119 @@ export default function KnowledgeView({
                   <text y="-6" textAnchor="middle" fill="#712AE2" fontSize="10" fontWeight="bold" fontFamily="Inter">SLA 99.9%</text>
                   <text y="8" textAnchor="middle" fill="#434655" fontSize="8" fontFamily="Inter">Requirement</text>
                 </g>
+
+                {/* Node 6: Vendor Node (Alpha Corp) - visible only if Vendor taxonomy allowed */}
+                {allowedTaxonomies.includes("Vendor") && (
+                  <>
+                    <path
+                      d="M 140 330 L 350 140"
+                      stroke="#EA580C"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                      markerEnd="url(#arrow-orange)"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setSelectedEdge({
+                          id: "edge-vendor",
+                          label: "SUPPLIER_TO",
+                          from: "Alpha Corp Global",
+                          to: "CUAD_001",
+                          color: "#EA580C"
+                        })
+                      }
+                    />
+                    <rect x="195" y="225" width="85" height="20" rx="4" fill="#FFF7ED" stroke="#FDBA74" strokeWidth="0.5" />
+                    <text x="237" y="239" textAnchor="middle" fill="#EA580C" fontSize="10" fontWeight="600" fontFamily="Inter">
+                      SUPPLIER_TO
+                    </text>
+                    <g
+                      className="cursor-pointer group"
+                      transform="translate(140, 330)"
+                      onClick={() => {
+                        setSelectedNode({
+                          id: "VEND-001",
+                          name: "Alpha Corp Global",
+                          label: "Alpha Corp Global (Vendor/Partner)",
+                          type: "Vendor",
+                          badge: "Vendor Node",
+                          docSource: "Vendor Registry & ERP",
+                          chunkId: "Neo4j Node #VEND-001",
+                          penaltyLimit: "N/A",
+                          isRisk: false,
+                          notes: "Nhà cung cấp linh kiện và hạ tầng ERP đối tác của doanh nghiệp.",
+                          properties: {
+                            vendor_id: "VEND-001",
+                            company_name: "Alpha Corp Global Ltd",
+                            contract_ref: "CUAD_001",
+                            tax_id: "VN-010293847"
+                          }
+                        });
+                        showToast(isVi ? "Đã chọn Node Nhà cung cấp: Alpha Corp Global" : "Selected Node: Alpha Corp Global");
+                      }}
+                    >
+                      <circle r="40" fill="#FFF7ED" stroke="#EA580C" strokeWidth="2.5" />
+                      <circle cx="0" cy="0" r="6" fill="#EA580C" />
+                      <text y="-8" textAnchor="middle" fill="#EA580C" fontSize="11" fontWeight="bold" fontFamily="Inter">Alpha Corp</text>
+                      <text y="10" textAnchor="middle" fill="#9A3412" fontSize="9" fontFamily="Inter">Vendor / NCC</text>
+                    </g>
+                  </>
+                )}
+
+                {/* Node 7: Employee Node (Lê Hoàng Minh) - visible only if Employee taxonomy allowed */}
+                {allowedTaxonomies.includes("Employee") && (
+                  <>
+                    <path
+                      d="M 350 45 L 350 140"
+                      stroke="#712AE2"
+                      strokeWidth="2"
+                      markerEnd="url(#arrow-purple)"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setSelectedEdge({
+                          id: "edge-employee",
+                          label: "AUTHORIZED_SIGNER",
+                          from: "Lê Hoàng Minh",
+                          to: "CUAD_001",
+                          color: "#712AE2"
+                        })
+                      }
+                    />
+                    <rect x="280" y="65" width="140" height="20" rx="4" fill="#F5F3FF" stroke="#DDD6FE" strokeWidth="0.5" />
+                    <text x="350" y="79" textAnchor="middle" fill="#712AE2" fontSize="10" fontWeight="600" fontFamily="Inter">
+                      AUTHORIZED_SIGNER
+                    </text>
+                    <g
+                      className="cursor-pointer group"
+                      transform="translate(350, 45)"
+                      onClick={() => {
+                        setSelectedNode({
+                          id: "EMP-042",
+                          name: "Lê Hoàng Minh",
+                          label: "Lê Hoàng Minh (Đại diện ký hợp đồng)",
+                          type: "Employee",
+                          badge: "Employee Node",
+                          docSource: "Master_NDA_AlphaCorp_Signed.pdf",
+                          chunkId: "Neo4j Node #EMP-042",
+                          penaltyLimit: "N/A",
+                          isRisk: false,
+                          notes: "Nhân sự nội bộ - Người ký được ủy quyền theo Phụ lục Hợp đồng CUAD_001.",
+                          properties: {
+                            employee_id: "EMP-042",
+                            department: "Ban Giám Đốc / Pháp chế",
+                            title: "Đại diện ký hợp đồng",
+                            security_level: "Internal Confidential"
+                          }
+                        });
+                        showToast(isVi ? "Đã chọn Node Nhân sự: Lê Hoàng Minh" : "Selected Node: Lê Hoàng Minh");
+                      }}
+                    >
+                      <circle r="36" fill="#F5F3FF" stroke="#7C3AED" strokeWidth="2.5" />
+                      <circle cx="0" cy="0" r="5" fill="#7C3AED" />
+                      <text y="-6" textAnchor="middle" fill="#7C3AED" fontSize="10" fontWeight="bold" fontFamily="Inter">Lê H. Minh</text>
+                      <text y="8" textAnchor="middle" fill="#5B21B6" fontSize="8" fontFamily="Inter">Employee (HR)</text>
+                    </g>
+                  </>
+                )}
               </svg>
 
               {/* Floating Context Toolbar for Selected Relationship */}
@@ -734,7 +968,7 @@ export default function KnowledgeView({
               </span>
               <span className="flex items-center gap-1.5 text-primary font-semibold">
                 <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
-                5 Nodes • 4 Edges • Thuật toán Fruchterman-Reingold
+                {5 + (allowedTaxonomies.includes("Vendor") ? 1 : 0) + (allowedTaxonomies.includes("Employee") ? 1 : 0)} Nodes • {4 + (allowedTaxonomies.includes("Vendor") ? 1 : 0) + (allowedTaxonomies.includes("Employee") ? 1 : 0)} Edges • {isPrivileged ? (isVi ? "Toàn quyền (Tất cả nhãn)" : "Full Scope") : isManager ? (isVi ? "Phạm vi: Quản lý (Đã ẩn HR)" : "Scope: Manager (Hidden HR)") : (isVi ? "Phạm vi: Kinh doanh (Đã ẩn HR & NCC)" : "Scope: Sales (Hidden HR & Vendor)")}
               </span>
             </div>
           </div>
@@ -892,22 +1126,29 @@ export default function KnowledgeView({
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleBatchApprove}
-                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow hover:bg-emerald-700 transition-all flex items-center gap-1.5"
-              >
-                <Icon name="fa-solid fa-check-double text-[15px]" size={15} />
-                <span>{isVi ? "Duyệt hàng loạt (Approve)" : "Batch Approve"}</span>
-              </button>
-              <button
-                onClick={handleBatchReject}
-                className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow hover:bg-rose-700 transition-all flex items-center gap-1.5"
-              >
-                <Icon name="fa-solid fa-ban text-[15px]" size={15} />
-                <span>{isVi ? "Từ chối hàng loạt (Reject)" : "Batch Reject"}</span>
-              </button>
-            </div>
+            {isStandard ? (
+              <div className="bg-blue-100/70 border border-blue-300 text-blue-900 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <Icon name="fa-solid fa-shield-halved text-blue-600" size={15} />
+                <span>{isVi ? "Chế độ xem (Read-only): Chỉ Trưởng phòng & Quản trị viên mới có thẩm quyền phê duyệt trích xuất vào Đồ thị Tri thức." : "Read-only: Only Managers and Admins can approve graph extractions."}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleBatchApprove}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow hover:bg-emerald-700 transition-all flex items-center gap-1.5"
+                >
+                  <Icon name="fa-solid fa-check-double text-[15px]" size={15} />
+                  <span>{isVi ? "Duyệt hàng loạt (Approve)" : "Batch Approve"}</span>
+                </button>
+                <button
+                  onClick={handleBatchReject}
+                  className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow hover:bg-rose-700 transition-all flex items-center gap-1.5"
+                >
+                  <Icon name="fa-solid fa-ban text-[15px]" size={15} />
+                  <span>{isVi ? "Từ chối hàng loạt (Reject)" : "Batch Reject"}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Batch Selection Summary Table */}
@@ -919,9 +1160,10 @@ export default function KnowledgeView({
                     <th className="p-4 w-12 text-center">
                       <input
                         type="checkbox"
-                        checked={queueItems.every((q) => q.selected)}
+                        disabled={isStandard}
+                        checked={visibleQueueItems.length > 0 && visibleQueueItems.every((q) => q.selected)}
                         onChange={toggleSelectAllQueue}
-                        className="w-4 h-4 rounded text-primary border-outline-variant"
+                        className="w-4 h-4 rounded text-primary border-outline-variant disabled:opacity-50"
                       />
                     </th>
                     <th className="p-4">{isVi ? "Thực thể / Nguồn" : "Source Entity"}</th>
@@ -933,7 +1175,7 @@ export default function KnowledgeView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container">
-                  {queueItems.map((item) => (
+                  {visibleQueueItems.map((item) => (
                     <tr
                       key={item.id}
                       className={`hover:bg-surface-container-low/70 transition-colors ${
@@ -947,9 +1189,10 @@ export default function KnowledgeView({
                       <td className="p-4 text-center">
                         <input
                           type="checkbox"
+                          disabled={isStandard}
                           checked={item.selected}
                           onChange={() => toggleSelectQueue(item.id)}
-                          className="w-4 h-4 rounded text-primary border-outline-variant"
+                          className="w-4 h-4 rounded text-primary border-outline-variant disabled:opacity-50"
                         />
                       </td>
                       <td className="p-4">
@@ -992,6 +1235,11 @@ export default function KnowledgeView({
                             <span className="text-rose-700 font-bold text-[11px] flex items-center gap-1">
                               <Icon name="fa-solid fa-xmark" size={15} /> {isVi ? "Đã từ chối" : "Rejected"}
                             </span>
+                          ) : isStandard ? (
+                            <span className="text-on-surface-variant text-[11px] font-medium flex items-center gap-1 justify-end">
+                              <Icon name="fa-solid fa-lock text-on-surface-variant" size={12} />
+                              <span>{isVi ? "Chờ duyệt (Chỉ xem)" : "Read-only"}</span>
+                            </span>
                           ) : (
                             <>
                               <button
@@ -1029,10 +1277,12 @@ export default function KnowledgeView({
             <div className="p-4 bg-surface-container-low border-t border-surface-container flex flex-wrap items-center justify-between text-on-surface-variant text-xs gap-3">
               <span>
                 {isVi ? "Đã chọn" : "Selected"}{" "}
-                <strong className="text-on-surface">{queueItems.filter((q) => q.selected).length}</strong> / {queueItems.length} {isVi ? "mục trong hàng chờ duyệt hôm nay" : "items in queue"}
+                <strong className="text-on-surface">{visibleQueueItems.filter((q) => q.selected).length}</strong> / {visibleQueueItems.length} {isVi ? "mục hiển thị theo phân quyền" : "items in visible scope"}
               </span>
               <span className="text-primary font-semibold">
-                {isVi ? "Nhấn [Duyệt hàng loạt] để đồng bộ thẳng vào Neo4j Graph DB" : "Click [Batch Approve] to commit directly to Neo4j"}
+                {isStandard
+                  ? (isVi ? "🔒 Chế độ Chuyên viên kinh doanh: Chỉ đọc dữ liệu trích xuất hợp đồng & sản phẩm" : "🔒 Sales Specialist Scope: Read-only contract & product extractions")
+                  : (isVi ? "Nhấn [Duyệt hàng loạt] để đồng bộ thẳng vào Neo4j Graph DB" : "Click [Batch Approve] to commit directly to Neo4j")}
               </span>
             </div>
           </div>
@@ -1081,13 +1331,13 @@ export default function KnowledgeView({
                   onChange={(e) => setNewEntityType(e.target.value)}
                   className="w-full px-3 py-2 bg-surface-container-low rounded-xl text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="Customer">Customer (Khách hàng)</option>
-                  <option value="Product">Product (Sản phẩm)</option>
-                  <option value="Order">Order (Đơn hàng)</option>
-                  <option value="Employee">Employee (Nhân viên)</option>
-                  <option value="Vendor">Vendor (Nhà cung cấp)</option>
-                  <option value="Contract">Contract (Hợp đồng)</option>
-                  <option value="Clause">Clause (Điều khoản)</option>
+                  {allowedTaxonomies.includes("Customer") && <option value="Customer">Customer (Khách hàng)</option>}
+                  {allowedTaxonomies.includes("Product") && <option value="Product">Product (Sản phẩm)</option>}
+                  {allowedTaxonomies.includes("Order") && <option value="Order">Order / SalesOrder (Đơn hàng)</option>}
+                  {allowedTaxonomies.includes("Contract") && <option value="Contract">Contract (Hợp đồng)</option>}
+                  {allowedTaxonomies.includes("Clause") && <option value="Clause">Clause (Điều khoản)</option>}
+                  {allowedTaxonomies.includes("Vendor") && <option value="Vendor">Vendor / Company (Nhà cung cấp)</option>}
+                  {allowedTaxonomies.includes("Employee") && <option value="Employee">Employee (Nhân viên / HR)</option>}
                 </select>
               </div>
 

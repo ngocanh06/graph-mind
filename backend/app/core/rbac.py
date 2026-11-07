@@ -47,10 +47,10 @@ ROLE_DEPARTMENT_SCOPE = {
 
 # Entity labels allowed per role
 ALLOWED_ENTITY_LABELS = {
-    ROLE_EXECUTIVE: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Employee", "Vendor", "Company"},
-    ROLE_ADMIN: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Employee", "Vendor", "Company"},
-    ROLE_MANAGER: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Company"},
-    ROLE_STANDARD: {"Customer", "Product", "SalesOrder", "Contract", "Clause"}  # Excludes Employee (HR payroll / internal personnel)
+    ROLE_EXECUTIVE: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Employee", "Vendor", "Company", "Document", "Department", "Category", "SubCategory"},
+    ROLE_ADMIN: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Employee", "Vendor", "Company", "Document", "Department", "Category", "SubCategory"},
+    ROLE_MANAGER: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Company", "Vendor", "Document", "Department", "Category", "SubCategory"},
+    ROLE_STANDARD: {"Customer", "Product", "SalesOrder", "Contract", "Clause", "Document", "Department", "Category", "SubCategory"}  # Excludes Employee (HR payroll / internal personnel) and Vendor / Company
 }
 
 # Forbidden topics/keywords for Standard Sales User (HR payroll, employee directory, internal audit logs)
@@ -202,23 +202,68 @@ def check_data_scope_permission(query: str, role: str, scope: Optional[Any] = No
     return True, None
 
 
+def normalize_role_key(role: Optional[str]) -> str:
+    r = (role or "").strip().lower()
+    if r in ["admin", "it", "itadmin", "secops", "it_admin"]:
+        return ROLE_ADMIN
+    if r in ["ceo", "cfo", "lanhdao", "exec", "executive"]:
+        return ROLE_EXECUTIVE
+    if r in ["manager", "mgr", "tp", "lead", "truongphong", "knowledge_manager", "knowledge_mgr"]:
+        return ROLE_MANAGER
+    return ROLE_STANDARD
+
+
 def filter_graph_entities_by_scope(entities: List[Dict[str, Any]], role: str) -> List[Dict[str, Any]]:
     """Lọc danh sách các node thực thể Neo4j trả về tuân thủ Data Scope của role"""
-    clean_role = (role or "").strip().lower()
-    if is_privileged_role(clean_role):
+    canonical_role = normalize_role_key(role)
+    if is_privileged_role(canonical_role):
         return entities
 
-    allowed_labels = ALLOWED_ENTITY_LABELS.get(clean_role, ALLOWED_ENTITY_LABELS[ROLE_STANDARD])
+    allowed = ALLOWED_ENTITY_LABELS.get(canonical_role, ALLOWED_ENTITY_LABELS[ROLE_STANDARD])
     filtered = []
     for ent in entities:
         labels = ent.get("_labels") or []
         if isinstance(labels, str):
             labels = [labels]
-        # Nếu thực thể là Employee mà user là Standard User -> loại bỏ
-        if "Employee" in labels and clean_role == ROLE_STANDARD:
+        # Employee excluded for both Standard User and Knowledge Manager
+        if "Employee" in labels and canonical_role in [ROLE_STANDARD, ROLE_MANAGER]:
+            continue
+        # Vendor/Company excluded for Standard Sales User
+        if any(l in ["Vendor", "Company"] for l in labels) and canonical_role == ROLE_STANDARD:
+            continue
+        # Must have at least one allowed label
+        if labels and not any(l in allowed for l in labels):
             continue
         filtered.append(ent)
     return filtered
+
+
+def filter_graph_data_by_scope(
+    nodes: List[Dict[str, Any]],
+    relationships: List[Dict[str, Any]],
+    role: str
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Lọc cả node và quan hệ Neo4j theo phân quyền RBAC của role (loại bỏ cạnh treo)."""
+    filtered_nodes = filter_graph_entities_by_scope(nodes, role)
+    allowed_ids = {n["_id"] for n in filtered_nodes if "_id" in n}
+    filtered_rels = []
+    for r in relationships:
+        src = r.get("source")
+        tgt = r.get("target")
+        src_id = src.get("id") or src.get("_id") if isinstance(src, dict) else src
+        tgt_id = tgt.get("id") or tgt.get("_id") if isinstance(tgt, dict) else tgt
+        if src_id in allowed_ids and tgt_id in allowed_ids:
+            filtered_rels.append(r)
+    return filtered_nodes, filtered_rels
+
+
+def filter_label_counts_by_scope(label_counts: Dict[str, int], role: str) -> Dict[str, int]:
+    """Lọc danh sách đếm taxonomy hiển thị trên filter bar theo vai trò."""
+    canonical_role = normalize_role_key(role)
+    if is_privileged_role(canonical_role):
+        return label_counts
+    allowed = ALLOWED_ENTITY_LABELS.get(canonical_role, ALLOWED_ENTITY_LABELS[ROLE_STANDARD])
+    return {k: v for k, v in (label_counts or {}).items() if k in allowed}
 
 
 def filter_search_documents_by_scope(documents: List[Dict[str, Any]], role: str) -> List[Dict[str, Any]]:
