@@ -383,8 +383,8 @@ def apply_layer2_context_gate(
             "SystemStats" in ent_labels or
             "ComplianceReport" in ent_labels or
             "ContractPortfolio" in ent_labels or
-            ent_id in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"] or
-            ent_type in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+            ent_id == "total-documents-summary" or
+            ent_type == "total-documents-summary"
         )
         if is_summary:
             ent["is_system_summary"] = True
@@ -401,16 +401,18 @@ def apply_layer2_context_gate(
                 verified_entities.append(ent)
             continue
 
-        # B. Product / ERP entities
+        # B. Product / ERP / NL2Cypher Analytical entities
         is_product = (
-            "Product" in ent_labels or
-            "SalesOrder" in ent_labels or
-            "Customer" in ent_labels or
-            ent_type in ["Product", "SalesOrder", "Customer"]
+            any(l in [
+                "Product", "SalesOrder", "Customer", "Category", "SubCategory",
+                "FinancialTrend", "SchemaBoundary", "BusinessKPI", "ExecutiveReport", "Clarification"
+            ] for l in ent_labels) or
+            ent_type in ["Product", "SalesOrder", "Customer", "Category", "SubCategory"] or
+            bool(ent.get("grounded_answer"))
         )
         if is_product:
             ent["is_erp_entity"] = True
-            # Products can be used in structured answers if verified in Neo4j
+            # Products and verified ERP entities can be used in structured answers if verified in Neo4j
             verified_entities.append(ent)
             continue
 
@@ -1000,7 +1002,9 @@ async def ask_copilot(
         "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
         "sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike", "nhà cung cấp", "vendor",
         "cửa hàng", "store", "đại lý", "mountain", "road", "touring",
-        "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component"
+        "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component",
+        "bán chạy", "tồn kho", "aov", "arpc", "chi tiêu", "mua nhiều", "mua ít",
+        "danh mục sản phẩm", "category", "subcategory", "lợi nhuận", "doanh số"
     ])
 
     # 2.0 Document Identity & Provenance Gate: Check if query specifically targets a known document
@@ -1016,7 +1020,10 @@ async def ask_copilot(
         "he", "thong", "quy", "dinh", "bao", "cao", "nguoi", "phu", "trach", "giam", "doc",
         "systems", "system", "corp", "corporation", "company", "agreement", "inc", "ltd", "llc",
         "group", "holdings", "media", "services", "service", "contract", "contracts",
-        "cuad", "adventureworks", "erp", "dataset", "datasets", "chi", "so", "co", "cau", "muc", "loai"
+        "cuad", "adventureworks", "erp", "dataset", "datasets", "chi", "so", "co", "cau", "muc", "loai",
+        "customer", "customers", "product", "products", "category", "categories", "subcategory",
+        "salesorder", "bikes", "components", "clothing", "accessories", "mountain", "touring",
+        "revenue", "subtotal", "totaldue", "listprice", "orderqty", "linetotal"
     }
     try:
         # A. Explicit document_id passed in request
@@ -1031,8 +1038,8 @@ async def ask_copilot(
                 active_target_doc = doc_matches[0]["name"]
                 target_doc_id = doc_matches[0]["id"]
 
-        # B. Exact ID or Document Name directly in current query
-        if not active_target_doc:
+        # B. Exact ID or Document Name directly in current query (skip partial token matching for pure ERP queries)
+        if not active_target_doc and (is_doc_repo_query or not is_business_semantic_query or any(ext in q_lower for ext in [".pdf", ".docx", ".xlsx", ".txt", ".csv"])):
             doc_matches = neo4j_client.run_cypher("""
                 MATCH (d:Document)
                 WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
@@ -1044,7 +1051,7 @@ async def ask_copilot(
                 raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
                 candidate_tokens = [
                     t for t in raw_tokens
-                    if t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
+                    if not t.isdigit() and t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
                 ]
                 for t in sorted(candidate_tokens, key=len, reverse=True):
                     doc_matches = neo4j_client.run_cypher("""
@@ -1390,8 +1397,12 @@ async def ask_copilot(
                 "snippet": f"Tài liệu {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}, gồm {d0.get('chunksCount')} đoạn vector đã lập chỉ mục vào Neo4j và Qdrant."
             })
     else:
-        # Structured or general query: execute text-to-cypher
-        graph_hits = execute_text_to_cypher(clean_query)
+        # Structured or general query: execute text-to-cypher (with multi-turn session context)
+        graph_hits = execute_text_to_cypher(
+            clean_query,
+            session_id=str(session_obj.id) if session_obj else "default",
+            history_messages=(session_obj.messages if session_obj else None),
+        )
         if not graph_hits:
             stop_words = {"tài", "liệu", "trong", "cho", "tôi", "biết", "các", "có", "bao", "nhiêu", "chính", "cụ", "thể", "từng", "là", "gì", "của", "phòng", "về"}
             meaningful_words = [w for w in clean_query.split() if len(w) >= 3 and w.lower() not in stop_words]
@@ -1405,9 +1416,13 @@ async def ask_copilot(
                     graph_hits.extend(matches)
                     break
 
-        # If query is a system inventory summary (e.g. total documents count, compliance rate),
+        # If query is a system inventory summary or a verified NL2Cypher analytical query,
         # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
-        if any(gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"] for gh in graph_hits):
+        if any(
+            gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+            or gh.get("grounded_answer")
+            for gh in graph_hits
+        ):
             vector_hits = []
 
         # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
@@ -1525,11 +1540,11 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
-            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
                 return True
             if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
-            if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory"] for l in labels):
+            if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory", "Category", "SubCategory", "FinancialTrend", "BusinessKPI"] for l in labels):
                 return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
             rt = resolve_resource_type(gh)
             return rt in scope.allowed_resources
@@ -1735,8 +1750,8 @@ async def ask_copilot(
                 })
                 continue
 
-            # B. Product / ERP: add chip and structured Neo4j graph citation
-            if ent.get("is_erp_entity") or any(l in ["Product", "SalesOrder", "Customer"] for l in ent_labels):
+            # B. Product / ERP / NL2Cypher Analytical: add chip and structured Neo4j graph citation
+            if ent.get("is_erp_entity") or any(l in ["Product", "SalesOrder", "Customer", "Category", "SubCategory", "FinancialTrend", "SchemaBoundary", "BusinessKPI", "ExecutiveReport", "Clarification"] for l in ent_labels):
                 c_id = ent.get("CustomerID") or ent.get("id") or node_clean_id
                 evidence_chips.append({
                     "id": f"graph_{node_clean_id}",
