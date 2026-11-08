@@ -15,8 +15,18 @@ if str(BACKEND_DIR) not in sys.path:
 
 try:
     from app.db.neo4j.client import neo4j_client
+    from app.modules.m3_hybrid_copilot.query_engine.nl2cypher_engine import (
+        planner as _nl2cypher_planner,
+        query_builder as _nl2cypher_builder,
+        analytics_engine as _nl2cypher_engine,
+    )
 except ImportError:
     from db.neo4j.client import neo4j_client
+    from modules.m3_hybrid_copilot.query_engine.nl2cypher_engine import (
+        planner as _nl2cypher_planner,
+        query_builder as _nl2cypher_builder,
+        analytics_engine as _nl2cypher_engine,
+    )
 
 # Mutating keywords strictly forbidden
 FORBIDDEN_KEYWORDS = {"CREATE", "DELETE", "MERGE", "SET", "REMOVE", "DROP", "ALTER", "DETACH"}
@@ -140,16 +150,21 @@ def generate_cypher_from_query(query: str) -> str:
         """
 
     # 0.05 Contract Category Distribution & Portfolio queries
-    if any(k in q_lower for k in [
-        "cơ cấu danh mục", "phân bố danh mục", "loại hợp đồng phổ biến", "cơ cấu hợp đồng", 
-        "danh mục hợp đồng", "loại hợp đồng", "phân bố hợp đồng", "cơ cấu tài liệu", 
-        "phân bố tài liệu", "danh mục tài liệu", "phân tích cơ cấu", "hợp đồng cuad", "cuad",
-        "theo phòng ban"
-    ]):
+    if (
+        any(k in q_lower for k in [
+            "cơ cấu danh mục", "phân bố danh mục", "loại hợp đồng phổ biến", "cơ cấu hợp đồng", 
+            "danh mục hợp đồng", "loại hợp đồng", "phân bố hợp đồng", "cơ cấu tài liệu", 
+            "phân bố tài liệu", "danh mục tài liệu", "phân tích cơ cấu", "hợp đồng cuad", "cuad",
+            "theo phòng ban"
+        ])
+        and "danh mục sản phẩm" not in q_lower
+        and "mỗi danh mục có bao nhiêu sản phẩm" not in q_lower
+    ):
         return f"""
         MATCH (d:Document)
         WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
-        WITH d, 
+        WITH d.id AS doc_id, count(d) AS occurrences, collect(d)[0] AS d
+        WITH doc_id, occurrences, d,
              CASE 
                WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(pháp chế|legal|hợp đồng).*' THEN 'Pháp chế (Legal)'
                WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(kinh doanh|sales).*' THEN 'Kinh doanh (Sales)'
@@ -158,11 +173,12 @@ def generate_cypher_from_query(query: str) -> str:
                WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(công nghệ|it|cntt).*' THEN 'Công nghệ thông tin (IT)'
                ELSE 'Phòng ban khác'
              END AS canon_dept
-        WITH canon_dept, count(d) AS doc_count
+        WITH canon_dept, count(doc_id) AS doc_count, max(occurrences) AS max_occ
         ORDER BY doc_count DESC
-        WITH collect({{dept: canon_dept, count: doc_count}}) AS deptList, sum(doc_count) AS totalDocs
+        WITH collect({{dept: canon_dept, count: doc_count}}) AS deptList, sum(doc_count) AS totalDocs, max(max_occ) AS max_occ
         RETURN 'Phân bố Danh mục ' + toString(totalDocs) + ' Tài liệu & Hợp đồng theo Phòng ban' AS name,
                totalDocs,
+               max_occ,
                'Toàn hệ thống hiện có ' + toString(totalDocs) + ' tài liệu/văn bản đang hoạt động trong kho tri thức, phân bổ theo 5 phòng ban chính: ' +
                reduce(s = '', item in deptList | s + (case when s = '' then '' else '; ' end) + item.dept + ': ' + toString(item.count) + ' tài liệu (' + toString(round(toFloat(item.count) * 100.0 / toFloat(totalDocs), 1)) + '%)') AS snippet,
                'portfolio-breakdown' AS _id,
@@ -262,7 +278,8 @@ def generate_cypher_from_query(query: str) -> str:
         "tài liệu", "văn bản", "document", "hồ sơ", "file", "tập tin", "quy hoạch",
         "tuyến tính", "mô hình", "bài toán", "nghiên cứu", "r&d"
     ]
-    if any(k in q_lower for k in doc_triggers):
+    is_erp_query = any(k in q_lower for k in ["khách hàng", "customer", "sản phẩm", "product", "đơn hàng", "salesorder", "doanh thu", "revenue", "danh mục sản phẩm"])
+    if any(k in q_lower for k in doc_triggers) and not is_erp_query:
         stop_words = {
             "hợp", "đồng", "the", "and", "cho", "các", "tìm", "tài", "liệu", "văn", "bản",
             "trong", "này", "về", "có", "bao", "nhiêu", "chính", "cụ", "thể", "từng", "là",
@@ -289,196 +306,15 @@ def generate_cypher_from_query(query: str) -> str:
         LIMIT 8
         """
 
-    # 3. AdventureWorks Customer queries (separated by product volume vs order count vs revenue)
-    if any(k in q_lower for k in ["khách hàng", "customer", "crm", "vip", "đối tác mua hàng", "ai mua", "người mua"]):
-        # 3A. Product quantity / volume (e.g. "mua nhiều sản phẩm nhất", "số lượng sản phẩm")
-        if any(k in q_lower for k in ["nhiều sản phẩm", "sản phẩm nhiều", "số lượng sản phẩm", "số lượng mua", "món hàng", "loại sản phẩm", "product", "quantity", "volume"]) or ("sản phẩm" in q_lower and any(w in q_lower for w in ["nhiều", "cao nhất", "lớn nhất", "top", "mua"])):
-            return """
-            MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p:Product)
-            WITH c, count(DISTINCT o) AS order_count,
-                 sum(coalesce(r.OrderQty, 0)) AS totalQty,
-                 count(DISTINCT p) AS distinctProducts,
-                 round(sum(coalesce(r.lineTotal, 0.0)), 2) AS totalProductSpent
-            ORDER BY totalQty DESC, distinctProducts DESC
-            LIMIT 6
-            WITH collect({c: c, order_count: order_count, totalQty: totalQty, distinctProducts: distinctProducts, totalProductSpent: totalProductSpent}) AS rows
-            UNWIND range(0, size(rows)-1) AS idx
-            WITH rows[idx] AS r, (idx + 1) AS rank
-            WITH r.c AS c, r.order_count AS order_count, r.totalQty AS totalQty, r.distinctProducts AS distinctProducts, r.totalProductSpent AS totalProductSpent, rank,
-                 CASE
-                   WHEN r.c.FirstName IS NOT NULL AND r.c.LastName IS NOT NULL THEN r.c.FirstName + ' ' + r.c.LastName + ' (#' + toString(r.c.id) + ')'
-                   WHEN r.c.name IS NOT NULL THEN r.c.name
-                   ELSE 'Customer #' + toString(r.c.id)
-                 END AS custName
-            RETURN custName AS name,
-                   c.id AS CustomerID,
-                   order_count,
-                   totalQty,
-                   distinctProducts,
-                   totalProductSpent,
-                   rank,
-                   CASE 
-                     WHEN rank = 1 THEN 'Khách hàng ' + custName + ' [Xếp hạng #1 - Mua nhiều sản phẩm nhất]: Tổng cộng ' + toString(totalQty) + ' sản phẩm (' + toString(distinctProducts) + ' loại sản phẩm) qua ' + toString(order_count) + ' đơn hàng, tổng giá trị $' + toString(totalProductSpent) + ' USD.'
-                     ELSE 'Khách hàng ' + custName + ' [Xếp hạng #' + toString(rank) + ']: Đã mua ' + toString(totalQty) + ' sản phẩm (' + toString(distinctProducts) + ' loại sản phẩm) qua ' + toString(order_count) + ' đơn hàng, tổng giá trị $' + toString(totalProductSpent) + ' USD.'
-                   END AS snippet,
-                   elementId(c) AS _id, ['Customer'] AS _labels
-            ORDER BY rank ASC
-            """
-
-        # 3B. Order count (e.g. "nhiều đơn hàng nhất", "lượng đơn", "số đơn")
-        if any(k in q_lower for k in ["nhiều đơn", "số đơn", "lượng đơn", "order count", "most orders", "lần mua"]):
-            return """
-            MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
-            WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
-            ORDER BY order_count DESC, totalSpent DESC
-            LIMIT 6
-            WITH collect({c: c, order_count: order_count, totalSpent: totalSpent}) AS rows
-            UNWIND range(0, size(rows)-1) AS idx
-            WITH rows[idx] AS r, (idx + 1) AS rank
-            WITH r.c AS c, r.order_count AS order_count, r.totalSpent AS totalSpent, rank,
-                 CASE
-                   WHEN r.c.FirstName IS NOT NULL AND r.c.LastName IS NOT NULL THEN r.c.FirstName + ' ' + r.c.LastName + ' (#' + toString(r.c.id) + ')'
-                   WHEN r.c.name IS NOT NULL THEN r.c.name
-                   ELSE 'Customer #' + toString(r.c.id)
-                 END AS custName
-            RETURN custName AS name,
-                   c.id AS CustomerID,
-                   order_count,
-                   totalSpent,
-                   rank,
-                   CASE
-                     WHEN rank = 1 THEN 'Khách hàng ' + custName + ' [Xếp hạng #1 - Nhiều đơn hàng nhất]: Đứng đầu với ' + toString(order_count) + ' đơn hàng, tổng chi tiêu $' + toString(totalSpent) + ' USD.'
-                     ELSE 'Khách hàng ' + custName + ' [Xếp hạng #' + toString(rank) + ']: Đạt ' + toString(order_count) + ' đơn hàng, tổng chi tiêu $' + toString(totalSpent) + ' USD.'
-                   END AS snippet,
-                   elementId(c) AS _id, ['Customer'] AS _labels
-            ORDER BY rank ASC
-            """
-
-        # 3C. Revenue / Financial spending / VIP (default customer ranking)
-        return """
-        MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
-        WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
-        ORDER BY totalSpent DESC
-        LIMIT 6
-        WITH collect({c: c, order_count: order_count, totalSpent: totalSpent}) AS rows
-        UNWIND range(0, size(rows)-1) AS idx
-        WITH rows[idx] AS r, (idx + 1) AS rank
-        WITH r.c AS c, r.order_count AS order_count, r.totalSpent AS totalSpent, rank,
-                 CASE
-                   WHEN r.c.FirstName IS NOT NULL AND r.c.LastName IS NOT NULL THEN r.c.FirstName + ' ' + r.c.LastName + ' (#' + toString(r.c.id) + ')'
-                   WHEN r.c.name IS NOT NULL THEN r.c.name
-                   ELSE 'Customer #' + toString(r.c.id)
-                 END AS custName
-        RETURN custName AS name,
-               c.id AS CustomerID,
-               order_count,
-               totalSpent,
-               rank,
-               CASE
-                 WHEN rank = 1 THEN 'Khách hàng ' + custName + ' [Xếp hạng #1 - Doanh thu cao nhất]: Tổng chi tiêu $' + toString(totalSpent) + ' USD qua ' + toString(order_count) + ' đơn hàng.'
-                 ELSE 'Khách hàng ' + custName + ' [Xếp hạng #' + toString(rank) + ']: Chi tiêu $' + toString(totalSpent) + ' USD qua ' + toString(order_count) + ' đơn hàng.'
-               END AS snippet,
-               elementId(c) AS _id, ['Customer'] AS _labels
-        ORDER BY rank ASC
-        """
-
-    # 4. Revenue / Financial Trends / Growth queries
-    if any(k in q_lower for k in ["doanh thu", "xu hướng", "revenue", "tăng trưởng", "giao dịch", "tài chính", "trend"]):
-        return """
-        MATCH (s:SalesOrder)
-        WHERE s.orderDate IS NOT NULL OR s.OrderDate IS NOT NULL
-        WITH substring(toString(coalesce(s.orderDate, s.OrderDate)), 0, 4) AS year,
-              count(s) AS totalOrders,
-              round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)), 2) AS totalDueExact,
-              round(sum(coalesce(s.subTotal, s.SubTotal, 0.0)), 2) AS subTotalExact,
-              round(sum(coalesce(s.totalDue, s.TotalDue, 0.0)) / 1000000.0, 2) AS totalMillions,
-              round(sum(coalesce(s.subTotal, s.SubTotal, 0.0)) / 1000000.0, 2) AS subTotalMillions
-        RETURN 'Doanh thu năm ' + year AS name,
-               'Năm ' + year + ': Doanh thu gộp (TotalDue) đạt $' + toString(totalMillions) + 'M USD, doanh thu thuần sản phẩm (SubTotal) đạt $' + toString(subTotalMillions) + 'M USD qua ' + toString(totalOrders) + ' đơn hàng.' AS snippet,
-               year, totalDueExact, subTotalExact, totalMillions, subTotalMillions, totalOrders,
-               'trend-' + year AS _id, ['FinancialTrend', 'SalesOrder'] AS _labels
-        ORDER BY year ASC
-        """
-
-    # 5. AdventureWorks Product queries
-    if any(k in q_lower for k in ["sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike"]):
-        # 5A. Best-selling products by quantity / sales volume
-        if any(k in q_lower for k in ["bán chạy", "doanh số", "số lượng bán", "lượng bán", "chạy nhất", "mua nhiều"]):
-            return """
-            MATCH (o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p:Product)
-            WITH p, coalesce(p.name, p.title, p.Name) AS prod_name,
-                 sum(coalesce(r.OrderQty, 0)) AS totalQty,
-                 count(DISTINCT o) AS orderCount,
-                 round(sum(coalesce(r.lineTotal, 0.0)), 2) AS totalSales
-            ORDER BY totalQty DESC, totalSales DESC
-            LIMIT 6
-            WITH collect({p: p, prod_name: prod_name, totalQty: totalQty, orderCount: orderCount, totalSales: totalSales}) AS rows
-            UNWIND range(0, size(rows)-1) AS idx
-            WITH rows[idx] AS r, (idx + 1) AS rank
-            RETURN r.prod_name AS name,
-                   coalesce(r.p.id, r.p.ProductID) AS ProductID,
-                   r.totalQty AS TotalQty,
-                   r.totalSales AS TotalSales,
-                   rank,
-                   CASE
-                     WHEN rank = 1 THEN 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #1 - Bán chạy nhất]: Đã bán ' + toString(r.totalQty) + ' sản phẩm qua ' + toString(r.orderCount) + ' đơn hàng, tổng doanh thu $' + toString(r.totalSales) + ' USD.'
-                     ELSE 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #' + toString(rank) + ']: Đã bán ' + toString(r.totalQty) + ' sản phẩm qua ' + toString(r.orderCount) + ' đơn hàng, tổng doanh thu $' + toString(r.totalSales) + ' USD.'
-                   END AS snippet,
-                   elementId(r.p) AS _id, ['Product'] AS _labels
-            ORDER BY rank ASC
-            """
-
-        # 5B. Lowest price / cheapest products
-        if any(k in q_lower for k in ["giá rẻ", "rẻ nhất", "thấp nhất", "ít tiền nhất"]):
-            return """
-            MATCH (p:Product)
-            WHERE coalesce(p.ListPrice, p.listPrice, p.price, 0.0) > 0.0
-            WITH p, coalesce(p.name, p.title, p.Name) AS prod_name, round(coalesce(p.ListPrice, p.listPrice, p.price, 0.0), 2) AS price_val
-            ORDER BY price_val ASC, prod_name ASC
-            LIMIT 6
-            WITH collect({p: p, prod_name: prod_name, price_val: price_val}) AS rows
-            UNWIND range(0, size(rows)-1) AS idx
-            WITH rows[idx] AS r, (idx + 1) AS rank
-            RETURN r.prod_name AS name, coalesce(r.p.id, r.p.ProductID) AS ProductID, r.price_val AS ListPrice, rank,
-                   CASE
-                     WHEN rank = 1 THEN 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #1 - Giá thấp nhất]: Giá niêm yết $' + toString(r.price_val) + ' USD (Mã SP #' + toString(coalesce(r.p.id, r.p.ProductID)) + ').'
-                     ELSE 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #' + toString(rank) + ']: Giá niêm yết $' + toString(r.price_val) + ' USD.'
-                   END AS snippet,
-                   elementId(r.p) AS _id, ['Product'] AS _labels
-            ORDER BY rank ASC
-            """
-
-        # 5C. Highest price / highest value / default product ranking
-        return """
-        MATCH (p:Product)
-        WHERE coalesce(p.ListPrice, p.listPrice, p.price, 0.0) > 0.0
-        WITH p, coalesce(p.name, p.title, p.Name) AS prod_name, round(coalesce(p.ListPrice, p.listPrice, p.price, 0.0), 2) AS price_val
-        ORDER BY price_val DESC, prod_name ASC
-        LIMIT 6
-        WITH collect({p: p, prod_name: prod_name, price_val: price_val}) AS rows
-        UNWIND range(0, size(rows)-1) AS idx
-        WITH rows[idx] AS r, (idx + 1) AS rank
-        RETURN r.prod_name AS name, coalesce(r.p.id, r.p.ProductID) AS ProductID, r.price_val AS ListPrice, rank,
-               CASE
-                 WHEN rank = 1 THEN 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #1 - Giá trị cao nhất]: Giá niêm yết $' + toString(r.price_val) + ' USD (Mã SP #' + toString(coalesce(r.p.id, r.p.ProductID)) + ').'
-                 ELSE 'Sản phẩm ' + r.prod_name + ' [Xếp hạng #' + toString(rank) + ']: Giá niêm yết $' + toString(r.price_val) + ' USD.'
-               END AS snippet,
-               elementId(r.p) AS _id, ['Product'] AS _labels
-        ORDER BY rank ASC
-        """
-
-    # 6. AdventureWorks SalesOrder queries
-    if any(k in q_lower for k in ["đơn hàng", "order", "sales"]):
-        return """
-        MATCH (o:SalesOrder)
-        WITH o, coalesce(o.salesOrderId, o.id) AS oid, coalesce(o.totalDue, 0.0) AS due, toString(coalesce(o.orderDate, '')) AS oDate
-        RETURN 'Đơn hàng #' + toString(oid) AS name,
-               oid AS SalesOrderID, round(due, 2) AS TotalDue, oDate AS OrderDate,
-               'Đơn hàng #' + toString(oid) + ': Giá trị $' + toString(round(due, 2)) + ' USD, ngày đặt ' + oDate AS snippet,
-               elementId(o) AS _id, ['SalesOrder'] AS _labels
-        ORDER BY due DESC
-        LIMIT 6
-        """
+    # 3. Delegate ERP Analytical Queries (Customer, Product, Category, SalesOrder, Time-Series, Comparison, KPI, Conditional, Retrieval) to NL2Cypher Engine
+    plan = _nl2cypher_planner.plan(query)
+    if plan.intent in [
+        "RANKING", "AGGREGATION", "COMPARISON", "TIME_SERIES",
+        "CONDITIONAL", "FORMULA_KPI", "RETRIEVAL", "CAUSAL_ANALYSIS", "EXECUTIVE_REPORT"
+    ]:
+        built_cypher = _nl2cypher_builder.build(plan)
+        if built_cypher:
+            return built_cypher
 
     # 5. Default Property Search Fallback across all nodes
     # Guard against generic Vietnamese/English stop words so queries without entity terms do not perform
@@ -519,8 +355,34 @@ def generate_cypher_from_query(query: str) -> str:
     """
 
 
-def execute_text_to_cypher(query: str) -> List[Dict[str, Any]]:
+def execute_text_to_cypher(
+    query: str,
+    session_id: Optional[str] = None,
+    history_messages: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
     """Generates and safely executes Cypher query on Neo4j."""
+    q_lower = query.lower()
+    is_cuad_doc_or_clause = (
+        any(k in q_lower for k in [
+            "tài liệu", "văn bản", "hợp đồng", "cuad", "điều khoản", "tuân thủ",
+            "compliance", "termination", "liability", "indemnification", "governing law",
+            "confidentiality", "audit rights", "non-compete", "quy hoạch", "tuyến tính"
+        ])
+        and not any(e in q_lower for e in ["khách hàng", "sản phẩm", "doanh thu", "danh mục sản phẩm"])
+    )
+
+    if not is_cuad_doc_or_clause:
+        plan = _nl2cypher_planner.plan(query, session_id=session_id, history_messages=history_messages)
+        if plan.intent in [
+            "RANKING", "AGGREGATION", "COMPARISON", "TIME_SERIES",
+            "CONDITIONAL", "FORMULA_KPI", "RETRIEVAL", "CAUSAL_ANALYSIS",
+            "EXECUTIVE_REPORT", "AMBIGUOUS", "UNSUPPORTED_METRIC"
+        ]:
+            res = _nl2cypher_engine.execute_pipeline(
+                query, session_id=session_id, history_messages=history_messages
+            )
+            return res.get("graph_entities", [])
+
     cypher = generate_cypher_from_query(query)
     
     # Security check: Read-only enforcement
