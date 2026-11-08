@@ -1007,6 +1007,24 @@ async def ask_copilot(
         "danh mục sản phẩm", "category", "subcategory", "lợi nhuận", "doanh số"
     ])
 
+    is_doc_content_query = any(k in q_lower for k in [
+        "trình bày", "nội dung", "tóm tắt", "giải thích", "nói về", "cho tôi biết nội dung",
+        "nội dung chính", "các điều khoản chính", "nội dung file", "nội dung tài liệu", "hợp đồng này",
+        "chi tiết hợp đồng", "văn bản này", "nói về điều gì", "ý nghĩa", "review", "đọc file",
+        "thông tin file", "thông tin tài liệu", "tổng quan"
+    ])
+
+    is_doc_metadata_query = any(k in q_lower for k in [
+        "mã hồ sơ", "mã tài liệu", "phòng ban nào", "ai tải lên", "khi nào", "bao nhiêu chunk",
+        "bao nhiêu đoạn", "lập chỉ mục", "indexing", "metadata", "dung lượng", "hash"
+    ])
+
+    is_doc_clause_query = any(k in q_lower for k in [
+        "điều khoản", "clause", "bồi thường", "indemnif", "chấm dứt", "termination",
+        "trách nhiệm", "liability", "luật áp dụng", "governing law", "bảo mật", "confidential",
+        "chuyển nhượng", "transfer", "cổ phần", "share purchase", "thời hạn", "term"
+    ]) and not is_doc_metadata_query
+
     # 2.0 Document Identity & Provenance Gate: Check if query specifically targets a known document
     active_target_doc = None
     target_doc_id = None
@@ -1282,12 +1300,51 @@ async def ask_copilot(
     vector_hits = []
     # 2.1 Route to relevant Qdrant vector collections
     if active_target_doc or target_doc_id:
-        # STRICT DOCUMENT ISOLATION (Requirement 3):
+        # STRICT DOCUMENT ISOLATION & SEQUENTIAL EXTRACTION (GraphRAG Document Understanding):
         # When a specific document is identified, strictly scope search to cuad_contracts with doc_filter.
         # Absolutely DO NOT query or mix adventureworks_entities ERP data!
-        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-        min_score = 0.01 if doc_filter else 0.25
-        vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
+        if is_doc_content_query:
+            ordered_chunks = qdrant_client.get_document_chunks(
+                doc_id=target_doc_id,
+                contract_name=active_target_doc,
+                collection_name="cuad_contracts",
+                limit=50
+            )
+            if ordered_chunks:
+                selected = []
+                # Preamble / Header chunks (chunk 0, 1) are mandatory
+                for ch in ordered_chunks[:2]:
+                    selected.append(ch)
+                # Find key structural article chunks
+                for ch in ordered_chunks[2:]:
+                    txt = (ch.get("text") or "").lower()
+                    if any(term in txt for term in ["article", "section", "agree", "obligation", "term", "law", "liability", "indemn"]):
+                        if ch not in selected:
+                            selected.append(ch)
+                    if len(selected) >= 5:
+                        break
+                for ch in ordered_chunks:
+                    if len(selected) >= 5:
+                        break
+                    if ch not in selected:
+                        selected.append(ch)
+                vector_hits = selected
+            else:
+                cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+                vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.01]
+        elif is_doc_clause_query:
+            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
+            head_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=2)
+            vector_hits = []
+            if head_chunks:
+                vector_hits.append(head_chunks[0])
+            for ch in cuad_hits:
+                if not any(h.get("id") == ch.get("id") for h in vector_hits):
+                    vector_hits.append(ch)
+        else:
+            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+            min_score = 0.01 if doc_filter else 0.25
+            vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
     elif is_doc_repo_query and is_business_semantic_query:
         # Cross-domain query: search both collections and sort by cosine score
         cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
@@ -1358,10 +1415,15 @@ async def ask_copilot(
                         {"key": "document_id", "match": {"value": target_doc_id}},
                     ]
                 }
-                # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
-                deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-                if deep_hits:
-                    vector_hits = deep_hits
+                if is_doc_content_query:
+                    ordered_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=50)
+                    if ordered_chunks:
+                        vector_hits = ordered_chunks[:5]
+                else:
+                    # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
+                    deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+                    if deep_hits:
+                        vector_hits = deep_hits
 
     graph_hits = []
     if active_target_doc or target_doc_id:
@@ -1387,6 +1449,11 @@ async def ask_copilot(
 
         if doc_nodes and len(doc_nodes) == 1:
             d0 = doc_nodes[0]
+            if is_doc_content_query:
+                doc_snippet = f"Tài liệu / Hợp đồng: {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}."
+            else:
+                doc_snippet = f"Tài liệu {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}, gồm {d0.get('chunksCount')} đoạn vector đã lập chỉ mục vào Neo4j và Qdrant."
+
             graph_hits.append({
                 "_id": d0.get("_id") or d0.get("id"),
                 "_labels": ["Document", d0.get("dept")],
@@ -1394,7 +1461,9 @@ async def ask_copilot(
                 "id": d0.get("id"),
                 "document_id": d0.get("id"),
                 "source_file": d0.get("name"),
-                "snippet": f"Tài liệu {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}, gồm {d0.get('chunksCount')} đoạn vector đã lập chỉ mục vào Neo4j và Qdrant."
+                "department": d0.get("dept"),
+                "snippet": doc_snippet,
+                "is_content_query": is_doc_content_query,
             })
     else:
         # Structured or general query: execute text-to-cypher (with multi-turn session context)
@@ -1634,7 +1703,7 @@ async def ask_copilot(
         answer_text = gen_result.get("answer") or ""
         latency = gen_result.get("latency", 1.25)
         model_display = gen_result.get("model", f"{llm_client.model} (Ollama Local)")
-        confidence_score = 80 if fused_results else 60
+        confidence_score = 90 if (is_doc_content_query and verified_chunks) else (80 if fused_results else 60)
 
         # Build citations & chips strictly from evidence serialized into prompt
         used_chunks = gen_result.get("used_chunks", verified_chunks)
