@@ -25,7 +25,7 @@ def normalize_role_code(role: str) -> str:
     r = (role or "").strip().lower()
     if r in ("admin", "it_admin", "administrator", "secops", "it"):
         return "ADMIN"
-    if r in ("executive", "exec", "lanh_dao", "leadership", "ceo", "cfo"):
+    if r in ("executive", "exec", "lanh_dao", "leadership", "ceo", "cfo", "executive_director", "executive director", "director"):
         return "EXECUTIVE"
     if r in ("department_manager", "knowledge_manager", "knowledge_mgr", "manager", "quan_ly", "mgr", "tp", "lead"):
         return "DEPARTMENT_MANAGER"

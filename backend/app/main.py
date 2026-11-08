@@ -81,12 +81,22 @@ try:
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
     from app.modules.m3_hybrid_copilot.query_engine.context_fusion import reciprocal_rank_fusion
     from app.modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
-    from app.core.rbac import filter_search_documents_by_scope
+    from app.core.rbac import (
+        filter_search_documents_by_scope,
+        filter_graph_entities_by_scope,
+        filter_graph_data_by_scope,
+        filter_label_counts_by_scope
+    )
 except ImportError:
     from modules.m3_hybrid_copilot.inference.client import llm_client
     from modules.m3_hybrid_copilot.query_engine.context_fusion import reciprocal_rank_fusion
     from modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
-    from core.rbac import filter_search_documents_by_scope
+    from core.rbac import (
+        filter_search_documents_by_scope,
+        filter_graph_entities_by_scope,
+        filter_graph_data_by_scope,
+        filter_label_counts_by_scope
+    )
 
 
 try:
@@ -604,7 +614,7 @@ def get_llmops():
 # ============================================================================
 
 @app.get("/api/neo4j/status")
-def get_neo4j_status():
+def get_neo4j_status(role: Optional[str] = Query(default=None)):
     connected = neo4j_client.is_connected or neo4j_client.connect()
     if not connected:
         return {
@@ -617,6 +627,9 @@ def get_neo4j_status():
                 "labelCounts": {}
             }
         }
+    label_counts = neo4j_client.get_label_counts()
+    if role:
+        label_counts = filter_label_counts_by_scope(label_counts, role)
     return {
         "success": True,
         "data": {
@@ -624,7 +637,7 @@ def get_neo4j_status():
             "uri": os.getenv("NEO4J_URI", "bolt://localhost:7687"),
             "nodeCount": neo4j_client.get_node_count(),
             "relationshipCount": neo4j_client.get_relationship_count(),
-            "labelCounts": neo4j_client.get_label_counts(),
+            "labelCounts": label_counts,
         }
     }
 
@@ -635,9 +648,10 @@ def get_knowledge_graph(
     rel_limit: int = Query(default=200, ge=1, le=2000),
     label: Optional[str] = Query(default=None),
     domain: Optional[str] = Query(default=None),
-    rel_type: Optional[str] = Query(default=None)
+    rel_type: Optional[str] = Query(default=None),
+    role: Optional[str] = Query(default=None)
 ):
-    """Returns nodes and relationships from live Neo4j database with domain and relationship filters."""
+    """Returns nodes and relationships from live Neo4j database with domain and relationship filters, scoped by role RBAC."""
     connected = neo4j_client.is_connected or neo4j_client.connect()
     if not connected:
         raise HTTPException(status_code=503, detail="Neo4j database is currently offline or unreachable.")
@@ -650,10 +664,16 @@ def get_knowledge_graph(
         rels = [r for r in rels if r.get("type", "").upper() == clean_rel]
     label_counts = neo4j_client.get_label_counts()
 
+    # Enforce RBAC filtering on nodes, edges, and label taxonomy counts
+    if role:
+        nodes, rels = filter_graph_data_by_scope(nodes, rels, role)
+        label_counts = filter_label_counts_by_scope(label_counts, role)
+
     return {
         "success": True,
         "source": "neo4j",
         "domain": domain or "all",
+        "role": role or "all",
         "data": {
             "nodes": nodes,
             "relationships": rels,
@@ -668,43 +688,73 @@ def get_knowledge_graph(
     }
 
 @app.get("/api/neo4j/expand/{node_id:path}")
-def expand_neo4j_node(node_id: str, limit: int = Query(default=25, ge=1, le=100)):
-    """Fetch 1-hop connected neighbor nodes and edges for expanding graph canvas."""
+def expand_neo4j_node(
+    node_id: str,
+    limit: int = Query(default=25, ge=1, le=100),
+    role: Optional[str] = Query(default=None)
+):
+    """Fetch 1-hop connected neighbor nodes and edges for expanding graph canvas, scoped by RBAC."""
     connected = neo4j_client.is_connected or neo4j_client.connect()
     if not connected:
         raise HTTPException(status_code=503, detail="Neo4j database is currently offline or unreachable.")
     result = neo4j_client.expand_node_neighbors(node_id=node_id, limit=limit)
+    raw_nodes = result.get("nodes", [])
+    raw_rels = result.get("relationships", [])
+    if role:
+        raw_nodes, raw_rels = filter_graph_data_by_scope(raw_nodes, raw_rels, role)
+    filtered_result = {
+        "nodes": raw_nodes,
+        "relationships": raw_rels
+    }
     return {
         "success": True,
         "node_id": node_id,
-        "count_nodes": len(result.get("nodes", [])),
-        "count_relationships": len(result.get("relationships", [])),
-        "data": result
+        "count_nodes": len(raw_nodes),
+        "count_relationships": len(raw_rels),
+        "data": filtered_result
     }
 
 @app.get("/api/neo4j/node/{node_id:path}")
-def get_neo4j_node_details(node_id: str):
-    """Get single node by element ID with all properties and immediate relationships."""
+def get_neo4j_node_details(node_id: str, role: Optional[str] = Query(default=None)):
+    """Get single node by element ID with all properties and immediate relationships, scoped by RBAC."""
     node = neo4j_client.get_node_by_id(node_id)
     if not node:
         raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found in Neo4j.")
+    if role:
+        filtered = filter_graph_entities_by_scope([node], role)
+        if not filtered:
+            raise HTTPException(status_code=403, detail=f"Truy cập thực thể '{node_id}' bị từ chối theo phân quyền RBAC.")
     return {"success": True, "data": node}
 
 @app.get("/api/neo4j/search")
-def search_neo4j_nodes(q: str = Query(..., min_length=1), limit: int = Query(default=25, le=100)):
-    """Search nodes across all properties in Neo4j."""
+def search_neo4j_nodes(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(default=25, le=100),
+    role: Optional[str] = Query(default=None)
+):
+    """Search nodes across all properties in Neo4j, filtered by RBAC."""
     results = neo4j_client.search_nodes(query=q, limit=limit)
+    if role:
+        results = filter_graph_entities_by_scope(results, role)
     return {"success": True, "count": len(results), "data": results}
 
 @app.post("/api/neo4j/cypher")
-def run_cypher_endpoint(req: CypherQueryRequest):
-    """Execute raw read Cypher query against Neo4j."""
+def run_cypher_endpoint(req: CypherQueryRequest, role: Optional[str] = Query(default=None)):
+    """Execute raw read Cypher query against Neo4j with RBAC protections."""
     # Basic security check: disallow DROP, DELETE, DETACH, REMOVE, CREATE, SET from public demo endpoint
     disallowed = ["DROP", "DELETE", "DETACH", "REMOVE", "CREATE", "SET", "ALTER"]
     upper_query = req.cypher.upper()
     for word in disallowed:
         if f" {word} " in f" {upper_query} ":
             raise HTTPException(status_code=400, detail=f"Mutation statement '{word}' is not allowed via this endpoint.")
+    
+    clean_role = (role or "").strip().lower()
+    if clean_role in ["standard", "sales", "ops", "user"]:
+        if "EMPLOYEE" in upper_query or "SALARY" in upper_query or "PAYROLL" in upper_query:
+            raise HTTPException(
+                status_code=403,
+                detail="Từ chối truy vấn RBAC: Vai trò Chuyên viên Kinh doanh không được phép tra cứu hồ sơ Employee hoặc dữ liệu nhân sự."
+            )
             
     records = neo4j_client.run_cypher(req.cypher, req.params)
     return {"success": True, "count": len(records), "data": records}

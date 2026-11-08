@@ -31,8 +31,20 @@ function getLabelColor(labels = []) {
   return LABEL_COLORS.default;
 }
 
-export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSearch = "" }) {
+export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSearch = "", role = null, currentUser = null }) {
   const isVi = lang === "vi";
+
+  // Derive canonical role and RBAC label scope
+  const effectiveRole = (role || currentUser?.id || currentUser?.role || "standard").toLowerCase();
+  const isPrivileged = ["executive", "it_admin", "admin", "ceo", "cfo"].includes(effectiveRole);
+  const isManager = ["knowledge_manager", "manager", "tp", "lead"].includes(effectiveRole);
+  const isStandard = !isPrivileged && !isManager;
+
+  const allowedLabels = useMemo(() => {
+    if (isPrivileged) return ["Customer", "Product", "SalesOrder", "Contract", "Clause", "Employee", "Vendor", "Company", "Document", "Department", "Category", "SubCategory"];
+    if (isManager) return ["Customer", "Product", "SalesOrder", "Contract", "Clause", "Company", "Vendor", "Document", "Department", "Category", "SubCategory"];
+    return ["Customer", "Product", "SalesOrder", "Contract", "Clause", "Document", "Department", "Category", "SubCategory"];
+  }, [isPrivileged, isManager]);
 
   const [status, setStatus] = useState(null);
   const [graphData, setGraphData] = useState(null);
@@ -50,6 +62,13 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
   });
   const [nodeLimit, setNodeLimit] = useState(60);
   const [expanding, setExpanding] = useState(false);
+
+  // Auto-reset label filter if current selection is restricted by RBAC
+  useEffect(() => {
+    if (selectedLabel !== "ALL" && !allowedLabels.includes(selectedLabel)) {
+      setSelectedLabel("ALL");
+    }
+  }, [selectedLabel, allowedLabels]);
 
   // Cypher Console
   const [cypher, setCypher] = useState("MATCH (n:Product) RETURN n LIMIT 15");
@@ -69,31 +88,32 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [nodePositions, setNodePositions] = useState({});
 
-  // 1. Fetch Status & Graph Data
+  // 1. Fetch Status & Graph Data scoped by Role RBAC
   const loadData = useCallback(async () => {
     setLoading(true);
     const [st, graph] = await Promise.all([
-      fetchNeo4jStatus(),
+      fetchNeo4jStatus(effectiveRole),
       fetchNeo4jGraph(
         nodeLimit,
         nodeLimit * 2,
         selectedLabel === "ALL" ? null : selectedLabel,
         selectedDomain === "ALL" ? null : selectedDomain,
-        selectedRelType === "ALL" ? null : selectedRelType
+        selectedRelType === "ALL" ? null : selectedRelType,
+        effectiveRole
       ),
     ]);
     setStatus(st?.data || null);
     setGraphData(graph?.data || null);
     setLoading(false);
-  }, [nodeLimit, selectedLabel, selectedDomain, selectedRelType]);
+  }, [nodeLimit, selectedLabel, selectedDomain, selectedRelType, effectiveRole]);
 
   const handleExpandNode = async (nodeId) => {
     if (!nodeId || expanding) return;
     setExpanding(true);
     try {
-      const res = await expandNeo4jNode(nodeId, 25);
+      const res = await expandNeo4jNode(nodeId, 25, effectiveRole);
       if (res?.success && res.data) {
-        const newNodes = res.data.nodes || [];
+        const newNodes = (res.data.nodes || []).filter(n => (n._labels || []).some(l => allowedLabels.includes(l)));
         const newRels = res.data.relationships || [];
         if (newNodes.length > 0 || newRels.length > 0) {
           setGraphData(prev => {
@@ -106,14 +126,19 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                 existingIds.add(n._id);
               }
             });
+            const allowedNodeIds = new Set(mergedNodes.map(n => n._id));
             const relKey = r => `${r.source?.id ?? r.source}->${r.rel_type || r.type}->${r.target?.id ?? r.target}`;
             const existingRels = new Set(prev.relationships.map(relKey));
             const mergedRels = [...prev.relationships];
             newRels.forEach(r => {
-              const k = relKey(r);
-              if (!existingRels.has(k)) {
-                mergedRels.push(r);
-                existingRels.add(k);
+              const srcId = r.source?.id ?? r.source?._id ?? r.source;
+              const tgtId = r.target?.id ?? r.target?._id ?? r.target;
+              if (allowedNodeIds.has(srcId) && allowedNodeIds.has(tgtId)) {
+                const k = relKey(r);
+                if (!existingRels.has(k)) {
+                  mergedRels.push(r);
+                  existingRels.add(k);
+                }
               }
             });
             return {
@@ -135,9 +160,24 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
     loadData();
   }, [loadData]);
 
-  // 2. Compute Layout for Visual Graph
-  const nodes = useMemo(() => graphData?.nodes || [], [graphData]);
-  const rels = useMemo(() => graphData?.relationships || [], [graphData]);
+  // 2. Compute Layout for Visual Graph strictly filtered by RBAC
+  const nodes = useMemo(() => {
+    const raw = graphData?.nodes || [];
+    return raw.filter(n => {
+      const lbls = n._labels || [];
+      return lbls.some(l => allowedLabels.includes(l));
+    });
+  }, [graphData, allowedLabels]);
+
+  const rels = useMemo(() => {
+    const raw = graphData?.relationships || [];
+    const allowedNodeIds = new Set(nodes.map(n => n._id));
+    return raw.filter(r => {
+      const srcId = r.source?.id ?? r.source?._id ?? r.source;
+      const tgtId = r.target?.id ?? r.target?._id ?? r.target;
+      return allowedNodeIds.has(srcId) && allowedNodeIds.has(tgtId);
+    });
+  }, [graphData, nodes]);
 
   const handleSearchAndFocus = useCallback(async (query) => {
     if (!query || typeof query !== "string") return;
@@ -159,14 +199,14 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
       return;
     }
 
-    // 2. Query Neo4j live backend to find the exact node and expand its neighborhood
+    // 2. Query Neo4j live backend to find the exact node and expand its neighborhood, scoped by RBAC
     try {
       const searchKey = idMatch || clean;
-      const res = await searchNeo4jNodes(searchKey, 5);
-      const target = res?.data?.[0];
+      const res = await searchNeo4jNodes(searchKey, 5, effectiveRole);
+      const target = (res?.data || []).find(n => (n._labels || []).some(l => allowedLabels.includes(l)));
       if (target && target._id) {
-        const exp = await expandNeo4jNode(target._id, 20);
-        const newN = exp?.data?.nodes || [];
+        const exp = await expandNeo4jNode(target._id, 20, effectiveRole);
+        const newN = (exp?.data?.nodes || []).filter(n => (n._labels || []).some(l => allowedLabels.includes(l)));
         const newR = exp?.data?.relationships || [];
 
         setGraphData(prev => {
@@ -175,12 +215,17 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
           if (!existingIds.has(target._id)) mergedN.unshift(target);
           newN.forEach(n => { if (!existingIds.has(n._id)) mergedN.push(n); });
 
+          const allowedNodeIds = new Set(mergedN.map(n => n._id));
           const relKey = r => `${r.source?.id ?? r.source}->${r.rel_type || r.type}->${r.target?.id ?? r.target}`;
           const existingRels = new Set((prev?.relationships || []).map(relKey));
           const mergedR = [...(prev?.relationships || [])];
           newR.forEach(r => {
-            const k = relKey(r);
-            if (!existingRels.has(k)) mergedR.push(r);
+            const srcId = r.source?.id ?? r.source?._id ?? r.source;
+            const tgtId = r.target?.id ?? r.target?._id ?? r.target;
+            if (allowedNodeIds.has(srcId) && allowedNodeIds.has(tgtId)) {
+              const k = relKey(r);
+              if (!existingRels.has(k)) mergedR.push(r);
+            }
           });
           return { nodes: mergedN, relationships: mergedR };
         });
@@ -190,7 +235,7 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
     } catch (err) {
       console.warn("[GraphPanel] handleSearchAndFocus error:", err);
     }
-  }, [nodes]);
+  }, [nodes, effectiveRole, allowedLabels]);
 
   // Auto-focus when initialSearch prop changes (e.g. clicked from Copilot message)
   useEffect(() => {
@@ -404,7 +449,7 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             🕸️
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-1, #0f172a)", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-1, #0f172a)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               {isVi ? "Neo4j Knowledge Graph (Dữ liệu Thực tế)" : "Neo4j Knowledge Graph (Live Data)"}
               <span style={{
                 padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 700,
@@ -414,9 +459,24 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
               }}>
                 ● {connected ? "Neo4j Live" : "Offline"}
               </span>
+              <span style={{
+                padding: "2px 9px", borderRadius: 12, fontSize: 11, fontWeight: 700,
+                background: isPrivileged ? "rgba(8,145,178,0.12)" : (isManager ? "rgba(5,150,105,0.12)" : "rgba(37,99,235,0.12)"),
+                color: isPrivileged ? "#0891b2" : (isManager ? "#059669" : "#2563eb"),
+                border: `1px solid ${isPrivileged ? "rgba(8,145,178,0.3)" : (isManager ? "rgba(5,150,105,0.3)" : "rgba(37,99,235,0.3)")}`
+              }}>
+                🔒 RBAC: {currentUser?.badge || (isPrivileged ? "ADMIN / EXECUTIVE" : (isManager ? "TRƯỞNG PHÒNG" : "CHUYÊN VIÊN"))}
+              </span>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-3, #64748b)" }}>
-              {status?.uri || "bolt://localhost:7687"} · {status?.nodeCount?.toLocaleString() || 0} nodes · {status?.relationshipCount?.toLocaleString() || 0} rels
+              {status?.uri || "bolt://localhost:7687"} · {nodes.length} nodes hiển thị · {rels.length} rels liên kết
+              <span style={{ marginLeft: 8, fontSize: 11, color: isPrivileged ? "#0891b2" : (isManager ? "#059669" : "#2563eb"), fontWeight: 600 }}>
+                {isPrivileged
+                  ? (isVi ? "(Toàn quyền: 10+ Nhãn thực thể)" : "(Full Access: 10+ Labels)")
+                  : (isManager
+                    ? (isVi ? "(Đã ẩn bảo mật: Employee/Nhân sự HR)" : "(Hidden: HR Employee)")
+                    : (isVi ? "(Đã ẩn bảo mật: Employee & Vendor)" : "(Hidden: HR & Vendor)"))}
+              </span>
             </div>
           </div>
         </div>
@@ -524,10 +584,12 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             transition: "all 0.15s"
           }}
         >
-          {isVi ? "Tất cả" : "All"} ({status?.nodeCount || nodes.length})
+          {isVi ? "Tất cả" : "All"} ({nodes.length})
         </button>
 
-        {status?.labelCounts && Object.entries(status.labelCounts).map(([lbl, count]) => {
+        {status?.labelCounts && Object.entries(status.labelCounts)
+          .filter(([lbl]) => allowedLabels.includes(lbl))
+          .map(([lbl, count]) => {
           const c = getLabelColor([lbl]);
           const isSelected = selectedLabel === lbl;
           return (
