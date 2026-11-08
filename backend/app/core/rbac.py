@@ -302,6 +302,7 @@ DEPT_CANONICAL: Dict[str, str] = {
     "pháp chế": "legal",
     "pháp chế (legal)": "legal",
     "legal": "legal",
+    "pháp chế (legal)": "legal",
     "pháp chế & r&d": "legal",
     "phòng pháp chế": "legal",
     "phòng pháp chế & hợp đồng": "legal",
@@ -310,6 +311,7 @@ DEPT_CANONICAL: Dict[str, str] = {
     "kinh doanh": "sales",
     "kinh doanh (sales)": "sales",
     "sales": "sales",
+    "kinh doanh (sales)": "sales",
     "bán hàng": "sales",
     "bán hàng (sales)": "sales",
     "phòng kinh doanh": "sales",
@@ -340,6 +342,7 @@ DEPT_CANONICAL: Dict[str, str] = {
     "kế toán / thu mua": "accounting",
     "accounting": "accounting",
     "accounting_procurement": "accounting",
+    "thu mua": "accounting",
     "phòng kế toán & tài chính": "accounting",
     # HR / Nhân sự
     "nhân sự": "hr",
@@ -480,7 +483,11 @@ class ScopeContext:
             return documents
         return [
             doc for doc in documents
-            if self.is_document_allowed(doc.get("id", "") or doc.get("raw_id", ""), doc.get("deptKey") or doc.get("dept") or doc.get("deptLabel"), doc_dict=doc)
+            if self.is_document_allowed(
+                doc.get("id", "") or doc.get("raw_id", ""),
+                doc.get("deptKey") or doc.get("dept") or doc.get("deptLabel"),
+                doc_dict=doc,
+            )
         ]
 
     def filter_citations(self, citations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

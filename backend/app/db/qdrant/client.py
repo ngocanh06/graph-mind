@@ -244,6 +244,88 @@ class QdrantClientWrapper:
             print(f"[Qdrant] scroll_points error: {e}")
             return []
 
+    def get_document_chunks(
+        self,
+        doc_id: Optional[str] = None,
+        contract_name: Optional[str] = None,
+        collection_name: str = "cuad_contracts",
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve chunks for a specific document, ordered chronologically by chunk_index/chunk_id.
+        Essential for GraphRAG document reading, structured summarization, and legal analysis.
+        """
+        if not self._connected and not self.connect():
+            return []
+        col = collection_name or "cuad_contracts"
+
+        conditions = []
+        if doc_id:
+            conditions.append({"key": "doc_id", "match": {"value": str(doc_id)}})
+            conditions.append({"key": "document_id", "match": {"value": str(doc_id)}})
+        if contract_name:
+            conditions.append({"key": "contract_name", "match": {"value": str(contract_name)}})
+            conditions.append({"key": "source_file", "match": {"value": str(contract_name)}})
+
+        if not conditions:
+            return []
+
+        raw_filter = {"should": conditions} if len(conditions) > 1 else {"must": conditions}
+        effective_filter = validate_and_inject_layer1_guard(raw_filter, col)
+
+        try:
+            import urllib.request
+            import json
+
+            url = f"http://{self._host}:{self._port}/collections/{col}/points/scroll"
+            req_data = json.dumps({
+                "filter": effective_filter,
+                "limit": limit,
+                "with_payload": True,
+                "with_vector": False
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                url,
+                data=req_data,
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                points = data.get("result", {}).get("points", [])
+
+            results = []
+            for r in points:
+                payload = r.get("payload", {})
+                d_id = payload.get("doc_id") or payload.get("document_id") or doc_id
+                c_name = payload.get("contract_name") or payload.get("source_file") or contract_name or "Document"
+                raw_chunk = payload.get("chunk_id") if payload.get("chunk_id") is not None else payload.get("chunk_index")
+                try:
+                    c_idx = int(raw_chunk) if raw_chunk is not None else 0
+                except (ValueError, TypeError):
+                    c_idx = 0
+
+                results.append({
+                    "id": str(r.get("id")),
+                    "document_id": d_id,
+                    "doc_id": d_id,
+                    "source_file": c_name,
+                    "contract_name": c_name,
+                    "chunk_index": c_idx,
+                    "chunk_id": c_idx,
+                    "text": payload.get("text", ""),
+                    "department": payload.get("department", ""),
+                    "source": payload.get("source") or col,
+                    "payload": payload,
+                    "score": 0.95,
+                })
+
+            results.sort(key=lambda x: x["chunk_index"])
+            return results
+        except Exception as e:
+            print(f"[Qdrant] get_document_chunks error: {e}")
+            return []
+
     def vector_search(
         self,
         query: str,
