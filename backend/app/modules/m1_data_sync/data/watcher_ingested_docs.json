@@ -1,5 +1,533 @@
 [
   {
+    "id": "DOC_71988C4D",
+    "raw_id": "term_sync.txt",
+    "name": "term_sync.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "file_hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "fileHash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "storage_path": "/data/legal/term_sync.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_71988C4D_0",
+        "chunk_id": 0,
+        "text": "Text"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:43.523122"
+  },
+  {
+    "id": "DOC_EXISTING",
+    "raw_id": "purge_old.txt",
+    "name": "purge_old.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "file_hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "fileHash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "storage_path": "/data/legal/purge_old.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_EXISTING_0",
+        "chunk_id": 0,
+        "text": "Text"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:42.867194"
+  },
+  {
+    "id": "DOC_EXISTING",
+    "raw_id": "act_deact.txt",
+    "name": "act_deact.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "file_hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "fileHash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "storage_path": "/data/legal/act_deact.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_EXISTING_0",
+        "chunk_id": 0,
+        "text": "Text"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:42.298708"
+  },
+  {
+    "id": "DOC_71988C4D",
+    "raw_id": "act_true.txt",
+    "name": "act_true.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "file_hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "fileHash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "storage_path": "/data/legal/act_true.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_71988C4D_0",
+        "chunk_id": 0,
+        "text": "Text"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:41.735000"
+  },
+  {
+    "id": "DOC_71988C4D",
+    "raw_id": "cas_commit.txt",
+    "name": "cas_commit.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "file_hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "fileHash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "storage_path": "/data/legal/cas_commit.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_71988C4D_0",
+        "chunk_id": 0,
+        "text": "Text"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:41.173878"
+  },
+  {
+    "id": "DOC_71988C4D",
+    "raw_id": "cas_preact.txt",
+    "name": "cas_preact.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "file_hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "fileHash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "storage_path": "/data/legal/cas_preact.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_71988C4D_0",
+        "chunk_id": 0,
+        "text": "Text"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:40.593159"
+  },
+  {
+    "id": "DOC_71988C4D",
+    "raw_id": "cas_graph.txt",
+    "name": "cas_graph.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "file_hash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "fileHash": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3",
+    "storage_path": "/data/legal/cas_graph.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_71988C4D_0",
+        "chunk_id": 0,
+        "text": "Text"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:40.036264"
+  },
+  {
+    "id": "DOC_C2462350",
+    "raw_id": "cas_staged.txt",
+    "name": "cas_staged.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "c24623502a05ae7e75a9fc8c3fe27b913c2096918a9768e845a6985649e313a7",
+    "file_hash": "c24623502a05ae7e75a9fc8c3fe27b913c2096918a9768e845a6985649e313a7",
+    "fileHash": "c24623502a05ae7e75a9fc8c3fe27b913c2096918a9768e845a6985649e313a7",
+    "storage_path": "/data/legal/cas_staged.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_C2462350_0",
+        "chunk_id": 0,
+        "text": "Text content"
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:39.452568"
+  },
+  {
+    "id": "DOC_77D12340",
+    "raw_id": "staged_active.txt",
+    "name": "staged_active.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "77d123404f9280736f2d2c34b80aa9349cab5f0dd2b704971dd4cd8aa5769a87",
+    "file_hash": "77d123404f9280736f2d2c34b80aa9349cab5f0dd2b704971dd4cd8aa5769a87",
+    "fileHash": "77d123404f9280736f2d2c34b80aa9349cab5f0dd2b704971dd4cd8aa5769a87",
+    "storage_path": "/data/legal/staged_active.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_77D12340_0",
+        "chunk_id": 0,
+        "text": "Staged point active flag verification."
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:38.850551"
+  },
+  {
+    "id": "DOC_913C3A45",
+    "raw_id": "journal_fields.txt",
+    "name": "journal_fields.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "913c3a45c7482090a573093b03ba2062abeb234f13b350f547a78247e019af7a",
+    "file_hash": "913c3a45c7482090a573093b03ba2062abeb234f13b350f547a78247e019af7a",
+    "fileHash": "913c3a45c7482090a573093b03ba2062abeb234f13b350f547a78247e019af7a",
+    "storage_path": "/data/legal/journal_fields.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_913C3A45_0",
+        "chunk_id": 0,
+        "text": "Contract document paragraph 1.\n\nParagraph 2."
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:38.275823"
+  },
+  {
+    "id": "DOC_3B72CDBC",
+    "raw_id": "test_journal.txt",
+    "name": "test_journal.txt",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "TXT",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "3b72cdbc64c6d9284eeb1edc330735a975fe7ba76433133b91429c343c198899",
+    "file_hash": "3b72cdbc64c6d9284eeb1edc330735a975fe7ba76433133b91429c343c198899",
+    "fileHash": "3b72cdbc64c6d9284eeb1edc330735a975fe7ba76433133b91429c343c198899",
+    "storage_path": "/data/legal/test_journal.txt",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_3B72CDBC_0",
+        "chunk_id": 0,
+        "text": "Sample document text content for PR1 testing."
+      }
+    ],
+    "lastModified": "2026-11-08T14:57:37.682604"
+  },
+  {
     "id": "DOC_AC85E779",
     "raw_id": "TranVietAnhVu_2911159157...xlsx",
     "name": "TranVietAnhVu_2911159157...xlsx",
@@ -20810,6 +21338,120 @@
       }
     ],
     "lastModified": "2026-11-02T08:55:07.224791"
+  },
+  {
+    "id": "DOC_85CF41E9",
+    "raw_id": "LECLANCHÉ S.A. - JOINT DEVELOPMENT AND MARKETING AGREEMENT.PDF",
+    "name": "LECLANCHÉ S.A. - JOINT DEVELOPMENT AND MARKETING AGREEMENT.PDF",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "PDF",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "02/11/2026",
+    "status": "PENDING",
+    "statusBadge": "Mới nạp",
+    "statusState": "pending",
+    "qdrant_indexed": false,
+    "neo4j_synced": true,
+    "qdrantIndexed": false,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "1.01 MB",
+    "chunks": "11 Chunks",
+    "chunk_count": 11,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "cuad_contract",
+    "source": "aegis_local_file_watcher",
+    "hash": "85cf41e9dffa50d7ec46f7d65c5035b47513f4a0ce912e2418c33597b8727879",
+    "file_hash": "85cf41e9dffa50d7ec46f7d65c5035b47513f4a0ce912e2418c33597b8727879",
+    "fileHash": "85cf41e9dffa50d7ec46f7d65c5035b47513f4a0ce912e2418c33597b8727879",
+    "storage_path": "/data/legal/LECLANCHÉ S.A. - JOINT DEVELOPMENT AND MARKETING AGREEMENT.PDF",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [
+        "1\n\n1.\r\n1.1.\r\n1.2.\r\n1.3.\r\nThis AGREEMENT",
+        "organized and existing under the laws of",
+        "organized and existing\r\nunder the laws o"
+      ],
+      "clauses": [
+        {
+          "type": "Bảo mật thông tin (Confidentiality)",
+          "title": "Điều khoản Bảo mật"
+        },
+        {
+          "type": "Điều khoản Thanh toán (Payment Terms)",
+          "title": "Phương thức Thanh toán"
+        },
+        {
+          "type": "Trách nhiệm & Bồi thường (Liability)",
+          "title": "Bồi thường & Phạt vi phạm"
+        },
+        {
+          "type": "Chấm dứt hợp đồng (Termination)",
+          "title": "Điều kiện chấm dứt"
+        }
+      ],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_85CF41E9_0",
+        "chunk_id": 0,
+        "text": "JOINT DEVELOPMENT AND MARKETING\r\nAGREEMENT\r\nBETWEEN\r\nLECLANCHÉ SA\r\nAND\r\nOAK RIDGE ENERGY TECHNOLOGIES, INC.\r\n1"
+      },
+      {
+        "id": "DOC_85CF41E9_1",
+        "chunk_id": 1,
+        "text": "1.\r\n1.1.\r\n1.2.\r\n1.3.\r\nThis AGREEMENT is made on April 6, 2014, (“Effective Date” between:\r\nLECLANCHÉ S.A., being a company organized and existing under the laws of\r\nSwitzerland, having its registered office at Avenue des Sports 42, 1400 Yverdon-les-Bains,\r\nSwitzerland (\"Leclanché\"), and\r\nOAK RIDGE ENERGY TECHNOLOGIES INC, being a company organized and existing\r\nunder the laws of United States of America, having its registered office at 751 North Drive,\r\nSuite 9, Melbourne, FL 32934, United States (\"Oak Ridge\"),\r\neach a \"Party\"” and together \"Parties\".\r\nWHEREAS Oak Ridge focuses on the licensing, further development, manufacturing and\r\nmarketing of products incorporating thin film battery technologies.\r\nWHEREAS Leclanché has developed and markets lithium-ion titanate cells using a\r\nproprietary technology and process and also designs and develops customized battery\r\nsystems for OEM and other customers;\r\nWHEREAS Leclanché is interested in marketing its products and services in the United\r\nStates;\r\nWHEREAS Oak Ridge is keen to develop its business and has the capability to market and\r\nsupport Leclanché market entry into the United States and is committed to allocate specific\r\nresources to provide such services;\r\nWHEREAS both Parties wish to collaborate together to better evaluate the opportunities in\r\nthe United States, assess how best to address these and generally support each other’s\r\nbusiness efforts in furtherance of supporting their respective customers based in North\r\nAmerica;\r\nNOW THEREFORE it is agreed as follows:\r\nDefinitions\r\nThe term \"Affiliate\" as used herein with respect to a party means any partnership,\r\njoint venture, corporation of other form of enterprise that directly or indirectly\r\ncontrols, is controlled by or is under common control with such entity or person.\r\nFor purposes hereof, \"control\" means the possession, directly or indirectly, of the\r\npower to direct or cause the direction of the management and policies of a\r\nperson or entity, whether through the ownership of voting securities, by contract\r\nor otherwise.\r\nThe term \"Subsidiary\" as used herein with respect to a party means any\r\npartnership, joint venture, corporation of other form of enterprise that is directly\r\nor indirectly controlled by such entity or person. For purposes hereof, \"control\"\r\nmeans the possession, directly or indirectly, of the power to direct or cause the\r\ndirection of the management and policies of a person or entity, whether through\r\nthe ownership of voting securities, by contract or otherwise.\r\n2\r\n\"Confidential Information\" means all information in relation to this Agreement in"
+      },
+      {
+        "id": "DOC_85CF41E9_2",
+        "chunk_id": 2,
+        "text": "1.3.\r\na)\r\nb)\r\n2.\r\n2.1.\r\na)\r\nb)\r\nc)\r\nd)\r\ne)\r\nf)\r\ng)\r\n\"Confidential Information\" means all information in relation to this Agreement in\r\nwhatever form that is disclosed by the Parties to each other and shall include\r\nwithout limitation information disclosed orally or in writing or in any other form,\r\ntangible or intangible, and whether furnished prior to, on or after the date of this\r\nAgreement, that is described as or provided under circumstances that would\r\nreasonably indicate that it is confidential, proprietary or a trade secret, including,\r\nbut not limited to, information relating to Leclanché’s technology, intellectual\r\nproperty, financial or business plans, affairs, methodologies, financial statements\r\nor projections, internal management tools and systems, products and product\r\ndevelopment plans, released or unreleased hardware or software products, sales\r\nand marketing plans and materials, clients, contacts and contracts, all files,\r\nbooks, records, documents, specifications, schematics, employee suggestions,\r\npapers, drawings, models, sketches of any kind or description, including\r\nelectronic data recorded or retrieved by any means now in existence or at any\r\ntime hereinafter developed. Confidential Information shall also include documents\r\ntransferred to Oak Ridge that are prepared by or on behalf of Leclanché\r\nincorporating Confidential Information received from a third party, which is itself\r\nrequired to be treated as confidential. Confidential Information shall not include\r\ninformation or data which was or becomes:\r\ngenerally available to the public, other than as a result of a breach of this\r\nundertaking;\r\navailable to the recipient Party on a non confidential basis from a source other\r\nthan the disclosing Party or its advisers, provided that such source is not,\r\ninsofar as the recipient Party is aware, bound by any obligations of\r\nconfidentiality in respect of such information or data;\r\nMarket Evaluation – Phase 1\r\nThe Parties shall work together to better evaluate the market opportunities in\r\nthe United States. A joint team shall be constituted, chaired by Anil Srivastava,\r\na Board member of Oak Ridge, to undertake this study which shall be\r\ncompleted by May 31, 2014. The objectives of the study will be to:\r\nbuild a picture of the key market participants, in particular key customer\r\ngroups, solution integrators, BMS providers, EPC contractors etc.,\r\nidentify what alliances could /should be formed to enhance the joint\r\noffering;\r\nidentify target business applications where the Leclanché technology\r\ncould be deployed;\r\ngather market information on pricing points and value add opportunities;\r\nbuild economic business cases for key business applications;\r\nidentify what certification processes need to be undertaken before\r\nproducts and services can be marketed in the United States, what the\r\ntimelines are and what the estimated costs might be;\r\n3\r\nsegregate opportunities by product groups (cells, home systems, industrial"
+      },
+      {
+        "id": "DOC_85CF41E9_3",
+        "chunk_id": 3,
+        "text": "g)\r\nh)\r\ni)\r\nj)\r\n2.2.\r\n2.3.\r\n3.\r\n3.1.\r\n4.\r\n4.1.\r\n4.2.\r\n5.\r\n5.1.\r\n5.2.\r\n5.3.\r\n5.4.\r\n5.5.\r\n5.6.\r\nsegregate opportunities by product groups (cells, home systems, industrial\r\nsystems, project related applications, e.g. frequency regulation);\r\nthe structure that would be required to address the market in an effective\r\nmanner;\r\nwhat element of the product assembly could be undertaken by Oak\r\nRidge at its facility in Melbourne;\r\nhow the trading relationship between the Parties should be structured i.e.\r\nwhether Oak Ridge will be an agent or reseller and how this will be\r\nremunerated.\r\nThe output from Phase 1 shall be a market entry plan, that shall be presented to\r\nthe management of both Parties. The Parties shall decide on further steps based\r\non the marked entry plan.\r\nRegular update calls will be organized by Oak Ridge and meetings shall be held\r\nin Melbourne, Florida.\r\nCosts\r\nThe costs of Mr Srivastava shall be borne by Oak Ridge. Otherwise each Party\r\nbears its own costs for Phase 1\r\nLeclanché's Products and Services\r\nThe Products offered by Leclanché are set out in Annex I. Pricing will be\r\ndetermined after Phase 1 is completed.\r\nThe Services offered by Leclanché include the customized design and\r\ndevelopment of battery systems to meet specific customer requirements. These\r\nServices are typically provided by Leclanché’s Portable Business Unit.\r\nExamples of such Services are set out in Annex II.\r\nOak Ridge Responsibilities\r\nOak Ridge shall be responsible for developing the sales and marketing for the\r\nProducts and Services;\r\nOak Ridge shall dedicate sales and marketing personnel to develop the market;\r\nOak Ridge shall identify commercial opportunities and work with Leclanché to\r\nqualify these opportunities and prepare bids and quotations as necessary;\r\nOak Ridge shall participate at fairs and events and generally undertake all\r\npromotional activities that are required in order to promote the product;\r\nOak Ridge shall maintain a regular watch on market developments and shall\r\nshare this with Leclanché on a regular basis;\r\nOak Ridge shall maintain a first level technical support capability to\r\n4"
+      },
+      {
+        "id": "DOC_85CF41E9_4",
+        "chunk_id": 4,
+        "text": "5.7.\r\n6.\r\n6.1.\r\n6.2.\r\n6.3.\r\n6.4.\r\n6.5.\r\n6.6.\r\n7.\r\n7.1.\r\n7.2.\r\n7.3.\r\n8.\r\n8.1.\r\n8.2.\r\n9.\r\n9.1.\r\naddress customer requirements and deal with any field issues expeditiously;\r\nOak Ridge shall arrange product liability and warranty insurance.\r\nLeclanché Responsibilities\r\nLeclanché shall supply the Products and Services;\r\nLeclanché shall provide training and documentation;\r\nLeclanché shall work with Oak Ridge to examine what elements of the Products\r\nand Services can be supplied locally by Oak Ridge (e.g. assembly of pre￾designed modules);\r\nLeclanché shall generally support the commercial efforts of Oak Ridge in\r\nfurtherance of the promotion and sales of the Products and Services;\r\nLeclanché shall define the warranty conditions for the Products and Services\r\nand work with Oak Ridge to provide the information necessary to secure\r\nproduct liability and warranty insurance cover.\r\nLeclanché shall assist Oak Ridge in preparing and submitting commercial bids.\r\nExclusivity\r\nWhere Oak Ridge has identified a specific market opportunity which has been\r\nqualified together with Leclanché pursuant to 5.3 above, the Parties shall\r\nundertake to work exclusively with each other on such opportunities;\r\nOtherwise there is no exclusivity expressed or implied by either Party.\r\nThe Parties shall nonetheless share information as is reasonably necessary to\r\nensure that there is no confusion in the market how customer requirements are\r\naddressed. If conflicts were to arise, the Parties shall use their reasonable\r\nefforts to resolve any such conflicts in a manner that benefits the end customer.\r\nPricing\r\nPricing for standard Products shall be defined after Phase 1 has been\r\ncompleted. Pricing for more complex projects shall be determined on a case by\r\ncase basis.\r\nPricing for Services shall be quoted on a case by case basis depending on the\r\ncustomer specification.\r\nPayment Terms\r\nIn certain cases, Leclanché may request progress payments, including some\r\nelement paid at the time of order. In the absence of a specific payment\r\nschedule, all payment terms are 30 days net from date of invoice.\r\n5"
+      },
+      {
+        "id": "DOC_85CF41E9_5",
+        "chunk_id": 5,
+        "text": "10.\r\n10.1.\r\n11.\r\n11.1.\r\n12.\r\n12.1.\r\n13.\r\n13.1.\r\n14.\r\n14.1.\r\nIntellectual Property\r\nEach party’s intellectual property (“IP”) in existence as of the Effective Date\r\nshall remain such Party’s property. Where appropriate and to the extent\r\nrequired, each party undertakes to grant a royalty free license to the other Party\r\nsolely for the design and development of product(s) under this Agreement.\r\nThere is no intended or implied transfer of either Party’s Intellectual Property to\r\nthe other.\r\nConfidentiality\r\nThe Parties shall keep strictly secret and confidential any and all confidential\r\ninformation relating to each other’s business and/or to the contents of this\r\nAgreement and shall not, in any manner whatsoever, disclose or permit any of\r\nits agents, representatives, employees, attorneys, accountants or advisors to\r\ndisclose any confidential information to any person or entity whatsoever without\r\nthe prior written consent of the other Party. The Parties shall take all necessary\r\nsteps to safeguard the secrecy and confidentiality of all confidential information\r\nand all materials and to ensure that such confidential information and material\r\nobtained in connection with this Agreement is disclosed only to authorized\r\npersons who need to know such information for the purpose of performing their\r\nduties on behalf of the company.\r\nNon Solicitation\r\nThe Parties are independent companies, and neither of them or anyone\r\nemployed by them shall be deemed to be the employee, agent or legal agent of\r\nthe other. Both Parties agree that during the Term of this Agreement and for a\r\nperiod of two (2) years following the termination, both Parties will not (i) solicit,\r\nencourage, or take any other action, which is intended, directly or indirectly, to\r\ninduce any employee to terminate his or her employment with a Party; or (ii)\r\ninterfere in any manner with the contractual or employment relationship between\r\nthe Parties and any their employees.\r\nAssignment\r\nNeither Party may assign, delegate, or transfer this Agreement or any of its\r\nrights or duties hereunder, without the prior written consent of the other Party.\r\nAny attempted assignment or delegation in violation of this section shall be void.\r\nThe provisions of this Agreement shall be binding upon and inure to the benefit\r\nof the Parties, their successors and permitted assigns.\r\nForce Majeure\r\nIt is agreed that neither Party shall be liable for any delay or failure to\r\nperform its obligations hereunder in whole or in part when such delay or non￾performance results from causes beyond such Party’s control, including, but not\r\nlimited to, fires, strikes, insurrections, riots, embargoes, shortages of motor\r\nvehicles, delays in transportation, inability to obtain\r\n6"
+      },
+      {
+        "id": "DOC_85CF41E9_6",
+        "chunk_id": 6,
+        "text": "14.2.\r\n15.\r\n15.1.\r\n16.\r\n16.1.\r\n17.\r\n17.1.\r\n18.\r\n18.1.\r\n19.\r\n19.1.\r\nsupplies of raw materials, or governmental requirements or regulations (\"Force\r\nMajeure Event\").\r\nIn the event of the occurrence of a Force Majeure Event, the Party unable\r\nto perform will, i) promptly notify the other Party, ii) provide an estimate of the\r\nduration of the delay, iii) use its bests efforts to resume performance as quickly\r\nas possible, and iv) suspend performance only for the period of time as is\r\nnecessary as a result of the Force Majeure event. Notwithstanding the above,\r\nneither Party is relieved of any liability for any delay or failure to perform its\r\ndefense obligations with respect to third Party intellectual property rights. The\r\nParty not delayed may act, in its sole discretion, to terminate the affected order,\r\nor any part of the order, or suspend this Agreement in whole or in part, for the\r\nduration of the delaying cause.\r\nAmendment\r\nNo change, amendment or modification of any provision of this Agreement\r\nshall be valid unless set forth in a written instrument signed by the Parties.\r\nConstruction\r\nIn the event that any provision of this Agreement conflicts with the law under\r\nwhich this Agreement is to be construed, or if any such provision is held invalid\r\nby a court with jurisdiction over a Party to this Agreement, such provision shall\r\nbe deemed to be restated to reflect as nearly as possible the original intentions\r\nof the Parties in accordance with applicable law, and the remainder of this\r\nAgreement shall remain in full force and effect.\r\nSeverability\r\nIf any of the provisions or clauses of this Agreement shall be or become void\r\nor be held invalid, all other provisions shall remain in full force and effect and\r\nthe void or invalid provisions shall be forthwith replaced by other provisions to\r\nbe agreed by the parties valid in form and substance and which shall accomplish\r\nas nearly as possible the purpose and intent of the void or invalid provisions in\r\ndue course.\r\nAnnouncements\r\nNo announcements of this Agreement or any subsequent Agreement may be\r\nmade by one Party without the consent of the other, save if required to do so\r\nfor legal or regulatory reasons, in which case the Party initiating the\r\nannouncement shall use reasonable efforts to obtain the comments (if any) of\r\nthe other, but for avoidance of doubt nothing in this provisions shall inhibit the\r\ndisclosing party from complying with its legal or regulatory obligations as it sees\r\nfit. In the event that one party is required to make an announcement without the\r\nknowledge of the other, it shall promptly send a copy of the announcement to\r\nthe other party for information purposes.\r\nNo Waiver\r\nNo waiver by either Party of any right or of a breach of any binding\r\n7"
+      },
+      {
+        "id": "DOC_85CF41E9_7",
+        "chunk_id": 7,
+        "text": "20.\r\n20.1.\r\n21.\r\n21.1.\r\na)\r\nb)\r\nprovision of this Agreement shall constitute a waiver of any other right or\r\nbreach of any other provision, nor shall it be deemed to be a general waiver of\r\nsuch provision by such Party or to sanction any subsequent breach thereof by\r\nany other Party\r\nNotice\r\nAny notice, approval, request, authorization, direction, or other\r\ncommunication under this Agreement shall be given in writing, directed to the\r\naddresses of the Parties set forth above, and shall be deemed to have been\r\ndelivered and given for all purposes: (a) on the delivery date if delivered\r\npersonally to the Party to whom the same is directed; (b) one (1) business day\r\nafter deposit with a commercial overnight carrier with written verification of\r\nreceipt; or (c) five (5) business days after the mailing date whether or not\r\nactually received, if sent by registered or recorded delivery post or any other\r\nmeans of rapid mail delivery for which a receipt is available to the Contact at\r\nthe address of the Party to whom the same is directed.\r\nNotices shall be addressed as follows:\r\nAttn: Chief Executive\r\nLeclanché SA\r\nAvenue des Sports, 42\r\nYverdon-les-Bains,\r\nCH 1400 Switzerland\r\nAttn: Chief Executive\r\nOak Ridge Energy Technologies Inc.,\r\n751 North Drive, Suite 9, Melbourne,\r\nFL 32934, United States\r\nStandstill\r\nThe Parties acknowledge that both companies are publicly quoted\r\ncompanies and may before and/or during the course of this Agreement be in\r\nreceipt of nonpublic information (including any Confidential Information)\r\n(together, “Non Public Information”) and agree to comply with all relevant\r\nlaws and regulations applicable to market trading during the term of this\r\nAgreement and for a period of 12 months thereafter, and in particular agrees\r\nnot to:\r\ndirectly nor indirectly engage in any transactions on any exchange,\r\nregulated market or over-the-counter in (i) any securities issued by the\r\nLeclanché or any affiliated company or (ii) any derivative products the\r\nprice of which is derived in whole or in substantial part from any such\r\nsecurities;\r\ndivulge directly or indirectly any Non Public Information to any third\r\nparty without the written consent of Leclanché and if it is\r\n8"
+      },
+      {
+        "id": "DOC_85CF41E9_8",
+        "chunk_id": 8,
+        "text": "22.\r\n22.1.\r\na)\r\nb)\r\nc)\r\n22.2.\r\n22.3.\r\n22.4.\r\n22.5.\r\n23.\r\n23.1.\r\n23.2.\r\nauthorized to make such disclosure, shall impose standstill obligations\r\non that third party consistent with this provision.\r\nTerm and Termination\r\nSubject to Article 22.2, this Agreement shall remain in force for an Initial\r\nPeriod of 1 year, which may be renewed by mutual consent for such period\r\nas the Parties may agree (“Term”), unless it is terminated earlier in accordance\r\nwith this Agreement or for any of the following reasons:\r\nif one Party is in default with its performance under this Agreement;\r\nin case of insolvency or bankruptcy of either Party, or in case of a\r\nchange of control of one of the Parties;\r\nbreach of any of the provisions of this Agreement by either Party that\r\nremains unremedied for a period of 30 days;\r\nIn the event that after Phase 1, the Parties conclude that it would not be\r\neconomically viable to enter the US market as envisaged, this Agreement shall\r\nterminate forthwith and the Parties shall use reasonable efforts to assess\r\nwhether to proceed with an alternative agreement or not.\r\nIf the Agreement is terminated, the Parties shall endeavour to ensure that\r\nassets contributed by each Party shall, so far as possible, be transferred back\r\nto that Party.\r\nIn the event of termination of this Agreement, neither Party shall have any\r\nobligation to continue the activities set forth herein, and all obligations and\r\nrights of the Parties shall terminate, with the exception of provision of Articles\r\n9-21, and Article 23 of this Agreement, which shall survive expiration or\r\ntermination.\r\nNotwithstanding the above, termination of the Agreement will not have any\r\neffect on the rights and obligations of the Parties in respect of the assignment\r\nsecured and or any RFQ at any stage of processing.\r\nGoverning Law and Jurisdiction\r\nThis Agreement shall be governed by and construed in accordance with\r\nSwiss law. The conflict of law rules and the United Nations Convention on\r\nContracts for the International Sale of Goods do not apply.\r\nThe Parties irrevocably agree that the courts of the city of Zurich have\r\nexclusive jurisdiction to settle any dispute or claim that arises out of or in\r\nconnection with this Agreement.\r\n9"
+      },
+      {
+        "id": "DOC_85CF41E9_9",
+        "chunk_id": 9,
+        "text": "IN WITNESS WHEREOF the parties hereto have executed this Agreement as of the dates\r\nwritten below.\r\nFor Oak Ridge Energy Technologies Inc For Leclanché SA\r\n______________________________\r\nMr Craig Nelson\r\nDeputy CEO\r\n/s/ Eric Wilkinson\r\nMr Eric Wilkinson\r\nDeputy CEO\r\n10\n\nAnnex I\r\nLECLANCHÉ PRODUCTS\r\n11\n\n12"
+      }
+    ],
+    "lastModified": "2026-11-02T08:55:06.829285"
   },
   {
     "id": "DOC_5850E801",
@@ -47197,6 +47839,57 @@
     "lastModified": "2026-11-02T08:52:28.850001"
   },
   {
+    "id": "DOC_664412E7",
+    "raw_id": "42_HuynhNgocMinh_MGO403.xlsx",
+    "name": "42_HuynhNgocMinh_MGO403.xlsx",
+    "category": "Tài liệu R&D",
+    "category_en": "R&D Document",
+    "type": "XLSX",
+    "dept": "R&D",
+    "deptKey": "rnd",
+    "deptLabel": "R&D",
+    "department": "R&D",
+    "owner": "AEGIS File Watcher",
+    "date": "01/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "21.77 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS R&D Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "spreadsheet",
+    "source": "aegis_local_file_watcher",
+    "hash": "664412e7e64d6de041b925f5cd7c34d863d163311e07d9d698f6ff6e148683fb",
+    "file_hash": "664412e7e64d6de041b925f5cd7c34d863d163311e07d9d698f6ff6e148683fb",
+    "fileHash": "664412e7e64d6de041b925f5cd7c34d863d163311e07d9d698f6ff6e148683fb",
+    "storage_path": "/data/rnd/42_HuynhNgocMinh_MGO403.xlsx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [
+        "ABC\nNhà máy",
+        "buộc phải đẩy thêm hàng qua các tuyến có"
+      ],
+      "clauses": [],
+      "value": "17.690 USD"
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_664412E7_0",
+        "chunk_id": 0,
+        "text": "BẢNG PHÂN BỔ HÀM LƯỢNG DINH DƯỠNG VÀ GIÁ MUA THỨC ĂN GIA SÚC\nA\nB\nC\nYêu cầu tối thiểu/ngày\nHàm lượng đạm - g/kg\nHàm lượng đường - g/kg\nHàm lượng khoáng - g/kg\nGiá mua - VNĐ/kg\nLỜI GIẢI SOLVER: KHỐI LƯỢNG THỨC ĂN TỐI ƯU\nkhối lượng cần mua - kg/ngày\nTỔNG CHI PHÍ MUA\nGiá mua\nBẢNG KIỂM TRA RÀNG BUỘC DINH DƯỠNG\nTHỰC TẾ\nĐIỀU KIỆN\nYÊU CẦU\nTỔNG CHẤT ĐẠM TỐI THIỂU\n>=\nTỔNG CHẤT ĐƯỜNG TỐI THIỂU\nTỔNG CHẤT KHOÁNG TỐI THIỂU\nBẢNG PHÂN BỔ VẬN CHUYỂN HÀNG HÓA TỪ NHÀ MÁY QUA KHO ĐẾN KHÁCH HÀNG CỦA CÔNG TY ABC\nNhà máy / Kho hàng\nK1\nK2\nCông suất (Supply)\nChi phí vận chuyển từ HCM - USD/đơn vị\nChi phí vận chuyển từ Tiền Giang - USD/đơn vị\nChi phí vận chuyển từ Long An - USD/đơn vị\nGIAI ĐOẠN 1 — DỮ LIỆU: NHÀ MÁY → KHO HÀNG\nKho hàng / Khách hàng\nCUS1\nCUS2\nCUS3\nCUS4\nChi phí vận chuyển từ K1 - USD/đơn vị\nChi phí vận chuyển từ K2 - USD/đơn vị\nNhu cầu (Demand) - đơn vị\nGIAI ĐOẠN 2 — DỮ LIỆU: KHO HÀNG → KHÁCH HÀNG\nTiền Giang → K1 tối đa (đơn vị)\nLong An → CUS1 tối thiểu (đơn vị)\nSức chứa tối đa của K1 (đơn vị)\nCÁC RÀNG BUỘC ĐẶC BIỆT\nĐường đi (Nhà máy - Kho - Khách hàng)\nHCM-K1-C1\nHCM-K1-C2\nHCM-K1-C3\nHCM-K1-C4\nHCM-K2-C1\nHCM-K2-C2\nHCM-K2-C3\nHCM-K2-C4\nTG-K1-C1\nTG-K1-C2\nTG-K1-C3\nTG-K1-C4\nTG-K2-C1\nTG-K2-C2\nTG-K2-C3\nTG-K2-C4\nLA-K1-C1\nLA-K1-C2\nLA-K1-C3\nLA-K1-C4\nLA-K2-C1\nLA-K2-C2\nLA-K2-C3\nLA-K2-C4\nSố lượng vận chuyển\nTỔNG CHI PHÍ VẬN CHUYỂN\nChi phí vận chuyển / đơn vị (USD)\nTỔNG LƯỢNG XUẤT TỪ HCM (TỐI ĐA)\n<=\nTỔNG LƯỢNG XUẤT TỪ TIỀN GIANG (TỐI ĐA)\nTỔNG LƯỢNG XUẤT TỪ LONG AN (TỐI ĐA)\nTIỀN GIANG → K1 (TỐI ĐA)\nSỨC CHỨA KHO K1 (TỐI ĐA)\nLONG AN → CUS1 (TỐI THIỂU)\nNHU CẦU KHÁCH HÀNG CUS1\n=\nNHU CẦU KHÁCH HÀNG CUS2\nNHU CẦU KHÁCH HÀNG CUS3\nNHU CẦU KHÁCH HÀNG CUS4\nKẾ HOẠCH CHẶNG 1: NHÀ MÁY → KHO\nTổng xuất\nHCM\nTiền Giang\nLong An\nTổng nhập kho\nKẾ HOẠCH CHẶNG 2: KHO → KHÁCH HÀNG\nTổng giao khách hàng\nGIẢI THÍCH KẾT QUẢ SOLVER — CASE 1 (Vận chuyển)\nPhương án tối ưu:\nZ_min = 17.690 USD\nPhân bổ theo tuyến (24 biến):\nHCM → K1 → CUS2: 50; HCM → K1 → CUS4: 500 (HCM dùng hết 550/550 công suất)\nTiền Giang → K1 → CUS2: 200 (đạt đúng trần 200); Tiền Giang → K2 → CUS1: 250, → CUS2: 150, → CUS3: 70 (Tiền Giang dùng 670/700, còn dư 30)\nLong An → K2 → CUS1: 150, → CUS3: 330 (Long An dùng hết 480/480 công suất)\nTổng nhận tại kho:\nK1 = 750 (còn dư 250 so với sức chứa 1.000); K2 = 950\nTổng giao khách hàng:\nCUS1=400, CUS2=400, CUS3=400, CUS4=500 — đúng bằng nhu cầu (ràng buộc \"=\" nên luôn khớp chính xác, không dư không thiếu).\nCác ràng buộc CHẶT (binding) — đây là các điểm nghẽn quyết định chi phí:\n1. Công suất HCM (550/550)\n2. Công suất Long An (480/480)\n3. Giới hạn tuyến Tiền Giang→K1 (200/200)\n4. Long An→CUS1 tối thiểu (150/150 — đúng bằng mức sàn)\nRàng buộc KHÔNG chặt (còn dư, không ảnh hưởng chi phí):\nCông suất Tiền Giang (dư 30)\nSức chứa Kho K1 (dư 250)\n→\nDiễn giải:\nVì HCM và Long An đã dùng hết công suất, và tuyến rẻ Tiền Giang→K1 đã chạm trần 200 đơn vị, công ty buộc phải đẩy thêm hàng qua các tuyến có chi phí cao hơn (Tiền Giang→K2 giá 7) để vẫn đáp ứng đủ nhu cầu 4 khách hàng. Đây chính là nguyên nhân khiến tổng chi phí không thể thấp hơn 17.690 USD.\nGIẢI THÍCH KẾT QUẢ SOLVER — CASE 2 (Khẩu phần thức ăn)\nPhương án tối ưu: xA ≈\n193,33 kg\n, xB ≈\n93,33 kg\n, xC ≈\n173,33 kg\n/ngày (lưu ý: trong file dùng đơn vị kg/ngày, hàm lượng đã quy đổi sang g/kg)\nZ_min = 1.820 VNĐ/ngày\nKiểm tra ràng buộc:\nTổng chất đạm = 90 = 90 (yêu cầu tối thiểu) →\nCHẶT\nTổng chất đường = 130 = 130 →\nCHẶT\nTổng chất khoáng = 10 = 10 →\nCHẶT"
+      }
+    ],
+    "lastModified": "2026-11-01T08:35:31.736251"
+  },
+  {
     "id": "DOC_85CF41E9",
     "raw_id": "LECLANCHÉ S.A. - JOINT DEVELOPMENT AND MARKETING AGREEMENT.PDF",
     "name": "LECLANCHÉ S.A. - JOINT DEVELOPMENT AND MARKETING AGREEMENT.PDF",
@@ -47309,6 +48002,458 @@
       }
     ],
     "lastModified": "2026-11-01T08:25:03.997377"
+  },
+  {
+    "id": "DOC_74047204",
+    "raw_id": "1. C1SE18-Proposal-Document-Ver1.1_VIE.docx",
+    "name": "1. C1SE18-Proposal-Document-Ver1.1_VIE.docx",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "DOCX",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "31/10/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.51 MB",
+    "chunks": "130 Chunks",
+    "chunk_count": 130,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "7404720429534164eb33458b9a30079cf42dd9df9dc736b67731cb0d411b68c7",
+    "file_hash": "7404720429534164eb33458b9a30079cf42dd9df9dc736b67731cb0d411b68c7",
+    "fileHash": "7404720429534164eb33458b9a30079cf42dd9df9dc736b67731cb0d411b68c7",
+    "storage_path": "/data/legal/1. C1SE18-Proposal-Document-Ver1.1_VIE.docx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [
+        "dựa trên GraphRAG dành cho Hỗ trợ Quyết",
+        "áp dụng công nghệ GraphRAG để hỗ trợ ra",
+        "nhỏ và vừa"
+      ],
+      "clauses": [
+        {
+          "type": "Bảo mật thông tin (Confidentiality)",
+          "title": "Điều khoản Bảo mật"
+        },
+        {
+          "type": "Điều khoản Thanh toán (Payment Terms)",
+          "title": "Phương thức Thanh toán"
+        }
+      ],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_74047204_0",
+        "chunk_id": 0,
+        "text": "Trường Quốc tế\n\nDự án Capstone 1\n\nTÀI LIỆU ĐỀ XUẤT\n\nDự án Nghiên cứu Khoa học Cấp độ Sinh viên 2026\n\nTên dự án:\n\nNền tảng Quản lý Kiến thức Doanh nghiệp dựa trên GraphRAG dành cho Hỗ trợ Quyết định SMEs\n\nPhiên bản: 1.1\n\nNgày: 06 Tháng 9 2026\n\nĐược gửi bởi C1SE.18\n\nAnh, Tran Thi Ngoc\n\nMinh, Huynh Ngoc\n\nAnh, Ha Hoang\n\nVu, Tran Viet Anh\n\nBao, Phan Anh\n\nĐược phê duyệt bởi\n\nT. Sanh, Kim Tran\n\nĐại diện Ban Xem xét Đề xuất:\n\nTên gọiChữ kýNgày\n\nDự án Capstone 1 - Người hướng dẫn:\n\nTên gọi PhD. Sanh, Kim TranChữ kýNgày\n\nTên viết tắt của dự án"
+      },
+      {
+        "id": "DOC_74047204_1",
+        "chunk_id": 1,
+        "text": "GraphMind\n\nTiêu đề dự án\n\nNền tảng Quản lý Kiến thức Doanh nghiệp dựa trên GraphRAG dành cho Hỗ trợ Quyết định SMEs\n\nNgày bắt đầu\n\n01 Tháng 9\n\n2026\n\nNgày kết thúc\n\n01 Tháng 12\n\n2026\n\ncơ sở dẫn đầu\n\nTrường Quốc tế, Đại học Duy Tan\n\nVai trò\n\nTên gọi\n\nEmail\n\nĐiện thoại\n\nNgười hướng dẫn dự án\n\nTran Kim Sanh\n\nsanhtk@gmail.com\n\n0987409464\n\nTran Thi Ngoc Anh\n\ntranthingocanh136@gmail.com\n\n0971946725\n\nHa Hoang Anh\n\nhahoanganh1082005@gmail.com\n\n0978910948\n\nPhan Anh Bao\n\nphananhbao123456789@gmail.com\n\n0347148847\n\nHuynh Ngoc Minh\n\nminhhuynhngoc99@gmail.com"
+      },
+      {
+        "id": "DOC_74047204_2",
+        "chunk_id": 2,
+        "text": "0399794995\n\nTran Viet Anh Vu\n\ntranvietanhvu2005@gmail.com\n\n0931998532\n\nTÊN TÀI LIỆU\n\nTiêu đề tài liệu\n\nTài liệu đề xuất\n\nTác giả\n\nAnh, Tran Thi Ngoc\n\nVai trò\n\nScrum Master, Trưởng nhóm, Lập trình viên\n\nNgày\n\nTháng 9 năm 2026\n\nTên tệp\n\nC1SE18-Proposal-Document-Version1.1.docx\n\nPHÊ DUYỆT TÀI LIỆU\n\nCác chữ ký sau đây là bắt buộc để phê duyệt tài liệu này.\n\nVai trò\n\nTên gọi\n\nChữ ký\n\nNgày\n\nGiám sát viên\n\nTran Kim Sanh\n\nThành viên đội\n\nTran Thi Ngoc Anh\n\nThành viên đội\n\nHuynh Ngoc Minh\n\nThành viên đội\n\nHa Hoang Anh\n\nThành viên đội\n\nTran Viet Anh Vu"
+      },
+      {
+        "id": "DOC_74047204_3",
+        "chunk_id": 3,
+        "text": "Thành viên đội\n\nPhan Anh Bao\n\n1. Giới thiệu5\n\n1.1 Mục đích của tài liệu5\n\n1.2 Phạm vi vật liệu5\n\n1.3 Định nghĩa, từ viết tắt5\n\n1.4 Tài liệu tham khảo7\n\n1.5 Tổng quan7\n\n2. Tuyên bố vấn đề8\n\n2.1 Bối cảnh nghiên cứu8\n\n2.2 Động lực kinh doanh9\n\n2.3 Các vấn đề nghiên cứu cốt lõi9\n\n3. Tổng quan tài liệu9\n\n3.1 Vector RAG (RAG truyền thống)9\n\n3.2 GraphRAG10\n\n3.3 Khoảng trống nghiên cứu10\n\n4. Mục tiêu nghiên cứu11\n\n4.1 Mục tiêu chung11\n\n4.2 Mục tiêu cụ thể12\n\nLộ trình nghiên cứu12\n\nHệ thống đường ray (MVP)12"
+      },
+      {
+        "id": "DOC_74047204_4",
+        "chunk_id": 4,
+        "text": "5. Đóng góp khoa học và tính mới lạ13\n\n6. Phương pháp nghiên cứu và kiến trúc hệ thống14\n\n6.1 Kiến trúc hệ thống tổng thể14\n\n6.1a Vai trò người dùng và chức năng web16\n\n6.2 Sơ đồ Chức năng Kinh doanh (BFD)18\n\n6.3 Sơ đồ Ngữ cảnh Hệ thống19\n\n6.4 Thiết kế ánh xạ lược đồ19\n\n6.5 Cơ chế Truy vấn Lai20\n\n6.6 Kiến trúc triển khai20\n\n6.7 Ngăn xếp công nghệ21\n\n7. Phạm vi của MVP22\n\nGiả định và Ràng buộc23\n\n8. Dữ liệu thực nghiệm24\n\n8.1 Dữ liệu có cấu trúc: AdventureWorks24\n\n8.2 Dữ liệu phi cấu trúc: CUAD25"
+      },
+      {
+        "id": "DOC_74047204_5",
+        "chunk_id": 5,
+        "text": "8.3 Tinh chỉnh xây dựng dữ liệu (Cặp hỏi đáp)25\n\n8.4 Tinh chỉnh môi trường trên Kaggle27\n\n8.5 Tích hợp dữ liệu: Liên kết tổng hợp có kiểm soát28\n\n9. Phương pháp và chỉ số đánh giá28\n\n9.1 Trình xây dựng chuẩn29\n\n9.2 Chỉ số Đánh giá29\n\n9.3 So sánh Baseline30\n\n10. Bảo mật và Quyền riêng tư30\n\nXác thực30\n\nBảo vệ dữ liệu31\n\n11. Quy trình Scrum31\n\n12. Kế hoạch dự án và các cột mốc32\n\n13. Kết quả kỳ vọng và ý nghĩa35\n\nÝ nghĩa khoa học35\n\nÝ nghĩa thực tiễn36\n\nĐánh giá của người phản biện độc lập36"
+      },
+      {
+        "id": "DOC_74047204_6",
+        "chunk_id": 6,
+        "text": "14. Rủi ro và Chiến lược Giảm thiểu38\n\n15. Ước tính nguồn lực và chi phí (cho mục đích giáo dục)41\n\n16. Tài liệu tham khảo42\n\n1. Giới thiệu\n\n1.1 Mục đích của tài liệu"
+      },
+      {
+        "id": "DOC_74047204_7",
+        "chunk_id": 7,
+        "text": "Tài liệu này trình bày Tài liệu Đề xuất cho hệ thống GraphMind (Nền tảng AI Kiến thức Doanh nghiệp) — một nền tảng quản lý tri thức doanh nghiệp áp dụng công nghệ GraphRAG để hỗ trợ ra quyết định cho các doanh nghiệp nhỏ và vừa (SMEs). Tài liệu này thiết lập bối cảnh nghiên cứu, tuyên bố vấn đề, mục tiêu nghiên cứu, phương pháp luận, kiến trúc hệ thống đề xuất và phạm vi phát triển, đồng thời là tài liệu tham khảo chính cho sự đồng thuận giữa nhóm sinh viên triển khai, giảng viên/hội đồng đánh giá và các bên liên quan trước khi triển khai các tài liệu thiết kế chi tiết (SRS)."
+      },
+      {
+        "id": "DOC_74047204_8",
+        "chunk_id": 8,
+        "text": "Những người đọc chính của tài liệu bao gồm: giảng viên và hội đồng đánh giá dự án Capstone, nhóm sinh viên phát triển dự án (nhóm C1SE.18), và các bên liên quan đóng vai trò giả định như các doanh nghiệp vừa và nhỏ trong các nghiên cứu tình huống.\n\n1.2 Phạm vi vật liệu"
+      },
+      {
+        "id": "DOC_74047204_9",
+        "chunk_id": 9,
+        "text": "Tài liệu này bao gồm các nội dung sau: bối cảnh nghiên cứu và phân tích dữ liệu phân mảnh trong các doanh nghiệp vừa và nhỏ; tổng quan tài liệu về các phương pháp RAG hiện có; mục tiêu nghiên cứu và các đóng góp khoa học dự kiến; phương pháp nghiên cứu và kiến trúc hệ thống đề xuất; phạm vi của Sản phẩm Khả thi Tối thiểu (MVP); mô tả chi tiết bộ dữ liệu thí nghiệm; phương pháp đánh giá và các tiêu chuẩn đánh giá; các biện pháp an ninh; kế hoạch triển khai dự án trong mỗi Sprint; và các chiến lược rủi ro và giảm thiểu."
+      }
+    ],
+    "lastModified": "2026-10-31T22:51:26.491404"
+  },
+  {
+    "id": "DOC_6EFC48C8",
+    "raw_id": "Thuật toán Graph Traversal.docx",
+    "name": "Thuật toán Graph Traversal.docx",
+    "category": "Tài liệu R&D",
+    "category_en": "R&D Document",
+    "type": "DOCX",
+    "dept": "R&D",
+    "deptKey": "rnd",
+    "deptLabel": "R&D",
+    "department": "R&D",
+    "owner": "AEGIS File Watcher",
+    "date": "31/10/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "11 Chunks",
+    "chunk_count": 11,
+    "schema": "AEGIS R&D Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "6efc48c824798343cef843d3b77be8610dbdcc42d965c643e43f946ce9997f41",
+    "file_hash": "6efc48c824798343cef843d3b77be8610dbdcc42d965c643e43f946ce9997f41",
+    "fileHash": "6efc48c824798343cef843d3b77be8610dbdcc42d965c643e43f946ce9997f41",
+    "storage_path": "/data/rnd/Thuật toán Graph Traversal.docx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [
+        "có giá trị trên 10 tỷ",
+        "nào liên quan đến dự án X và tổng giá tr"
+      ],
+      "clauses": [
+        {
+          "type": "Điều khoản Thanh toán (Payment Terms)",
+          "title": "Phương thức Thanh toán"
+        }
+      ],
+      "value": "10 tỷ"
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_6EFC48C8_0",
+        "chunk_id": 0,
+        "text": "Bộ truy xuất Đồ thị (Graph Retrieval): Thuật toán Graph Traversal (Duyệt đồ thị/Text-to-Cypher) trên cơ sở dữ liệu Neo4j.\n\nGraph Retrieval trong GraphRAG là cách lấy thông tin trực tiếp từ Knowledge Graph thay vì chỉ tìm các đoạn văn giống với câu hỏi.\n\nQuy trình gồm 2 cách chính:"
+      },
+      {
+        "id": "DOC_6EFC48C8_1",
+        "chunk_id": 1,
+        "text": "Thứ nhất, Graph Traversal:Hệ thống xác định thực thể quan trọng trong câu hỏi làm Seed Node, sau đó đi theo các mối quan hệ trong Neo4j để mở rộng 1–2 hop và lấy ra các thực thể liên quan. Cuối cùng chọn những node/relationship quan trọng nhất làm context cho LLM.\n\nVí dụ:\n\nCâu hỏi\n\n↓\n\nHợp đồng X\n\n↓\n\nKhách hàng A\n\n↓\n\nDự án B\n\n↓\n\nPhòng kinh doanh"
+      },
+      {
+        "id": "DOC_6EFC48C8_2",
+        "chunk_id": 2,
+        "text": "“Graph Traversal là quá trình bắt đầu từ một thực thể được xác định trong câu hỏi, gọi là Seed Node, sau đó lần theo các mối quan hệ trong Neo4j theo một số bước nhất định, ví dụ 1 hoặc 2 hop, để tìm và thu thập các thực thể liên quan. Những thông tin liên quan nhất sau đó được đưa vào Context cho LLM tạo câu trả lời.”\n\n1. Text-to-Cypher thực chất làm gì?\n\nHãy tưởng tượng Neo4j là một kho dữ liệu rất lớn, trong đó có rất nhiều Node và Relationship."
+      },
+      {
+        "id": "DOC_6EFC48C8_3",
+        "chunk_id": 3,
+        "text": "Người dùng không biết Cypher nên họ chỉ hỏi bằng tiếng Việt:\n\n“Ba hợp đồng có giá trị lớn nhất trong năm 2025 là gì?”\n\nLLM sẽ đóng vai trò “phiên dịch viên”:\n\nNgôn ngữ tự nhiên\n\n↓\n\nLLM\n\n↓\n\nCypher Query\n\n↓\n\nNeo4j\n\n↓\n\nKết quả\n\nVí dụ LLM hiểu câu hỏi thành:\n\nĐối tượng cần tìm: Contract\n\nĐiều kiện: năm 2025\n\nSắp xếp: value DESC\n\nSố lượng: LIMIT 3\n\nSau đó sinh:\n\nMATCH (c:Contract)\n\nWHERE c.signed_date >= date('2025-01-01')\n\nAND c.signed_date < date('2026-01-01')\n\nRETURN c.name, c.value\n\nORDER BY c.value DESC\n\nLIMIT 3"
+      },
+      {
+        "id": "DOC_6EFC48C8_4",
+        "chunk_id": 4,
+        "text": "Neo4j chạy câu này và trả về dữ liệu.\n\nVì vậy, Text-to-Cypher không phải là LLM tự trả lời câu hỏi.\n\nLLM chỉ chuyển câu hỏi thành câu truy vấn, còn Neo4j mới là nơi thực hiện việc tìm kiếm dữ liệu.\n\n2. Tại sao không dùng Graph Traversal cho tất cả?\n\nGiả sử câu hỏi:\n\n“Hợp đồng X liên quan đến những phòng ban nào?”\n\nTa có:\n\nHợp đồng X\n\n│\n\n├── thuộc → Dự án A\n\n│              │\n\n│              └── quản lý bởi → Phòng Kinh doanh\n\n│\n\n└── ký với → Khách hàng B\n\nĐây là câu hỏi về mối quan hệ.\n\nTa chỉ cần:"
+      },
+      {
+        "id": "DOC_6EFC48C8_5",
+        "chunk_id": 5,
+        "text": "“Bắt đầu từ Hợp đồng X và đi theo các relationship để xem những thực thể nào liên quan.”\n\n→ Graph Traversal rất phù hợp.\n\nNhưng nếu câu hỏi là:\n\n“Trong năm 2025, có bao nhiêu hợp đồng của khách hàng doanh nghiệp có giá trị trên 10 tỷ?”\n\nLúc này chúng ta phải:\n\nTìm Contract\n\n↓\n\nLọc năm 2025\n\n↓\n\nLọc Customer = ENTERPRISE\n\n↓\n\nLọc value > 10 tỷ\n\n↓\n\nCOUNT\n\nĐây không đơn thuần là đi từ node này sang node khác.\n\nNó yêu cầu logic truy vấn và tính toán.\n\n→ Text-to-Cypher phù hợp hơn.\n\n3. Sự khác nhau quan trọng nhất"
+      },
+      {
+        "id": "DOC_6EFC48C8_6",
+        "chunk_id": 6,
+        "text": "Graph Traversal tập trung vào “quan hệ giữa các thực thể”.\n\nText-to-Cypher tập trung vào “điều kiện và logic truy vấn dữ liệu”.\n\nVí dụ:\n\nCâu hỏiPhương pháp\n\n“Hợp đồng X liên quan đến ai?”Graph Traversal\n\n“Hợp đồng X thuộc dự án nào?”Graph Traversal\n\n“Khách hàng A có quan hệ gì với dự án B?”Graph Traversal / Path\n\n“Có bao nhiêu hợp đồng năm 2025?”Text-to-Cypher\n\n“Tổng giá trị hợp đồng của khách hàng A?”Text-to-Cypher\n\n“Top 5 hợp đồng có giá trị lớn nhất?”Text-to-Cypher\n\n4. Vậy tại sao phải kết hợp cả hai?"
+      },
+      {
+        "id": "DOC_6EFC48C8_7",
+        "chunk_id": 7,
+        "text": "Đây mới là điểm quan trọng của Hybrid Graph Retrieval.\n\nVí dụ câu hỏi:\n\n“Khách hàng doanh nghiệp nào liên quan đến dự án X và tổng giá trị các hợp đồng của họ là bao nhiêu?”\n\nCâu hỏi này có hai loại yêu cầu.\n\nPhần 1: Tìm quan hệ\n\nDự án X\n\n↓\n\nHợp đồng\n\n↓\n\nKhách hàng\n\n→ Graph Traversal.\n\nPhần 2: Tính toán\n\nKhách hàng\n\n↓\n\nCác hợp đồng\n\n↓\n\nSUM(value)\n\n→ Text-to-Cypher.\n\nVì vậy pipeline có thể là:\n\nCâu hỏi\n\n│\n\n▼\n\nPhân tích câu hỏi\n\n│\n\n┌─────────┴─────────┐\n\n▼                   ▼\n\nGraph Traversal      Text-to-Cypher\n\n│                   │"
+      },
+      {
+        "id": "DOC_6EFC48C8_8",
+        "chunk_id": 8,
+        "text": "▼                   ▼\n\nTìm quan hệ           Tính toán /\n\ntrong đồ thị          lọc dữ liệu\n\n│                   │\n\n└─────────┬─────────┘\n\n▼\n\nKết hợp kết quả\n\n│\n\n▼\n\nLLM\n\n│\n\n▼"
+      },
+      {
+        "id": "DOC_6EFC48C8_9",
+        "chunk_id": 9,
+        "text": "“Graph Traversal và Text-to-Cypher giải quyết hai loại vấn đề khác nhau. Graph Traversal phù hợp khi chúng ta muốn khám phá mối quan hệ giữa các thực thể, ví dụ tìm một hợp đồng liên quan đến khách hàng hoặc dự án nào. Trong khi đó, Text-to-Cypher phù hợp với những câu hỏi cần lọc, đếm, tính tổng hoặc sắp xếp dữ liệu. Vì vậy trong GraphRAG thực tế, chúng ta có thể kết hợp hai phương pháp: dùng Graph Traversal để tìm đúng vùng tri thức, sau đó dùng Cypher để thực hiện các phép tính hoặc truy vấn phức tạp. Kết quả cuối cùng được đưa cho LLM để tổng hợp thành câu trả lời.”"
+      }
+    ],
+    "lastModified": "2026-10-31T22:27:28.028036"
+  },
+  {
+    "id": "DOC_EAA9642A",
+    "raw_id": "test_watcher_ping.pdf",
+    "name": "test_watcher_ping.pdf",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "PDF",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "31/10/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "cuad_contract",
+    "source": "aegis_local_file_watcher",
+    "hash": "5eaf3199ee8d19d35f6ba61ede8f51a0bc2949a394f0861579106720a1c4b02a",
+    "file_hash": "5eaf3199ee8d19d35f6ba61ede8f51a0bc2949a394f0861579106720a1c4b02a",
+    "fileHash": "5eaf3199ee8d19d35f6ba61ede8f51a0bc2949a394f0861579106720a1c4b02a",
+    "storage_path": "/data/legal/test_watcher_ping.pdf",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_EAA9642A_0",
+        "chunk_id": 0,
+        "text": "[PDF Document: test_watcher_ping.pdf (Binary stream parsed, size: 55 bytes)]"
+      }
+    ],
+    "lastModified": "2026-10-31T21:56:53.511167"
+  },
+  {
+    "id": "DOC_6AF644F1",
+    "raw_id": "demo_test_procurement_ledger.csv",
+    "name": "demo_test_procurement_ledger.csv",
+    "category": "Tài liệu Kế toán / Thu mua",
+    "category_en": "Kế toán / Thu mua Document",
+    "type": "CSV",
+    "dept": "Kế toán / Thu mua",
+    "deptKey": "accounting_procurement",
+    "deptLabel": "Kế toán / Thu mua",
+    "department": "Kế toán / Thu mua",
+    "owner": "AEGIS File Watcher",
+    "date": "31/10/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Kế toán / Thu mua Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "spreadsheet",
+    "source": "aegis_local_file_watcher",
+    "hash": "6af644f1a3d698e703dfbbaf114e4d71166eb4b5d29eefc6e8edba10b627c3ad",
+    "file_hash": "6af644f1a3d698e703dfbbaf114e4d71166eb4b5d29eefc6e8edba10b627c3ad",
+    "fileHash": "6af644f1a3d698e703dfbbaf114e4d71166eb4b5d29eefc6e8edba10b627c3ad",
+    "storage_path": "/data/accounting_procurement/demo_test_procurement_ledger.csv",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_6AF644F1_0",
+        "chunk_id": 0,
+        "text": "TransactionID,Vendor,Amount,Category,Status\r\nTX9901,GraphMind Cloud Hosting,25000000,IT Infrastructure,Approved\r\nTX9902,CyberSecurity Audit Service,15000000,Consulting,Approved"
+      }
+    ],
+    "lastModified": "2026-10-31T21:53:14.009366"
+  },
+  {
+    "id": "DOC_082E0BBB",
+    "raw_id": "demo_test_sales_policy.docx",
+    "name": "demo_test_sales_policy.docx",
+    "category": "Tài liệu Kinh doanh",
+    "category_en": "Kinh doanh (Sales) Document",
+    "type": "DOCX",
+    "dept": "Kinh doanh (Sales)",
+    "deptKey": "sales",
+    "deptLabel": "Kinh doanh (Sales)",
+    "department": "Kinh doanh (Sales)",
+    "owner": "AEGIS File Watcher",
+    "date": "31/10/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Kinh doanh (Sales) Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "082e0bbb66afb54086ba4e7ad769ea764658f80435285d693d4100dbc0697e2d",
+    "file_hash": "082e0bbb66afb54086ba4e7ad769ea764658f80435285d693d4100dbc0697e2d",
+    "fileHash": "082e0bbb66afb54086ba4e7ad769ea764658f80435285d693d4100dbc0697e2d",
+    "storage_path": "/data/sales/demo_test_sales_policy.docx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_082E0BBB_0",
+        "chunk_id": 0,
+        "text": "GraphMind Enterprise Sales Incentive Plan\n\nArticle 2. Commission Rate. Tier 1 sales representatives receive a 15% commission on closed knowledge graph licenses."
+      }
+    ],
+    "lastModified": "2026-10-31T21:53:11.453649"
+  },
+  {
+    "id": "DOC_2031E0AD",
+    "raw_id": "demo_test_nda_contract.pdf",
+    "name": "demo_test_nda_contract.pdf",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "PDF",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "31/10/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "cuad_contract",
+    "source": "aegis_local_file_watcher",
+    "hash": "2031e0ad1d595c90f50b0125624d61d9291c14766492e6b754ab9e0ea7e37fe7",
+    "file_hash": "2031e0ad1d595c90f50b0125624d61d9291c14766492e6b754ab9e0ea7e37fe7",
+    "fileHash": "2031e0ad1d595c90f50b0125624d61d9291c14766492e6b754ab9e0ea7e37fe7",
+    "storage_path": "/data/legal/demo_test_nda_contract.pdf",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [
+        {
+          "type": "Bảo mật thông tin (Confidentiality)",
+          "title": "Điều khoản Bảo mật"
+        }
+      ],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_2031E0AD_0",
+        "chunk_id": 0,
+        "text": "GraphMind Demo Confidentiality Agreement 2026\nArticle 1. Scope of Agreement. This NDA protects proprietary algorithms and knowledge graph\nembeddings. All parties agree to strict non-disclosure."
+      }
+    ],
+    "lastModified": "2026-10-31T21:53:10.245179"
+  },
+  {
+    "id": "DOC_290F493C",
+    "raw_id": "blocked.pdf",
+    "name": "blocked.pdf",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "PDF",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "31/10/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "cuad_contract",
+    "source": "aegis_local_file_watcher",
+    "hash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
+    "file_hash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
+    "fileHash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
+    "storage_path": "/data/legal/blocked.pdf",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_290F493C_0",
+        "chunk_id": 0,
+        "text": "[PDF Document: blocked.pdf (Binary stream parsed, size: 12 bytes)]"
+      }
+    ],
+    "lastModified": "2026-10-31T20:15:03.337181"
   },
   {
     "id": "DOC_18FC8A33",
