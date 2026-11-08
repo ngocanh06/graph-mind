@@ -220,9 +220,11 @@ export async function getCurrentUserApi(token) {
 // NEO4J GRAPH API (LIVE REAL DATA)
 // ============================================================================
 
-export async function fetchNeo4jStatus() {
+export async function fetchNeo4jStatus(role = null) {
   try {
-    const res = await fetch(`${API_BASE}/neo4j/status`);
+    let url = `${API_BASE}/neo4j/status`;
+    if (role) url += `?role=${encodeURIComponent(role)}`;
+    const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Neo4j] status error:", e);
@@ -230,12 +232,13 @@ export async function fetchNeo4jStatus() {
   return null;
 }
 
-export async function fetchNeo4jGraph(limit = 100, relLimit = 200, label = null, domain = null, relType = null) {
+export async function fetchNeo4jGraph(limit = 100, relLimit = 200, label = null, domain = null, relType = null, role = null) {
   try {
     let url = `${API_BASE}/neo4j/graph?limit=${limit}&rel_limit=${relLimit}`;
     if (label && label !== "ALL") url += `&label=${encodeURIComponent(label)}`;
     if (domain && domain !== "ALL") url += `&domain=${encodeURIComponent(domain)}`;
     if (relType && relType !== "ALL") url += `&rel_type=${encodeURIComponent(relType)}`;
+    if (role) url += `&role=${encodeURIComponent(role)}`;
     const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {
@@ -244,9 +247,11 @@ export async function fetchNeo4jGraph(limit = 100, relLimit = 200, label = null,
   return null;
 }
 
-export async function expandNeo4jNode(nodeId, limit = 25) {
+export async function expandNeo4jNode(nodeId, limit = 25, role = null) {
   try {
-    const res = await fetch(`${API_BASE}/neo4j/expand/${encodeURIComponent(nodeId)}?limit=${limit}`);
+    let url = `${API_BASE}/neo4j/expand/${encodeURIComponent(nodeId)}?limit=${limit}`;
+    if (role) url += `&role=${encodeURIComponent(role)}`;
+    const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Neo4j] expandNeo4jNode error:", e);
@@ -254,9 +259,11 @@ export async function expandNeo4jNode(nodeId, limit = 25) {
   return null;
 }
 
-export async function fetchNeo4jNode(nodeId) {
+export async function fetchNeo4jNode(nodeId, role = null) {
   try {
-    const res = await fetch(`${API_BASE}/neo4j/node/${encodeURIComponent(nodeId)}`);
+    let url = `${API_BASE}/neo4j/node/${encodeURIComponent(nodeId)}`;
+    if (role) url += `?role=${encodeURIComponent(role)}`;
+    const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Neo4j] fetchNeo4jNode error:", e);
@@ -264,9 +271,11 @@ export async function fetchNeo4jNode(nodeId) {
   return null;
 }
 
-export async function searchNeo4jNodes(query, limit = 25) {
+export async function searchNeo4jNodes(query, limit = 25, role = null) {
   try {
-    const res = await fetch(`${API_BASE}/neo4j/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+    let url = `${API_BASE}/neo4j/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+    if (role) url += `&role=${encodeURIComponent(role)}`;
+    const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Neo4j] searchNeo4jNodes error:", e);

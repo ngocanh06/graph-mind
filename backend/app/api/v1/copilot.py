@@ -377,28 +377,42 @@ def apply_layer2_context_gate(
         ent_type = ent.get("type") or ""
         ent_id = str(ent.get("_id") or "")
 
-        # A. Aggregate cards
+        # A. System & Document Summary / Portfolio / Compliance Report entities
+        is_summary = (
+            "DocumentSummary" in ent_labels or
+            "SystemStats" in ent_labels or
+            "ComplianceReport" in ent_labels or
+            "ContractPortfolio" in ent_labels or
+            ent_id == "total-documents-summary" or
+            ent_type == "total-documents-summary"
+        )
+        if is_summary:
+            ent["is_system_summary"] = True
+            verified_entities.append(ent)
+            continue
+
+        # A2. Aggregate cards requiring specific source document validation
         is_aggregate = (
             ent_type in ["portfolio-breakdown", "compliance-stats"] or
-            ent_id in ["portfolio-breakdown", "compliance-stats"] or
-            "ContractPortfolio" in ent_labels or
-            "ComplianceReport" in ent_labels
+            ent_id in ["portfolio-breakdown", "compliance-stats"]
         )
         if is_aggregate:
             if validate_aggregate_in_layer2(ent, doc_map):
                 verified_entities.append(ent)
             continue
 
-        # B. Product / ERP entities
+        # B. Product / ERP / NL2Cypher Analytical entities
         is_product = (
-            "Product" in ent_labels or
-            "SalesOrder" in ent_labels or
-            "Customer" in ent_labels or
-            ent_type in ["Product", "SalesOrder", "Customer"]
+            any(l in [
+                "Product", "SalesOrder", "Customer", "Category", "SubCategory",
+                "FinancialTrend", "SchemaBoundary", "BusinessKPI", "ExecutiveReport", "Clarification"
+            ] for l in ent_labels) or
+            ent_type in ["Product", "SalesOrder", "Customer", "Category", "SubCategory"] or
+            bool(ent.get("grounded_answer"))
         )
         if is_product:
             ent["is_erp_entity"] = True
-            # Products can be used in structured answers if verified in Neo4j
+            # Products and verified ERP entities can be used in structured answers if verified in Neo4j
             verified_entities.append(ent)
             continue
 
@@ -988,7 +1002,9 @@ async def ask_copilot(
         "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
         "sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike", "nhà cung cấp", "vendor",
         "cửa hàng", "store", "đại lý", "mountain", "road", "touring",
-        "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component"
+        "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component",
+        "bán chạy", "tồn kho", "aov", "arpc", "chi tiêu", "mua nhiều", "mua ít",
+        "danh mục sản phẩm", "category", "subcategory", "lợi nhuận", "doanh số"
     ])
 
     # 2.0 Document Identity & Provenance Gate: Check if query specifically targets a known document
@@ -1003,7 +1019,11 @@ async def ask_copilot(
         "thanh", "vien", "nao", "sao", "cho", "du", "an", "van", "ban", "ve", "gi", "ai",
         "he", "thong", "quy", "dinh", "bao", "cao", "nguoi", "phu", "trach", "giam", "doc",
         "systems", "system", "corp", "corporation", "company", "agreement", "inc", "ltd", "llc",
-        "group", "holdings", "media", "services", "service", "contract", "contracts"
+        "group", "holdings", "media", "services", "service", "contract", "contracts",
+        "cuad", "adventureworks", "erp", "dataset", "datasets", "chi", "so", "co", "cau", "muc", "loai",
+        "customer", "customers", "product", "products", "category", "categories", "subcategory",
+        "salesorder", "bikes", "components", "clothing", "accessories", "mountain", "touring",
+        "revenue", "subtotal", "totaldue", "listprice", "orderqty", "linetotal"
     }
     try:
         # A. Explicit document_id passed in request
@@ -1018,8 +1038,8 @@ async def ask_copilot(
                 active_target_doc = doc_matches[0]["name"]
                 target_doc_id = doc_matches[0]["id"]
 
-        # B. Exact ID or Document Name directly in current query
-        if not active_target_doc:
+        # B. Exact ID or Document Name directly in current query (skip partial token matching for pure ERP queries)
+        if not active_target_doc and (is_doc_repo_query or not is_business_semantic_query or any(ext in q_lower for ext in [".pdf", ".docx", ".xlsx", ".txt", ".csv"])):
             doc_matches = neo4j_client.run_cypher("""
                 MATCH (d:Document)
                 WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
@@ -1031,7 +1051,7 @@ async def ask_copilot(
                 raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
                 candidate_tokens = [
                     t for t in raw_tokens
-                    if t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
+                    if not t.isdigit() and t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
                 ]
                 for t in sorted(candidate_tokens, key=len, reverse=True):
                     doc_matches = neo4j_client.run_cypher("""
@@ -1175,13 +1195,23 @@ async def ask_copilot(
             # 2.0.1 ENTITY EXISTENCE GATE: If user explicitly asks about a specific named document/file/contract
             # but it does not exist anywhere in Neo4j or Qdrant, refuse immediately to avoid false-positive hallucinations
             targeted_doc_term = None
-            t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
-            if t_match:
-                cand = t_match.group(1).strip()
-                if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
-                    targeted_doc_term = cand
-            elif candidate_tokens and is_doc_repo_query:
-                targeted_doc_term = candidate_tokens[0]
+            is_inventory_early = any(k in q_lower for k in [
+                "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
+                "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
+            ])
+            is_agg_query = any(k in q_lower for k in [
+                "cơ cấu", "phân bố", "danh mục", "bao nhiêu", "thống kê", "tổng cộng", "tổng số",
+                "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số", "tuân thủ", "compliance",
+                "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
+            ])
+            if not is_inventory_early and not is_agg_query:
+                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
+                if t_match:
+                    cand = t_match.group(1).strip()
+                    if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
+                        targeted_doc_term = cand
+                elif candidate_tokens and is_doc_repo_query:
+                    targeted_doc_term = candidate_tokens[0]
 
             if targeted_doc_term:
                 term_in_docs = False
@@ -1302,7 +1332,11 @@ async def ask_copilot(
         vector_hits = [vh for vh in vector_hits if _is_v_allowed(vh)]
 
     # 2.1.1 Document Chunk Consolidation & Exact Provenance:
-    if not active_target_doc and vector_hits:
+    is_inventory_query = any(k in q_lower for k in [
+        "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
+        "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
+    ])
+    if not active_target_doc and vector_hits and not is_inventory_query and not is_business_semantic_query:
         top_hit = vector_hits[0]
         top_name = top_hit.get("source_file") or top_hit.get("contract_name")
         top_doc_id = top_hit.get("document_id") or top_hit.get("doc_id")
@@ -1363,8 +1397,12 @@ async def ask_copilot(
                 "snippet": f"Tài liệu {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}, gồm {d0.get('chunksCount')} đoạn vector đã lập chỉ mục vào Neo4j và Qdrant."
             })
     else:
-        # Structured or general query: execute text-to-cypher
-        graph_hits = execute_text_to_cypher(clean_query)
+        # Structured or general query: execute text-to-cypher (with multi-turn session context)
+        graph_hits = execute_text_to_cypher(
+            clean_query,
+            session_id=str(session_obj.id) if session_obj else "default",
+            history_messages=(session_obj.messages if session_obj else None),
+        )
         if not graph_hits:
             stop_words = {"tài", "liệu", "trong", "cho", "tôi", "biết", "các", "có", "bao", "nhiêu", "chính", "cụ", "thể", "từng", "là", "gì", "của", "phòng", "về"}
             meaningful_words = [w for w in clean_query.split() if len(w) >= 3 and w.lower() not in stop_words]
@@ -1377,6 +1415,15 @@ async def ask_copilot(
                 if matches:
                     graph_hits.extend(matches)
                     break
+
+        # If query is a system inventory summary or a verified NL2Cypher analytical query,
+        # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
+        if any(
+            gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+            or gh.get("grounded_answer")
+            for gh in graph_hits
+        ):
+            vector_hits = []
 
         # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
         for vh in vector_hits:
@@ -1493,10 +1540,12 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
-            if any(l in ["Vendor", "PurchaseOrder"] for l in labels):
+            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+                return True
+            if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
-            if any(l in ["Customer", "SalesOrder"] for l in labels):
-                return "SALES" in scope.allowed_resources
+            if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory", "Category", "SubCategory", "FinancialTrend", "BusinessKPI"] for l in labels):
+                return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
             rt = resolve_resource_type(gh)
             return rt in scope.allowed_resources
 
@@ -1507,7 +1556,7 @@ async def ask_copilot(
     # Out-of-domain queries score < 0.22, whereas valid in-domain queries score >= 0.28.
     GROUNDING_MIN_SCORE = 0.28
     top_vec_score = max([float(vh.get("score") or 0.0) for vh in vector_hits], default=0.0)
-    has_valid_graph = any(gh.get("_id") not in ["portfolio-breakdown", "compliance-stats"] for gh in graph_hits)
+    has_valid_graph = len(graph_hits) > 0
 
     if top_vec_score < GROUNDING_MIN_SCORE and not has_valid_graph:
         safe_reply = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức để trả lời câu hỏi này."
@@ -1669,23 +1718,40 @@ async def ask_copilot(
             raw_id = str(ent.get("id") or ent.get("_id") or "")
             node_clean_id = raw_id.split(":")[-1] if ":" in raw_id else raw_id
 
-            # A. Aggregate: add chip, NEVER add text citation
-            is_agg = (
-                ent.get("type") in ["portfolio-breakdown", "compliance-stats"] or
-                ent.get("_id") in ["portfolio-breakdown", "compliance-stats"] or
-                "ContractPortfolio" in ent_labels or
-                "ComplianceReport" in ent_labels
-            )
-            if is_agg:
+            # A2. System Document Inventory / Summary / Portfolio Breakdown / Compliance Report
+            if (
+                ent.get("is_system_summary") or
+                any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport"] for l in ent_labels) or
+                node_clean_id in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+            ):
+                is_comp = node_clean_id == "compliance-stats" or "ComplianceReport" in ent_labels
                 evidence_chips.append({
                     "id": f"graph_{node_clean_id}",
-                    "label": f"Báo cáo: {ent_name}"[:36],
-                    "source": "Neo4j Graph (Aggregate)",
+                    "label": f"{'Tuân thủ' if is_comp else 'Hệ thống'}: {ent_name}"[:36],
+                    "source": "Neo4j Graph (" + ("Báo cáo Tuân thủ" if is_comp else "Thống kê hệ thống") + ")",
+                })
+                citations_detail.append({
+                    "docName": f"{'Báo cáo Tuân thủ & An toàn Pháp lý (CUAD)' if is_comp else ('Thống kê danh mục: ' + ent_name)}",
+                    "file": f"Neo4j Graph ({'ComplianceReport' if is_comp else 'DocumentSummary'})",
+                    "source_file": f"Neo4j.{'ComplianceReport' if is_comp else 'DocumentSummary'}",
+                    "document_id": "SYSTEM-COMPLIANCE-REPORT" if is_comp else "SYSTEM-DOCS-SUMMARY",
+                    "dept": "Pháp chế" if is_comp else "Chung",
+                    "deptKey": "legal" if is_comp else "general",
+                    "domain": "EXECUTIVE",
+                    "chunk_index": 0,
+                    "retrieval_score": 100.0,
+                    "match": "GRAPH CYPHER VERIFIED",
+                    "location": "Toàn hệ thống (CUAD Compliance Overview)" if is_comp else "Toàn hệ thống (Enterprise Overview)",
+                    "text": ent.get("snippet") or ("Báo cáo tỷ lệ tuân thủ điều khoản pháp lý trong hệ thống Neo4j" if is_comp else "Thống kê danh mục tài liệu & hợp đồng trong hệ thống Neo4j"),
+                    "chunkId": "#SYSTEM-COMPLIANCE" if is_comp else "#SYSTEM-DOCS",
+                    "sourceType": "Neo4j Graph DB",
+                    "neo4jNode": "ComplianceReport:CUAD" if is_comp else "DocumentSummary:ContractPortfolio",
+                    "score": 100.0,
                 })
                 continue
 
-            # B. Product / ERP: add chip and structured Neo4j graph citation
-            if ent.get("is_erp_entity") or any(l in ["Product", "SalesOrder", "Customer"] for l in ent_labels):
+            # B. Product / ERP / NL2Cypher Analytical: add chip and structured Neo4j graph citation
+            if ent.get("is_erp_entity") or any(l in ["Product", "SalesOrder", "Customer", "Category", "SubCategory", "FinancialTrend", "SchemaBoundary", "BusinessKPI", "ExecutiveReport", "Clarification"] for l in ent_labels):
                 c_id = ent.get("CustomerID") or ent.get("id") or node_clean_id
                 evidence_chips.append({
                     "id": f"graph_{node_clean_id}",
