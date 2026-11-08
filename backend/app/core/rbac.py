@@ -213,6 +213,17 @@ def normalize_role_key(role: Optional[str]) -> str:
     return ROLE_STANDARD
 
 
+# Aggregate summary nodes synthesized by text_to_cypher / nl2cypher_engine (not raw Neo4j entities)
+SYSTEM_AGGREGATE_LABELS = {
+    "DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport",
+    "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport",
+    "SystemSummary", "ComplianceSummary", "PortfolioSummary",
+    "FinancialTrend", "BusinessKPI", "ProductCategory", "ProductSubcategory",
+    "SalesOrderDetail", "SalesHistory",
+}
+SYSTEM_AGGREGATE_IDS = {"total-documents-summary", "portfolio-breakdown", "compliance-stats"}
+
+
 def filter_graph_entities_by_scope(entities: List[Dict[str, Any]], role: str) -> List[Dict[str, Any]]:
     """Lọc danh sách các node thực thể Neo4j trả về tuân thủ Data Scope của role"""
     canonical_role = normalize_role_key(role)
@@ -230,6 +241,10 @@ def filter_graph_entities_by_scope(entities: List[Dict[str, Any]], role: str) ->
             continue
         # Vendor/Company excluded for Standard Sales User
         if any(l in ["Vendor", "Company"] for l in labels) and canonical_role == ROLE_STANDARD:
+            continue
+        # System-wide aggregate stats (counts only, no document content) are visible to all roles
+        if any(l in SYSTEM_AGGREGATE_LABELS for l in labels) or ent.get("_id") in SYSTEM_AGGREGATE_IDS:
+            filtered.append(ent)
             continue
         # Must have at least one allowed label
         if labels and not any(l in allowed for l in labels):

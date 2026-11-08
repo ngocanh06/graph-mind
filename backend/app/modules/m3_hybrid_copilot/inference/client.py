@@ -156,17 +156,29 @@ class OllamaClient:
                 used_entities.append(e)
         entities_context = "\n".join([f"- {it}" for it in entities_text_list])
 
-        # 2.5. Deterministic Fast-Path cho truy vấn phân tích NL2Cypher đã được kiểm chứng số liệu 100%
-        if graph_entities and graph_entities[0].get("grounded_answer") and not evidence_chunks:
-            return {
-                "success": True,
-                "answer": graph_entities[0]["grounded_answer"],
-                "model": f"{self.model} (NL2Cypher Verified)",
-                "latency": 0.05,
-                "fallback": False,
-                "used_chunks": used_chunks,
-                "used_entities": used_entities or graph_entities[:4],
-            }
+        # 2.5. Deterministic Fast-Path cho truy vấn phân tích NL2Cypher & Thống kê hệ thống đã được kiểm chứng số liệu 100%
+        if graph_entities and not evidence_chunks:
+            top_ent = graph_entities[0]
+            if top_ent.get("grounded_answer"):
+                return {
+                    "success": True,
+                    "answer": top_ent["grounded_answer"],
+                    "model": f"{self.model} (NL2Cypher Verified)",
+                    "latency": 0.05,
+                    "fallback": False,
+                    "used_chunks": used_chunks,
+                    "used_entities": used_entities or graph_entities[:4],
+                }
+            if top_ent.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"] and top_ent.get("snippet"):
+                return {
+                    "success": True,
+                    "answer": top_ent["snippet"],
+                    "model": f"{self.model} (Graph Verified)",
+                    "latency": 0.05,
+                    "fallback": False,
+                    "used_chunks": used_chunks,
+                    "used_entities": used_entities or graph_entities[:4],
+                }
 
         # 3. Xây dựng Prompt
         if is_vi:
