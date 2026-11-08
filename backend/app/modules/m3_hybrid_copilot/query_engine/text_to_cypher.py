@@ -228,45 +228,139 @@ def generate_cypher_from_query(query: str) -> str:
         LIMIT 8
         """
 
-    # 3. AdventureWorks Customer queries (separated by product volume vs order count vs revenue)
-    if any(k in q_lower for k in ["khách hàng", "customer", "crm", "vip", "đối tác mua hàng", "ai mua", "người mua", "chi tiêu", "mua nhiều", "top mua"]):
-        # 3A. Product quantity / volume (e.g. "mua nhiều sản phẩm nhất", "số lượng sản phẩm")
-        if any(k in q_lower for k in ["nhiều sản phẩm", "sản phẩm nhiều", "số lượng sản phẩm", "số lượng mua", "món hàng", "loại sản phẩm", "product", "quantity", "volume"]) or ("sản phẩm" in q_lower and any(w in q_lower for w in ["nhiều", "cao nhất", "lớn nhất", "top", "mua"])):
-            return """
-            MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p:Product)
-            WITH c, count(DISTINCT o) AS order_count,
-                 sum(coalesce(r.OrderQty, 0)) AS totalQty,
-                 count(DISTINCT p) AS distinctProducts,
-                 round(sum(coalesce(r.LineTotal, 0.0)), 2) AS totalProductSpent
-            ORDER BY totalQty DESC, distinctProducts DESC
-            LIMIT 5
-            WITH collect({c: c, order_count: order_count, totalQty: totalQty, distinctProducts: distinctProducts, totalProductSpent: totalProductSpent}) AS ranking
-            UNWIND range(0, size(ranking)-1) AS idx
-            WITH idx + 1 AS rank, ranking[idx] AS row
-            WITH rank, row.c AS c, row.order_count AS order_count, row.totalQty AS totalQty, row.distinctProducts AS distinctProducts, row.totalProductSpent AS totalProductSpent,
-                 CASE
-                   WHEN row.c.FirstName IS NOT NULL AND row.c.LastName IS NOT NULL THEN row.c.FirstName + ' ' + row.c.LastName + ' (#' + toString(row.c.id) + ')'
-                   WHEN row.c.name IS NOT NULL THEN row.c.name
-                   ELSE 'Customer #' + toString(row.c.id)
-                 END AS custName
-            RETURN custName AS name,
-                   c.id AS CustomerID,
-                   rank,
-                   order_count,
-                   totalQty,
-                   distinctProducts,
-                   totalProductSpent,
-                   'Hạng ' + toString(rank) + ' số lượng mua: Khách hàng ' + custName + ' với tổng ' + toString(totalQty) + ' sản phẩm (' + toString(distinctProducts) + ' loại sản phẩm) qua ' + toString(order_count) + ' đơn hàng, tổng giá trị $' + toString(totalProductSpent) + ' USD' + (CASE WHEN rank = 1 THEN ' (MUA NHIỀU SẢN PHẨM NHẤT TOÀN HỆ THỐNG).' ELSE '.' END) AS snippet,
-                   elementId(c) AS _id, ['Customer'] AS _labels
-            ORDER BY rank ASC
-            """
+    # 3. AdventureWorks Customer queries (separated by product volume vs order count vs revenue, supporting both MAX and MIN)
+    is_min_query = any(k in q_lower for k in [
+        "thấp nhất", "ít nhất", "nhỏ nhất", "kém nhất", "bé nhất", "rẻ nhất",
+        "chi tiêu ít", "mua ít", "ít đơn", "ít sản phẩm", "giá thấp", "giá rẻ",
+        "chi tiêu thấp", "doanh thu thấp",
+        "lowest", "least", "min", "minimum", "cheapest", "bottom"
+    ])
 
-        # 3B. Order count (e.g. "nhiều đơn hàng nhất", "lượng đơn", "số đơn")
-        if any(k in q_lower for k in ["nhiều đơn", "số đơn", "lượng đơn", "order count", "most orders", "lần mua"]):
+    if any(k in q_lower for k in ["khách hàng", "customer", "crm", "vip", "đối tác mua hàng", "ai mua", "người mua", "chi tiêu", "mua nhiều", "top mua", "mua ít", "chi tiêu ít", "chi tiêu thấp"]):
+        # 3A. Product quantity / volume (e.g. "mua nhiều sản phẩm nhất", "số lượng sản phẩm", "ít sản phẩm nhất")
+        if any(k in q_lower for k in ["nhiều sản phẩm", "sản phẩm nhiều", "số lượng sản phẩm", "số lượng mua", "món hàng", "loại sản phẩm", "product", "quantity", "volume", "ít sản phẩm"]) or ("sản phẩm" in q_lower and any(w in q_lower for w in ["nhiều", "cao nhất", "lớn nhất", "top", "mua", "ít", "thấp nhất"])):
+            if is_min_query:
+                return """
+                MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p:Product)
+                WITH c, count(DISTINCT o) AS order_count,
+                     sum(coalesce(r.OrderQty, 0)) AS totalQty,
+                     count(DISTINCT p) AS distinctProducts,
+                     round(sum(coalesce(r.LineTotal, 0.0)), 2) AS totalProductSpent
+                WHERE totalQty > 0
+                WITH c, order_count, totalQty, distinctProducts, totalProductSpent
+                ORDER BY totalQty ASC, distinctProducts ASC
+                LIMIT 5
+                WITH collect({c: c, order_count: order_count, totalQty: totalQty, distinctProducts: distinctProducts, totalProductSpent: totalProductSpent}) AS ranking
+                UNWIND range(0, size(ranking)-1) AS idx
+                WITH idx + 1 AS rank, ranking[idx] AS row
+                WITH rank, row.c AS c, row.order_count AS order_count, row.totalQty AS totalQty, row.distinctProducts AS distinctProducts, row.totalProductSpent AS totalProductSpent,
+                     CASE
+                       WHEN row.c.FirstName IS NOT NULL AND row.c.LastName IS NOT NULL THEN row.c.FirstName + ' ' + row.c.LastName + ' (#' + toString(row.c.id) + ')'
+                       WHEN row.c.name IS NOT NULL THEN row.c.name
+                       ELSE 'Customer #' + toString(row.c.id)
+                     END AS custName
+                RETURN custName AS name,
+                       c.id AS CustomerID,
+                       rank,
+                       order_count,
+                       totalQty,
+                       distinctProducts,
+                       totalProductSpent,
+                       'Hạng ' + toString(rank) + ' số lượng mua ít nhất: Khách hàng ' + custName + ' với tổng ' + toString(totalQty) + ' sản phẩm (' + toString(distinctProducts) + ' loại sản phẩm) qua ' + toString(order_count) + ' đơn hàng, tổng giá trị $' + toString(totalProductSpent) + ' USD' + (CASE WHEN rank = 1 THEN ' (MUA ÍT SẢN PHẨM NHẤT TOÀN HỆ THỐNG).' ELSE '.' END) AS snippet,
+                       elementId(c) AS _id, ['Customer'] AS _labels
+                ORDER BY rank ASC
+                """
+            else:
+                return """
+                MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p:Product)
+                WITH c, count(DISTINCT o) AS order_count,
+                     sum(coalesce(r.OrderQty, 0)) AS totalQty,
+                     count(DISTINCT p) AS distinctProducts,
+                     round(sum(coalesce(r.LineTotal, 0.0)), 2) AS totalProductSpent
+                ORDER BY totalQty DESC, distinctProducts DESC
+                LIMIT 5
+                WITH collect({c: c, order_count: order_count, totalQty: totalQty, distinctProducts: distinctProducts, totalProductSpent: totalProductSpent}) AS ranking
+                UNWIND range(0, size(ranking)-1) AS idx
+                WITH idx + 1 AS rank, ranking[idx] AS row
+                WITH rank, row.c AS c, row.order_count AS order_count, row.totalQty AS totalQty, row.distinctProducts AS distinctProducts, row.totalProductSpent AS totalProductSpent,
+                     CASE
+                       WHEN row.c.FirstName IS NOT NULL AND row.c.LastName IS NOT NULL THEN row.c.FirstName + ' ' + row.c.LastName + ' (#' + toString(row.c.id) + ')'
+                       WHEN row.c.name IS NOT NULL THEN row.c.name
+                       ELSE 'Customer #' + toString(row.c.id)
+                     END AS custName
+                RETURN custName AS name,
+                       c.id AS CustomerID,
+                       rank,
+                       order_count,
+                       totalQty,
+                       distinctProducts,
+                       totalProductSpent,
+                       'Hạng ' + toString(rank) + ' số lượng mua: Khách hàng ' + custName + ' với tổng ' + toString(totalQty) + ' sản phẩm (' + toString(distinctProducts) + ' loại sản phẩm) qua ' + toString(order_count) + ' đơn hàng, tổng giá trị $' + toString(totalProductSpent) + ' USD' + (CASE WHEN rank = 1 THEN ' (MUA NHIỀU SẢN PHẨM NHẤT TOÀN HỆ THỐNG).' ELSE '.' END) AS snippet,
+                       elementId(c) AS _id, ['Customer'] AS _labels
+                ORDER BY rank ASC
+                """
+
+        # 3B. Order count (e.g. "nhiều đơn hàng nhất", "lượng đơn", "số đơn", "ít đơn nhất")
+        if any(k in q_lower for k in ["nhiều đơn", "số đơn", "lượng đơn", "order count", "most orders", "lần mua", "ít đơn"]):
+            if is_min_query:
+                return """
+                MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
+                WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
+                WHERE order_count > 0
+                WITH c, order_count, totalSpent
+                ORDER BY order_count ASC, totalSpent ASC
+                LIMIT 5
+                WITH collect({c: c, order_count: order_count, totalSpent: totalSpent}) AS ranking
+                UNWIND range(0, size(ranking)-1) AS idx
+                WITH idx + 1 AS rank, ranking[idx] AS row
+                WITH rank, row.c AS c, row.order_count AS order_count, row.totalSpent AS totalSpent,
+                     CASE
+                       WHEN row.c.FirstName IS NOT NULL AND row.c.LastName IS NOT NULL THEN row.c.FirstName + ' ' + row.c.LastName + ' (#' + toString(row.c.id) + ')'
+                       WHEN row.c.name IS NOT NULL THEN row.c.name
+                       ELSE 'Customer #' + toString(row.c.id)
+                     END AS custName
+                RETURN custName AS name,
+                       c.id AS CustomerID,
+                       rank,
+                       order_count,
+                       totalSpent,
+                       'Hạng ' + toString(rank) + ' số lượng đơn ít nhất: Khách hàng ' + custName + ' có ' + toString(order_count) + ' đơn hàng, tổng chi tiêu $' + toString(totalSpent) + ' USD' + (CASE WHEN rank = 1 THEN ' (ÍT ĐƠN HÀNG NHẤT TOÀN HỆ THỐNG).' ELSE '.' END) AS snippet,
+                       elementId(c) AS _id, ['Customer'] AS _labels
+                ORDER BY rank ASC
+                """
+            else:
+                return """
+                MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
+                WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
+                ORDER BY order_count DESC, totalSpent DESC
+                LIMIT 5
+                WITH collect({c: c, order_count: order_count, totalSpent: totalSpent}) AS ranking
+                UNWIND range(0, size(ranking)-1) AS idx
+                WITH idx + 1 AS rank, ranking[idx] AS row
+                WITH rank, row.c AS c, row.order_count AS order_count, row.totalSpent AS totalSpent,
+                     CASE
+                       WHEN row.c.FirstName IS NOT NULL AND row.c.LastName IS NOT NULL THEN row.c.FirstName + ' ' + row.c.LastName + ' (#' + toString(row.c.id) + ')'
+                       WHEN row.c.name IS NOT NULL THEN row.c.name
+                       ELSE 'Customer #' + toString(row.c.id)
+                     END AS custName
+                RETURN custName AS name,
+                       c.id AS CustomerID,
+                       rank,
+                       order_count,
+                       totalSpent,
+                       'Hạng ' + toString(rank) + ' số lượng đơn: Khách hàng ' + custName + ' đạt ' + toString(order_count) + ' đơn hàng, tổng chi tiêu $' + toString(totalSpent) + ' USD' + (CASE WHEN rank = 1 THEN ' (NHIỀU ĐƠN HÀNG NHẤT TOÀN HỆ THỐNG).' ELSE '.' END) AS snippet,
+                       elementId(c) AS _id, ['Customer'] AS _labels
+                ORDER BY rank ASC
+                """
+
+        # 3C. Revenue / Financial spending / VIP (default customer ranking, both MAX and MIN)
+        if is_min_query:
             return """
             MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
             WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
-            ORDER BY order_count DESC, totalSpent DESC
+            WHERE totalSpent > 0
+            WITH c, order_count, totalSpent
+            ORDER BY totalSpent ASC
             LIMIT 5
             WITH collect({c: c, order_count: order_count, totalSpent: totalSpent}) AS ranking
             UNWIND range(0, size(ranking)-1) AS idx
@@ -282,35 +376,34 @@ def generate_cypher_from_query(query: str) -> str:
                    rank,
                    order_count,
                    totalSpent,
-                   'Hạng ' + toString(rank) + ' số lượng đơn: Khách hàng ' + custName + ' đạt ' + toString(order_count) + ' đơn hàng, tổng chi tiêu $' + toString(totalSpent) + ' USD' + (CASE WHEN rank = 1 THEN ' (NHIỀU ĐƠN HÀNG NHẤT TOÀN HỆ THỐNG).' ELSE '.' END) AS snippet,
+                   'Hạng ' + toString(rank) + ' chi tiêu thấp nhất: Khách hàng ' + custName + ' với tổng chi tiêu $' + toString(totalSpent) + ' USD qua ' + toString(order_count) + ' đơn hàng' + (CASE WHEN rank = 1 THEN ' (CHI TIÊU THẤP NHẤT TOÀN DOANH NGHIỆP).' ELSE '.' END) AS snippet,
                    elementId(c) AS _id, ['Customer'] AS _labels
             ORDER BY rank ASC
             """
-
-        # 3C. Revenue / Financial spending / VIP (default customer ranking)
-        return """
-        MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
-        WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
-        ORDER BY totalSpent DESC
-        LIMIT 5
-        WITH collect({c: c, order_count: order_count, totalSpent: totalSpent}) AS ranking
-        UNWIND range(0, size(ranking)-1) AS idx
-        WITH idx + 1 AS rank, ranking[idx] AS row
-        WITH rank, row.c AS c, row.order_count AS order_count, row.totalSpent AS totalSpent,
-             CASE
-               WHEN row.c.FirstName IS NOT NULL AND row.c.LastName IS NOT NULL THEN row.c.FirstName + ' ' + row.c.LastName + ' (#' + toString(row.c.id) + ')'
-               WHEN row.c.name IS NOT NULL THEN row.c.name
-               ELSE 'Customer #' + toString(row.c.id)
-             END AS custName
-        RETURN custName AS name,
-               c.id AS CustomerID,
-               rank,
-               order_count,
-               totalSpent,
-               'Hạng ' + toString(rank) + ' doanh thu: Khách hàng ' + custName + ' (VIP) với tổng chi tiêu $' + toString(totalSpent) + ' USD qua ' + toString(order_count) + ' đơn hàng' + (CASE WHEN rank = 1 THEN ' (ĐỨNG ĐẦU TOÀN DOANH NGHIỆP - CHI TIÊU CAO NHẤT).' ELSE '.' END) AS snippet,
-               elementId(c) AS _id, ['Customer'] AS _labels
-        ORDER BY rank ASC
-        """
+        else:
+            return """
+            MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder)
+            WITH c, count(o) AS order_count, round(sum(coalesce(o.totalDue, 0.0)), 2) AS totalSpent
+            ORDER BY totalSpent DESC
+            LIMIT 5
+            WITH collect({c: c, order_count: order_count, totalSpent: totalSpent}) AS ranking
+            UNWIND range(0, size(ranking)-1) AS idx
+            WITH idx + 1 AS rank, ranking[idx] AS row
+            WITH rank, row.c AS c, row.order_count AS order_count, row.totalSpent AS totalSpent,
+                 CASE
+                   WHEN row.c.FirstName IS NOT NULL AND row.c.LastName IS NOT NULL THEN row.c.FirstName + ' ' + row.c.LastName + ' (#' + toString(row.c.id) + ')'
+                   WHEN row.c.name IS NOT NULL THEN row.c.name
+                   ELSE 'Customer #' + toString(row.c.id)
+                 END AS custName
+            RETURN custName AS name,
+                   c.id AS CustomerID,
+                   rank,
+                   order_count,
+                   totalSpent,
+                   'Hạng ' + toString(rank) + ' doanh thu: Khách hàng ' + custName + ' (VIP) với tổng chi tiêu $' + toString(totalSpent) + ' USD qua ' + toString(order_count) + ' đơn hàng' + (CASE WHEN rank = 1 THEN ' (ĐỨNG ĐẦU TOÀN DOANH NGHIỆP - CHI TIÊU CAO NHẤT).' ELSE '.' END) AS snippet,
+                   elementId(c) AS _id, ['Customer'] AS _labels
+            ORDER BY rank ASC
+            """
 
     # 4. Revenue / Financial Trends / Growth queries
     if any(k in q_lower for k in ["doanh thu", "xu hướng", "revenue", "tăng trưởng", "giao dịch", "tài chính", "trend"]):
@@ -331,27 +424,32 @@ def generate_cypher_from_query(query: str) -> str:
 
     # 5. AdventureWorks Product queries
     if any(k in q_lower for k in ["sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike"]):
-        return """
+        order_dir = "ASC" if is_min_query else "DESC"
+        price_label = "Giá rẻ nhất" if is_min_query else "Giá niêm yết"
+        return f"""
         MATCH (p:Product)
         WHERE coalesce(p.listPrice, p.ListPrice, p.price, 0) > 0
         WITH p, coalesce(p.name, p.title, p.Name) AS prod_name, coalesce(p.listPrice, p.ListPrice, p.price) AS price_val
         RETURN prod_name AS name, coalesce(p.id, p.ProductID) AS ProductID, price_val AS ListPrice,
-               'Sản phẩm ' + prod_name + ': Giá niêm yết $' + toString(price_val) + ' USD' AS snippet,
+               'Sản phẩm ' + prod_name + ': {price_label} $' + toString(price_val) + ' USD' AS snippet,
                elementId(p) AS _id, ['Product'] AS _labels
-        ORDER BY price_val DESC
+        ORDER BY price_val {order_dir}
         LIMIT 6
         """
 
     # 6. AdventureWorks SalesOrder queries
     if any(k in q_lower for k in ["đơn hàng", "order", "sales"]):
-        return """
+        order_dir = "ASC" if is_min_query else "DESC"
+        value_label = "Giá trị thấp nhất" if is_min_query else "Giá trị"
+        return f"""
         MATCH (o:SalesOrder)
+        WHERE coalesce(o.totalDue, 0.0) > 0
         WITH o, coalesce(o.salesOrderId, o.id) AS oid, coalesce(o.totalDue, 0.0) AS due, toString(coalesce(o.orderDate, '')) AS oDate
         RETURN 'Đơn hàng #' + toString(oid) AS name,
                oid AS SalesOrderID, round(due, 2) AS TotalDue, oDate AS OrderDate,
-               'Đơn hàng #' + toString(oid) + ': Giá trị $' + toString(round(due, 2)) + ' USD, ngày đặt ' + oDate AS snippet,
+               'Đơn hàng #' + toString(oid) + ': {value_label} $' + toString(round(due, 2)) + ' USD, ngày đặt ' + oDate AS snippet,
                elementId(o) AS _id, ['SalesOrder'] AS _labels
-        ORDER BY due DESC
+        ORDER BY due {order_dir}
         LIMIT 6
         """
 

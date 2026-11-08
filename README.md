@@ -8,6 +8,7 @@
 
 ## Mục lục
 
+- [📋 **BÁO CÁO TIẾN ĐỘ ĐỒ ÁN (DÀNH CHO MENTOR & HỘI ĐỒNG)**](#mentor-progress-report)
 1. [Tổng quan Kiến trúc Hệ thống](#1-tổng-quan-kiến-trúc-hệ-thống)
 2. [Bảng Kiến trúc Docker & Dịch vụ](#2-bảng-kiến-trúc-docker-dịch-vụ)
 3. [Yêu cầu Tiên quyết (Prerequisites)](#3-yêu-cầu-tiên-quyết-prerequisites)
@@ -34,6 +35,103 @@
 18. [Xử lý Sự cố Thường gặp (Troubleshooting)](#18-xử-lý-sự-cố-thường-gặp-troubleshooting)
 19. [Quick Start (Dành cho Developer Đã Hiểu Dự án)](#19-quick-start-dành-cho-developer-đã-hiểu-dự-án)
 20. [Vấn đề Tồn đọng & Kế hoạch Tiếp theo (Known Issues / TODO)](#20-vấn-đề-tồn-đọng-kế-hoạch-tiếp-theo-known-issues-todo)
+
+---
+
+## 📌 BÁO CÁO TIẾN ĐỘ ĐỒ ÁN (DÀNH CHO MENTOR & HỘI ĐỒNG) <a id="mentor-progress-report"></a>
+*(Project Progress & Milestone Evaluation Report — Capstone Project 1)*
+
+> **Thông tin đề tài:**
+> - **Tên dự án:** GraphMind (AEGIS EKMP) — Enterprise Knowledge Observatory
+> - **Đề tài:** Hệ thống Quản trị Tri thức Doanh nghiệp & Trợ lý Điều hành Chiến lược dựa trên kiến trúc **Hybrid GraphRAG**
+> - **Mã đồ án:** Capstone Project 1 — C1SE.18 — Viện Đào tạo & Nghiên cứu Quốc tế, Đại học Duy Tân
+> - **Thời điểm cập nhật:** Tháng 11/2026
+> - **Mô hình triển khai:** Cục bộ khép kín On-Premise / Local Docker (Bảo vệ bí mật dữ liệu doanh nghiệp 100%)
+
+---
+
+### 1. Mục tiêu & Bài toán Thực tế của Đề tài
+
+Trong các doanh nghiệp quy mô vừa và lớn, dữ liệu và tri thức thường bị phân mảnh nghiêm trọng:
+1. **Dữ liệu phi cấu trúc**: Hàng trăm hợp đồng pháp lý, thỏa thuận bảo mật (NDA), quy trình vận hành chuẩn (SOP) lưu trữ rải rác dưới dạng tệp PDF/Word.
+2. **Dữ liệu có cấu trúc**: Hàng chục nghìn đơn hàng, khách hàng, sản phẩm và biến động doanh thu nằm trong các cơ sở dữ liệu ERP/CRM (AdventureWorks).
+3. **Hạn chế của RAG truyền thống (Vector Search thuần túy)**:
+   - Thường xuyên gặp hiện tượng **ảo giác (hallucination)** khi thiếu ngữ cảnh liên kết.
+   - Không thể trả lời các câu hỏi truy vấn mối quan hệ đa tầng (ví dụ: *"Khách hàng A đã ký hợp đồng nào và mua những sản phẩm gì thuộc đơn hàng nào?"*).
+   - Thiếu cơ chế kiểm soát phân quyền (RBAC) chặt chẽ giữa các phòng ban.
+
+**Giải pháp của GraphMind:**
+- Xây dựng kiến trúc **Hybrid GraphRAG**: Kết hợp tìm kiếm ngữ nghĩa mờ của **Vector DB (Qdrant)** với mạng lưới thực thể và quan hệ logic của **Knowledge Graph (Neo4j)**.
+- Triển khai mô hình ngôn ngữ lớn cục bộ **Qwen2.5-7B** (Ollama), đảm bảo 100% dữ liệu không rời khỏi hạ tầng nội bộ của doanh nghiệp.
+- Ứng dụng **Ma trận phân quyền động (Granular RBAC Matrix)** và **Cổng kiểm định căn cứ (Layer-2 Grounding Gate)** giúp ngăn chặn triệt để tình trạng lộ lọt dữ liệu chéo phòng ban và hiện tượng suy diễn sai sự thật.
+
+---
+
+### 2. Bảng Đánh Giá Mức Độ Hoàn Thiện Các Phân Hệ (Progress & Feature Matrix)
+
+| Phân hệ (Module) | Mô tả tính năng & Phạm vi kỹ thuật | Tiến độ | Đánh giá & Bằng chứng nghiệm thu |
+| :--- | :--- | :---: | :--- |
+| **M1: Data Sync & Ingestion** | Đồng bộ tệp thời gian thực từ Central Storage Volume (`/data`), File Watcher Daemon, mã băm SHA-256 chống trùng lặp (Idempotent), Pipeline nạp dữ liệu 3 tầng (Volume $\rightarrow$ Qdrant $\rightarrow$ Neo4j). | **100%** | Đã nạp và đồng bộ nhất quán **588 tệp** (510 CUAD PDF, 72 CSV AdventureWorks) vào kho tri thức. |
+| **M2: Knowledge Repository & Graph Ingestion** | Lưu trữ mạng lưới tri thức doanh nghiệp đa thực thể, trích xuất thực thể hợp đồng (Clause, Company) và ánh xạ quan hệ ERP (`:PLACED_ORDER`, `:CONTAINS_PRODUCT`). | **95%** | Đã lập chỉ mục **55.434 nodes**, **161.574 quan hệ** trên Neo4j; **71.799 vectors** trên Qdrant. |
+| **M3: Hybrid GraphRAG AI Copilot** | Trợ lý hỏi đáp điều hành: Kết hợp song song Vector Search + Text-to-Cypher, thuật toán hợp nhất **Reciprocal Rank Fusion (RRF $k=60$)**, Layer-2 Grounding Gate (ngưỡng 0.28), sinh trích dẫn bằng chứng (Evidence Chips & Citations). | **95%** | Xử lý mượt mà cả câu hỏi pháp lý và truy vấn tài chính/đơn hàng; độ chính xác xếp hạng doanh thu/chi tiêu đạt 100%. |
+| **M4: Executive Decision Support** | Bảng điều hành tổng quan KPI, giám sát sức khỏe tri thức, cảnh báo rủi ro hợp đồng thiếu điều khoản, hỗ trợ báo cáo ca làm việc (Shift Reports). | **90%** | Dashboard phân vai trò động (Executive, Manager, Standard Sales); trực quan hóa biểu đồ và danh mục cảnh báo. |
+| **M5: Multi-facet Search & Graph Viewer** | Tìm kiếm đa chiều (tài liệu, thực thể, điều khoản) và giao diện trực quan hóa đồ thị mạng lưới thực thể 2D/3D (Force-directed Graph). | **90%** | Khám phá trực quan mạng lưới liên kết Khách hàng $\leftrightarrow$ Đơn hàng $\leftrightarrow$ Sản phẩm ngay trên Web UI. |
+| **M6: Admin Security & Granular RBAC Matrix** | Quản trị tài khoản, xác thực JWT, cơ chế OTP, và Ma trận phân quyền động 4 vai trò $\times$ 5 phòng ban (Pháp chế, Kinh doanh, Kế toán, CNTT, R&D). | **100%** | Cơ chế Server-side Scope Enforcement chặn 100% việc truy cập trái phép chéo phòng ban; **109/109 Unit Tests PASS**. |
+
+---
+
+### 3. Thống Kê Định Lượng Hệ Thống Thực Tế (System Metrics)
+
+Hệ thống đã được thiết lập, vận hành và kiểm thử tự động trên môi trường Docker cục bộ với các số liệu nghiệm thu thực tế:
+
+```text
+========================================================================================
+                      BẢNG TỔNG KẾT TÀI NGUYÊN & DỮ LIỆU ĐỒ ÁN
+========================================================================================
+- Kho tệp Central Storage (/data):         588 tệp (510 hợp đồng PDF, 72 file CSV, 6 tệp khác)
+- Đồ thị tri thức Neo4j:                   55.434 nodes | 161.574 relationships
+  + SalesOrder (Đơn hàng):                 31.465 nodes (đầy đủ TotalDue, SubTotal, Tax, Freight)
+  + Chi tiết dòng đơn (:CONTAINS_PRODUCT): 121.317 quan hệ
+  + Khách hàng (Customer):                 19.820 nodes
+  + Sản phẩm & Danh mục (Product/Category): 545 nodes
+  + Điều khoản hợp đồng pháp lý (Clause):  1.702 nodes (100% truy vết được Document gốc)
+  + Pháp nhân doanh nghiệp (Company):      1.216 nodes (1.207 đối tác có quan hệ :PARTY_TO)
+- Cơ sở dữ liệu Vector Qdrant:             71.799 vectors (Collection: cuad_contracts & adventureworks_entities)
+- Cơ sở dữ liệu Quan hệ PostgreSQL:        22 bảng thực thể (RBAC, Audit Logs, Users, Copilot Sessions)
+- Kết quả kiểm thử tự động (Pytest Suite): 109 / 109 tests PASS (100%)
+- Tốc độ phản hồi trợ lý AI (Latency):     1.2s - 2.5s / câu hỏi (Local GPU/CPU)
+========================================================================================
+```
+
+---
+
+### 4. Các Điểm Sáng Kỹ Thuật Đột Phá
+
+1. **Kiến trúc Hybrid RRF ($k=60$) kết hợp Vector và Graph**:
+   - Khắc phục điểm yếu cố hữu của Vector Search thuần túy (không tính toán được tổng doanh thu, số lượng đơn) và Graph DB thuần túy (không tìm kiếm được ngữ nghĩa câu chữ tự nhiên).
+   - Qdrant tìm kiếm ý định ngữ nghĩa $\rightarrow$ Neo4j mở rộng đồ thị thực thể (Graph Expansion) $\rightarrow$ Hợp nhất xếp hạng RRF.
+2. **Cơ chế Kiểm soát Bằng chứng 2 Lớp (Layer-2 Grounding Gate)**:
+   - Áp dụng ngưỡng Cosine similarity 0.28.
+   - Khi câu hỏi nằm ngoài phạm vi tri thức hoặc không có bằng chứng đối chiếu, hệ thống **tự động từ chối (Grounding Refusal)** thay vì để mô hình LLM tự suy diễn hoặc bịa đặt dữ liệu ảo.
+3. **Phân quyền dữ liệu cấp độ Máy chủ (Server-side Department Scope Enforcement)**:
+   - Tuân thủ tuyệt đối quy tắc nghiệp vụ bảo mật (**BR-02**, **BR-05**).
+   - Tài khoản Nhân viên Kinh doanh không thể xem thông tin lương Nhân sự hay dữ liệu mật của Ban Lãnh Đạo. Mọi trích dẫn ngoài phạm vi phân quyền sẽ tự động được ẩn/redact (`RESTRICTED (RBAC)`).
+4. **Độ chính xác xếp hạng thực thể kinh doanh (Top-N Criteria Ranking Engine)**:
+   - Các câu hỏi định lượng về hiệu quả kinh doanh (*"Khách hàng chi tiêu nhiều nhất"*, *"Khách hàng mua nhiều sản phẩm nhất"*) được phân rã thành Cypher đánh số Hạng 1-5 rõ ràng, đạt độ chính xác 100% đối chiếu với số liệu kế toán thực tế.
+
+---
+
+### 5. Kế Hoạch Cho Đợt Nghiệm Thu & Hoàn Thiện Sắp Tới
+
+1. [x] **Hoàn tất Ingestion Pipeline & Dữ liệu thực tế** (588 files, 55K nodes, 71K vectors).
+2. [x] **Hoàn tất Core Engine Hybrid GraphRAG & RRF k=60**.
+3. [x] **Hoàn tất Phân quyền Ma trận bảo mật RBAC 4 Roles & 5 Phòng ban**.
+4. [ ] **Nâng cấp tính năng HITL (Human-in-the-Loop) trong Knowledge Editor**: Cho phép chuyên viên sửa đổi/xác thực thực thể trên giao diện và đồng bộ tức thời ngược về Neo4j/Qdrant.
+5. [ ] **Mở rộng trung tâm cảnh báo (Smart Alert Center)**: Thuật toán quét tự động hợp đồng sắp đến hạn trong 15-30 ngày.
+6. [ ] **Chuẩn bị Kịch bản Demo Live & Slide Báo cáo**:
+   - *Kịch bản 1 (Executive):* Đăng nhập Giám đốc, xem tổng quan rủi ro hợp đồng và phân bố danh mục toàn công ty.
+   - *Kịch bản 2 (Sales Ops):* Đăng nhập Nhân viên, hỏi đáp Copilot về lịch sử mua hàng, đơn hàng và hợp đồng liên quan.
+   - *Kịch bản 3 (Security RBAC):* Thử nghiệm tra cứu thông tin phòng ban khác và chứng minh cơ chế bảo mật chặn rò rỉ dữ liệu.
 
 ---
 

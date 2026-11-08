@@ -36,7 +36,7 @@ def test_customer_cypher_separation():
     assert top_ord.get("order_count") == 28, f"Expected 28 orders, got {top_ord.get('order_count')}"
     print(f"[OK] Order Count: {top_ord['name']} has {top_ord['order_count']} orders (Rank #1)")
 
-    # 3. Revenue / Spending query
+    # 3. Revenue / Spending query (MAX)
     q_rev = "Khách hàng nào có doanh thu cao nhất"
     cypher_rev = generate_cypher_from_query(q_rev)
     assert "totalSpent DESC" in cypher_rev, "Expected totalSpent descending order"
@@ -45,7 +45,18 @@ def test_customer_cypher_separation():
     top_rev = res_rev[0]
     assert top_rev.get("CustomerID") == 29818 or "29818" in str(top_rev.get("name")), f"Expected Customer #29818, got {top_rev}"
     assert top_rev.get("totalSpent") == 989184.08, f"Expected $989184.08, got {top_rev.get('totalSpent')}"
-    print(f"[OK] Revenue / VIP: {top_rev['name']} spent ${top_rev['totalSpent']} USD (Rank #1)")
+    print(f"[OK] Revenue / VIP (MAX): {top_rev['name']} spent ${top_rev['totalSpent']} USD (Rank #1)")
+
+    # 4. Lowest Revenue / Spending query (MIN)
+    q_rev_min = "Khách hàng có chi tiêu thấp nhất"
+    cypher_rev_min = generate_cypher_from_query(q_rev_min)
+    assert "totalSpent ASC" in cypher_rev_min, "Expected totalSpent ascending order"
+    res_rev_min = execute_text_to_cypher(q_rev_min)
+    assert len(res_rev_min) > 0, "Expected results for lowest spending"
+    lowest_rev = res_rev_min[0]
+    assert lowest_rev.get("CustomerID") == 30078 or "30078" in str(lowest_rev.get("name")) or "Mobile Outlet" in str(lowest_rev.get("name")), f"Expected Customer #30078 (Mobile Outlet), got {lowest_rev}"
+    assert lowest_rev.get("totalSpent") == 1.52, f"Expected $1.52, got {lowest_rev.get('totalSpent')}"
+    print(f"[OK] Lowest Spending (MIN): {lowest_rev['name']} spent ${lowest_rev['totalSpent']} USD (Rank #1 lowest)")
 
 if __name__ == "__main__":
     test_customer_cypher_separation()
