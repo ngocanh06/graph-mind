@@ -2,7 +2,7 @@
 Test Suite: Server-side Department Scope Enforcement (BR-02, BR-04, BR-05, FR3, FR32)
 Verifies:
 1. FR3 / BR-02: Endpoint /api/v1/rbac/check accurately evaluates user role and Department Scope.
-2. BR-02: /api/documents filters datasets by caller's department scope.
+2. BR-02: /api/documents filters datasets by caller's department scope (including strict IT isolation).
 3. BR-02: /api/documents/detail returns 403 Forbidden when accessing out-of-scope documents.
 4. BR-02: /api/search enforces department access and blocks unauthorized dept queries with 403.
 5. BR-05: /api/dashboard/kpis and /api/dashboard/briefing reject standard users with 403 Forbidden.
@@ -68,6 +68,18 @@ async def run_scope_tests():
         assert data_mgr["rule"] == "BR-02"
         print("    -> OK: Legal Manager correctly denied access to Sales data under BR-02.")
 
+        # Department Manager (Khối Quản lý Phòng ban & Bộ phận) asking for IT data -> Blocked under BR-02
+        res_mgr_it = await client.post(
+            "/api/v1/rbac/check",
+            headers=make_headers("manager", "Khối Quản lý Phòng ban & Bộ phận"),
+            json={"department": "IT", "resource_type": "document", "action": "read"}
+        )
+        assert res_mgr_it.status_code == 200
+        data_mgr_it = res_mgr_it.json()
+        assert data_mgr_it["allowed"] is False, f"Department Manager should not access IT: {data_mgr_it}"
+        assert data_mgr_it["rule"] == "BR-02"
+        print("    -> OK: Department Manager strictly denied access to IT documents under BR-02.")
+
         # Standard User asking for Executive KPIs -> Blocked under BR-05
         res_std_kpi = await client.post(
             "/api/v1/rbac/check",
@@ -96,7 +108,19 @@ async def run_scope_tests():
             dept = (doc.get("dept") or doc.get("deptLabel") or "").lower()
             assert "pháp chế" not in dept and "legal" not in dept, f"Sales user saw legal doc: {doc}"
             assert "công nghệ" not in dept and "it" not in dept, f"Sales user saw IT doc: {doc}"
-        print(f"    -> OK: Sales Specialist sees {len(sales_docs)} scoped docs (CUAD & Staff excluded).")
+        print(f"    -> OK: Sales Specialist sees {len(sales_docs)} scoped docs (CUAD & IT excluded).")
+
+        # Department Manager (Khối Quản lý Phòng ban & Bộ phận) -> Must NOT see IT docs
+        res_dept_mgr_docs = await client.get(
+            "/api/documents",
+            headers=make_headers("manager", "Khối Quản lý Phòng ban & Bộ phận")
+        )
+        assert res_dept_mgr_docs.status_code == 200
+        dept_mgr_docs = res_dept_mgr_docs.json()["data"]
+        for doc in dept_mgr_docs:
+            dept_key = (doc.get("deptKey") or doc.get("dept") or "").lower()
+            assert dept_key != "it" and "công nghệ" not in dept_key, f"Dept Manager saw IT doc: {doc}"
+        print(f"    -> OK: Department Manager sees {len(dept_mgr_docs)} business docs (IT strictly excluded).")
 
         # Legal Manager -> Should only see Legal and R&D docs
         res_legal_docs = await client.get(
@@ -108,7 +132,8 @@ async def run_scope_tests():
         for doc in legal_docs:
             dept = (doc.get("dept") or doc.get("deptLabel") or "").lower()
             assert "kinh doanh" not in dept, f"Legal manager saw Sales doc: {doc}"
-        print(f"    -> OK: Legal Manager sees {len(legal_docs)} scoped docs (Sales orders excluded).")
+            assert "công nghệ" not in dept and doc.get("deptKey") != "it", f"Legal manager saw IT doc: {doc}"
+        print(f"    -> OK: Legal Manager sees {len(legal_docs)} scoped docs (Sales & IT excluded).")
 
         # Executive -> Sees all docs (BR-05)
         res_exec_docs = await client.get(

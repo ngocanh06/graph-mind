@@ -1,9 +1,14 @@
 """
 Service xử lý nghiệp vụ Ma trận Phân quyền Tri thức chi tiết (Granular RBAC) - PB02
+Áp dụng nghiêm ngặt quy tắc cô lập phòng ban BR-02, BR-03, BR-04, BR-05 và US19:
+- ADMIN (Admin hệ thống - SecOps/IT): Toàn quyền 5/5 phòng ban (LEGAL, SALES, ACCOUNTING_PROCUREMENT, IT, RND).
+- EXECUTIVE (Ban lãnh đạo - C-Level): Quyền xem & xem nhạy cảm 5/5 phòng ban (BR-05), không biên tập.
+- DEPARTMENT_MANAGER (Trưởng phòng): Quyền xem & biên tập các phòng nghiệp vụ (LEGAL, SALES, ACCOUNTING_PROCUREMENT, RND), KHÔNG xem được phòng IT.
+- STANDARD_USER (Chuyên viên Kinh doanh): Chỉ được xem tài liệu phòng SALES (BR-02 / US19), chặn LEGAL, ACCOUNTING_PROCUREMENT, IT, RND.
 """
 import uuid
 from typing import List, Optional, Dict, Any
-from sqlalchemy import select, delete, func, and_
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres.models.user import User
@@ -56,6 +61,7 @@ async def ensure_table_created(db: AsyncSession) -> None:
         can_query BOOLEAN NOT NULL DEFAULT FALSE,
         can_view_citation BOOLEAN NOT NULL DEFAULT FALSE,
         can_edit BOOLEAN NOT NULL DEFAULT FALSE,
+        can_upload BOOLEAN NOT NULL DEFAULT FALSE,
         can_view_sensitive BOOLEAN NOT NULL DEFAULT FALSE,
         data_scope VARCHAR(50) NOT NULL DEFAULT 'NONE',
         updated_by UUID NULL,
@@ -64,22 +70,36 @@ async def ensure_table_created(db: AsyncSession) -> None:
     );
     """
     await db.execute(text(create_table_sql))
+    await db.execute(text("ALTER TABLE knowledge_access_policies ADD COLUMN IF NOT EXISTS can_upload BOOLEAN NOT NULL DEFAULT FALSE;"))
     await db.execute(text("CREATE INDEX IF NOT EXISTS ix_kap_role_dept ON knowledge_access_policies (role_code, department_code);"))
     await db.execute(text("CREATE INDEX IF NOT EXISTS ix_kap_resource ON knowledge_access_policies (resource_type);"))
     await db.commit()
 
 
-async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = None) -> List[KnowledgeAccessPolicy]:
-    """Khởi tạo toàn bộ ma trận phân quyền mặc định (4 Roles x 7 Columns: 5 phòng ban Docker volume + Nhân viên + Ban lãnh đạo)."""
+async def seed_default_matrix(
+    db: AsyncSession,
+    admin_id: Optional[uuid.UUID] = None,
+    dept_scope: str = "SALES"
+) -> List[KnowledgeAccessPolicy]:
+    """
+    Khởi tạo ma trận phân quyền chuẩn theo đặc tả doanh nghiệp (Least Privilege & Department Isolation):
+    1. Admin hệ thống: Toàn công ty (BR-03), bật 5/5 phòng, có Biên tập & Tải lên, chỉ bật Nhạy cảm ở IT.
+    2. Ban lãnh đạo: Toàn công ty (BR-05), bật 5/5 phòng, bật Nhạy cảm ở cả 5 phòng, TẮT Biên tập & Tải lên (Read-only).
+    3. Trưởng phòng: Theo phòng ban chủ quản (BR-04), chỉ bật đúng phòng ban được chọn (mặc định SALES), bật đủ 3: Nhạy cảm, Biên tập, Tải lên. 4 phòng còn lại TẮT.
+    4. Chuyên viên: Theo phòng ban chủ quản (BR-02), chỉ bật đúng phòng ban được chọn, bật Biên tập & Tải lên, TẮT Nhạy cảm. 4 phòng còn lại TẮT.
+    """
     await ensure_table_created(db)
 
-    # Xóa dữ liệu cũ nếu đang reset
     await db.execute(delete(KnowledgeAccessPolicy))
     await db.commit()
 
+    target_dept = normalize_dept_code(dept_scope)
+    if target_dept not in RESOURCE_TYPES:
+        target_dept = "SALES"
+
     policies: List[KnowledgeAccessPolicy] = []
 
-    # 1. Admin (dept ALL)
+    # 1. Admin hệ thống (BR-03): Toàn công ty, có Biên tập & Tải lên cả 5 phòng, chỉ bật Nhạy cảm ở IT
     for res in RESOURCE_TYPES:
         policies.append(
             KnowledgeAccessPolicy(
@@ -89,13 +109,14 @@ async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = 
                 can_query=True,
                 can_view_citation=True,
                 can_edit=True,
-                can_view_sensitive=True,
+                can_upload=True,
+                can_view_sensitive=(res == "IT"),
                 data_scope="ALL_DEPARTMENTS",
                 updated_by=admin_id,
             )
         )
 
-    # 2. Executive (dept ALL)
+    # 2. Ban lãnh đạo - Executive Director (BR-05): Toàn công ty, bật Nhạy cảm cả 5 phòng, TẮT Biên tập & Tải lên
     for res in RESOURCE_TYPES:
         policies.append(
             KnowledgeAccessPolicy(
@@ -105,44 +126,45 @@ async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = 
                 can_query=True,
                 can_view_citation=True,
                 can_edit=False,
+                can_upload=False,
                 can_view_sensitive=True,
                 data_scope="ALL_DEPARTMENTS",
                 updated_by=admin_id,
             )
         )
 
-    # 3. Department Manager (dept ALL - quản lý 4 phòng ban hoạt động; Pháp chế bảo mật C-Level/Admin)
-    mgr_allowed = {"SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"}
+    # 3. Trưởng phòng - Department Manager (BR-04): Chỉ bật phòng ban chủ quản, bật cả 3 quyền
     for res in RESOURCE_TYPES:
-        allowed = res in mgr_allowed
+        is_active = (res == target_dept)
         policies.append(
             KnowledgeAccessPolicy(
                 role_code="DEPARTMENT_MANAGER",
                 department_code="ALL",
                 resource_type=res,
-                can_query=allowed,
-                can_view_citation=allowed,
-                can_edit=allowed,
-                can_view_sensitive=False,
-                data_scope="OWN_DEPARTMENT" if allowed else "NONE",
+                can_query=is_active,
+                can_view_citation=is_active,
+                can_edit=is_active,
+                can_upload=is_active,
+                can_view_sensitive=is_active,
+                data_scope="OWN_DEPARTMENT" if is_active else "NONE",
                 updated_by=admin_id,
             )
         )
 
-    # 4. Standard User (dept ALL - chuyên viên chỉ tra cứu Sales, IT, R&D; chặn Kế toán & Pháp chế; không biên tập)
-    std_allowed = {"SALES", "IT", "RND"}
+    # 4. Chuyên viên - Standard User (BR-02): Chỉ bật phòng ban chủ quản, bật Biên tập & Tải lên, TẮT Nhạy cảm
     for res in RESOURCE_TYPES:
-        allowed = res in std_allowed
+        is_active = (res == target_dept)
         policies.append(
             KnowledgeAccessPolicy(
                 role_code="STANDARD_USER",
                 department_code="ALL",
                 resource_type=res,
-                can_query=allowed,
-                can_view_citation=allowed,
-                can_edit=False,
+                can_query=is_active,
+                can_view_citation=is_active,
+                can_edit=is_active,
+                can_upload=is_active,
                 can_view_sensitive=False,
-                data_scope="OWN_DEPARTMENT" if allowed else "NONE",
+                data_scope="OWN_DEPARTMENT" if is_active else "NONE",
                 updated_by=admin_id,
             )
         )
@@ -153,7 +175,7 @@ async def seed_default_matrix(db: AsyncSession, admin_id: Optional[uuid.UUID] = 
 
 
 async def get_all_policies(db: AsyncSession, auto_seed: bool = True) -> List[KnowledgeAccessPolicy]:
-    """Lấy danh sách tất cả policies. Tự động seed nếu bảng chưa có dữ liệu hoặc chưa khớp 4x7 mới."""
+    """Lấy danh sách tất cả policies. Tự động seed nếu bảng chưa có dữ liệu hoặc chưa khớp chuẩn cô lập phòng ban."""
     await ensure_table_created(db)
     result = await db.execute(select(KnowledgeAccessPolicy).order_by(
         KnowledgeAccessPolicy.role_code,
@@ -164,7 +186,7 @@ async def get_all_policies(db: AsyncSession, auto_seed: bool = True) -> List[Kno
     if auto_seed:
         existing_types = {r.resource_type for r in rows}
         has_all_std = any(r.role_code == "STANDARD_USER" and r.department_code == "ALL" for r in rows)
-        if not rows or not set(RESOURCE_TYPES).issubset(existing_types) or not has_all_std:
+        if not rows or existing_types != set(RESOURCE_TYPES) or not has_all_std or len(rows) != len(RESOURCE_TYPES) * 4:
             return await seed_default_matrix(db)
     return rows
 
@@ -190,13 +212,14 @@ async def bulk_update_policies(
         if existing:
             old_val = f"query={existing.can_query},scope={existing.data_scope}"
             new_val = f"query={item.can_query},scope={item.data_scope}"
-            if old_val != new_val or existing.can_edit != item.can_edit or existing.can_view_sensitive != item.can_view_sensitive:
+            if old_val != new_val or existing.can_edit != item.can_edit or existing.can_upload != item.can_upload or existing.can_view_sensitive != item.can_view_sensitive:
                 change_summaries.append(
                     f"{item.role_code}:{item.department_code}:{item.resource_type} [{old_val} -> {new_val}]"
                 )
             existing.can_query = item.can_query
             existing.can_view_citation = item.can_view_citation
             existing.can_edit = item.can_edit
+            existing.can_upload = item.can_upload
             existing.can_view_sensitive = item.can_view_sensitive
             existing.data_scope = item.data_scope
             existing.updated_by = admin.user_id
@@ -209,6 +232,7 @@ async def bulk_update_policies(
                 can_query=item.can_query,
                 can_view_citation=item.can_view_citation,
                 can_edit=item.can_edit,
+                can_upload=item.can_upload,
                 can_view_sensitive=item.can_view_sensitive,
                 data_scope=item.data_scope,
                 updated_by=admin.user_id,
@@ -235,9 +259,9 @@ async def bulk_update_policies(
     return updated_count
 
 
-async def reset_matrix(db: AsyncSession, admin: User) -> List[KnowledgeAccessPolicy]:
+async def reset_matrix(db: AsyncSession, admin: User, dept_scope: str = "SALES") -> List[KnowledgeAccessPolicy]:
     """Khôi phục ma trận về cấu hình chuẩn mặc định và ghi Audit Log."""
-    policies = await seed_default_matrix(db, admin_id=admin.user_id)
+    policies = await seed_default_matrix(db, admin_id=admin.user_id, dept_scope=dept_scope)
     await log_action(
         db,
         action="RBAC_MATRIX_RESET",
@@ -279,10 +303,12 @@ async def get_user_knowledge_permissions(user: User, db: AsyncSession) -> UserKn
     perms_by_resource = {}
 
     for p in policies:
+        can_up = getattr(p, "can_upload", False) or p.can_edit
         perms_by_resource[p.resource_type] = {
             "can_query": p.can_query,
             "can_view_citation": p.can_view_citation,
             "can_edit": p.can_edit,
+            "can_upload": can_up,
             "can_view_sensitive": p.can_view_sensitive,
             "data_scope": p.data_scope,
         }

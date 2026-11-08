@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { I18N } from "./data/i18n";
 import { INITIAL_DATA } from "./data/mockData";
 import { ENTERPRISE_ROLES } from "./data/roles";
-import { fetchHealth, fetchSignals, fetchEntities, getValidTokenForUser } from "./services/api";
+import { fetchHealth, fetchSignals, fetchEntities, getCurrentUserApi, getValidTokenForUser } from "./services/api";
 
 import Topbar from "./components/Topbar";
 import NavRail from "./components/NavRail";
@@ -120,6 +120,64 @@ export default function App() {
   const [selectedDocId, setSelectedDocId] = useState(null);
   const [initialCopilotQuery, setInitialCopilotQuery] = useState("");
 
+  // State cảnh báo bảo mật khi bị đá phiên do đăng nhập đồng thời
+  const [kickedNotice, setKickedNotice] = useState(() => {
+    try {
+      const msg = sessionStorage.getItem("aegis_kicked_notice");
+      if (msg) {
+        sessionStorage.removeItem("aegis_kicked_notice");
+        return msg;
+      }
+    } catch (e) {}
+    return "";
+  });
+
+  // Lắng nghe sự kiện bị đá phiên (Concurrent Login Kicked)
+  useEffect(() => {
+    const handleKicked = (e) => {
+      const msg = e.detail?.message || "Tài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác. Bạn đã được tự động đăng xuất để bảo vệ dữ liệu.";
+      setKickedNotice(msg);
+      setPageMode("login");
+    };
+    window.addEventListener("graphmind:concurrent-login-kicked", handleKicked);
+    return () => window.removeEventListener("graphmind:concurrent-login-kicked", handleKicked);
+  }, []);
+
+  // Heartbeat kiểm tra phiên hoạt động định kỳ mỗi 3 giây + kiểm tra tức thì khi quay lại tab (focus / visibility)
+  useEffect(() => {
+    if (pageMode !== "app") return;
+
+    const checkSession = async () => {
+      const currentToken = localStorage.getItem("aegis_token");
+      if (!currentToken) return;
+      await getCurrentUserApi(currentToken);
+    };
+
+    // Kiểm tra ngay 1 lần sau 500ms
+    const initialTimer = setTimeout(checkSession, 500);
+
+    // Chu kỳ định kỳ mỗi 3 giây
+    const intervalId = setInterval(checkSession, 3000);
+
+    // Kiểm tra tức thì ngay khi người dùng chuyển focus hoặc active lại tab
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        checkSession();
+      }
+    };
+
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalId);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+    };
+  }, [pageMode]);
+
+
   const {
     events: notifEvents,
     unreadCount: notifUnreadCount,
@@ -160,9 +218,9 @@ export default function App() {
     localStorage.setItem("aegis_lang", lang);
   }, [lang]);
 
-  // Enable smooth window scrolling for Landing Page & Login
+  // Enable smooth window scrolling for Landing Page, Login & Forgot Password
   useEffect(() => {
-    if (pageMode === "landing" || pageMode === "login") {
+    if (pageMode === "landing" || pageMode === "login" || pageMode === "forgot_password") {
       document.documentElement.style.scrollBehavior = "smooth";
       document.documentElement.style.overflow = "auto";
       document.body.style.overflow = "auto";
@@ -181,6 +239,8 @@ export default function App() {
         window.history.replaceState(null, "", window.location.pathname + "#landing");
       } else if (pageMode === "login") {
         window.history.replaceState(null, "", window.location.pathname + "#login");
+      } else if (pageMode === "forgot_password") {
+        window.history.replaceState(null, "", window.location.pathname + "#forgot-password");
       } else if (pageMode === "app") {
         localStorage.setItem("aegis_current_view", view);
         window.history.replaceState(null, "", window.location.pathname + "#" + view);
@@ -194,6 +254,8 @@ export default function App() {
       const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
       if (hash === "login") {
         setPageMode("login");
+      } else if (hash === "forgot-password" || hash === "forgot_password") {
+        setPageMode("forgot_password");
       } else if (hash === "landing") {
         setPageMode("landing");
       } else if (VALID_VIEWS.includes(hash)) {
@@ -280,7 +342,10 @@ export default function App() {
   if (pageMode === "login") {
     return (
       <LoginPage
+        kickedNotice={kickedNotice}
+        onClearKickedNotice={() => setKickedNotice("")}
         onEnterPlatform={(authenticatedUser) => {
+          setKickedNotice("");
           const user = (authenticatedUser && authenticatedUser.id)
             ? authenticatedUser
             : (ENTERPRISE_ROLES[authenticatedUser] || ENTERPRISE_ROLES.executive);

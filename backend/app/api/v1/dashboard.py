@@ -100,13 +100,13 @@ def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
         return {
             "success": True,
             "data": {
-                "totalRevenue": round(float(data.get("totalRevenue", 0)), 2),
-                "totalOrders": int(data.get("totalOrders", 0)),
-                "avgOrderValue": round(float(data.get("avgOrder", 0)), 2),
-                "totalCustomers": int(data.get("totalCustomers", 0)),
-                "totalDocuments": int(data.get("totalDocuments", 0)),
-                "totalContracts": int(data.get("totalContracts", 0)),
-                "totalClauses": int(data.get("totalClauses", 0)),
+                "totalRevenue": round(float(data.get("totalRevenue") or 0.0), 2),
+                "totalOrders": int(data.get("totalOrders") or 0),
+                "avgOrderValue": round(float(data.get("avgOrder") or 0.0), 2),
+                "totalCustomers": int(data.get("totalCustomers") or 0),
+                "totalDocuments": int(data.get("totalDocuments") or 0),
+                "totalContracts": int(data.get("totalContracts") or 0),
+                "totalClauses": int(data.get("totalClauses") or 0),
                 "complianceRate": compliance_rate,
                 "timestamp": datetime.utcnow().isoformat()
             }
@@ -193,10 +193,19 @@ def get_contract_distribution():
     """
     try:
         neo4j_client.connect()
-        # By contract/document department or category
+        # By contract/document department or category (canonicalized to 5 enterprise departments)
         type_cypher = """
         MATCH (d:Document)
-        RETURN coalesce(d.department, 'Pháp chế (Legal)') AS type, count(*) AS count
+        WITH d, 
+             CASE 
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(pháp chế|legal|hợp đồng).*' THEN 'Pháp chế (Legal)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(kinh doanh|sales).*' THEN 'Kinh doanh (Sales)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(r&d|nghiên cứu|rnd).*' THEN 'Nghiên cứu & Phát triển (R&D)'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(kế toán|thu mua|accounting|procurement).*' THEN 'Kế toán & Thu mua'
+               WHEN coalesce(d.department, d.dept, '') =~ '(?i).*(công nghệ|it|cntt).*' THEN 'Công nghệ thông tin (IT)'
+               ELSE 'Phòng ban khác'
+             END AS type
+        RETURN type, count(d) AS count
         ORDER BY count DESC
         """
         types = neo4j_client.run_cypher(type_cypher)

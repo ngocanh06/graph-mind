@@ -34,6 +34,14 @@ from .config import (
 )
 from .sync_client import SyncClient
 
+try:
+    from .pb56_agent_sync import pb56_dispatch_sync, init_pb56_agent
+except Exception:
+    def pb56_dispatch_sync(client, file_path, department="General", event_type="created"):
+        return client.sync_file(file_path, department=department, event_type=event_type)
+    def init_pb56_agent(client, watch_path=None):
+        return None
+
 def _backend_request(method: str, path: str, **kwargs) -> Optional[requests.Response]:
     """Tries primary backend endpoint, falls back to host.docker.internal if unresolvable."""
     urls = [
@@ -256,7 +264,7 @@ class DocumentChangeHandler(FileSystemEventHandler):
         print(f"[AEGIS Watcher] Department: {dept} | Size: {os.path.getsize(file_path)} bytes | Hash: {current_hash[:12]}...")
         print(f"[AEGIS Watcher] Transmitting to Unified Ingestion Pipeline...")
 
-        result = self.sync_client.sync_file(file_path, department=dept, event_type=action)
+        result = pb56_dispatch_sync(self.sync_client, file_path, department=dept, event_type=action)
         if result.get("success"):
             self._known_hashes[file_path] = current_hash
             data = result.get("data", {}).get("data", {})
@@ -315,7 +323,7 @@ def initial_sync_scan(sync_client: SyncClient, watch_path: str) -> None:
 
                 dept = _detect_department_from_path(fpath)
                 print(f"[AEGIS Watcher] [Initial Sync] Ingesting new file: {fname} [{dept}]")
-                res = sync_client.sync_file(fpath, department=dept, event_type="created")
+                res = pb56_dispatch_sync(sync_client, fpath, department=dept, event_type="created")
                 if res.get("success"):
                     known_hashes.add(fhash)
                     synced_cnt += 1
@@ -332,6 +340,7 @@ def start_watcher(watch_path: str = WATCH_ROOT):
         os.makedirs(os.path.join(watch_path, folder), exist_ok=True)
 
     sync_client = SyncClient()
+    init_pb56_agent(sync_client, watch_path=watch_path)
 
     # 1. Run Initial Sync Scan to index any unindexed files
     initial_sync_scan(sync_client, watch_path)

@@ -7,7 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-# 5 cột phân quyền: 5 phòng ban kho tài liệu
+# 5 cột phân quyền: 5 phòng ban kho tài liệu chuẩn
 RESOURCE_TYPES = [
     "LEGAL",
     "SALES",
@@ -42,6 +42,7 @@ class PolicyItemOut(BaseModel):
     can_query: bool
     can_view_citation: bool
     can_edit: bool
+    can_upload: bool = False
     can_view_sensitive: bool
     data_scope: str
     updated_by: Optional[uuid.UUID] = None
@@ -58,6 +59,7 @@ class PolicyCellUpdate(BaseModel):
     can_query: bool = False
     can_view_citation: bool = False
     can_edit: bool = False
+    can_upload: bool = False
     can_view_sensitive: bool = False
     data_scope: str = "NONE"
 

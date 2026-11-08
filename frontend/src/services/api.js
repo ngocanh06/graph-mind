@@ -5,6 +5,24 @@
 
 export const API_BASE = "http://localhost:5000/api";
 
+export function triggerConcurrentLoginKicked(message) {
+  const kickMsg = message || "Tài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác. Bạn đã được tự động đăng xuất để bảo vệ dữ liệu.";
+  try {
+    localStorage.removeItem("aegis_token");
+    localStorage.removeItem("aegis_auth_user");
+    localStorage.removeItem("aegis_user");
+    localStorage.removeItem("access_token");
+    sessionStorage.setItem("aegis_kicked_notice", kickMsg);
+  } catch (e) {}
+
+  window.dispatchEvent(
+    new CustomEvent("graphmind:concurrent-login-kicked", {
+      detail: { message: kickMsg }
+    })
+  );
+}
+
+
 export async function fetchHealth() {
   try {
     const res = await fetch(`${API_BASE}/health`);
@@ -205,13 +223,36 @@ export async function loginApi(identifier, password) {
 }
 
 export async function getCurrentUserApi(token) {
+  if (!token) return null;
   try {
     const res = await fetch(`${API_BASE}/v1/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` }
     });
     if (res.ok) return await res.json();
+    if (res.status === 401) {
+      // Clone để đọc body (fetch body chỉ đọc 1 lần)
+      const clonedRes = res.clone();
+      // Ưu tiên kiểm tra header X-Error-Code (nhanh, không lỗi parse)
+      const headerCode = res.headers.get("X-Error-Code");
+      if (headerCode === "CONCURRENT_LOGIN_KICKED") {
+        triggerConcurrentLoginKicked();
+        return null;
+      }
+      // Fallback: parse JSON body
+      try {
+        const errData = await clonedRes.json();
+        // Backend main.py handler trả về: {"detail": "...", "error_code": "CONCURRENT_LOGIN_KICKED"}
+        const errorCode = errData?.error_code
+          || errData?.detail?.error_code;
+        if (errorCode === "CONCURRENT_LOGIN_KICKED") {
+          const msg = typeof errData?.detail === "string"
+            ? errData.detail
+            : (errData?.detail?.message || errData?.message);
+          triggerConcurrentLoginKicked(msg || undefined);
+          return null;
+        }
+      } catch (_e) {}
+    }
   } catch (e) { }
   return null;
 }
@@ -436,6 +477,51 @@ export async function downloadDocumentFile(filename, department = "legal", curre
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
   return true;
+}
+
+export async function submitDocumentUpload(file, resourceType = "SALES", department = "sales", currentUser = null) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("resource_type", resourceType);
+    formData.append("department_code", department);
+    formData.append("action_type", "UPLOAD_NEW");
+
+    const headers = {};
+    const token = localStorage.getItem("aegis_token") || localStorage.getItem("access_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (currentUser?.email) headers["X-User-Email"] = currentUser.email;
+    if (currentUser?.username) headers["X-User-Name"] = currentUser.username;
+    if (currentUser?.id) headers["X-User-Id"] = currentUser.id;
+    if (currentUser?.role || currentUser?.roleKey) headers["X-User-Role"] = currentUser.roleKey || currentUser.role;
+
+    const res = await fetch(`${API_BASE}/documents/submit-upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { success: true, ...data };
+    return { success: false, error: data.detail || data.message || `Lỗi tải lên (HTTP ${res.status})` };
+  } catch (e) {
+    console.warn("[Upload] submitDocumentUpload error:", e);
+    return { success: false, error: e.message || "Không thể kết nối đến máy chủ Backend" };
+  }
+}
+
+export async function fetchMyUploadApprovals(currentUser = null) {
+  try {
+    const headers = getAuthHeaders(currentUser);
+    const res = await fetch(`${API_BASE}/admin/upload-approvals`, {
+      headers,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return data;
+    return { success: false, items: [], error: data.detail || `HTTP ${res.status}` };
+  } catch (e) {
+    console.warn("[Approval] fetchMyUploadApprovals error:", e);
+    return { success: false, items: [], error: e.message };
+  }
 }
 
 export async function uploadDocument(file, department = "legal", currentUser = null) {
