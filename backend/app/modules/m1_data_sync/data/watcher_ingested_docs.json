@@ -1,5 +1,212 @@
 [
   {
+    "id": "DOC_CBF8DD29",
+    "raw_id": "Hop_Dong_Cung_Cap_Dich_Vu_Phan_Mem.docx",
+    "name": "Hop_Dong_Cung_Cap_Dich_Vu_Phan_Mem.docx",
+    "category": "Tài liệu Công nghệ / IT",
+    "category_en": "Công nghệ / IT Document",
+    "type": "DOCX",
+    "dept": "Công nghệ / IT",
+    "deptKey": "it",
+    "deptLabel": "Công nghệ / IT",
+    "department": "Công nghệ / IT",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "15 Chunks",
+    "chunk_count": 15,
+    "schema": "AEGIS Công nghệ / IT Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "cbf8dd297ebbf454274d035310864455e5ecd75d89ab1965714afd86ef5ffb7c",
+    "file_hash": "cbf8dd297ebbf454274d035310864455e5ecd75d89ab1965714afd86ef5ffb7c",
+    "fileHash": "cbf8dd297ebbf454274d035310864455e5ecd75d89ab1965714afd86ef5ffb7c",
+    "storage_path": "/data/it/Hop_Dong_Cung_Cap_Dich_Vu_Phan_Mem.docx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [
+        "CỔ PHẦN CÔNG NGHỆ VÀ TRUYỀN THÔNG NOVA",
+        "Kỹ Thương Việt Nam",
+        "TNHH GIẢI PHÁP PHẦN MỀM ALPHA TECH\n\nMã s"
+      ],
+      "clauses": [
+        {
+          "type": "Bảo mật thông tin (Confidentiality)",
+          "title": "Điều khoản Bảo mật"
+        },
+        {
+          "type": "Điều khoản Thanh toán (Payment Terms)",
+          "title": "Phương thức Thanh toán"
+        },
+        {
+          "type": "Trách nhiệm & Bồi thường (Liability)",
+          "title": "Bồi thường & Phạt vi phạm"
+        },
+        {
+          "type": "Chấm dứt hợp đồng (Termination)",
+          "title": "Điều kiện chấm dứt"
+        }
+      ],
+      "value": "550.000.000 VNĐ"
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_CBF8DD29_0",
+        "chunk_id": 0,
+        "text": "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n\nĐộc lập – Tự do – Hạnh phúc\n\n----------o0o----------\n\nHỢP ĐỒNG CUNG CẤP DỊCH VỤ PHÁT TRIỂN PHẦN MỀM\n\nSố: 26/2026/HĐDV-IT\n\n- Căn cứ Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015 và các văn bản hướng dẫn thi hành;- Căn cứ Luật Thương mại số 36/2005/QH11 ngày 14/06/2005;- Căn cứ Luật Công nghệ thông tin số 67/2006/QH11 ngày 29/06/2006;- Căn cứ vào nhu cầu và năng lực thực tế của hai Bên.\n\nHôm nay, ngày 08 tháng 11 năm 2026, tại Đà Nẵng, chúng tôi gồm có:"
+      },
+      {
+        "id": "DOC_CBF8DD29_1",
+        "chunk_id": 1,
+        "text": "BÊN A: BÊN SỬ DỤNG DỊCH VỤ (BÊN ĐẶT HÀNG)\n\nTên doanh nghiệp:\n\nCÔNG TY CỔ PHẦN CÔNG NGHỆ VÀ TRUYỀN THÔNG NOVA\n\nMã số thuế:\n\n0401889922\n\nĐịa chỉ trụ sở:\n\nTầng 5, Tòa nhà Software Park, số 02 Quang Trung, Hải Châu, Đà Nẵng\n\nĐại diện bởi:\n\nÔng Trần Hoàng Long\n\nChức vụ:\n\nTổng Giám Đốc\n\nĐiện thoại:\n\n(0236) 3888 999\n\nTài khoản ngân hàng:\n\n1903456789012 - Ngân hàng TMCP Kỹ Thương Việt Nam (Techcombank) - CN Đà Nẵng\n\nBÊN B: BÊN CUNG CẤP DỊCH VỤ (BÊN THỰC HIỆN)\n\nTên doanh nghiệp:\n\nCÔNG TY TNHH GIẢI PHÁP PHẦN MỀM ALPHA TECH\n\nMã số thuế:"
+      },
+      {
+        "id": "DOC_CBF8DD29_2",
+        "chunk_id": 2,
+        "text": "0402345678\n\nĐịa chỉ trụ sở:\n\nSố 120 Nguyễn Văn Linh, P. Nam Dương, Q. Hải Châu, Đà Nẵng\n\nĐại diện bởi:\n\nBà Nguyễn Lê Thảo Vy\n\nChức vụ:\n\nGiám Đốc Kỹ Thuật\n\nĐiện thoại:\n\n(0236) 3777 666\n\nTài khoản ngân hàng:\n\n0071001234567 - Ngân hàng Ngoại thương Việt Nam (Vietcombank) - CN Đà Nẵng\n\nSau khi thảo luận, hai Bên thống nhất ký kết Hợp đồng cung cấp dịch vụ phát triển phần mềm với các điều khoản và điều kiện sau:\n\nĐIỀU 1: MỤC ĐÍCH THỎA THUẬN VÀ PHẠM VI DỊCH VỤ"
+      },
+      {
+        "id": "DOC_CBF8DD29_3",
+        "chunk_id": 3,
+        "text": "1.1. Mục đích thỏa thuận: Bên A đồng ý thuê và Bên B đồng ý nhận cung cấp dịch vụ tư vấn, thiết kế, phát triển và triển khai hệ thống phần mềm quản lý điều hành doanh nghiệp ERP Cloud (sau đây gọi tắt là “Hệ thống”)."
+      },
+      {
+        "id": "DOC_CBF8DD29_4",
+        "chunk_id": 4,
+        "text": "1.2. Phạm vi công việc: Bên B chịu trách nhiệm thực hiện đầy đủ các hạng mục công việc theo Tài liệu Đặc tả Yêu cầu Kỹ thuật đính kèm (Phụ lục 01), bao gồm:  a) Thiết kế kiến trúc hệ thống, cơ sở dữ liệu và giao diện người dùng (UI/UX);  b) Lập trình các phân hệ: Quản lý khách hàng (CRM), Quản lý kho, Quản lý tài chính kế toán và Báo cáo điều hành;  c) Kiểm thử chất lượng (QA/QC), vá lỗi và hỗ trợ triển khai hệ thống lên hạ tầng điện toán đám mây của Bên A;  d) Đào tạo chuyển giao công nghệ cho đội ngũ nhân sự vận hành của Bên A."
+      },
+      {
+        "id": "DOC_CBF8DD29_5",
+        "chunk_id": 5,
+        "text": "ĐIỀU 2: THỜI HẠN VÀ TIẾN ĐỘ THỰC HIỆN\n\n2.1. Thời hạn hợp đồng: Tổng thời gian thực hiện hợp đồng là 06 (sáu) tháng, tính từ ngày 15/11/2026 đến hết ngày 15/05/2027."
+      },
+      {
+        "id": "DOC_CBF8DD29_6",
+        "chunk_id": 6,
+        "text": "2.2. Các mốc triển khai: Tiến độ công việc được chia làm 03 giai đoạn cụ thể như sau:  • Giai đoạn 1 (Tháng 1 - Tháng 2/2026): Khảo sát, chốt đặc tả kỹ thuật và thiết kế giao diện chi tiết (UI/UX Prototype).  • Giai đoạn 2 (Tháng 3 - Tháng 4/2027): Phát triển chức năng cốt lõi (Core features), kiểm thử nội bộ và triển khai bản Beta.  • Giai đoạn 3 (Tháng 5/2027): Nghiệm thu UAT thực tế, đóng băng mã nguồn, bàn giao và nghiệm thu tổng thể.\n\nĐIỀU 3: GIÁ TRỊ HỢP ĐỒNG VÀ PHƯƠNG THỨC THANH TOÁN"
+      },
+      {
+        "id": "DOC_CBF8DD29_7",
+        "chunk_id": 7,
+        "text": "3.1. Giá trị hợp đồng: Tổng giá trị hợp đồng (đã bao gồm thuế GTGT 10%) là: 550.000.000 VNĐ (Bằng chữ: Năm trăm năm mươi triệu đồng chẵn)."
+      },
+      {
+        "id": "DOC_CBF8DD29_8",
+        "chunk_id": 8,
+        "text": "3.2. Tiến độ thanh toán: Bên A sẽ thanh toán cho Bên B bằng hình thức chuyển khoản qua tài khoản ngân hàng được nêu tại phần thông tin các Bên theo 03 đợt:  • Đợt 1: Thanh toán 30% tổng giá trị (165.000.000 VNĐ) trong vòng 05 ngày làm việc kể từ ngày ký Hợp đồng.  • Đợt 2: Thanh toán 40% tổng giá trị (220.000.000 VNĐ) sau khi Bên B hoàn thành Giai đoạn 2 và bàn giao bản Beta đạt yêu cầu.  • Đợt 3: Thanh toán 30% còn lại (165.000.000 VNĐ) trong vòng 10 ngày làm việc kể từ khi ký Biên bản Nghiệm thu tổng thể và bàn giao toàn bộ mã nguồn."
+      },
+      {
+        "id": "DOC_CBF8DD29_9",
+        "chunk_id": 9,
+        "text": "ĐIỀU 4: QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN\n\n4.1. Quyền và Nghĩa vụ của Bên A: Cung cấp đầy đủ thông tin, quy trình nghiệp vụ và môi trường hạ tầng cần thiết kịp thời cho Bên B; Thanh toán đúng hạn cho Bên B; Cử nhân sự đầu mối chuyên trách để phối hợp nghiệm thu và trao đổi thông tin xuyên suốt."
+      }
+    ],
+    "lastModified": "2026-11-08T16:07:25.926535"
+  },
+  {
+    "id": "DOC_815D2324",
+    "raw_id": "Test_Case_Document_CareerAI_Group3.docx",
+    "name": "Test_Case_Document_CareerAI_Group3.docx",
+    "category": "Tài liệu Công nghệ / IT",
+    "category_en": "Công nghệ / IT Document",
+    "type": "DOCX",
+    "dept": "Công nghệ / IT",
+    "deptKey": "it",
+    "deptLabel": "Công nghệ / IT",
+    "department": "Công nghệ / IT",
+    "owner": "AEGIS File Watcher",
+    "date": "08/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "36 Chunks",
+    "chunk_count": 36,
+    "schema": "AEGIS Công nghệ / IT Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "815d2324e52f775b7b65c8bf7163c3da994e18351054dda520b129cc96efe77b",
+    "file_hash": "815d2324e52f775b7b65c8bf7163c3da994e18351054dda520b129cc96efe77b",
+    "fileHash": "815d2324e52f775b7b65c8bf7163c3da994e18351054dda520b129cc96efe77b",
+    "storage_path": "/data/it/Test_Case_Document_CareerAI_Group3.docx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_815D2324_0",
+        "chunk_id": 0,
+        "text": "International School, Duy Tan University\n\nTest Case Document\n\nCourse: Software Engineering / System Integration Project\n\nProject Title: AI-Powered Competency Profile & Career Guidance System (CareerAI)\n\nVersion: 1.0\n\nDate: 16/07/2026\n\nGroup: Group 3\n\nSemester: Summer Semester – 2026\n\nInstructor: Nguyen Hai Minh\n\nTeam Members:\n\nName\n\nStudent ID\n\nAnh, Tran Thi Ngoc\n\n29209243814\n\nMinh, Huynh Ngoc\n\n29218058437\n\nToan, Duong Van Bao\n\n29219254910\n\nVu, Tran Viet Anh\n\n2921159157\n\nApproved by\n\nMSc Minh, Nguyen Hai"
+      },
+      {
+        "id": "DOC_815D2324_1",
+        "chunk_id": 1,
+        "text": "Group Project – Instructor:      Name ____________  Signature ____________  Date ____________\n\nDa Nang, 07/2026\n\nDOCUMENT NAME\n\nDocument Title\n\nTest Case Document\n\nReporting Period\n\n05 June 2026 – 17 July 2026\n\nAuthor(s)\n\nTran Thi Ngoc Anh, Huynh Ngoc Minh, Duong Van Bao Toan, Tran Viet Anh Vu\n\nRole\n\nDeveloper / Tester\n\nDate\n\n16/07/2026\n\nFile name\n\nTest_Case_Document_CareerAI_Group3.docx\n\nDOCUMENT APPROVALS\n\nDocument Approvals: The following signatures are required for approval of this document.\n\nRole\n\nName\n\nSignature\n\nDate\n\nMentor"
+      },
+      {
+        "id": "DOC_815D2324_2",
+        "chunk_id": 2,
+        "text": "Nguyen Hai Minh\n\nTeam member\n\nTran Thi Ngoc Anh\n\nTeam member\n\nHuynh Ngoc Minh\n\nTeam member\n\nDuong Van Bao Toan\n\nTeam member\n\nTran Viet Anh Vu\n\nTABLE OF CONTENTS\n\nDOCUMENT NAME2\n\nDOCUMENT APPROVALS2\n\nTABLE OF CONTENTS3\n\n1. Introduction4\n\n2. Test Case Structure4\n\n3. Test Cases – Authentication & Personal Profile (FR1)5\n\n3.1 AUTH module5\n\n4. Test Cases – AI CV Analysis (FR2, FR4)6\n\n4.1 CV module6\n\n5. Test Cases – Personal Portfolio (FR1, FR3)6\n\n5.1 PORTFOLIO module6\n\n6. Test Cases – Career Suggestions (FR5)7\n\n6.1 CAREER module7"
+      },
+      {
+        "id": "DOC_815D2324_3",
+        "chunk_id": 3,
+        "text": "7. Test Cases – Skill Gap Analysis (FR6)8\n\n7.1 SKILL GAP module8\n\n8. Test Cases – Personalized Learning Roadmap (FR7)8\n\n8.1 ROADMAP module9\n\n9. Test Cases – System Administration10\n\n9.1 ADMIN module10\n\n10. Conclusion10\n\n1. Introduction\n\nThis document defines the Test Case Suite for the CareerAI system (AI-Powered Competency Profile & Career Guidance System), covering the modules delivered by the development team on the 'Vuu' branch of the source repository:"
+      },
+      {
+        "id": "DOC_815D2324_4",
+        "chunk_id": 4,
+        "text": "Authentication & Personal Profile (register, login, forgot password, profile management)\n\nAI CV Analysis (CV upload, ATS scoring, improvement suggestions)\n\nPersonal Portfolio (draft, publish, AI-assisted content)\n\nCareer Suggestions (AI job matching, career chat)\n\nSkill Gap Analysis (missing-skill detection, ATS keyword scan, skill sync)\n\nPersonalized Learning Roadmap (AI roadmap, goal tracking, skill-check quizzes, bookmarks)\n\nSystem Administration (user & system oversight for Admin role)"
+      },
+      {
+        "id": "DOC_815D2324_5",
+        "chunk_id": 5,
+        "text": "Test cases are traced to the Functional Requirements (FR1–FR7) in the Software Requirements Specification and to the corresponding User Stories in the Product Backlog, and were verified against the implemented Flask REST API endpoints in backend/routes/ of the source repository.\n\n2. Test Case Structure\n\nEach test case follows the project-standard structure:\n\nField\n\nDescription\n\nTest Case ID\n\nUnique identifier, prefixed by module (e.g. AUTH_TC01, CV_TC01)\n\nModule"
+      },
+      {
+        "id": "DOC_815D2324_6",
+        "chunk_id": 6,
+        "text": "AUTH / CV / PORTFOLIO / CAREER / SKILL GAP / ROADMAP / ADMIN\n\nTest Scenario\n\nWhat is being tested\n\nPreconditions\n\nRequired setup before executing the test\n\nTest Steps\n\nSteps to execute (API call and/or UI action)\n\nExpected Result\n\nExpected system response / data state\n\nActual Result\n\nFilled in during test execution\n\nStatus\n\nPass / Fail\n\nNote: 'Preconditions' marked with '—' indicate that no special data setup is required beyond a running backend/frontend and database."
+      },
+      {
+        "id": "DOC_815D2324_7",
+        "chunk_id": 7,
+        "text": "3. Test Cases – Authentication & Personal Profile (FR1)\n\n3.1 AUTH module\n\nReference API / Source: backend/routes/auth_routes.py, user_routes.py\n\nTest Case ID\n\nModule\n\nTest Scenario\n\nPreconditions\n\nTest Steps\n\nExpected Result\n\nActual Result\n\nStatus\n\nAUTH_TC01\n\nAUTH\n\nRegister a new account via email OTP (happy path)\n\nEmail is not yet registered in the system\n\n1. POST /api/register/request-otp with a valid, unused email\n\n2. Retrieve the 6-digit OTP (valid 5 minutes)"
+      },
+      {
+        "id": "DOC_815D2324_8",
+        "chunk_id": 8,
+        "text": "3. POST /api/register/verify-otp with email, otp, password, full_name\n\nBoth calls return success:true. A new row is created in `user` (status='active') and `profile` (full_name); the OTP record is marked is_used=1.\n\nAUTH_TC02\n\nAUTH\n\nRegister with an email that already exists (negative)\n\nEmail already exists in `user` table\n\n1. POST /api/register/request-otp with the existing email\n\nResponse: success:false, HTTP 400, message 'Email đã được đăng ký.'. No OTP is created.\n\nAUTH_TC03\n\nAUTH"
+      },
+      {
+        "id": "DOC_815D2324_9",
+        "chunk_id": 9,
+        "text": "Login with correct email and password (happy path)\n\nAn active account exists with a known password\n\n1. POST /api/login with the correct email/password\n\nsuccess:true, HTTP 200; response includes user_id, email, role, full_name. `user_session` and `user.last_login` are updated.\n\nAUTH_TC04\n\nAUTH\n\nLogin with an incorrect password (negative)\n\nAccount exists and is active\n\n1. POST /api/login with the correct email but a wrong password\n\nsuccess:false, HTTP 401, message 'Mật khẩu không đúng'. No session is created."
+      }
+    ],
+    "lastModified": "2026-11-08T16:02:26.906942"
+  },
+  {
     "id": "DOC_71988C4D",
     "raw_id": "term_sync.txt",
     "name": "term_sync.txt",
