@@ -2,6 +2,7 @@
 OTP Service (M6 - PB43) — sinh OTP, gửi email, rate-limit, verify
 Dùng cho luồng Quên mật khẩu. Không chạm luồng JWT/OAuth cũ.
 """
+import asyncio
 import logging
 import random
 import smtplib
@@ -93,16 +94,15 @@ def _send_smtp(to_email: str, otp: str) -> None:
 
 
 async def send_otp_email(to_email: str, otp: str) -> None:
-    """Gửi OTP. Dev fallback: in ra console nếu SMTP chưa cấu hình."""
+    """Gửi OTP trong thread riêng để không chặn event loop. Dev fallback: in ra console."""
+    print(f"\n{'='*50}", flush=True)
+    print(f"[OTP] Email: {to_email} | Code: {otp}", flush=True)
+    print(f"{'='*50}\n", flush=True)
     try:
-        _send_smtp(to_email, otp)
+        await asyncio.wait_for(asyncio.to_thread(_send_smtp, to_email, otp), timeout=12.0)
         logger.info("[OTP] Sent to %s via SMTP", to_email)
     except Exception as exc:
-        # Dev mode: in ra log để test mà không cần SMTP thật
-        logger.warning("[OTP][DEV] SMTP not configured (%s). OTP for %s: %s", exc, to_email, otp)
-        print(f"\n{'='*50}")
-        print(f"[DEV] OTP for {to_email}: {otp}")
-        print(f"{'='*50}\n")
+        logger.warning("[OTP][DEV] SMTP send failed or not configured (%s). OTP for %s: %s", exc, to_email, otp)
 
 
 async def get_latest_valid_otp(db: AsyncSession, email: str) -> Optional[PasswordResetOtp]:

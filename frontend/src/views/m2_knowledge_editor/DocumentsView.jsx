@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Icon from '../../components/ui/Icon';
 import {
   fetchRepositoryDocuments,
   fetchDocumentDetail,
   uploadDocument,
+  submitDocumentUpload,
+  fetchMyUploadApprovals,
   renameDocument,
   replaceDocument,
   deleteDocument,
   downloadDocumentFile
 } from '../../services/api';
-import { DEPARTMENTS, resolveDepartment } from '../../constants/departments';
+import { DEPARTMENTS, resolveDepartment, getAllowedDepartmentsForRole } from '../../constants/departments';
 
 export default function DocumentsView({ onNavigate, t, lang, role, currentUser, initialDocId }) {
   const isVi = lang === "vi";
@@ -79,10 +81,36 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
   // Upload Modal State (+ Upload tài liệu)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
-  const [uploadDept, setUploadDept] = useState("legal");
+  const [uploadDept, setUploadDept] = useState("sales");
+  const [uploadResourceType, setUploadResourceType] = useState("SALES");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState("");
+
+  // My Upload Approvals Queue State
+  const [isMyApprovalsOpen, setIsMyApprovalsOpen] = useState(false);
+  const [myApprovalsList, setMyApprovalsList] = useState([]);
+  const [myPendingCount, setMyPendingCount] = useState(0);
+  const [loadingMyApprovals, setLoadingMyApprovals] = useState(false);
+
+  const loadMyApprovals = useCallback(async () => {
+    setLoadingMyApprovals(true);
+    try {
+      const res = await fetchMyUploadApprovals(currentUser);
+      if (res && res.success) {
+        setMyApprovalsList(res.items || []);
+        setMyPendingCount(res.pending_count || 0);
+      }
+    } catch (e) {
+      console.warn("loadMyApprovals error", e);
+    } finally {
+      setLoadingMyApprovals(false);
+    }
+  }, [currentUser?.email, currentUser?.id, currentUser?.role]);
+
+  useEffect(() => {
+    loadMyApprovals();
+  }, [loadMyApprovals]);
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -117,21 +145,31 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     setUploadError("");
     setUploadSuccessMsg("");
 
-    const res = await uploadDocument(uploadFile, uploadDept, currentUser);
+    const res = await submitDocumentUpload(uploadFile, uploadResourceType, uploadDept, currentUser);
     setIsUploading(false);
 
     if (res && res.success) {
-      setUploadSuccessMsg(isVi ? `✓ Đã lưu ${uploadFile.name} vào Central Storage (/data/${uploadDept}/). Ingestion Pipeline đang phân tích...` : `✓ Saved ${uploadFile.name} to /data/${uploadDept}/. Ingestion Pipeline analyzing...`);
-      showToast(isVi ? `Đã lưu ${uploadFile.name} vào Central Storage` : `Saved ${uploadFile.name} to Central Storage`);
-      setCurrentPage(1);
-      setReloadTrigger((prev) => prev + 1);
+      if (res.status === "PENDING") {
+        setUploadSuccessMsg(isVi
+          ? "✓ Tài liệu đã được gửi lên hàng đợi. Vui lòng chờ Quản trị viên Hệ thống & Tri thức (Admin) phê duyệt trước khi đồng bộ vào AI Copilot."
+          : "✓ Document submitted to queue. Pending Admin approval before syncing with AI Copilot.");
+        showToast(isVi ? "Tài liệu đang chờ Admin duyệt" : "Document pending Admin approval");
+      } else {
+        setUploadSuccessMsg(isVi
+          ? `✓ Đã phê duyệt và lưu ${uploadFile.name} vào Central Storage (/data/${uploadDept}/). Ingestion Pipeline đang phân tích...`
+          : `✓ Approved & saved ${uploadFile.name} to /data/${uploadDept}/. Ingestion Pipeline analyzing...`);
+        showToast(isVi ? `Đã lưu ${uploadFile.name} vào Central Storage` : `Saved ${uploadFile.name} to Central Storage`);
+        setCurrentPage(1);
+        setReloadTrigger((prev) => prev + 1);
+      }
+      loadMyApprovals();
       setTimeout(() => {
         setIsUploadModalOpen(false);
         setUploadFile(null);
         setUploadSuccessMsg("");
-      }, 1600);
+      }, 2200);
     } else {
-      setUploadError(res?.error || (isVi ? "Tải lên thất bại. Vui lòng thử lại." : "Upload failed. Please try again."));
+      setUploadError(res?.error || (isVi ? "Tải lên thất bại. Vui lòng kiểm tra quyền RBAC đối với loại tri thức này." : "Upload failed. Please check your RBAC permissions."));
     }
   };
 
@@ -233,6 +271,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
   // Listen for realtime File Watcher events (CREATED, MODIFIED, DELETED, RENAMED)
   useEffect(() => {
+    let debounceTimer = null;
     const handleWatcherEvent = (e) => {
       const evt = e.detail;
       if (evt && evt.eventType === "deleted") {
@@ -242,11 +281,17 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           setIsDrawerOpen(false);
         }
       }
-      setReloadTrigger((prev) => prev + 1);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        setReloadTrigger((prev) => prev + 1);
+      }, 1500);
     };
 
     window.addEventListener("graphmind:watcher-event", handleWatcherEvent);
-    return () => window.removeEventListener("graphmind:watcher-event", handleWatcherEvent);
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      window.removeEventListener("graphmind:watcher-event", handleWatcherEvent);
+    };
   }, [selectedDocId]);
 
   // Fetch real documents & datasets from FastAPI backend
@@ -425,6 +470,23 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           >
             <Icon name="fa-solid fa-cloud-arrow-up text-[16px]" size={16} />
             <span>{isVi ? "+ Upload tài liệu" : "+ Upload Document"}</span>
+          </button>
+
+          <button
+            id="btn-my-approvals-modal"
+            onClick={() => {
+              setIsMyApprovalsOpen(true);
+              loadMyApprovals();
+            }}
+            className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2 cursor-pointer"
+          >
+            <Icon name="fa-solid fa-clock-rotate-left text-[15px]" size={15} />
+            <span>{isVi ? "Tài liệu gửi duyệt của tôi" : "My Upload Queue"}</span>
+            {myPendingCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+                {myPendingCount}
+              </span>
+            )}
           </button>
 
           {isAdmin ? (
@@ -956,75 +1018,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       : "border-outline-variant/30 hover:border-primary"
                   }`}
                 >
-                  <div className="flex items-start justify-between relative">
+                  <div className="flex items-start justify-between">
                     <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shadow-2xs ${iconBoxClass}`}>
                       <Icon name={iconName} size={20} />
                     </div>
-                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDrawer(doc.id);
-                        }}
-                        className="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 hover:bg-primary hover:text-white transition-colors shadow-2xs cursor-pointer"
-                        title={isVi ? "Xem chi tiết" : "View Details"}
-                      >
-                        <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem" : "View"}
-                      </button>
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuDocId(activeMenuDocId === doc.id ? null : doc.id);
-                          }}
-                          className="w-7 h-7 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors border border-outline-variant/30 cursor-pointer"
-                          title={isVi ? "Thao tác tài liệu" : "Document Actions"}
-                        >
-                          <Icon name="fa-solid fa-ellipsis-vertical text-[13px]" size={13} />
-                        </button>
-
-                        {/* Action Dropdown Menu */}
-                        {activeMenuDocId === doc.id && (
-                          <div className="absolute right-0 top-8 z-30 w-44 bg-surface-container-lowest border border-outline-variant/40 rounded-xl shadow-xl py-1.5 animate-in fade-in zoom-in-95 duration-150">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenuDocId(null);
-                                handleOpenDrawer(doc.id);
-                              }}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-regular fa-eye text-primary" size={13} />
-                              <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
-                            </button>
-                            <button
-                              onClick={(e) => handleOpenRename(doc, e)}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
-                              <span>{isVi ? "Đổi tên" : "Rename"}</span>
-                            </button>
-                            <button
-                              onClick={(e) => handleOpenReplace(doc, e)}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
-                              <span>{isVi ? "Thay file" : "Replace File"}</span>
-                            </button>
-                            <div className="my-1 border-t border-outline-variant/20"></div>
-                            <button
-                              onClick={(e) => handleOpenDelete(doc, e)}
-                              className="w-full px-3.5 py-2 text-left text-xs font-semibold text-error hover:bg-error/10 flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <Icon name="fa-regular fa-trash-can text-error" size={13} />
-                              <span>{isVi ? "Xóa" : "Delete"}</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 group-hover:bg-primary group-hover:text-white transition-colors shadow-2xs">
+                      <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem chi tiết" : "View Details"}
+                    </span>
                   </div>
-
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-semibold text-primary bg-primary-fixed/50 px-2 py-0.5 rounded-md">
@@ -1223,71 +1224,17 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                             {doc.riskLabel}
                           </span>
                         </td>
-                        <td className="p-3.5 text-center relative" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDrawer(doc.id);
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-primary-fixed text-primary hover:bg-primary hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
-                              title={isVi ? "Xem chi tiết" : "View Details"}
-                            >
-                              <Icon name="fa-regular fa-eye" size={13} />
-                              <span>{isVi ? "Xem" : "View"}</span>
-                            </button>
-                            <div className="relative">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveMenuDocId(activeMenuDocId === doc.id ? null : doc.id);
-                                }}
-                                className="w-7 h-7 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors border border-outline-variant/30 cursor-pointer"
-                                title={isVi ? "Thao tác" : "Actions"}
-                              >
-                                <Icon name="fa-solid fa-ellipsis-vertical text-[13px]" size={13} />
-                              </button>
-
-                              {/* Action Dropdown Menu */}
-                              {activeMenuDocId === doc.id && (
-                                <div className="absolute right-0 top-8 z-30 w-44 bg-surface-container-lowest border border-outline-variant/40 rounded-xl shadow-xl py-1.5 text-left animate-in fade-in zoom-in-95 duration-150">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveMenuDocId(null);
-                                      handleOpenDrawer(doc.id);
-                                    }}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-regular fa-eye text-primary" size={13} />
-                                    <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleOpenRename(doc, e)}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
-                                    <span>{isVi ? "Đổi tên" : "Rename"}</span>
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleOpenReplace(doc, e)}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-on-surface hover:bg-surface-container-low flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
-                                    <span>{isVi ? "Thay file" : "Replace File"}</span>
-                                  </button>
-                                  <div className="my-1 border-t border-outline-variant/20"></div>
-                                  <button
-                                    onClick={(e) => handleOpenDelete(doc, e)}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-error hover:bg-error/10 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Icon name="fa-regular fa-trash-can text-error" size={13} />
-                                    <span>{isVi ? "Xóa" : "Delete"}</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                        <td className="p-3.5 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDrawer(doc.id);
+                            }}
+                            className="px-3 py-1 rounded-lg bg-primary-fixed text-primary hover:bg-primary hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Icon name="fa-regular fa-eye" size={13} />
+                            <span>{isVi ? "Xem chi tiết" : "View Details"}</span>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -1766,6 +1713,39 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       </span>
                     </button>
 
+                    {/* Quản lý tệp kho lưu trữ (Đổi tên, Thay file, Xóa) */}
+                    <div className="pt-2 border-t border-surface-container">
+                      <p className="text-[11px] font-bold text-outline uppercase tracking-wider mb-2">
+                        {isVi ? "Quản lý tệp kho lưu trữ" : "File Management"}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={(e) => handleOpenRename(activeDoc, e)}
+                          className="py-2 px-2 rounded-xl bg-surface-container-low hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300 text-on-surface border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title={isVi ? "Đổi tên tài liệu" : "Rename"}
+                        >
+                          <Icon name="fa-solid fa-pen-to-square text-amber-600" size={13} />
+                          <span>{isVi ? "Đổi tên" : "Rename"}</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleOpenReplace(activeDoc, e)}
+                          className="py-2 px-2 rounded-xl bg-surface-container-low hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 text-on-surface border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title={isVi ? "Thay file mới" : "Replace File"}
+                        >
+                          <Icon name="fa-solid fa-arrow-right-arrow-left text-blue-600" size={13} />
+                          <span>{isVi ? "Thay file" : "Replace"}</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleOpenDelete(activeDoc, e)}
+                          className="py-2 px-2 rounded-xl bg-surface-container-low hover:bg-error/10 hover:text-error hover:border-error/30 text-on-surface border border-outline-variant/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          title={isVi ? "Xóa tài liệu" : "Delete"}
+                        >
+                          <Icon name="fa-regular fa-trash-can text-error" size={13} />
+                          <span>{isVi ? "Xóa" : "Delete"}</span>
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -1827,24 +1807,56 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
             {/* Modal Form */}
             <form onSubmit={handleUploadSubmit} className="p-6 space-y-4">
-              {/* Department Selector */}
+              {/* Phòng ban / Loại tri thức Selector (Gộp gọn 1 ô chuẩn UX) */}
               <div>
                 <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
-                  {isVi ? "Phòng ban đích (Canonical Department)" : "Target Department"}
+                  {isVi ? "Phòng ban / Loại tri thức" : "Department / Knowledge Type"}
                 </label>
                 <select
                   value={uploadDept}
-                  onChange={(e) => setUploadDept(e.target.value)}
+                  onChange={(e) => {
+                    const dept = e.target.value;
+                    setUploadDept(dept);
+                    if (dept === "legal") setUploadResourceType("LEGAL");
+                    else if (dept === "sales") setUploadResourceType("SALES");
+                    else if (dept === "accounting_procurement") setUploadResourceType("ACCOUNTING_PROCUREMENT");
+                    else if (dept === "it") setUploadResourceType("IT");
+                    else if (dept === "rnd") setUploadResourceType("RND");
+                  }}
                   className="w-full py-2.5 px-3 bg-surface-container-low rounded-xl text-sm text-on-surface border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
                 >
-                  {visibleDepartments.map((d) => (
-                    <option key={d.key} value={d.folder || d.key}>
-                      {isVi ? d.displayName : d.shortName} — /data/{d.folder || d.key}
-                    </option>
-                  ))}
+                  {visibleDepartments && visibleDepartments.length > 0 ? (
+                    visibleDepartments.map((d) => (
+                      <option key={d.key} value={d.folder || d.key}>
+                        {isVi ? d.displayName : d.shortName} — /data/{d.folder || d.key}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="sales">{isVi ? "Kinh doanh (Sales)" : "Sales"}</option>
+                      <option value="legal">{isVi ? "Pháp chế (Legal)" : "Legal"}</option>
+                      <option value="accounting_procurement">{isVi ? "Kế toán / Thu mua (Accounting & Procurement)" : "Accounting & Procurement"}</option>
+                      <option value="it">{isVi ? "Công nghệ / IT (Information Technology)" : "Information Technology (IT)"}</option>
+                      <option value="rnd">{isVi ? "Nghiên cứu & Phát triển (R&D)" : "Research & Development (R&D)"}</option>
+                    </>
+                  )}
                 </select>
-                <span className="text-[11px] text-on-surface-variant mt-1 block">
-                  {isVi ? "Tệp sẽ được phân bổ vào thư mục chuẩn xác định theo RBAC của GraphMind." : "File will be saved to canonical folder mapped to RBAC scope."}
+                <span className="text-[11px] text-on-surface-variant mt-1.5 block">
+                  {isVi ? "Tài liệu sẽ được phân bổ và áp dụng quyền kiểm duyệt theo Ma trận Phân quyền của phòng ban." : "Document will be routed and permissions applied according to department RBAC matrix."}
+                </span>
+              </div>
+
+              {/* Informational Policy Banner */}
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                <Icon name="fa-solid fa-clock text-amber-600 mt-0.5" size={14} />
+                <span className="leading-relaxed">
+                  {isAdmin
+                    ? (isVi
+                      ? "Bạn đang đăng nhập với quyền Admin hệ thống. Tài liệu tải lên sẽ được tự động phê duyệt và lập chỉ mục trực tiếp vào Kho tri thức AI."
+                      : "You are logged in as Admin. Documents will be auto-approved and ingested immediately.")
+                    : (isVi
+                      ? "Quy trình kiểm duyệt: Tài liệu sau khi gửi sẽ nằm ở trạng thái 'Chờ phê duyệt' (Pending Approval) để Admin hệ thống kiểm tra tính hợp lệ trước khi đồng bộ vào AI Copilot."
+                      : "Approval Flow: Your document will enter 'Pending Approval' status for Admin review before syncing into the AI Knowledge Base.")}
                 </span>
               </div>
 
@@ -1907,16 +1919,6 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                 </div>
               </div>
 
-              {/* Informational Architecture Banner */}
-              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 text-[11.5px] text-on-surface-variant flex items-start gap-2.5">
-                <Icon name="fa-solid fa-circle-info text-primary mt-0.5" size={14} />
-                <span className="leading-relaxed">
-                  {isVi
-                    ? "Kiến trúc thống nhất: Backend lưu tệp vào Central Storage (/data) → File Watcher phát hiện CREATE → Trích xuất Entity & Relation vào Neo4j và Vectors vào Qdrant → Phát thông báo SSE theo thời gian thực."
-                    : "Unified Architecture: File is stored in Central Storage (/data) → File Watcher detects CREATE → Extracts Graph Entities to Neo4j & Vectors to Qdrant → SSE realtime broadcast."}
-                </span>
-              </div>
-
               {/* Error Message */}
               {uploadError && (
                 <div className="p-3 rounded-xl bg-error/10 border border-error/30 text-error text-xs flex items-center gap-2">
@@ -1927,9 +1929,9 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
               {/* Success Message */}
               {uploadSuccessMsg && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
-                  <Icon name="fa-solid fa-circle-check text-[14px]" size={14} />
-                  <span>{uploadSuccessMsg}</span>
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-start gap-2.5">
+                  <Icon name="fa-solid fa-circle-check text-[16px] mt-0.5 text-emerald-600" size={16} />
+                  <span className="leading-relaxed font-medium">{uploadSuccessMsg}</span>
                 </div>
               )}
 
@@ -1949,21 +1951,146 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold text-on-primary bg-primary shadow transition-all flex items-center gap-2 ${
                     !uploadFile || isUploading ? "opacity-60 cursor-not-allowed" : "hover:bg-blue-700 cursor-pointer"
                   }`}
+                  style={{ backgroundColor: "#2563eb", color: "#ffffff" }}
                 >
                   {isUploading ? (
                     <>
                       <Icon name="fa-solid fa-spinner animate-spin text-[14px]" size={14} />
-                      <span>{isVi ? "Đang lưu Central Storage..." : "Uploading to Storage..."}</span>
+                      <span>{isVi ? "Đang gửi lên hàng đợi..." : "Submitting..."}</span>
                     </>
                   ) : (
                     <>
-                      <Icon name="fa-solid fa-arrow-up-from-bracket text-[14px]" size={14} />
-                      <span>{isVi ? "Tải lên Central Storage" : "Upload to Central Storage"}</span>
+                      <Icon name="fa-solid fa-paper-plane text-[13px]" size={13} />
+                      <span>{isAdmin ? (isVi ? "Tải lên & Duyệt ngay" : "Upload & Approve") : (isVi ? "Gửi tài liệu chờ duyệt" : "Submit for Approval")}</span>
                     </>
                   )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MY UPLOAD APPROVALS QUEUE MODAL (Trạng thái tài liệu đã gửi của tôi) */}
+      {/* ========================================================================= */}
+      {isMyApprovalsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                  <Icon name="fa-solid fa-clock-rotate-left text-[17px]" size={17} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">
+                    {isVi ? "Trạng thái tài liệu đã gửi của tôi" : "My Submitted Documents Queue"}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    {isVi ? "Theo dõi tiến độ kiểm duyệt và nạp vào Kho tri thức của Admin" : "Track status of documents submitted for Admin review"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMyApprovalsOpen(false)}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all"
+              >
+                <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
+              </button>
+            </div>
+
+            {/* Content List */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {loadingMyApprovals ? (
+                <div className="py-12 text-center text-sm text-on-surface-variant">
+                  {isVi ? "Đang tải dữ liệu hàng đợi..." : "Loading queue..."}
+                </div>
+              ) : myApprovalsList.length === 0 ? (
+                <div className="py-12 text-center text-on-surface-variant space-y-2">
+                  <Icon name="fa-solid fa-folder-open text-[32px] text-outline-variant" size={32} />
+                  <p className="text-sm font-medium">{isVi ? "Bạn chưa gửi tài liệu nào lên hàng đợi" : "No documents submitted yet"}</p>
+                  <p className="text-xs text-outline">{isVi ? "Bấm '+ Upload tài liệu' để tải tệp lên chờ phê duyệt." : "Click '+ Upload' to submit files."}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myApprovalsList.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-xl border border-outline-variant/30 bg-surface-container-low/60 hover:bg-surface-container transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${
+                          item.file_type === "PDF"
+                            ? "bg-red-500/10 text-red-600"
+                            : item.file_type === "CSV"
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : "bg-blue-500/10 text-blue-600"
+                        }`}>
+                          {item.file_type}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-on-surface leading-tight">
+                            {item.file_name}
+                          </div>
+                          <div className="text-xs text-on-surface-variant mt-1 flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-primary">{item.resource_type}</span>
+                            <span>•</span>
+                            <span>{(item.file_size / 1024).toFixed(1)} KB</span>
+                            <span>•</span>
+                            <span>{item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "—"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center sm:justify-end gap-2">
+                        {item.status === "PENDING" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-500/25">
+                            <Icon name="fa-solid fa-clock text-[11px]" size={11} />
+                            <span>{isVi ? "Đang chờ Admin duyệt" : "Pending Review"}</span>
+                          </span>
+                        )}
+                        {item.status === "APPROVED" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-500/25">
+                            <Icon name="fa-solid fa-check text-[11px]" size={11} />
+                            <span>{isVi ? "Đã phê duyệt" : "Approved"}</span>
+                          </span>
+                        )}
+                        {item.status === "REJECTED" && (
+                          <div className="flex flex-col items-end">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-300 text-xs font-bold border border-red-500/25">
+                              <Icon name="fa-solid fa-xmark text-[11px]" size={11} />
+                              <span>{isVi ? "Bị từ chối" : "Rejected"}</span>
+                            </span>
+                            {item.review_note && (
+                              <span className="text-[11px] text-error mt-1 max-w-[220px] text-right truncate" title={item.review_note}>
+                                Lý do: {item.review_note}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3.5 border-t border-outline-variant/20 flex items-center justify-between bg-surface-container-low/40">
+              <span className="text-xs text-on-surface-variant">
+                {myPendingCount > 0
+                  ? (isVi ? `${myPendingCount} tài liệu đang chờ Admin kiểm duyệt` : `${myPendingCount} items pending`)
+                  : (isVi ? "Tất cả tài liệu đã được xử lý" : "All items reviewed")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsMyApprovalsOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-on-surface bg-surface-container-high hover:bg-surface-container transition-all"
+              >
+                {isVi ? "Đóng" : "Close"}
+              </button>
+            </div>
           </div>
         </div>
       )}

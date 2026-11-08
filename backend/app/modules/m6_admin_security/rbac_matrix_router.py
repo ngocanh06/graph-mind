@@ -2,7 +2,7 @@
 FastAPI Router cho Ma trận Phân quyền Tri thức chi tiết (Granular RBAC) - PB02 (Mục 6.2.1)
 """
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres.database import get_db
@@ -75,18 +75,21 @@ async def update_rbac_matrix(
 
 @router.post("/reset-default", response_model=Dict[str, Any])
 async def reset_rbac_matrix_default(
+    scope_dept: str = Query("SALES"),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(get_admin_user),
 ):
     """
     POST /api/admin/rbac-matrix/reset-default:
-    Khôi phục ma trận về cấu hình chuẩn mặc định và ghi Audit Log.
+    Khôi phục ma trận về cấu hình chuẩn mặc định theo ngữ cảnh phòng ban và ghi Audit Log.
     """
-    policies = await reset_matrix(db, admin)
+    target_dept = (scope_dept or "SALES").strip().upper()
+    policies = await reset_matrix(db, admin, dept_scope=target_dept)
     return {
         "status": "success",
         "total_policies": len(policies),
-        "message": "Đã khôi phục toàn bộ Ma trận Phân quyền Tri thức về cấu hình chuẩn mặc định.",
+        "scope_dept": target_dept,
+        "message": f"Đã khôi phục toàn bộ Ma trận Phân quyền Tri thức về cấu hình chuẩn mặc định (Ngữ cảnh: {target_dept}).",
     }
 
 

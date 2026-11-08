@@ -14,7 +14,13 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Header, Depends
+from fastapi import FastAPI, HTTPException, Query, Header, Depends, Request
+from fastapi.responses import JSONResponse
+
+try:
+    from app.modules.m6_admin_security.session_service import ConcurrentLoginException
+except ImportError:
+    from modules.m6_admin_security.session_service import ConcurrentLoginException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -210,12 +216,26 @@ app = FastAPI(
 )
 
 # Enable CORS for frontend
+
+@app.exception_handler(ConcurrentLoginException)
+async def concurrent_login_exception_handler(request: Request, exc: ConcurrentLoginException):
+    detail_msg = "Tài khoản của bạn vừa được đăng nhập ở một thiết bị hoặc trình duyệt khác. Phiên làm việc này đã kết thúc."
+    return JSONResponse(
+        status_code=401,
+        content={
+            "detail": detail_msg,
+            "error_code": "CONCURRENT_LOGIN_KICKED",
+            "message": detail_msg,
+        },
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Error-Code"],
 )
 
 # Authentication routers (/api/v1/auth and /api/auth)
@@ -276,6 +296,20 @@ except ImportError:
     except Exception as e:
         logger.warning(f"[M1 Data Sync] Could not load google_connector_router: {e}")
 
+# PB56 — AEGIS Local Agent & Workstations Management Dashboard
+try:
+    from app.core.config import settings
+    pb56_enabled = getattr(settings, "PB56_WORKSTATIONS_ENABLED", False)
+except Exception:
+    pb56_enabled = os.getenv("PB56_WORKSTATIONS_ENABLED", "false").lower() in ("true", "1", "yes")
+
+if pb56_enabled:
+    try:
+        from app.api.v1.pb56_workstations import router as pb56_workstations_router
+        app.include_router(pb56_workstations_router, prefix="/api/v1/workstations", tags=["PB56 Workstations"])
+    except Exception as e:
+        logger.warning(f"[PB56 Workstations] Could not load pb56_workstations router: {e}")
+
 # Executive Decision Support routers (/api/dashboard and /api/v1/dashboard)
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -314,6 +348,13 @@ except ImportError:
     from modules.m6_admin_security.rbac_matrix_router import router as rbac_matrix_router
 app.include_router(rbac_matrix_router, prefix="/api/v1")
 app.include_router(rbac_matrix_router, prefix="/api")
+
+# Document Upload Approvals (PB48, PB50, PB02)
+try:
+    from app.modules.m6_admin_security.document_approval_router import router as document_approval_router
+except ImportError:
+    from modules.m6_admin_security.document_approval_router import router as document_approval_router
+app.include_router(document_approval_router, prefix="/api")
 
 # --- Pydantic Schemas ---
 class CopilotQueryRequest(BaseModel):

@@ -7,11 +7,11 @@ Endpoints:
 
 Không chạm luồng JWT/OAuth/Admin cũ.
 """
+import asyncio
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from datetime import timedelta
 from app.core.security import get_password_hash
 from app.db.postgres.database import get_db
 from app.db.postgres.models.user import User
@@ -68,7 +68,8 @@ async def forgot_password(
         )
 
     plain_otp = await create_otp(db, body.email)
-    await send_otp_email(body.email, plain_otp)
+    await db.commit()
+    asyncio.create_task(send_otp_email(body.email, plain_otp))
 
     return {"message": f"Mã xác thực đã được gửi đến {body.email}. Vui lòng kiểm tra hộp thư."}
 

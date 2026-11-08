@@ -30,6 +30,15 @@ export const ROLE_OPTIONS = Object.entries(ROLE_META).map(([value, { label }]) =
   label,
 }));
 
+
+export const DEPARTMENT_OPTIONS = [
+  { value: "SALES", label: "Kinh doanh (SALES)", dbName: "Sales", id: "6d04d700-56e6-4d50-88b2-6594013fc8cd" },
+  { value: "LEGAL", label: "Pháp chế (LEGAL)", dbName: "Legal", id: "dd99cb37-49d1-4543-99c6-f4787dd19a08" },
+  { value: "FINANCE", label: "Kế toán / Thu mua (FINANCE)", dbName: "Accounting", id: "aa7d6633-dc3f-44b3-a5ad-cb2e08f891cd" },
+  { value: "IT", label: "Công nghệ / IT", dbName: "Công Nghệ Thông Tin", id: "1c51042f-0345-4467-90ca-ef5845822712" },
+  { value: "RND", label: "R&D", dbName: "R&D", id: "eafa81ed-53a7-4275-ba0f-f9ac57eb1ce5" },
+];
+
 export const RESOURCE_TYPES = [
   { value: "", label: "Tất cả loại đối tượng" },
   { value: "user", label: "USER" },
@@ -85,6 +94,17 @@ export async function apiFetch(path, opts = {}) {
   }
   if (!res.ok) {
     const detailMsg = extractDetail(data, `HTTP ${res.status}`);
+    if (res.status === 401 && (data?.error_code === "CONCURRENT_LOGIN_KICKED" || data?.detail?.error_code === "CONCURRENT_LOGIN_KICKED")) {
+      const kickMsg = data?.detail?.message || data?.detail || data?.message || "Tài khoản của bạn vừa được đăng nhập ở một thiết bị hoặc trình duyệt khác. Phiên làm việc này đã kết thúc.";
+      try {
+        localStorage.removeItem("aegis_token");
+        localStorage.removeItem("aegis_auth_user");
+        localStorage.removeItem("aegis_user");
+        localStorage.removeItem("access_token");
+        sessionStorage.setItem("aegis_kicked_notice", kickMsg);
+      } catch (e) {}
+      window.dispatchEvent(new CustomEvent("graphmind:concurrent-login-kicked", { detail: { message: kickMsg } }));
+    }
     if (res.status === 403 && detailMsg && detailMsg.includes("Tài khoản đã bị khóa")) {
       try {
         localStorage.removeItem("aegis_token");
@@ -105,6 +125,17 @@ export function fetchAdminUsers() {
 
 export function createAdminUser(payload) {
   return apiFetch("/admin/users", { method: "POST", body: JSON.stringify(payload) });
+}
+
+
+export function changeAdminUserDepartment(userId, departmentCode, departmentId) {
+  return apiFetch(`/admin/users/${userId}/department`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      department_code: departmentCode,
+      department_id: departmentId || undefined,
+    }),
+  });
 }
 
 export function changeAdminUserRole(userId, role) {
@@ -166,12 +197,39 @@ export function updateGranularRbacMatrix(policies) {
   });
 }
 
-export function resetGranularRbacMatrix() {
-  return apiFetch("/admin/rbac-matrix/reset-default", {
+export function resetGranularRbacMatrix(scopeDept = "SALES") {
+  const query = scopeDept ? `?scope_dept=${encodeURIComponent(scopeDept)}` : "";
+  return apiFetch(`/admin/rbac-matrix/reset-default${query}`, {
     method: "POST",
   });
 }
 
 export function fetchMyKnowledgeScope() {
   return apiFetch("/admin/rbac-matrix/user-scope/me");
+}
+
+// ── Document Upload Approvals (PB48, PB50, PB02) ───────────────────────────
+export function fetchUploadApprovals({ status = "ALL", department = "", resourceType = "" } = {}) {
+  const sp = new URLSearchParams();
+  if (status && status !== "ALL") sp.set("status", status);
+  if (department && department !== "ALL") sp.set("department", department);
+  if (resourceType && resourceType !== "ALL") sp.set("resource_type", resourceType);
+  return apiFetch(`/admin/upload-approvals?${sp.toString()}`);
+}
+
+export function approveUploadRequest(requestId) {
+  return apiFetch(`/admin/upload-approvals/${requestId}/approve`, {
+    method: "POST",
+  });
+}
+
+export function rejectUploadRequest(requestId, reviewNote = "") {
+  return apiFetch(`/admin/upload-approvals/${requestId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ review_note: reviewNote }),
+  });
+}
+
+export function previewUploadRequest(requestId) {
+  return apiFetch(`/admin/upload-approvals/${requestId}/preview`);
 }

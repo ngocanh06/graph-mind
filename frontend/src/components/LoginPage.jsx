@@ -10,7 +10,9 @@ export default function LoginPage({
   onSelectRole,
   role = "executive",
   lang = "vi",
-  t = {}
+  t = {},
+  kickedNotice = "",
+  onClearKickedNotice = () => {}
 }) {
   const isVi = lang === "vi";
 
@@ -21,12 +23,31 @@ export default function LoginPage({
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [kickedMessage, setKickedMessage] = useState(() => {
+    return kickedNotice || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("aegis_kicked_notice") : "") || "";
+  });
+
+  useEffect(() => {
+    if (kickedNotice) {
+      setKickedMessage(kickedNotice);
+    }
+  }, [kickedNotice]);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("aegis_kicked_notice")) {
+        sessionStorage.removeItem("aegis_kicked_notice");
+      }
+    } catch (e) {}
+  }, []);
 
   // Nhanh chóng chọn tài khoản mẫu đã seed trong DB
   const handleQuickSelect = (u, p) => {
     setIdentifier(u);
     setPassword(p);
     setErrorMessage("");
+    setKickedMessage("");
+    onClearKickedNotice?.();
   };
 
   // Xử lý gửi form đăng nhập
@@ -300,6 +321,62 @@ export default function LoginPage({
               {isVi ? "Trang Chủ" : "Landing"}
             </button>
           </div>
+
+                    {/* Cảnh báo bảo mật: Phiên bị đá do đăng nhập trùng tài khoản */}
+          {kickedMessage && (
+            <div style={{
+              background: "#fffbeb",
+              border: "1.5px solid #f59e0b",
+              borderRadius: "10px",
+              padding: "14px 16px",
+              marginBottom: "18px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "12px",
+              boxShadow: "0 4px 16px rgba(245, 158, 11, 0.2)",
+              animation: "fadeIn 0.2s ease"
+            }}>
+              <span style={{ fontSize: "22px", lineHeight: "1", flexShrink: 0 }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: "13.5px",
+                  fontWeight: "800",
+                  color: "#92400e",
+                  marginBottom: "4px",
+                  letterSpacing: "-0.01em"
+                }}>
+                  {isVi ? "Cảnh báo bảo mật phiên đăng nhập" : "Security Alert: Session Replaced"}
+                </div>
+                <div style={{
+                  fontSize: "12.5px",
+                  color: "#78350f",
+                  lineHeight: "1.5",
+                  fontWeight: "600"
+                }}>
+                  {kickedMessage}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setKickedMessage("");
+                  onClearKickedNotice?.();
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#92400e",
+                  fontSize: "18px",
+                  lineHeight: "1",
+                  padding: "0 2px"
+                }}
+                title={isVi ? "Đóng thông báo" : "Dismiss"}
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {/* Hộp chọn nhanh tài khoản hệ thống đã seed */}
           <div style={{

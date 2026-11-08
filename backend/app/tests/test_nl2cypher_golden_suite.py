@@ -388,9 +388,10 @@ def test_group13_cypher_injection_and_write_guard():
 
 
 def test_group14_end_to_end_copilot_rag_and_layer2_gate():
-    """14. End-to-End Integration: execute_text_to_cypher -> apply_layer2_context_gate -> llm_client.generate_rag_answer."""
+    """14. End-to-End Integration: execute_text_to_cypher -> filter_graph_entities_by_scope -> apply_layer2_context_gate -> llm_client.generate_rag_answer."""
     import asyncio
     from app.api.v1.copilot import apply_layer2_context_gate
+    from app.core.rbac import filter_graph_entities_by_scope
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
 
     for q, expected_substr, forbidden_first_line in [
@@ -398,17 +399,21 @@ def test_group14_end_to_end_copilot_rag_and_layer2_gate():
         ("khách hàng nào mua nhiều sản phẩm nhất", "Reuben D'sa", "Tony Ting"),
         ("Khách hàng có tổng giá trị đơn hàng cao nhất và thấp nhất là ai?", "Roger Harui", None),
         ("So sánh doanh thu giữa năm 2012 và năm 2013", "29.97%", None),
+        ("kiểm tra trong kho tài liệu có tổng cộng bao nhiêu tài liệu", "tài liệu", "Không tìm thấy bằng chứng"),
     ]:
         gh = execute_text_to_cypher(q)
         assert len(gh) > 0
-        v_chunks, v_ents = apply_layer2_context_gate([], gh)
-        assert len(v_ents) > 0
-        gen = asyncio.run(llm_client.generate_rag_answer(query=q, evidence_chunks=v_chunks, graph_entities=v_ents, lang="vi"))
-        assert gen["success"] is True
-        ans = gen["answer"]
-        assert expected_substr in ans
-        if forbidden_first_line:
-            assert forbidden_first_line not in ans.split("\n")[0]
+        for role in ["admin", "executive", "knowledge_manager", "standard"]:
+            scoped_gh = filter_graph_entities_by_scope(gh, role)
+            assert len(scoped_gh) > 0, f"Role {role} lost graph hits for query: {q}"
+            v_chunks, v_ents = apply_layer2_context_gate([], scoped_gh)
+            assert len(v_ents) > 0
+            gen = asyncio.run(llm_client.generate_rag_answer(query=q, evidence_chunks=v_chunks, graph_entities=v_ents, lang="vi"))
+            assert gen["success"] is True
+            ans = gen["answer"]
+            assert expected_substr in ans
+            if forbidden_first_line:
+                assert forbidden_first_line not in ans.split("\n")[0]
 
 
 if __name__ == "__main__":

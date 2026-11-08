@@ -32,7 +32,11 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Tạo JWT access token có thời hạn"""
+    import uuid as _uuid
     to_encode = data.copy()
+    # Nhung jti (JWT ID) de kiem soat phien don (Single Active Session)
+    if "jti" not in to_encode:
+        to_encode["jti"] = str(_uuid.uuid4())
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
