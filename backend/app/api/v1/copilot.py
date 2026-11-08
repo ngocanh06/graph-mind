@@ -1062,11 +1062,12 @@ async def ask_copilot(
                 MATCH (d:Document)
                 WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
                    OR toLower($q) CONTAINS toLower(d.name)
+                   OR (d.name CONTAINS '.' AND size(split(d.name, '.')[0]) >= 3 AND toLower($q) CONTAINS toLower(split(d.name, '.')[0]))
                 RETURN d.name as name, d.id as id
                 LIMIT 1
             """, {"q": clean_query})
             if not doc_matches:
-                raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
+                raw_tokens = re.findall(r"[\w\.-]{4,}", clean_query, re.UNICODE)
                 candidate_tokens = [
                     t for t in raw_tokens
                     if not t.isdigit() and t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
@@ -1075,6 +1076,7 @@ async def ask_copilot(
                     doc_matches = neo4j_client.run_cypher("""
                         MATCH (d:Document)
                         WHERE toLower(d.name) CONTAINS toLower($t)
+                           OR (d.name CONTAINS '.' AND toLower(split(d.name, '.')[0]) CONTAINS toLower($t))
                         RETURN d.name as name, d.id as id
                         LIMIT 2
                     """, {"t": t})
@@ -1223,7 +1225,7 @@ async def ask_copilot(
                 "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
             ])
             if not is_inventory_early and not is_agg_query:
-                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
+                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([\w\.-]{3,})", clean_query, re.IGNORECASE | re.UNICODE)
                 if t_match:
                     cand = t_match.group(1).strip()
                     if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
@@ -1404,6 +1406,11 @@ async def ask_copilot(
             should_lock = True
             if candidate_tokens:
                 should_lock = any(tok.lower() in top_name.lower() or tok.lower() in (top_hit.get("text") or "").lower() for tok in candidate_tokens)
+            elif is_doc_repo_query and any(w in q_lower for w in ["file", "tài liệu", "hợp đồng", "văn bản"]):
+                clean_top_stem = top_name.split('.')[0].lower() if '.' in top_name else top_name.lower()
+                stem_words = [w for w in re.findall(r"[\w]{3,}", clean_top_stem, re.UNICODE) if w.lower() not in GENERIC_STOP]
+                if stem_words and not any(w in q_lower for w in stem_words):
+                    should_lock = False
             if should_lock:
                 active_target_doc = top_name
                 target_doc_id = top_doc_id
