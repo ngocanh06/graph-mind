@@ -354,10 +354,17 @@ class OllamaClient:
                 "   - Với câu hỏi hỏi về số lượng, cơ cấu, hoặc phân bố danh mục tài liệu/hợp đồng: BẮT BUỘC nêu rõ tổng số lượng ngay câu đầu tiên (ví dụ: 'Toàn hệ thống hiện có tổng cộng X tài liệu/hợp đồng...'), sau đó liệt kê chi tiết số lượng và tỷ lệ phần trăm theo từng phòng ban.\n"
                 "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò hoặc điều khoản cụ thể: Trả lời trực tiếp thông tin đó ngay dòng đầu tiên.\n"
                 "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
+                "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu.\n"
                 + (doc_rules + "\n" if doc_rules else "")
                 + (excel_rules + "\n" if excel_rules else "") +
                 "3. QUY TẮC TỪ CHỐI & KIỂM TRA ĐỐI TƯỢNG (GROUNDING REFUSAL):\n"
-                "   - Nếu câu hỏi hỏi về một tài liệu hoặc đối tượng cụ thể mà không xuất hiện trong ngữ cảnh, bạn phải trả lời rõ ràng rằng thông tin đó không tồn tại trong kho tri thức."
+                "   - Nếu câu hỏi hỏi về một tài liệu, hợp đồng, phòng ban hoặc đối tượng cụ thể mà không xuất hiện trong ngữ cảnh, bạn phải trả lời rõ ràng rằng thông tin đó không tồn tại trong kho tri thức.\n"
+                "   - TUYỆT ĐỐI KHÔNG được gán ghép phòng ban, nội dung hay số liệu của một tài liệu khác trong ngữ cảnh cho tài liệu mà người dùng đang hỏi.\n"
+                "4. QUY TẮC TRUY VẤN XẾP HẠNG & SO SÁNH (RANKING & SUPERLATIVES):\n"
+                "   - Khi câu hỏi yêu cầu tìm đối tượng 'nhất' (chi tiêu nhiều nhất, chi tiêu thấp nhất, mua nhiều nhất, ít nhất, doanh thu cao/thấp nhất, nhiều/ít đơn nhất,...):\n"
+                "     BẮT BUỘC tuân thủ đúng thứ tự xếp hạng (Hạng 1, Hạng 2, Hạng 3) đã được cơ sở dữ liệu tính toán sẵn trong phần 'THỰC THỂ ĐỒ THỊ LIÊN QUAN (NEO4J GRAPH DB)'.\n"
+                "     Đối tượng mang nhãn 'Hạng 1' (hoặc Đứng đầu / Thấp nhất / Nhiều nhất) là đối tượng duy nhất đứng vị trí cao nhất/thấp nhất tương ứng. TUYỆT ĐỐI KHÔNG hoán đổi vị trí hoặc kết luận đối tượng Hạng 2/Hạng 3 cao hơn Hạng 1.\n"
+                "   - Định dạng số tiền: Luôn viết rõ ràng, có phân cách hàng nghìn (ví dụ: $989,184.08 USD, không viết gộp hoặc nhầm dấu thập phân)."
             )
             context_block = ""
             if chunks_context:

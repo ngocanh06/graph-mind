@@ -194,6 +194,70 @@ const EXECUTIVE_CARDS = [
   },
 ];
 
+// Phím tắt tác nghiệp chuyên biệt cho Nhân viên Kinh doanh (Standard Role)
+const EMPLOYEE_SHORTCUTS = [
+  {
+    id: "search",
+    Icon: Search,
+    iconColor: "var(--cyan, #0891B2)",
+    iconBg: "var(--cyan-soft, rgba(8,145,178,0.08))",
+    labelVi: "Tìm kiếm thông minh",
+    labelEn: "Smart Search",
+    ctaVi: "Tra cứu ngay",
+    ctaEn: "Search now",
+    descVi: "Tra cứu tức thì khách hàng, đơn hàng ERP AdventureWorks và điều khoản hợp đồng.",
+    descEn: "Instantly lookup customers, ERP AdventureWorks orders, and contract clauses.",
+  },
+  {
+    id: "copilot",
+    Icon: Bot,
+    iconColor: "var(--blue, #2563EB)",
+    iconBg: "var(--blue-soft, rgba(37,99,235,0.08))",
+    labelVi: "Trợ lý AI Copilot",
+    labelEn: "AI Copilot",
+    ctaVi: "Hỏi đáp AI",
+    ctaEn: "Ask Copilot",
+    descVi: "Trợ lý đàm phán hợp đồng, phân tích điều khoản phạt & soạn thảo phụ lục gia hạn.",
+    descEn: "Negotiation assistant: analyze penalty clauses & draft contract renewal addendums.",
+  },
+  {
+    id: "documents",
+    Icon: FileText,
+    iconColor: "#059669",
+    iconBg: "rgba(5,150,105,0.08)",
+    labelVi: "Kho hợp đồng Kinh doanh",
+    labelEn: "Sales Documents",
+    ctaVi: "Xem chi tiết",
+    ctaEn: "View details",
+    descVi: "Khám phá 510 tài liệu hợp đồng CUAD và bảng kê dữ liệu bán hàng AdventureWorks.",
+    descEn: "Explore 510 CUAD contracts and AdventureWorks sales datasets (Read-Only).",
+  },
+  {
+    id: "risk",
+    Icon: AlertTriangle,
+    iconColor: "#D97706",
+    iconBg: "rgba(217,119,6,0.08)",
+    labelVi: "Cảnh báo rủi ro Kinh doanh",
+    labelEn: "Sales Risk Alerts",
+    ctaVi: "Xử lý rủi ro",
+    ctaEn: "Handle risks",
+    descVi: "Giám sát 2 cảnh báo khẩn: hợp đồng sắp hết hạn (5 ngày) và sụt giảm đơn hàng.",
+    descEn: "Monitor 2 critical alerts: expiring contracts (5 days) and client order drops.",
+  },
+  {
+    id: "reports",
+    Icon: Activity,
+    iconColor: "#8B5CF6",
+    iconBg: "rgba(139, 92, 246, 0.08)",
+    labelVi: "Báo cáo ca làm việc",
+    labelEn: "Shift Reports",
+    ctaVi: "Xem báo cáo",
+    ctaEn: "View reports",
+    descVi: "Theo dõi số lượng ca việc đã xử lý, doanh số bảo vệ và điểm tuân thủ SOP.",
+    descEn: "Track resolved cases, protected revenue pipeline, and SOP compliance score.",
+  },
+];
+
 export default function HomeView({ onNavigate, role = "executive", currentUser, lang = "vi", t = {} }) {
   const isVi = lang === "vi";
   const isStandardSales = role === "standard" || role === "sales" || currentUser?.roleKey === "SALES_OPS" || currentUser?.id === "standard";
