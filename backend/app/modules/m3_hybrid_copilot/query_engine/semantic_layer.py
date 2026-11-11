@@ -395,11 +395,11 @@ UNSUPPORTED_METRICS_EXPLANATIONS: Dict[str, str] = {
         "và **238/504** sản phẩm trong danh mục chưa phát sinh đơn hàng bán lẻ."
     ),
     "profit_margin": (
-        "Cơ sở dữ liệu hiện tại ghi nhận đầy đủ **Doanh thu gộp (`TotalDue`: $123,216,786.12 USD)**, "
-        "**Doanh thu thuần sản phẩm (`SubTotal`: $109,846,381.40 USD)**, **Thuế (`TaxAmt`: $10,186,974.46 USD)**, "
-        "**Phí vận chuyển (`Freight`: $3,183,430.25 USD)** và **Giá bán (`UnitPrice`, `ListPrice`)**, nhưng **chưa lưu trữ trường Giá vốn hàng bán (`StandardCost` / `COGS`)** hoặc chi phí vận hành nội bộ trên node `Product`.\n\n"
-        "• **Giới hạn dữ liệu:** Theo nguyên tắc kiểm soát độ chính xác, AI Copilot không tự giả định tỷ suất lợi nhuận khi thiếu dữ liệu giá vốn (`StandardCost`).\n"
-        "• **Dữ liệu hiện có:** Bạn có thể phân tích theo **Doanh thu thuần (`SubTotal`/`LineTotal`)** hoặc **Doanh thu gộp (`TotalDue`)**."
+        "Hệ thống cơ sở dữ liệu đồ thị Neo4j hiện tại lưu trữ đầy đủ **Doanh thu thuần (`SubTotal`/`LineTotal`)**, "
+        "**Giá bán sau chiết khấu (`UnitPrice`, `unitPriceDiscount`)** và **Giá vốn tiêu chuẩn (`StandardCost`)** trên từng sản phẩm (`Product`). "
+        "Do đó, hệ thống có thể tính toán chính xác **Lợi nhuận gộp và mức lỗ biên độ (Gross Profit / Margin Loss = LineTotal - StandardCost * OrderQty)** cho từng đơn hàng và sản phẩm.\n\n"
+        "• **Dữ liệu khả dụng:** Phân tích lợi nhuận gộp theo từng đơn hàng, từng sản phẩm và phát hiện các trường hợp bán dưới giá vốn tiêu chuẩn.\n"
+        "• **Giới hạn dữ liệu:** Chưa tích hợp các chi phí vận hành gián tiếp ngoài sản xuất (chi phí quản lý doanh nghiệp SGA, chi phí marketing) để xác định Lợi nhuận ròng cuối cùng (Net Profit)."
     ),
     "cancelled_order_rate": (
         "Trong schema đồ thị `SalesOrder` hiện tại (31.465 đơn hàng), các bản ghi được đồng bộ là các đơn hàng đã xác nhận phát sinh doanh thu "

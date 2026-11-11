@@ -98,7 +98,7 @@ def synthesize_document_overview(
     seen_sec = set()
     for ch in chunks[:10]:
         t = ch.get("text", "")
-        arts = re.findall(r"((?:ARTICLE\s+[IVXLCDM]+|Section\s+\d+\.\d+)[^\n\.\;]{0,55})", t, re.IGNORECASE)
+        arts = re.findall(r"((?:ARTICLE\s+[IVXLCDM]+|Section\s+\d+\.\d+|Điều\s+\d+|Mục\s+\d+|Phần\s+\d+|[0-9]{1,2}[\.\)]\s+[A-ZÀ-Ỹa-zà-ỹ\s]{3,35})[^\n\.\;]{0,55})", t, re.IGNORECASE)
         for a in arts:
             clean_a = re.sub(r"\s+", " ", a).strip()
             short_key = clean_a.split(":")[0].strip()
@@ -127,12 +127,11 @@ def synthesize_document_overview(
         for s in sections[:7]:
             res_lines.append(f"- **{s}**")
     else:
-        res_lines.append("- **Điều khoản định nghĩa và giải thích từ ngữ (Definitions & Interpretation)**")
-        res_lines.append("- **Quyền hạn, nghĩa vụ và phạm vi hợp tác (Rights & Obligations)**")
-        res_lines.append("- **Cam kết bảo mật và quyền sở hữu trí tuệ (Confidentiality & IP)**")
-        res_lines.append("- **Thời hạn và điều kiện chấm dứt thỏa thuận (Term & Termination)**")
-        res_lines.append("- **Bồi thường thiệt hại và giới hạn trách nhiệm (Indemnification & Liability)**")
-        res_lines.append("- **Luật áp dụng và cơ chế giải quyết tranh chấp (Governing Law & Disputes)**")
+        for idx, ch in enumerate(chunks[:5], 1):
+            raw_text = (ch.get("text") or "").strip()
+            first_sentence = re.split(r"[\n\.\?\!]", raw_text)[0].strip()
+            if first_sentence and len(first_sentence) > 10:
+                res_lines.append(f"- **Đoạn #{idx}:** {first_sentence[:100]}...")
 
     res_lines.append("")
     res_lines.append("*(Nội dung được tổng hợp và đối soát trực tiếp từ các đoạn văn bản lưu trữ trong hệ thống)*")
@@ -253,13 +252,23 @@ class OllamaClient:
 
             return score
 
-        # Ordering: For document content queries, prioritize sequential chunks (Chunk 0, 1, 2...)
-        if is_cuad_document and is_doc_content_query:
+        is_doc_risk_query = any(k in q_lower for k in [
+            "rủi ro", "nguy cơ", "phân tích rủi ro", "đánh giá rủi ro", "lỗ hổng",
+            "bất lợi", "thiếu sót", "khiếm khuyết", "điều khoản bảo vệ", "risk",
+            "thẩm định", "biện pháp bảo vệ", "phương án bảo vệ", "bảo vệ pháp lý",
+            "bổ sung điều khoản"
+        ])
+
+        # Ordering: For document content or risk queries, prioritize high-signal chunks
+        if is_cuad_document and is_doc_risk_query:
+            ordered_chunks = evidence_chunks[:4]
+            TOTAL_CONTEXT_BUDGET = 2200
+        elif is_cuad_document and is_doc_content_query:
             ordered_chunks = sorted(
                 evidence_chunks,
                 key=lambda x: int(x.get("chunk_index") if x.get("chunk_index") is not None else x.get("chunk_id") or 999)
             )
-            TOTAL_CONTEXT_BUDGET = 3500
+            TOTAL_CONTEXT_BUDGET = 3000
         else:
             ordered_chunks = sorted(evidence_chunks, key=chunk_priority, reverse=True)
             if asks_case1 and asks_case2:
@@ -272,18 +281,18 @@ class OllamaClient:
                     if c not in selected:
                         selected.append(c)
                 ordered_chunks = selected
-            TOTAL_CONTEXT_BUDGET = 6000
+            TOTAL_CONTEXT_BUDGET = 5000
 
         used_chunks = []
         chunks_text_list = []
         current_context_len = 0
 
-        for i, c in enumerate(ordered_chunks[:5]):
+        for i, c in enumerate(ordered_chunks[:4]):
             t = (c.get("text") or c.get("content") or "").strip()
             cname = c.get("source_file") or c.get("contract_name") or c.get("name") or "Tài liệu"
             cid = c.get("chunk_index") if c.get("chunk_index") is not None else c.get("chunk_id", i + 1)
             if t:
-                max_chunk_chars = 1500 if is_cuad_document else (2500 if len(ordered_chunks) <= 3 else 1800)
+                max_chunk_chars = 550 if is_doc_risk_query else (1200 if is_cuad_document else 1800)
                 chunk_slice = t[:max_chunk_chars]
                 if current_context_len + len(chunk_slice) > TOTAL_CONTEXT_BUDGET and used_chunks:
                     break
@@ -302,14 +311,20 @@ class OllamaClient:
             snippet = e.get("snippet")
             info = f"{name} ({labels})"
             if snippet:
-                info += f": {snippet[:500]}"
+                max_s_len = 1500 if ("SalesOrder" in labels or "Product" in labels or "order" in q_lower or "đơn" in q_lower) else 600
+                info += f": {snippet[:max_s_len]}"
             if name:
                 entities_text_list.append(info)
                 used_entities.append(e)
         entities_context = "\n".join([f"- {it}" for it in entities_text_list])
 
         # 2.5. Deterministic Fast-Path cho truy vấn phân tích NL2Cypher & Thống kê hệ thống đã được kiểm chứng số liệu 100%
-        if graph_entities and not evidence_chunks:
+        is_reasoning_or_solution_query = any(k in q_lower for k in [
+            "phân tích", "đề xuất", "giải pháp", "kiểm soát", "rủi ro", "đánh giá",
+            "tại sao", "vì sao", "nguyên nhân", "làm thế nào", "khuyến nghị", "chiến lược", "hướng xử lý"
+        ])
+        is_order_analysis_query = bool(re.search(r"(?:order|đơn\s*hàng|salesorder)[\s#:]*\d+", q_lower)) or any(k in q_lower for k in ["bán dưới giá vốn", "chiết khấu", "lỗ gộp", "giá vốn", "thâm hụt"])
+        if graph_entities and not evidence_chunks and not is_reasoning_or_solution_query and not is_order_analysis_query:
             top_ent = graph_entities[0]
             if top_ent.get("grounded_answer"):
                 return {
@@ -352,14 +367,33 @@ class OllamaClient:
                 "       2. Mục đích và bản chất của thỏa thuận/hợp đồng.\n"
                 "       3. Các điều khoản cốt lõi được ghi nhận (Mua bán/Cổ phần, Quyền & Nghĩa vụ, Chuyển nhượng, Bồi hoàn, Luật điều chỉnh).\n"
                 "     * TUYỆT ĐỐI KHÔNG trả lời bằng thông tin kỹ thuật quản lý như: số lượng vector chunks, trạng thái lập chỉ mục, hay mã hệ thống Neo4j/Qdrant.\n"
-            ) if is_cuad_document else ""
+            ) if (is_cuad_document and is_doc_content_query and not is_doc_risk_query) else ""
+
+            risk_rules = (
+                "4. XỬ LÝ PHÂN TÍCH RỦI RO TÀI LIỆU & HỢP ĐỒNG (DOCUMENT RISK ANALYSIS):\n"
+                "   - BẮT BUỘC đọc trực tiếp các đoạn trích dẫn thực tế trong [CHỨNG CỨ VĂN BẢN (QDRANT VECTOR DB)].\n"
+                "   - TUYỆT ĐỐI KHÔNG dùng mẫu trả lời có sẵn hoặc gán ghép sai lệch nếu tài liệu không phải hợp đồng pháp lý.\n"
+                "   - KHÔNG lặp lại các câu trích đoạn hoặc nội dung giống hệt nhau giữa các mục.\n"
+                "   - Trình bày kết quả phân tích theo 3 phần rõ ràng:\n"
+                "     1. Bản chất văn bản: Xác định rõ loại tài liệu (hợp đồng kinh tế, thỏa thuận dịch vụ, hướng dẫn đồ án/dự án, quy trình nội bộ, đặc tả kỹ thuật,...).\n"
+                "     2. Rủi ro thực tế phát hiện: Nêu cụ thể 2-3 rủi ro hoặc lỗ hổng rút ra từ chính nội dung văn bản này (về nghĩa vụ, thanh toán, bảo mật, thời hạn/deadline, trách nhiệm hoặc các điều khoản bảo vệ còn thiếu).\n"
+                "     3. Đề xuất phương án bảo vệ: Khuyến nghị giải pháp hoặc điều khoản bổ sung phù hợp với thực tế tài liệu.\n"
+            ) if is_doc_risk_query else ""
+
+            order_rules = (
+                "5. PHÂN TÍCH ĐƠN HÀNG, GIÁ VỐN & CHIẾT KHẤU (ORDER & MARGIN ANALYSIS):\n"
+                "   - Đọc kỹ thông tin đơn hàng, khách hàng, sản phẩm, đơn giá, chiết khấu và giá vốn tiêu chuẩn (StandardCost) từ Neo4j.\n"
+                "   - Chỉ rõ sản phẩm cụ thể bị bán dưới giá vốn (nếu có), số lượng bán và mức thâm hụt/lỗ biên độ phát sinh.\n"
+                "   - Tự suy luận phân tích nguyên nhân (ví dụ: chiết khấu cao vượt mức an toàn khiến đơn giá bán thấp hơn giá vốn).\n"
+                "   - Đề xuất các giải pháp kinh doanh kiểm soát chính sách giá và chiết khấu thiết thực trên hệ thống.\n"
+            ) if is_order_analysis_query else ""
 
             system_prompt = (
                 "Bạn là trợ lý AI thông minh GraphMind (AEGIS Enterprise Knowledge Intelligence Platform). "
                 "Bạn sử dụng kiến trúc Hybrid GraphRAG kết hợp giữa đồ thị tri thức Neo4j và tìm kiếm vector Qdrant. "
                 "Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, chính xác, khách quan dựa trên ngữ cảnh được cung cấp.\n"
                 "QUY TẮC BẮT BUỘC:\n"
-                "1. Tuyệt đối chỉ sử dụng dữ kiện và số liệu có thật trong ngữ cảnh. Không tự suy diễn hay bịa đặt số liệu.\n"
+                "1. Dựa trên các số liệu và sự kiện thực tế trong cơ sở dữ liệu, hãy tự suy luận, phân tích nguyên nhân và đề xuất các giải pháp kinh doanh phù hợp. Không bịa đặt thêm các số liệu không có trong ngữ cảnh.\n"
                 "2. ĐỊNH DẠNG TRÌNH BÀY:\n"
                 "   - Với câu hỏi hỏi về khách hàng/sản phẩm đứng đầu hoặc mua nhiều nhất: Nêu rõ khách hàng [Xếp hạng #1] ở câu đầu tiên kèm các số liệu chính xác (số lượng sản phẩm, số đơn hàng, chi tiêu), sau đó liệt kê các vị trí kế tiếp rõ ràng.\n"
                 "   - Với câu hỏi hỏi về doanh thu, xu hướng tài chính, hoặc biến động theo năm/thời gian: Trình bày chi tiết doanh thu gộp (TotalDue), doanh thu thuần (SubTotal) và số đơn hàng theo từng năm (hoặc mốc thời gian), tuyệt đối không nhầm lẫn các năm thành khách hàng.\n"
@@ -368,6 +402,8 @@ class OllamaClient:
                 "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
                 "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu.\n"
                 + (doc_rules + "\n" if doc_rules else "")
+                + (risk_rules + "\n" if risk_rules else "")
+                + (order_rules + "\n" if order_rules else "")
                 + (excel_rules + "\n" if excel_rules else "") +
                 "3. QUY TẮC TỪ CHỐI & KIỂM TRA ĐỐI TƯỢNG (GROUNDING REFUSAL):\n"
                 "   - Nếu câu hỏi hỏi về một tài liệu, hợp đồng, phòng ban hoặc đối tượng cụ thể mà không xuất hiện trong ngữ cảnh, bạn phải trả lời rõ ràng rằng thông tin đó không tồn tại trong kho tri thức.\n"
@@ -384,7 +420,11 @@ class OllamaClient:
             if entities_context:
                 context_block += f"\n\n--- THỰC THỂ ĐỒ THỊ LIÊN QUAN (NEO4J GRAPH DB) ---\n{entities_context}"
 
-            if is_cuad_document and is_doc_content_query:
+            if is_order_analysis_query:
+                call_to_action = "Dựa trên dữ liệu thực tế của đơn hàng từ đồ thị tri thức ở trên, hãy tự suy luận phân tích nguyên nhân thâm hụt giá vốn và đề xuất các giải pháp kiểm soát chiết khấu phù hợp:"
+            elif is_doc_risk_query:
+                call_to_action = "Hãy đọc kỹ các trích đoạn văn bản thực tế ở trên và phân tích cụ thể các rủi ro, điểm bất lợi và đề xuất phương án bảo vệ phù hợp cho tài liệu này:"
+            elif is_cuad_document and is_doc_content_query:
                 call_to_action = "Hãy đọc kỹ các trích đoạn văn bản trên và trình bày nội dung chi tiết của tài liệu/hợp đồng bằng tiếng Việt theo cấu trúc chuẩn (Tiêu đề & Các bên tham gia, Mục đích thỏa thuận, Các điều khoản cốt lõi):"
             elif asks_case1 and asks_case2:
                 call_to_action = "Hãy tổng hợp câu trả lời chi tiết cho CẢ HAI SHEET (Phần 1: Sheet Case1 - Vận chuyển hàng hóa; Phần 2: Sheet Case2 - Phân bổ thức ăn gia súc):"
@@ -417,7 +457,7 @@ class OllamaClient:
         # 4. Gửi request sang Ollama
         start_time = time.time()
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=3.0)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=3.0)) as client:
                 res = await client.post(
                     f"{self.base_url}/api/chat",
                     json={
@@ -425,10 +465,10 @@ class OllamaClient:
                         "messages": messages,
                         "stream": False,
                         "options": {
-                            "temperature": 0.2,
-                            "top_p": 0.9,
-                            "num_predict": 512,
-                            "repeat_penalty": 1.15
+                            "temperature": 0.1,
+                            "top_p": 0.85,
+                            "num_predict": 650,
+                            "repeat_penalty": 1.30
                         }
                     }
                 )
@@ -452,7 +492,23 @@ class OllamaClient:
         # Fallback graceful response nếu Ollama chưa sẵn sàng hoặc quá thời gian
         latency = round(time.time() - start_time, 2)
         if is_vi:
-            if is_cuad_document and (is_doc_content_query or not is_doc_metadata_query):
+            if is_doc_risk_query and evidence_chunks:
+                c0 = evidence_chunks[0]
+                doc_name = c0.get("source_file") or c0.get("contract_name") or "Tài liệu hệ thống"
+                c_excerpts = []
+                for idx, ch in enumerate(evidence_chunks[:4], 1):
+                    raw_txt = (ch.get("text") or "").strip()
+                    first_p = re.split(r"[\n\.\?\!]", raw_txt)[0].strip()
+                    if first_p:
+                        c_excerpts.append(f"{idx}. {first_p[:120]}...")
+                bullet_str = "\n".join(c_excerpts) if c_excerpts else "Các điều khoản ghi nhận trong tài liệu."
+                fallback_msg = (
+                    f"### 🛡️ Kết quả Thẩm định Rủi ro Văn bản: **{doc_name}**\n\n"
+                    f"**1. Bản chất văn bản:** Tài liệu được nạp vào kho lưu trữ của hệ thống.\n"
+                    f"**2. Nội dung trích dẫn thực tế ghi nhận:**\n{bullet_str}\n\n"
+                    f"**3. Khuyến nghị kiểm soát rủi ro:** Cần đối soát trực tiếp các nghĩa vụ, tiến độ và điều khoản bảo mật nêu trong các trích đoạn trên với quy định pháp lý hiện hành."
+                )
+            elif is_cuad_document and (is_doc_content_query or not is_doc_metadata_query):
                 c0 = evidence_chunks[0]
                 doc_name = c0.get("source_file") or c0.get("contract_name") or "Tài liệu hệ thống"
                 doc_id = c0.get("document_id") or c0.get("doc_id") or ""

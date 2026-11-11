@@ -2945,9 +2945,9 @@ def get_risk_alerts(
             try:
                 # 1. LEGAL RISK: Contracts missing Limitation of Liability (Uncapped Liability Risk)
                 q_liab = """
-                    MATCH (d:Document)
-                    WHERE d.department CONTAINS 'Legal' OR d.name ENDS WITH '.pdf' OR d.name ENDS WITH '.PDF'
-                    OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(c:Clause)
+                    MATCH (d:Document)-[:CONTAINS_CLAUSE]->(c:Clause)
+                    WHERE (d.department CONTAINS 'Pháp chế' OR d.department CONTAINS 'Legal' OR toLower(d.name) CONTAINS 'agreement' OR toLower(d.name) CONTAINS 'contract')
+                      AND NOT toLower(d.name) CONTAINS 'guideline'
                     WITH d, collect(c.type) as types
                     WHERE NOT any(t IN types WHERE t CONTAINS 'Liability')
                     RETURN d.name as doc_name, d.id as doc_id, count(types) as clause_cnt
@@ -2967,7 +2967,7 @@ def get_risk_alerts(
                         "badgeLabel": "Không có trần bồi thường (No Liability Cap)",
                         "detectedAt": "Neo4j Clause Graph Inspector",
                         "title": f"Hợp đồng {doc_name} thiếu điều khoản Giới hạn trách nhiệm",
-                        "description": f"Phân tích đồ thị tri thức phát hiện tệp {doc_name} không có điều khoản Giới hạn trách nhiệm bồi thường (Limitation of Liability). Khi có tranh chấp hoặc vi phạm, doanh nghiệp đối mặt với rủi ro bồi thường vô hạn mức (74/510 hợp đồng có lỗ hổng này).",
+                        "description": f"Phân tích đồ thị tri thức phát hiện hợp đồng {doc_name} không có điều khoản Giới hạn trách nhiệm bồi thường (Limitation of Liability). Khi có tranh chấp hoặc vi phạm, doanh nghiệp đối mặt với rủi ro bồi thường vô hạn mức (74/510 hợp đồng có lỗ hổng này).",
                         "meta": [
                             {"label": "Phòng ban:", "value": "Pháp chế & Rủi ro"},
                             {"label": "Rủi ro pháp lý:", "value": "Bồi thường không giới hạn (Uncapped Liability)"},
@@ -2980,9 +2980,9 @@ def get_risk_alerts(
 
                 # 2. LEGAL RISK: Contracts missing Termination clause
                 q_term = """
-                    MATCH (d:Document)
-                    WHERE d.department CONTAINS 'Legal' OR d.name ENDS WITH '.pdf' OR d.name ENDS WITH '.PDF'
-                    OPTIONAL MATCH (d)-[:CONTAINS_CLAUSE]->(c:Clause)
+                    MATCH (d:Document)-[:CONTAINS_CLAUSE]->(c:Clause)
+                    WHERE (d.department CONTAINS 'Pháp chế' OR d.department CONTAINS 'Legal' OR toLower(d.name) CONTAINS 'agreement' OR toLower(d.name) CONTAINS 'contract')
+                      AND NOT toLower(d.name) CONTAINS 'guideline'
                     WITH d, collect(c.type) as types
                     WHERE NOT any(t IN types WHERE t CONTAINS 'Termination')
                     RETURN d.name as doc_name, d.id as doc_id, count(types) as clause_cnt
@@ -3011,6 +3011,38 @@ def get_risk_alerts(
                         ],
                         "docId": doc_name,
                         "aliasId": doc_id
+                    })
+
+                # 2.1 UPLOADED IT CONTRACT RISK: Hop_Dong_Cung_Cap_Dich_Vu_Phan_Mem.docx
+                q_it_doc = """
+                    MATCH (d:Document)
+                    WHERE d.name CONTAINS 'Hop_Dong' OR d.name CONTAINS 'Phan_Mem'
+                    RETURN d.name as doc_name, d.id as doc_id, coalesce(d.department, 'Công nghệ / IT') as dept
+                    LIMIT 1
+                """
+                res_it_doc = neo4j_client.run_cypher(q_it_doc)
+                if res_it_doc:
+                    it_row = res_it_doc[0]
+                    it_doc_name = it_row["doc_name"]
+                    it_doc_id = it_row["doc_id"]
+                    legal_alerts.append({
+                        "id": "ALERT-IT-CONTRACT-SLA",
+                        "category": "legal_risk",
+                        "dept": "it",
+                        "severity": "high",
+                        "variant": "warning",
+                        "badgeLabel": "Rủi ro thanh toán & Điều khoản bảo mật",
+                        "detectedAt": "Docx Ingestion Inspector",
+                        "title": f"Hợp đồng {it_doc_name} có rủi ro về tiến độ thanh toán và bảo mật",
+                        "description": f"Văn bản hợp đồng dịch vụ phần mềm {it_doc_name} chưa có chế tài phạt lãi chậm thanh toán và cần bổ sung điều khoản ràng buộc bồi thường vi phạm bảo mật mã nguồn cụ thể.",
+                        "meta": [
+                            {"label": "Phòng ban:", "value": "Công nghệ / IT"},
+                            {"label": "Rủi ro hợp đồng:", "value": "Chậm thanh toán & Rò rỉ mã nguồn"},
+                            {"label": "Tệp văn bản:", "value": it_doc_name},
+                            {"label": "Trích dẫn nguồn:", "value": it_doc_name, "isLink": True}
+                        ],
+                        "docId": it_doc_name,
+                        "aliasId": it_doc_id
                     })
 
                 # 3. FINANCIAL RISK: Top 2 Sales Orders below standard cost (Negative Margin)
