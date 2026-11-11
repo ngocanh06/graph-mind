@@ -1,5 +1,194 @@
 [
   {
+    "id": "DOC_BE668B18",
+    "raw_id": "Dread.docx",
+    "name": "Dread.docx",
+    "category": "Tài liệu Kế toán / Thu mua",
+    "category_en": "Kế toán / Thu mua Document",
+    "type": "DOCX",
+    "dept": "Kế toán / Thu mua",
+    "deptKey": "accounting_procurement",
+    "deptLabel": "Kế toán / Thu mua",
+    "department": "Kế toán / Thu mua",
+    "owner": "AEGIS File Watcher",
+    "date": "11/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Kế toán / Thu mua Schema",
+    "access": "RBAC Dept Only",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "be668b183d787b9e810af308823c359dc775572647f5c97663e2ab38d24554a4",
+    "file_hash": "be668b183d787b9e810af308823c359dc775572647f5c97663e2ab38d24554a4",
+    "fileHash": "be668b183d787b9e810af308823c359dc775572647f5c97663e2ab38d24554a4",
+    "storage_path": "/data/accounting_procurement/Dread.docx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_BE668B18_0",
+        "chunk_id": 0,
+        "text": "Dread : sợ hãi\n\nRed-eyes flights : chuyến bay đêm\n\nAppreciates : đánh giá\n\nAnticipate: dự đoán và chuẩn bị trước\n\nThreated: nhà hát\n\nScrew: vặn\n\nMount: treo"
+      }
+    ],
+    "lastModified": "2026-11-11T08:59:01.242185"
+  },
+  {
+    "id": "DOC_290F493C",
+    "raw_id": "blocked.pdf",
+    "name": "blocked.pdf",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "PDF",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "11/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "1 Chunks",
+    "chunk_count": 1,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "cuad_contract",
+    "source": "aegis_local_file_watcher",
+    "hash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
+    "file_hash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
+    "fileHash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
+    "storage_path": "/data/legal/blocked.pdf",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_290F493C_0",
+        "chunk_id": 0,
+        "text": "[PDF Document: blocked.pdf (Binary stream parsed, size: 12 bytes)]"
+      }
+    ],
+    "lastModified": "2026-11-11T08:58:58.576923"
+  },
+  {
+    "id": "DOC_AEB14F4E",
+    "raw_id": "C_29218058437_HuynhNgocMinh_BTTL.docx",
+    "name": "C_29218058437_HuynhNgocMinh_BTTL.docx",
+    "category": "Tài liệu Pháp chế",
+    "category_en": "Pháp chế (Legal) Document",
+    "type": "DOCX",
+    "dept": "Pháp chế (Legal)",
+    "deptKey": "legal",
+    "deptLabel": "Pháp chế (Legal)",
+    "department": "Pháp chế (Legal)",
+    "owner": "AEGIS File Watcher",
+    "date": "11/11/2026",
+    "status": "INDEXED",
+    "statusBadge": "Đã lập chỉ mục",
+    "statusState": "active",
+    "qdrant_indexed": true,
+    "neo4j_synced": true,
+    "qdrantIndexed": true,
+    "neo4jSynced": true,
+    "risk": "Low",
+    "riskLabel": "Đã trích xuất quan hệ & vector",
+    "size": "0.1 MB",
+    "chunks": "15 Chunks",
+    "chunk_count": 15,
+    "schema": "AEGIS Pháp chế (Legal) Schema",
+    "access": "RBAC Strict (Level 3)",
+    "previewType": "sop_document",
+    "source": "aegis_local_file_watcher",
+    "hash": "aeb14f4eaea74fba8560494f3a3a32b3d9857b73dee8e9f88bddbadafe726d3f",
+    "file_hash": "aeb14f4eaea74fba8560494f3a3a32b3d9857b73dee8e9f88bddbadafe726d3f",
+    "fileHash": "aeb14f4eaea74fba8560494f3a3a32b3d9857b73dee8e9f88bddbadafe726d3f",
+    "storage_path": "/data/legal/C_29218058437_HuynhNgocMinh_BTTL.docx",
+    "isNew": true,
+    "extracted_entities": {
+      "companies": [],
+      "clauses": [],
+      "value": null
+    },
+    "chunks_list": [
+      {
+        "id": "DOC_AEB14F4E_0",
+        "chunk_id": 0,
+        "text": "ĐẠI HỌC DUY TÂN – INTERNATIONAL SCHOOL\n\nDTE CS 231 AIS – Asian Community with IT\n\nHọc kỳ 1, năm học 2026–2027\n\nBÀI TẬP CÁ NHÂN TẠI LỚP\n\nThiết kế AI Agent cho cộng đồng châu Á: Prompt Engineering & Tư duy phản biện\n\nThông tin\n\nNội dung\n\nHọ và tên\n\nHuỳnh Ngọc Minh\n\nMSSV\n\n29218058437\n\nLớp\n\nC\n\nEmail trường\n\nMã đề\n\nĐề 4 (chữ số cuối MSSV là 7) – Khách MICE/du lịch từ các nước ASEAN đến Đà Nẵng\n\nNgày, giờ bắt đầu và kết thúc làm bài\n\n09/11/2026, 15h15–17h\n\nCông cụ AI đã dùng\n\nGemini , Claude\n\nCam kết"
+      },
+      {
+        "id": "DOC_AEB14F4E_1",
+        "chunk_id": 1,
+        "text": "“Tôi cam kết bài làm do tôi tự thực hiện; mọi nội dung do AI tạo ra đã được khai báo và tôi chịu trách nhiệm về toàn bộ nội dung.”\n\nHọ tên: Huỳnh Ngọc Minh\n\nPHẦN A – ĐẶT VẤN ĐỀ (viết trước khi hỏi AI)\n\nA1. Chân dung người dùng chính\n\nChị Nat 29 tuổi, khách du lịch Thái Lan đến Đà Nẵng lần đầu, dùng iPhone, nói tiếng Thái và tiếng Anh cơ bản. Nỗi lo lớn nhất của chị là lạ chỗ, không biết nên đi chơi ở đâu, bất đồng ngôn ngữ nên dễ bị chặt chém taxi, và khi gặp sự cố không biết gọi ai."
+      },
+      {
+        "id": "DOC_AEB14F4E_2",
+        "chunk_id": 2,
+        "text": "A2. Trải nghiệm của riêng tôi"
+      },
+      {
+        "id": "DOC_AEB14F4E_3",
+        "chunk_id": 3,
+        "text": "Hè năm nay, tôi gặp một vị khách nước ngoài ở gần bãi biển Mỹ Khuê đang loay hoay vì không biết đi đâu và không giao tiếp được với người bán hàng. Tôi đã gợi ý cho họ vài địa điểm: Bà Nà Hills, Thánh địa Mỹ sơn . Tôi cũng nói với tài xế và người bán hàng mà mình quen biết rằng không nên nâng giá, chặt chém khi gặp khách nước ngoài.Họ đã chủ động cảm ơn và kết bạn trên mạng xã hội với tôi để tiện liên lạc với nhau.Qua chuyện này tôi nhận ra khách nước ngoài rất cần một nguồn chỉ dẫn đáng tin cậy bằng chính ngôn ngữ của họ."
+      },
+      {
+        "id": "DOC_AEB14F4E_4",
+        "chunk_id": 4,
+        "text": "A3. Ba ràng buộc thực tiễn mà AI dễ bỏ qua\n\nNgôn ngữ: khách nói tiếng Thái, trong khi AI hay mặc định trả lời bằng tiếng Anh hoặc tiếng Việt.\n\nGiá cả: AI không biết giá taxi và dịch vụ thực tế ở Đà Nẵng, dễ đưa con số chung chung hoặc lỗi thời.\n\nKhẩn cấp: AI không thay được người thật; khách cần số điện thoại và người trực tại chỗ khi có sự cố.\n\nA4. Một giả định tôi chưa chắc và cần kiểm chứng"
+      },
+      {
+        "id": "DOC_AEB14F4E_5",
+        "chunk_id": 5,
+        "text": "Khách Thái quen dùng LINE hơn là tải ứng dụng mới, nên Agent nên chạy trên LINE thay vì làm app riêng. Cách kiểm chứng: [ví dụ: tìm số liệu về tỷ lệ người dùng LINE ở Thái Lan, hỏi thử 2–3 bạn/khách Thái].\n\nPHẦN B – PROMPT ENGINEERING: 3 VÒNG CẢI TIẾN\n\nCông cụ dùng: ChatGPT.\n\nB1. Prompt v1 (một câu ngắn)\n\nThiết kế MVP cho AI Agent hỗ trợ khách du lịch ASEAN ở Đà Nẵng.\n\nB2. Prompt v2 (khung R-C-T-C-O)\n\nRole: Bạn là chuyên gia thiết kế sản phẩm AI cho du lịch, am hiểu thị trường Đà Nẵng và khách ASEAN."
+      },
+      {
+        "id": "DOC_AEB14F4E_6",
+        "chunk_id": 6,
+        "text": "Context: Một quỹ hợp tác cộng đồng có ngân sách nhỏ và 3 tháng để ra mắt một AI Agent. Người dùng chính là khách du lịch Thái Lan, khoảng [TUỔI] tuổi, đến Đà Nẵng lần đầu, dùng iPhone, nói tiếng Thái và tiếng Anh cơ bản. Nỗi lo: lạ chỗ, không biết đi đâu, bất đồng ngôn ngữ, dễ bị chặt chém taxi, không biết gọi ai khi có sự cố. Thực tế tôi từng thấy khách nước ngoài loay hoay vì không hiểu người bán hàng và tài xế."
+      },
+      {
+        "id": "DOC_AEB14F4E_7",
+        "chunk_id": 7,
+        "text": "Task: Đề xuất thiết kế MVP cho AI Agent gồm: tính năng lõi, nguồn dữ liệu, luồng hoạt động và rủi ro.\n\nConstraints: Ngôn ngữ chính là tiếng Thái; chi phí thấp; không thu thập dữ liệu hộ chiếu; mọi tình huống khẩn cấp phải chuyển cho người thật; không bịa giá, nếu không chắc thì nói rõ.\n\nOutput: Trả lời bằng tiếng Việt, gồm 4 mục (Tính năng lõi, Nguồn dữ liệu, Luồng hoạt động, Rủi ro), mỗi mục dùng gạch đầu dòng ngắn.\n\n[Thay [TUỔI] bằng tuổi ở A1 cho khớp với prompt đã chạy, rồi xóa dòng ghi chú này]"
+      },
+      {
+        "id": "DOC_AEB14F4E_8",
+        "chunk_id": 8,
+        "text": "B3. Prompt v3 (cải tiến sau khi đọc kết quả v2)\n\nLỗi/điểm yếu tôi thấy ở kết quả v2: [nêu 2–3 điểm cụ thể, ví dụ AI tự giả định..., không ghi nguồn..., đưa giá không rõ nguồn...].\n\nKỹ thuật áp dụng (chọn ít nhất 2): [hỏi ngược lại thay vì tự giả định / ghi nguồn và mức độ chắc chắn / few-shot / tự phản biện / chia nhỏ nhiệm vụ].\n\n[Dán nguyên văn prompt v3 đã gửi ở đây]\n\nB4. So sánh kết quả v1 và v3\n\nTiêu chí\n\nKết quả v1\n\nKết quả v3\n\nThay đổi nào trong prompt tạo ra khác biệt?\n\nĐộ cụ thể\n\n[điền]\n\n[điền]\n\n[điền: vì sao]"
+      },
+      {
+        "id": "DOC_AEB14F4E_9",
+        "chunk_id": 9,
+        "text": "Đúng bối cảnh địa phương (Đà Nẵng, khách Thái)\n\n[điền]\n\n[điền]\n\n[điền: vì sao]\n\nTính khả thi (ngân sách nhỏ, 3 tháng)\n\n[điền]\n\n[điền]\n\n[điền: vì sao]\n\nPHẦN C – PHẢN BIỆN VÀ KIỂM CHỨNG OUTPUT CỦA AI (coi v3 là giả thuyết)\n\nC1. Ít nhất 3 vấn đề trong output v3\n\nNăm giới hạn: ảo giác; kiến thức lỗi thời; không an toàn/lộ dữ liệu; thiếu ngữ cảnh; tự tin sai chỗ.\n\n#\n\nTrích nguyên văn câu của AI\n\nGiới hạn của AI\n\nVì sao sai hoặc chưa đủ\n\n1\n\n[trích nguyên văn]\n\n[chọn 1 trong 5]\n\n[điền]\n\n2\n\n[trích nguyên văn]\n\n[chọn 1 trong 5]\n\n[điền]\n\n3"
+      }
+    ],
+    "lastModified": "2026-11-11T08:57:42.008473"
+  },
+  {
     "id": "DOC_71988C4D",
     "raw_id": "term_sync.txt",
     "name": "term_sync.txt",
@@ -48406,54 +48595,6 @@
       }
     ],
     "lastModified": "2026-10-31T21:53:10.245179"
-  },
-  {
-    "id": "DOC_290F493C",
-    "raw_id": "blocked.pdf",
-    "name": "blocked.pdf",
-    "category": "Tài liệu Pháp chế",
-    "category_en": "Pháp chế (Legal) Document",
-    "type": "PDF",
-    "dept": "Pháp chế (Legal)",
-    "deptKey": "legal",
-    "deptLabel": "Pháp chế (Legal)",
-    "department": "Pháp chế (Legal)",
-    "owner": "AEGIS File Watcher",
-    "date": "31/10/2026",
-    "status": "INDEXED",
-    "statusBadge": "Đã lập chỉ mục",
-    "statusState": "active",
-    "qdrant_indexed": true,
-    "neo4j_synced": true,
-    "qdrantIndexed": true,
-    "neo4jSynced": true,
-    "risk": "Low",
-    "riskLabel": "Đã trích xuất quan hệ & vector",
-    "size": "0.1 MB",
-    "chunks": "1 Chunks",
-    "chunk_count": 1,
-    "schema": "AEGIS Pháp chế (Legal) Schema",
-    "access": "RBAC Strict (Level 3)",
-    "previewType": "cuad_contract",
-    "source": "aegis_local_file_watcher",
-    "hash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
-    "file_hash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
-    "fileHash": "290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
-    "storage_path": "/data/legal/blocked.pdf",
-    "isNew": true,
-    "extracted_entities": {
-      "companies": [],
-      "clauses": [],
-      "value": null
-    },
-    "chunks_list": [
-      {
-        "id": "DOC_290F493C_0",
-        "chunk_id": 0,
-        "text": "[PDF Document: blocked.pdf (Binary stream parsed, size: 12 bytes)]"
-      }
-    ],
-    "lastModified": "2026-10-31T20:15:03.337181"
   },
   {
     "id": "DOC_18FC8A33",

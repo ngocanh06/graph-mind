@@ -180,26 +180,58 @@ class OllamaClient:
                 "   - Khi câu hỏi CHỈ hỏi về Case2: Nêu rõ tổng chi phí tối ưu Z_min = 1.820 VNĐ/ngày (xA ≈ 193,33, xB ≈ 93,33, xC ≈ 173,33 kg/ngày; Đạm=90, Đường=130, Khoáng=10).\n"
             ) if (asks_case1 or asks_case2 or "sheet" in q_lower or "case" in q_lower) else ""
 
+            doc_name_low = (target_doc_name or "").lower()
+            is_excel_math = any(ext in doc_name_low for ext in [".xlsx", ".xls"]) or any(k in chunks_context.lower() for k in ["bài toán", "đường đi ngắn nhất", "quy hoạch tuyến tính", "z_min", "hàm mục tiêu"])
+            is_report_docx = any(ext in doc_name_low for ext in [".docx", ".doc"]) and any(k in (doc_name_low + chunks_context.lower()) for k in ["bài tập", "báo cáo", "sinh viên", "prompt engineering", "học kỳ", "ais"])
+
             if is_document_summary:
+                if is_excel_math:
+                    summary_structure = (
+                        "   **Phần 1: Tổng quan bài toán & Dữ liệu mô hình (Problem Overview & Objectives)**\n"
+                        "   - Tên mô hình/bài toán nghiên cứu, mục tiêu tối ưu (cực tiểu hóa/cực đại hóa chi phí hoặc khoảng cách).\n"
+                        "   - Các đối tượng, điểm nút mạng hoặc các biến quyết định trong mô hình.\n\n"
+                        "   **Phần 2: Các tham số & Ràng buộc vận hành (Constraints & Flow Balance)**\n"
+                        "   - Các ràng buộc cân bằng lưu lượng, cung - cầu hoặc giới hạn kỹ thuật.\n"
+                        "   - Điểm bắt đầu, điểm kết thúc và các cung kết nối.\n\n"
+                        "   **Phần 3: Kết quả tối ưu & Đề xuất giải pháp (Optimal Solution & Findings)**\n"
+                        "   - Giá trị hàm mục tiêu tối ưu (Z_min/Z_max) và phương án phân bổ/lộ trình ngắn nhất.\n"
+                        "   - Ý nghĩa thực tiễn và nhận xét đánh giá mô hình.\n\n"
+                    )
+                elif is_report_docx:
+                    summary_structure = (
+                        "   **Phần 1: Thông tin học phần & Bối cảnh đề tài (Overview & Context)**\n"
+                        "   - Đơn vị đào tạo/nghiên cứu, tên tác giả/sinh viên và đề tài bài tập.\n"
+                        "   - Mục tiêu và công cụ AI hỗ trợ sử dụng.\n\n"
+                        "   **Phần 2: Nội dung triển khai cốt lõi (Core Implementation)**\n"
+                        "   - Các phần bài làm chính (ví dụ: Prompt engineering, khung RCTCO, truy vấn dữ liệu).\n"
+                        "   - Quy trình thử nghiệm và các bước đối chiếu dữ liệu.\n\n"
+                        "   **Phần 3: Đánh giá rủi ro, kết quả & Bài học kinh nghiệm (Results & Governance)**\n"
+                        "   - Các rủi ro đạo đức/quyền riêng tư và biện pháp khắc phục.\n"
+                        "   - Bài học rút ra và kết luận đề tài.\n\n"
+                    )
+                else:
+                    summary_structure = (
+                        "   **Phần 1: Thông tin hợp đồng & Các bên tham gia (Parties & Purpose)**\n"
+                        "   - Tên tài liệu/loại thỏa thuận, ngày có hiệu lực.\n"
+                        "   - Tên đầy đủ của các bên tham gia (Bên cấp phép/sản xuất, Bên phân phối/đối tác).\n"
+                        "   - Mục đích hợp tác & Phạm vi/sản phẩm chính yếu.\n\n"
+                        "   **Phần 2: Các điều khoản & Quy định cốt lõi (Core Clauses & Rights)**\n"
+                        "   - Quy trình đặt hàng, giao nhận, chấp thuận hoặc từ chối đơn hàng.\n"
+                        "   - Quy định về sửa đổi, bổ sung hoặc hủy bỏ đơn hàng/hợp đồng.\n\n"
+                        "   **Phần 3: Nghĩa vụ, miễn trừ trách nhiệm & Quản trị rủi ro (Obligations & Governance)**\n"
+                        "   - Các trường hợp miễn trừ trách nhiệm bồi hoàn (Indemnity Exclusions).\n"
+                        "   - Giới hạn trách nhiệm pháp lý tối đa (Limitation of Liability).\n\n"
+                    )
+
                 system_prompt = (
                     "Bạn là trợ lý AI thông minh GraphMind (AEGIS Enterprise Knowledge Intelligence Platform). "
                     f"Nhiệm vụ của bạn là đọc hiểu và LẬP BẢN TÓM TẮT BÁO CÁO (EXECUTIVE SUMMARY) cho tài liệu '{target_doc_name or 'Tài liệu'}'.\n"
                     "QUY TẮC TÓM TẮT NỘI DUNG TÀI LIỆU:\n"
                     "1. BẮT BUỘC viết 100% bằng TIẾNG VIỆT mạch lạc, chuẩn mực hành chính - kinh tế.\n"
-                    "2. TUYỆT ĐỐI KHÔNG copy-paste lại các đoạn văn bản tiếng Anh nguyên văn dài dòng. Phải đọc hiểu và diễn giải lại nội dung từng điều khoản thành các ý chính (bullet points) bằng tiếng Việt rõ ràng.\n"
-                    "3. DỊCH THUẬT NGỮ PHÁP LÝ CHÍNH XÁC: 'non-exclusive' là 'phi độc quyền' (hoặc 'không độc quyền'), tuyệt đối không dịch nhầm thành 'độc quyền'.\n"
+                    "2. TUYỆT ĐỐI KHÔNG copy-paste lại các đoạn văn bản tiếng Anh nguyên văn dài dòng. Phải đọc hiểu và diễn giải lại nội dung từng điều khoản/mục thành các ý chính (bullet points) bằng tiếng Việt rõ ràng.\n"
+                    "3. DỊCH THUẬT NGỮ CHÍNH XÁC: 'non-exclusive' là 'phi độc quyền' (hoặc 'không độc quyền'), tuyệt đối không dịch nhầm thành 'độc quyền'.\n"
                     "4. TUYỆT ĐỐI KHÔNG đưa số liệu doanh thu ERP, đơn hàng hay khách hàng bên ngoài tài liệu vào câu trả lời.\n"
-                    "5. TRÌNH BÀY ĐÚNG THEO 3 PHẦN SAU:\n"
-                    "   **Phần 1: Thông tin hợp đồng & Các bên tham gia (Parties & Purpose)**\n"
-                    "   - Tên tài liệu/loại thỏa thuận, ngày có hiệu lực.\n"
-                    "   - Tên đầy đủ của các bên tham gia (Bên cấp phép/sản xuất, Bên phân phối/đối tác).\n"
-                    "   - Mục đích hợp tác & Phạm vi/sản phẩm chính yếu.\n\n"
-                    "   **Phần 2: Các điều khoản & Quy định cốt lõi (Core Clauses & Rights)**\n"
-                    "   - Quy trình đặt hàng, giao nhận, chấp thuận hoặc từ chối đơn hàng.\n"
-                    "   - Quy định về sửa đổi, bổ sung hoặc hủy bỏ đơn hàng/hợp đồng.\n\n"
-                    "   **Phần 3: Nghĩa vụ, miễn trừ trách nhiệm & Quản trị rủi ro (Obligations & Governance)**\n"
-                    "   - Các trường hợp miễn trừ trách nhiệm bồi hoàn (Indemnity Exclusions).\n"
-                    "   - Giới hạn trách nhiệm pháp lý tối đa (Limitation of Liability).\n\n"
+                    f"5. TRÌNH BÀY ĐÚNG THEO 3 PHẦN SAU:\n{summary_structure}"
                     "6. Kết thúc trọn vẹn tại Phần 3, TUYỆT ĐỐI KHÔNG để đầu mục lửng lơ hoặc viết thêm các dòng dẫn chứng cứ thô (như 'Trích đoạn #...:') ở cuối bài."
                 )
             else:
@@ -224,7 +256,11 @@ class OllamaClient:
                     "   - Khi câu hỏi yêu cầu tìm đối tượng 'nhất' (chi tiêu nhiều nhất, chi tiêu thấp nhất, mua nhiều nhất, ít nhất, doanh thu cao/thấp nhất, nhiều/ít đơn nhất,...):\n"
                     "     BẮT BUỘC tuân thủ đúng thứ tự xếp hạng (Hạng 1, Hạng 2, Hạng 3) đã được cơ sở dữ liệu tính toán sẵn trong phần 'THỰC THỂ ĐỒ THỊ LIÊN QUAN (NEO4J GRAPH DB)'.\n"
                     "     Đối tượng mang nhãn 'Hạng 1' (hoặc Đứng đầu / Thấp nhất / Nhiều nhất) là đối tượng duy nhất đứng vị trí cao nhất/thấp nhất tương ứng. TUYỆT ĐỐI KHÔNG hoán đổi vị trí hoặc kết luận đối tượng Hạng 2/Hạng 3 cao hơn Hạng 1.\n"
-                    "   - Định dạng số tiền: Luôn viết rõ ràng, có phân cách hàng nghìn (ví dụ: $989,184.08 USD, không viết gộp hoặc nhầm dấu thập phân)."
+                    "   - Định dạng số tiền: Luôn viết rõ ràng, có phân cách hàng nghìn (ví dụ: $989,184.08 USD, không viết gộp hoặc nhầm dấu thập phân).\n"
+                    "5. GIẢI THÍCH ĐIỀU KHOẢN VĂN BẢN TIẾNG ANH BẰNG TIẾNG VIỆT:\n"
+                    "   - Khi câu hỏi bằng tiếng Việt hỏi về nội dung hoặc điều khoản của một hợp đồng tiếng Anh (như Limitation of Liability, Indemnification, Termination...):\n"
+                    "     BẮT BUỘC giải thích và tóm tắt rõ ràng nội dung điều khoản đó bằng TIẾNG VIỆT trước (nêu rõ ai chịu trách nhiệm, ai được miễn trừ, các giới hạn đền bù và ngoại lệ),\n"
+                    "     TUYỆT ĐỐI KHÔNG chép nguyên một khối tiếng Anh thô dài dòng làm câu trả lời chính mà không giải nghĩa tiếng Việt."
                 )
             context_block = ""
             if chunks_context:

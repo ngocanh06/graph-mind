@@ -2169,17 +2169,30 @@ def get_document_detail(
         clauses = list(ent.get("clauses") or [])
         records = list(watcher_doc.get("records") or [])
 
-        if ext == ".csv" and not records:
+        if ext in [".csv", ".xlsx"] and not records:
             try:
                 from app.core.central_storage import read_file_from_storage
-                import csv, io
                 raw_bytes = read_file_from_storage(fname, dept_key)
                 if raw_bytes:
-                    text_content = raw_bytes[:50000].decode("utf-8", errors="ignore")
-                    reader = csv.DictReader(io.StringIO(text_content))
-                    records = [row for i, row in enumerate(reader) if i < 25]
+                    if ext == ".csv":
+                        import csv, io
+                        text_content = raw_bytes[:50000].decode("utf-8", errors="ignore")
+                        reader = csv.DictReader(io.StringIO(text_content))
+                        records = [row for i, row in enumerate(reader) if i < 30]
+                    elif ext == ".xlsx":
+                        import io, openpyxl
+                        wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), read_only=True, data_only=True)
+                        sheet = wb.active
+                        sheet_rows = list(sheet.iter_rows(values_only=True))
+                        if sheet_rows:
+                            headers = [str(h) if h is not None else f"Col_{i+1}" for i, h in enumerate(sheet_rows[0])]
+                            records = [
+                                {headers[i]: (str(val) if val is not None else "") for i, val in enumerate(row[:len(headers)])}
+                                for row in sheet_rows[1:31] if any(v is not None for v in row)
+                            ]
+                        wb.close()
             except Exception as e:
-                logger.warning(f"[DocumentDetail] CSV preview parse error: {e}")
+                logger.warning(f"[DocumentDetail] Spreadsheet preview parse error: {e}")
 
         neo4j_rels = [
             {"from": f"Document: {fname}", "rel": "BELONGS_TO_DEPT", "to": f"Department: {dept_name}"}
@@ -2324,18 +2337,31 @@ def get_document_detail(
         clauses = list(ent.get("clauses") or [])
         records = list(watcher_doc.get("records") or [])
 
-    # If it's a CSV file, parse the first 25 rows for live table preview
-    if ext == ".csv" and not records:
+    # If it's a CSV or XLSX file, parse rows for live table preview
+    if ext in [".csv", ".xlsx"] and not records:
         try:
             from app.core.central_storage import read_file_from_storage
-            import csv, io
             raw_bytes = read_file_from_storage(fname, dept_key)
             if raw_bytes:
-                text_content = raw_bytes[:50000].decode("utf-8", errors="ignore")
-                reader = csv.DictReader(io.StringIO(text_content))
-                records = [row for i, row in enumerate(reader) if i < 25]
+                if ext == ".csv":
+                    import csv, io
+                    text_content = raw_bytes[:50000].decode("utf-8", errors="ignore")
+                    reader = csv.DictReader(io.StringIO(text_content))
+                    records = [row for i, row in enumerate(reader) if i < 30]
+                elif ext == ".xlsx":
+                    import io, openpyxl
+                    wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), read_only=True, data_only=True)
+                    sheet = wb.active
+                    sheet_rows = list(sheet.iter_rows(values_only=True))
+                    if sheet_rows:
+                        headers = [str(h) if h is not None else f"Col_{i+1}" for i, h in enumerate(sheet_rows[0])]
+                        records = [
+                            {headers[i]: (str(val) if val is not None else "") for i, val in enumerate(row[:len(headers)])}
+                            for row in sheet_rows[1:31] if any(v is not None for v in row)
+                        ]
+                    wb.close()
         except Exception as e:
-            logger.warning(f"[DocumentDetail] CSV preview parse error: {e}")
+            logger.warning(f"[DocumentDetail] Spreadsheet preview parse error: {e}")
 
     # Query Neo4j for Document node only if not found in watcher or to enrich relations
     if not clauses and not companies:
@@ -2627,6 +2653,102 @@ def get_document_detail(
             "records": records
         }
     }
+
+
+@app.get("/api/documents/raw")
+@app.get("/api/v1/documents/raw")
+def get_document_raw_file(
+    doc_id: Optional[str] = Query(default=None),
+    filename: Optional[str] = Query(default=None),
+    department: Optional[str] = Query(default=None),
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """
+    Returns raw document bytes for in-browser visual preview (PDF, DOCX, XLSX, TXT, CSV).
+    Enforces Department Scope Access (BR-02).
+    """
+    try:
+        target_name = (filename or doc_id or "").strip()
+        if not target_name:
+            raise HTTPException(status_code=400, detail="Thiếu tên tệp hoặc mã tài liệu.")
+
+        target_name = os.path.basename(target_name)
+        from app.core.central_storage import read_file_from_storage, resolve_canonical_dept, CANONICAL_DEPARTMENTS
+        inventory = get_central_storage_inventory()
+
+        matched = next((
+            it for it in inventory
+            if it.get("name") == target_name or
+               it.get("name", "").lower() == target_name.lower() or
+               it.get("id") == target_name or
+               target_name.lower() in it.get("name", "").lower()
+        ), None)
+
+        real_fname = matched["name"] if matched else target_name
+        real_dept = matched["dept_key"] if matched else resolve_canonical_dept(department or "legal")
+
+        # Department scope verification (BR-02)
+        scope.assert_document_access(real_fname, real_dept)
+
+        content_bytes = read_file_from_storage(real_fname, real_dept)
+
+        if not content_bytes:
+            for d in CANONICAL_DEPARTMENTS:
+                content_bytes = read_file_from_storage(real_fname, d)
+                if content_bytes:
+                    real_dept = d
+                    break
+
+        if not content_bytes:
+            backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            for cand_dir in [
+                os.path.join(backend_root, "data", real_dept),
+                os.path.join(backend_root, "storage", "incoming"),
+                os.path.join(backend_root, "backend", "storage", "incoming")
+            ]:
+                cand_path = os.path.join(cand_dir, real_fname)
+                if os.path.exists(cand_path):
+                    with open(cand_path, "rb") as f:
+                        content_bytes = f.read()
+                    if content_bytes:
+                        break
+
+        if not content_bytes:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Không tìm thấy tệp tài liệu gốc '{real_fname}' trong Central Storage."
+            )
+
+        ext = os.path.splitext(real_fname)[1].lower()
+        mime_types = {
+            ".pdf": "application/pdf",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".csv": "text/csv; charset=utf-8",
+            ".txt": "text/plain; charset=utf-8",
+            ".json": "application/json"
+        }
+        media_type = mime_types.get(ext, "application/octet-stream")
+
+        import urllib.parse
+        encoded_name = urllib.parse.quote(real_fname)
+        from fastapi.responses import Response
+        return Response(
+            content=content_bytes,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"inline; filename*=UTF-8''{encoded_name}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"[RawDoc] Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi khi đọc tệp trực quan: {str(e)}"
+        )
 
 
 @app.get("/api/documents/download")

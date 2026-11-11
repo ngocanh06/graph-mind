@@ -3089,4 +3089,39 @@ select:focus {
   }
 }
 
+/* DOCX Document Canvas Rendering */
+.docx-preview-sheet {
+  font-family: 'Times New Roman', 'Liberation Serif', serif, system-ui;
+  line-height: 1.6;
+  color: #1e293b;
+  background-color: #ffffff;
+}
+.docx-preview-sheet .docx {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.docx-preview-sheet article {
+  padding: 0 !important;
+}
+.docx-preview-sheet section.docx {
+  padding: 0 !important;
+  box-shadow: none !important;
+  margin-bottom: 2rem !important;
+}
+.docx-preview-sheet table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 1rem 0 !important;
+}
+.docx-preview-sheet table td,
+.docx-preview-sheet table th {
+  border: 1px solid #cbd5e1 !important;
+  padding: 6px 12px !important;
+  vertical-align: top;
+}
+.docx-preview-sheet p {
+  margin-bottom: 0.5rem;
+}
+
+
 

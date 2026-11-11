@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Icon from '../../components/ui/Icon';
+import { renderAsync } from 'docx-preview';
 import {
   fetchRepositoryDocuments,
   fetchDocumentDetail,
@@ -7,7 +8,8 @@ import {
   renameDocument,
   replaceDocument,
   deleteDocument,
-  downloadDocumentFile
+  downloadDocumentFile,
+  fetchDocumentRawBlob
 } from '../../services/api';
 import { DEPARTMENTS, resolveDepartment } from '../../constants/departments';
 
@@ -58,6 +60,16 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
   const [toastMsg, setToastMsg] = useState("");
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [drawerError, setDrawerError] = useState("");
+
+  // Visual Document Preview States (Original File vs AI Chunks)
+  const [previewTab, setPreviewTab] = useState("original"); // "original" | "chunks"
+  const [rawBlob, setRawBlob] = useState(null);
+  const [rawBlobUrl, setRawBlobUrl] = useState(null);
+  const [isLoadingRaw, setIsLoadingRaw] = useState(false);
+  const [rawError, setRawError] = useState("");
+  const [isRenderingDocx, setIsRenderingDocx] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const docxContainerRef = useRef(null);
 
   // Action Menu & Management Modal States
   const [activeMenuDocId, setActiveMenuDocId] = useState(null);
@@ -321,6 +333,9 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     setIsLoadingDetail(true);
     setActiveDocDetail(null);
     setDrawerError("");
+    setPreviewTab("original");
+    setRawBlob(null);
+    setRawError("");
     fetchDocumentDetail(docId, currentUser).then((res) => {
       if (res && res.success) {
         setActiveDocDetail(res.data);
@@ -330,6 +345,121 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       setIsLoadingDetail(false);
     });
   };
+
+  // Revoke rawBlobUrl when drawer closes
+  useEffect(() => {
+    if (!isDrawerOpen && rawBlobUrl) {
+      URL.revokeObjectURL(rawBlobUrl);
+      setRawBlobUrl(null);
+      setRawBlob(null);
+    }
+  }, [isDrawerOpen]);
+
+  // Fetch raw document bytes for in-browser visual preview (PDF, DOCX)
+  useEffect(() => {
+    if (!activeDocDetail || !isDrawerOpen) return;
+    const fname = activeDocDetail.name || activeDocDetail.raw_id || activeDocDetail.id || "";
+    const ext = (fname.split('.').pop() || '').toLowerCase();
+
+    if (rawBlobUrl) {
+      URL.revokeObjectURL(rawBlobUrl);
+      setRawBlobUrl(null);
+    }
+    setRawBlob(null);
+    setRawError("");
+
+    if (ext === "pdf" || ext === "docx") {
+      setIsLoadingRaw(true);
+      const deptKey = activeDocDetail.deptKey || activeDocDetail.department || "legal";
+
+      fetchDocumentRawBlob(fname, deptKey, currentUser)
+        .then((blob) => {
+          setRawBlob(blob);
+          const objUrl = URL.createObjectURL(blob);
+          setRawBlobUrl(objUrl);
+          setIsLoadingRaw(false);
+        })
+        .catch((err) => {
+          console.warn("[DocumentsView] fetchDocumentRawBlob error:", err);
+          setRawError(err.message || (isVi ? "Không thể tải tệp gốc để xem trước." : "Failed to load raw file preview."));
+          setIsLoadingRaw(false);
+        });
+    }
+  }, [activeDocDetail?.name, activeDocDetail?.id, isDrawerOpen]);
+
+  // Render Microsoft Word (.docx) directly using docx-preview with full-text fallback
+  useEffect(() => {
+    if (!rawBlob || previewTab !== "original" || !isDrawerOpen) return;
+    const fname = (activeDocDetail?.name || activeDoc?.name || "").toLowerCase();
+    if (!fname.endsWith(".docx")) return;
+
+    let isMounted = true;
+    setIsRenderingDocx(true);
+    setRawError("");
+
+    const renderDoc = async () => {
+      try {
+        // Wait for container to be mounted in DOM
+        if (!docxContainerRef.current) {
+          await new Promise((r) => setTimeout(r, 80));
+        }
+        if (!docxContainerRef.current || !isMounted) return;
+
+        docxContainerRef.current.innerHTML = "";
+        const arrayBuffer = await rawBlob.arrayBuffer();
+
+        await renderAsync(arrayBuffer, docxContainerRef.current, null, {
+          inWrapper: false,
+          ignoreWidth: false,
+          breakPages: true,
+          experimental: false,
+          renderHeaders: true,
+          renderFooters: true,
+          useBase64URL: true,
+        });
+
+        // Verification: ensure text content is rendered
+        const textContent = (docxContainerRef.current.innerText || "").trim();
+        if (!textContent && activeDocDetail?.chunks_list?.length > 0) {
+          // If empty, inject formatted text paragraphs
+          docxContainerRef.current.innerHTML = `
+            <div style="font-family: 'Times New Roman', serif; line-height: 1.8; color: #1e293b; padding: 12px;">
+              <div style="border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 24px;">
+                <h1 style="font-size: 22px; font-weight: bold; margin: 0 0 6px 0; color: #0f172a;">${activeDocDetail.name}</h1>
+                <p style="font-size: 12px; color: #64748b; margin: 0;">Văn bản gốc trích xuất từ Central Storage</p>
+              </div>
+              ${activeDocDetail.chunks_list.map(c => `<p style="margin-bottom: 16px; text-align: justify; font-size: 14px;">${c.text.replace(/\n/g, '<br/>')}</p>`).join('')}
+            </div>
+          `;
+        }
+        if (isMounted) setIsRenderingDocx(false);
+      } catch (err) {
+        console.error("[DocumentsView] docx-preview render error:", err);
+        if (isMounted) {
+          if (docxContainerRef.current && activeDocDetail?.chunks_list?.length > 0) {
+            docxContainerRef.current.innerHTML = `
+              <div style="font-family: 'Times New Roman', serif; line-height: 1.8; color: #1e293b; padding: 12px;">
+                <div style="border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 24px;">
+                  <h1 style="font-size: 22px; font-weight: bold; margin: 0 0 6px 0; color: #0f172a;">${activeDocDetail.name}</h1>
+                  <p style="font-size: 12px; color: #64748b; margin: 0;">Chế độ đọc toàn văn dự phòng</p>
+                </div>
+                ${activeDocDetail.chunks_list.map(c => `<p style="margin-bottom: 16px; text-align: justify; font-size: 14px;">${c.text.replace(/\n/g, '<br/>')}</p>`).join('')}
+              </div>
+            `;
+          } else {
+            setRawError(isVi ? "Không thể kết xuất đồ họa Word. Bạn có thể xem tại tab Phân mảnh AI hoặc tải tệp về máy." : "Could not render visual Word layout.");
+          }
+          setIsRenderingDocx(false);
+        }
+      }
+    };
+
+    renderDoc();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rawBlob, previewTab, isDrawerOpen, activeDocDetail?.name]);
 
   // Auto-open specific document drawer if navigated with initialDocId
   useEffect(() => {
@@ -355,6 +485,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       showToast(isVi ? "Chính sách C4: Tài khoản Standard/Dept Manager chỉ được xem trước (Read-Only). Liên hệ IT Admin để tải tệp gốc." : "Policy C4: Standard/Dept Manager accounts are Read-Only. Contact IT Admin to download raw file.");
       return;
     }
+    setIsDownloading(true);
     showToast(isVi ? `Đang ghi nhận Audit Log & tải xuống ${activeDoc.name}...` : `Logging Audit Trail & downloading ${activeDoc.name}...`);
     try {
       await downloadDocumentFile(activeDoc.name, activeDoc.deptKey || activeDoc.dept || 'legal', currentUser);
@@ -362,6 +493,8 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
     } catch (err) {
       console.error("[DownloadDoc] Error:", err);
       showToast(isVi ? `Lỗi tải tệp: ${err.message}` : `Download error: ${err.message}`);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -1348,7 +1481,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* DRAWER-004: DOCUMENT PREVIEW DRAWER (60% WIDTH OVERLAY SLIDE-OVER) */}
       {/* ========================================================================= */}
       {isDrawerOpen && activeDoc && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
+        <div className="fixed inset-0 z-[200] overflow-hidden flex justify-end">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-300 animate-fadeIn"
@@ -1390,16 +1523,47 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
               {/* Header Right Actions */}
               <div className="flex items-center gap-2">
+                {/* Back to Home Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    if (onNavigate) onNavigate("home");
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-primary text-white hover:bg-primary/90 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  title={isVi ? "Quay lại Trang chủ" : "Back to Home"}
+                >
+                  <Icon name="fa-solid fa-house text-[12px]" size={13} />
+                  <span>{isVi ? "Trang chủ" : "Home"}</span>
+                </button>
+
+                {/* Back to Repository List Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="px-3 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-all border border-outline-variant/30 cursor-pointer shadow-2xs"
+                  title={isVi ? "Quay lại Kho tài liệu" : "Back to Documents"}
+                >
+                  <Icon name="fa-solid fa-arrow-left text-[12px]" size={13} />
+                  <span className="hidden sm:inline">{isVi ? "Kho tài liệu" : "Documents"}</span>
+                </button>
+
+                <div className="h-4 w-px bg-outline-variant/40 mx-1"></div>
+
                 <button
                   onClick={() => setIsDrawerFullscreen(!isDrawerFullscreen)}
-                  className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
-                  title={isDrawerFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
+                  className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                    isDrawerFullscreen
+                      ? "bg-primary-fixed text-primary font-bold shadow-xs"
+                      : "bg-surface-container hover:bg-surface-container-high text-on-surface"
+                  }`}
+                  title={isDrawerFullscreen ? (isVi ? "Thu nhỏ cửa sổ" : "Exit Fullscreen") : (isVi ? "Toàn màn hình" : "Fullscreen")}
                 >
                   <Icon name={isDrawerFullscreen ? "fa-solid fa-compress" : "fa-solid fa-expand"} size={15} />
                 </button>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
-                  className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
+                  className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
                   title={isVi ? "Đóng" : "Close"}
                 >
                   <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
@@ -1411,140 +1575,132 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
               {/* Left Pane (Document Canvas Simulation) */}
               <div className="lg:col-span-8 bg-surface-container-low/40 p-6 flex flex-col justify-between space-y-4 border-b lg:border-b-0 lg:border-r border-surface-container overflow-y-auto">
-                {/* PDF Page Navigation & Zoom Bar */}
-                <div className="bg-surface-container-lowest px-4 py-2.5 rounded-xl border border-outline-variant/30 flex items-center justify-between shadow-2xs">
-                  <div className="flex items-center gap-1 text-xs">
-                    <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="First Page">
-                      <Icon name="fa-solid fa-angles-left text-[13px]" size={15} />
+                {/* Modern View Mode Tabs & Document Toolbar */}
+                <div className="bg-surface-container-lowest px-4 py-2.5 rounded-xl border border-outline-variant/30 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+                  {/* Left: Quick Back Buttons + View Mode Tabs */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        if (onNavigate) onNavigate("home");
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                      title={isVi ? "Quay về Trang chủ" : "Back to Home"}
+                    >
+                      <Icon name="fa-solid fa-house text-[12px]" size={13} />
+                      <span>{isVi ? "Trang chủ" : "Home"}</span>
                     </button>
-                    <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Prev Page">
-                      <Icon name="fa-solid fa-chevron-left text-[13px]" size={15} />
+
+                    <button
+                      type="button"
+                      onClick={() => setIsDrawerOpen(false)}
+                      className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-all border border-outline-variant/30 cursor-pointer shadow-2xs"
+                      title={isVi ? "Quay lại danh sách kho tài liệu" : "Back to Repository"}
+                    >
+                      <Icon name="fa-solid fa-arrow-left text-[12px]" size={13} />
+                      <span>{isVi ? "Kho tài liệu" : "Back"}</span>
                     </button>
-                    <span className="font-bold text-on-surface px-2">
-                      {activeDocDetail?.chunks_list?.length > 0
-                        ? (isVi ? `Hiển thị ${activeDocDetail.chunks_list.length} Chunks` : `Showing ${activeDocDetail.chunks_list.length} Chunks`)
-                        : activeDocDetail?.records?.length > 0
-                        ? (isVi ? `Hiển thị ${activeDocDetail.records.length} bản ghi mẫu` : `Showing ${activeDocDetail.records.length} sample rows`)
-                        : (isVi ? "Trang 1 / 1" : "Page 1 of 1")}
-                    </span>
-                    <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Next Page">
-                      <Icon name="fa-solid fa-chevron-right text-[13px]" size={15} />
-                    </button>
-                    <button className="p-1 rounded hover:bg-surface-container text-on-surface" title="Last Page">
-                      <Icon name="fa-solid fa-angles-right text-[13px]" size={15} />
-                    </button>
+
+                    <div className="h-4 w-px bg-outline-variant/40 mx-0.5"></div>
+
+                    {/* Segmented Control */}
+                    <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/20">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTab("original")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          previewTab === "original"
+                            ? "bg-primary text-white shadow-xs"
+                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                        }`}
+                        title={isVi ? "Xem văn bản gốc trực quan" : "View original document layout"}
+                      >
+                        <Icon name="fa-regular fa-file-lines text-[13px]" size={14} />
+                        <span>{isVi ? "Văn bản gốc" : "Original View"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTab("chunks")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          previewTab === "chunks"
+                            ? "bg-primary text-white shadow-xs"
+                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                        }`}
+                        title={isVi ? "Xem phân mảnh Vector & Graph" : "View Vector Chunks"}
+                      >
+                        <Icon name="fa-solid fa-layer-group text-[13px]" size={14} />
+                        <span>{isVi ? "Phân mảnh AI" : "AI Chunks"}</span>
+                        {activeDocDetail?.chunks_list?.length > 0 && (
+                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                            previewTab === "chunks" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                          }`}>
+                            {activeDocDetail.chunks_list.length}
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  {/* Actions, Badges & Zoom */}
+                  <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container-high text-on-surface-variant text-[11px] font-mono font-bold">
+                      <Icon name="fa-solid fa-file-lines text-[10px] text-primary" size={10} />
+                      {((activeDoc?.name || "").split('.').pop() || "DOC").toUpperCase()}
+                    </span>
+
                     <button
-                      onClick={() => setPreviewZoom(Math.max(75, previewZoom - 25))}
-                      className="p-1 rounded hover:bg-surface-container text-on-surface"
-                      title="Zoom Out"
+                      type="button"
+                      onClick={handleDownloadDoc}
+                      disabled={isDownloading}
+                      className="px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-outline-variant/30"
+                      title={isVi ? "Tải tệp gốc về máy" : "Download original file"}
                     >
-                      <Icon name="fa-solid fa-magnifying-glass-minus text-[13px]" size={15} />
+                      <Icon name={isDownloading ? "fa-solid fa-spinner animate-spin" : "fa-solid fa-download"} size={13} />
+                      <span className="hidden md:inline">{isVi ? "Tải về" : "Download"}</span>
                     </button>
-                    <span className="text-on-surface px-1">{previewZoom}%</span>
-                    <button
-                      onClick={() => setPreviewZoom(Math.min(200, previewZoom + 25))}
-                      className="p-1 rounded hover:bg-surface-container text-on-surface"
-                      title="Zoom In"
-                    >
-                      <Icon name="fa-solid fa-magnifying-glass-plus text-[13px]" size={15} />
-                    </button>
-                    <span className="inline-block w-px h-4 bg-outline-variant mx-1"></span>
-                    <button
-                      onClick={() => setPreviewZoom(100)}
-                      className="p-1 rounded hover:bg-surface-container text-on-surface"
-                      title="Fit Screen"
-                    >
-                      <Icon name="fa-solid fa-expand text-[13px]" size={15} />
-                    </button>
+
+                    <div className="h-4 w-px bg-outline-variant/30 mx-0.5"></div>
+
+                    {/* Zoom */}
+                    <div className="flex items-center gap-1 text-xs font-semibold bg-surface-container-low px-2 py-1 rounded-lg border border-outline-variant/20">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewZoom(Math.max(75, previewZoom - 25))}
+                        className="p-1 rounded hover:bg-surface-container text-on-surface"
+                        title="Zoom Out"
+                      >
+                        <Icon name="fa-solid fa-magnifying-glass-minus text-[12px]" size={13} />
+                      </button>
+                      <span className="text-on-surface px-1 min-w-[3rem] text-center font-mono text-[11px]">{previewZoom}%</span>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewZoom(Math.min(200, previewZoom + 25))}
+                        className="p-1 rounded hover:bg-surface-container text-on-surface"
+                        title="Zoom In"
+                      >
+                        <Icon name="fa-solid fa-magnifying-glass-plus text-[12px]" size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewZoom(100)}
+                        className="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface ml-1"
+                        title="Reset 100%"
+                      >
+                        <Icon name="fa-solid fa-arrow-rotate-left text-[11px]" size={12} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Document Page Sheet Rendering */}
-                <div className="bg-surface-container-lowest p-7 rounded-2xl border border-outline-variant/30 shadow-sm space-y-5 flex-1 overflow-y-auto leading-relaxed">
-                  {/* Dynamic Document Content according to live backend detail */}
+                <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 shadow-sm space-y-5 flex-1 overflow-y-auto leading-relaxed">
                   {isLoadingDetail ? (
                     <div className="p-12 text-center text-outline space-y-3">
                       <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
                       <p className="text-xs font-semibold">{isVi ? "Đang tải dữ liệu thực tế từ Neo4j / Qdrant..." : "Loading live data from Neo4j / Qdrant..."}</p>
                     </div>
-                  ) : activeDocDetail?.records?.length > 0 ? (
-                    /* Real Live Dataset / Spreadsheet Preview (Neo4j / CSV) */
-                    <div className="space-y-4">
-                      <div className="text-center pb-3 border-b border-surface-container">
-                        <p className="text-xs font-bold tracking-widest text-primary uppercase">
-                          {isVi ? "BẢN GHI DỮ LIỆU THỰC TẾ — LIVE RECORDS" : "LIVE DATASET RECORDS"}
-                        </p>
-                        <h2 className="text-lg font-bold text-on-surface mt-1">{activeDoc.name}</h2>
-                        <p className="text-xs text-on-surface-variant font-mono">
-                          {isVi ? `Hiển thị ${activeDocDetail.records.length} bản ghi mẫu từ tập dữ liệu` : `Showing ${activeDocDetail.records.length} live sample records`}
-                        </p>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border border-outline-variant/20 rounded-lg">
-                          <thead className="bg-surface-container-low font-bold text-outline uppercase tracking-wider">
-                            <tr>
-                              {Object.keys(activeDocDetail.records[0]).map((key) => (
-                                <th key={key} className="p-2.5 font-mono">{key}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activeDocDetail.records.map((row, rIdx) => (
-                              <tr key={rIdx} className="border-t border-outline-variant/10 hover:bg-surface-container-low/50 transition-colors">
-                                {Object.values(row).map((val, cIdx) => (
-                                  <td key={cIdx} className="p-2.5 font-mono text-on-surface">
-                                    {val === null || val === undefined ? "-" : String(val)}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : activeDocDetail?.chunks_list?.length > 0 ? (
-                    /* Real Live Document Preview (Qdrant / Watcher Chunks) */
-                    <div className="space-y-4">
-                      <div className="text-center pb-4 border-b border-surface-container">
-                        <p className="text-xs font-bold tracking-widest text-primary uppercase">
-                          {activeDoc.source === "aegis_local_file_watcher" || activeDocDetail?.source === "aegis_local_file_watcher"
-                            ? (isVi ? `TÀI LIỆU ${activeDoc.deptLabel || activeDoc.dept || "NỘI BỘ"} — NẠP TỪ FILE WATCHER` : `DOCUMENT — FILE WATCHER`)
-                            : (activeDoc.category || activeDocDetail?.category)
-                            ? (isVi ? `${(activeDoc.category || activeDocDetail?.category).toUpperCase()} — TRÍCH XUẤT TỪ HỆ THỐNG TRI THỨC` : `${(activeDoc.category || activeDocDetail?.category).toUpperCase()} — KNOWLEDGE BASE`)
-                            : (isVi ? "VĂN BẢN HỢP ĐỒNG CUAD — TRÍCH XUẤT TỪ QDRANT" : "CUAD CONTRACT TEXT — EXTRACTED FROM QDRANT")}
-                        </p>
-                        <h2 className="text-xl font-bold text-on-surface mt-1">{activeDoc.name}</h2>
-                        <p className="text-xs text-on-surface-variant font-mono">
-                          {isVi ? `Tập tin chứa ${activeDoc.chunk_count || activeDocDetail.chunks_list.length} Vector Chunks (Kích thước nhúng 384 dims)` : `Contains ${activeDoc.chunk_count || activeDocDetail.chunks_list.length} Vector Chunks (384-dim embeddings)`}
-                        </p>
-                      </div>
-
-                      <div className="space-y-3">
-                        {activeDocDetail.chunks_list.map((c, idx) => (
-                          <div key={idx} className="bg-amber-100/90 border border-amber-300 p-4 rounded-xl shadow-xs space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-amber-900 flex items-center gap-1.5 font-bold">
-                                <Icon name="fa-solid fa-highlighter text-amber-700" size={15} /> Chunk #{c.chunk_id !== undefined ? c.chunk_id : idx}
-                              </span>
-                              <span className="bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-full text-[11px]">
-                                {activeDoc.source === "aegis_local_file_watcher" || activeDocDetail?.source === "aegis_local_file_watcher"
-                                  ? (isVi ? "Watcher Chunk" : "Watcher Chunk")
-                                  : "Qdrant Vector Hit"}
-                              </span>
-                            </div>
-                            <p className="text-amber-950 text-sm font-normal leading-relaxed whitespace-pre-wrap font-sans">
-                              {c.text}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   ) : drawerError ? (
-                    /* Error / BR-02 Permission Notice */
                     <div className="p-8 text-center text-xs space-y-3 bg-red-50/60 rounded-xl border border-red-200 m-4">
                       <Icon name="fa-solid fa-shield-halved text-2xl text-red-600" size={24} />
                       <div className="text-red-900 font-bold text-sm">
@@ -1552,17 +1708,197 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       </div>
                       <p className="text-red-800 text-xs max-w-md mx-auto leading-relaxed">{drawerError}</p>
                     </div>
-                  ) : isLoadingDetail ? (
-                    /* Loading Detail */
-                    <div className="p-8 text-center text-xs text-outline space-y-2">
-                      <Icon name="fa-solid fa-spinner animate-spin text-2xl text-primary" size={20} />
-                      <p>{isVi ? "Đang truy xuất dữ liệu từ Central Storage, Qdrant & Neo4j..." : "Fetching document from Central Storage, Qdrant & Neo4j..."}</p>
+                  ) : previewTab === "original" ? (
+                    /* TAB 1: ORIGINAL DOCUMENT VIEWER */
+                    <div className="space-y-4">
+                      {/* Sub-Header */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-surface-container">
+                        <div>
+                          <p className="text-[11px] font-bold tracking-widest text-primary uppercase font-mono">
+                            {isVi ? "BẢN XEM TRƯỚC TÀI LIỆU NGUYÊN BẢN (ORIGINAL PREVIEW)" : "ORIGINAL DOCUMENT PREVIEW"}
+                          </p>
+                          <h2 className="text-lg font-bold text-on-surface mt-0.5">{activeDoc.name}</h2>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 text-[11px] font-semibold flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          {isVi ? "Tài liệu gốc đồng bộ" : "Direct Storage Synced"}
+                        </span>
+                      </div>
+
+                      {/* Content Switch by File Type */}
+                      {((activeDoc?.name || "").split('.').pop() || "").toLowerCase() === "docx" ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 text-xs text-blue-900 dark:text-blue-200">
+                            <span className="flex items-center gap-2 font-medium">
+                              <Icon name="fa-solid fa-file-word text-blue-600 text-base" size={16} />
+                              {isVi ? "Định dạng Microsoft Word (.docx) • Dựng nguyên bản từ Central Storage" : "Microsoft Word (.docx) layout • Central Storage"}
+                            </span>
+                            <span className="text-[11px] font-mono text-blue-700/80">A4 Document View</span>
+                          </div>
+
+                          <div className="relative bg-slate-100/90 dark:bg-slate-900/60 p-4 md:p-8 rounded-2xl flex justify-center overflow-x-auto min-h-[650px] border border-outline-variant/20 shadow-inner">
+                            {/* Loading overlay - does NOT unmount docxContainerRef */}
+                            {(isLoadingRaw || isRenderingDocx) && (
+                              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/85 dark:bg-slate-900/85 backdrop-blur-xs rounded-2xl space-y-3">
+                                <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                <p className="text-xs font-semibold text-on-surface">
+                                  {isVi ? "Đang tải và kết xuất định dạng Word nguyên bản..." : "Rendering Word document layout..."}
+                                </p>
+                                <p className="text-[11px] text-outline font-mono">{activeDoc.name}</p>
+                              </div>
+                            )}
+
+                            {rawError && (
+                              <div className="p-6 text-center space-y-3 bg-amber-50/80 border border-amber-200 rounded-xl text-amber-900 w-full max-w-xl mx-auto my-auto z-10">
+                                <Icon name="fa-solid fa-circle-exclamation text-amber-600 text-xl" size={20} />
+                                <p className="text-xs font-semibold">{rawError}</p>
+                                <button
+                                  type="button"
+                                  onClick={handleDownloadDoc}
+                                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Icon name="fa-solid fa-download text-xs" size={12} />
+                                  {isVi ? "Tải về máy để mở bằng Microsoft Word" : "Download to open in Word"}
+                                </button>
+                              </div>
+                            )}
+
+                            <div
+                              ref={docxContainerRef}
+                              className={`bg-white text-slate-900 shadow-xl rounded-lg p-6 md:p-12 max-w-4xl w-full min-h-[750px] border border-slate-200 docx-preview-sheet ${
+                                rawError ? "hidden" : "block"
+                              }`}
+                              style={{
+                                transform: previewZoom !== 100 ? `scale(${previewZoom / 100})` : 'none',
+                                transformOrigin: 'top center',
+                                transition: 'transform 0.2s ease'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : ((activeDoc?.name || "").split('.').pop() || "").toLowerCase() === "pdf" ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-3 bg-rose-50/70 dark:bg-rose-950/30 rounded-xl border border-rose-200/60 text-xs text-rose-900 dark:text-rose-200">
+                            <span className="flex items-center gap-2 font-medium">
+                              <Icon name="fa-solid fa-file-pdf text-rose-600 text-base" size={16} />
+                              {isVi ? "Tệp PDF nguyên bản • Trình xem tích hợp trình duyệt" : "Original PDF • Browser Viewer"}
+                            </span>
+                            <span className="text-[11px] font-mono text-rose-700/80">{activeDoc.size || "PDF File"}</span>
+                          </div>
+
+                          {isLoadingRaw ? (
+                            <div className="p-16 text-center space-y-3 bg-surface-container-low rounded-2xl border border-outline-variant/30">
+                              <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+                              <p className="text-xs font-semibold text-on-surface">{isVi ? "Đang tải tệp PDF..." : "Loading PDF..."}</p>
+                            </div>
+                          ) : rawBlobUrl ? (
+                            <div className="rounded-2xl overflow-hidden border border-outline-variant/30 shadow-md bg-slate-900">
+                              <iframe
+                                src={`${rawBlobUrl}#toolbar=1&navpanes=1`}
+                                className="w-full h-[750px] border-none"
+                                title={activeDoc.name}
+                              />
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center text-xs text-outline space-y-2">
+                              <p>{isVi ? "Không thể hiển thị PDF." : "Unable to display PDF."}</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (["csv", "xlsx"].includes(((activeDoc?.name || "").split('.').pop() || "").toLowerCase())) && activeDocDetail?.records?.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-3 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/60 text-xs text-emerald-900 dark:text-emerald-200">
+                            <span className="flex items-center gap-2 font-medium">
+                              <Icon name="fa-solid fa-table-cells text-emerald-600 text-base" size={16} />
+                              {isVi ? `Bảng tính dữ liệu (${((activeDoc?.name || "").split('.').pop() || "").toUpperCase()}) • ${activeDocDetail.records.length} bản ghi` : `Spreadsheet • ${activeDocDetail.records.length} records`}
+                            </span>
+                          </div>
+
+                          <div className="overflow-x-auto border border-outline-variant/20 rounded-xl shadow-xs">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-surface-container-low font-bold text-outline uppercase tracking-wider">
+                                <tr>
+                                  <th className="p-2.5 font-mono text-center w-12 border-b border-outline-variant/20">#</th>
+                                  {Object.keys(activeDocDetail.records[0]).map((key) => (
+                                    <th key={key} className="p-2.5 font-mono border-b border-outline-variant/20">{key}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {activeDocDetail.records.map((row, rIdx) => (
+                                  <tr key={rIdx} className="border-b border-outline-variant/10 hover:bg-surface-container-low/60 transition-colors">
+                                    <td className="p-2.5 font-mono text-center text-outline-variant font-bold">{rIdx + 1}</td>
+                                    {Object.values(row).map((val, cIdx) => (
+                                      <td key={cIdx} className="p-2.5 font-mono text-on-surface">
+                                        {val === null || val === undefined ? "-" : String(val)}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Continuous Document Reader Mode (Fallback for Text / Markdown / Extracted Text) */
+                        <div className="bg-white dark:bg-surface-container-low p-8 rounded-2xl border border-outline-variant/20 shadow-xs space-y-4">
+                          <div className="pb-3 border-b border-outline-variant/20 flex items-center justify-between text-xs text-on-surface-variant font-mono">
+                            <span>{isVi ? "CHẾ ĐỘ ĐỌC VĂN BẢN TOÀN VĂN" : "FULL TEXT READER MODE"}</span>
+                            <span>{activeDocDetail?.chunks_list?.length || 0} Đoạn trích</span>
+                          </div>
+                          <div className="text-sm font-sans leading-relaxed text-on-surface space-y-4 select-text">
+                            {activeDocDetail?.chunks_list?.length > 0 ? (
+                              activeDocDetail.chunks_list.map((c, idx) => (
+                                <p key={idx} className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200">
+                                  {c.text}
+                                </p>
+                              ))
+                            ) : (
+                              <p className="text-outline italic">{isVi ? "Không có nội dung văn bản để hiển thị." : "No text content available to display."}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    /* Fallback / Empty Detail */
-                    <div className="p-8 text-center text-xs text-outline space-y-2">
-                      <Icon name="fa-regular fa-file-lines text-2xl text-outline/40" size={20} />
-                      <p>{isVi ? "Không có dữ liệu trích xuất hoặc đang kết nối lại dịch vụ..." : "No extraction data available or reconnecting to services..."}</p>
+                    /* TAB 2: AI VECTOR CHUNKS AUDIT */
+                    <div className="space-y-4">
+                      <div className="text-center pb-4 border-b border-surface-container">
+                        <p className="text-xs font-bold tracking-widest text-primary uppercase font-mono">
+                          {isVi ? "PHÂN MẢNH VECTOR & GRAPH (AI EMBEDDING AUDIT)" : "AI VECTOR & GRAPH CHUNKS"}
+                        </p>
+                        <h2 className="text-xl font-bold text-on-surface mt-1">{activeDoc.name}</h2>
+                        <p className="text-xs text-on-surface-variant font-mono">
+                          {isVi ? `Tập tin chứa ${activeDoc.chunk_count || activeDocDetail?.chunks_list?.length || 0} Vector Chunks (Kích thước nhúng 384 dims)` : `Contains ${activeDoc.chunk_count || activeDocDetail?.chunks_list?.length || 0} Vector Chunks (384-dim embeddings)`}
+                        </p>
+                      </div>
+
+                      {activeDocDetail?.chunks_list?.length > 0 ? (
+                        <div className="space-y-3">
+                          {activeDocDetail.chunks_list.map((c, idx) => (
+                            <div key={idx} className="bg-amber-100/90 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/50 p-4 rounded-xl shadow-xs space-y-2">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-amber-900 dark:text-amber-300 flex items-center gap-1.5 font-bold">
+                                  <Icon name="fa-solid fa-highlighter text-amber-700 dark:text-amber-400" size={15} /> Chunk #{c.chunk_id !== undefined ? c.chunk_id : idx}
+                                </span>
+                                <span className="bg-amber-200 dark:bg-amber-900/60 text-amber-950 dark:text-amber-200 font-bold px-2 py-0.5 rounded-full text-[11px]">
+                                  {activeDoc.source === "aegis_local_file_watcher" || activeDocDetail?.source === "aegis_local_file_watcher"
+                                    ? "Watcher Chunk"
+                                    : "Qdrant Vector Hit"}
+                                </span>
+                              </div>
+                              <p className="text-amber-950 dark:text-amber-100 text-sm font-normal leading-relaxed whitespace-pre-wrap font-sans">
+                                {c.text}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center text-xs text-outline space-y-2">
+                          <Icon name="fa-solid fa-layer-group text-2xl text-outline/40" size={20} />
+                          <p>{isVi ? "Tài liệu này chưa có dữ liệu vector chunk." : "No vector chunk data available."}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
