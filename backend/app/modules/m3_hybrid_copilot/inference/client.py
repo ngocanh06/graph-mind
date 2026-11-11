@@ -56,12 +56,13 @@ class OllamaClient:
         return ""
 
     async def generate_rag_answer(
-
         self,
         query: str,
         evidence_chunks: Optional[List[Dict[str, Any]]] = None,
         graph_entities: Optional[List[Dict[str, Any]]] = None,
-        lang: str = "vi"
+        lang: str = "vi",
+        is_document_summary: bool = False,
+        target_doc_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Tổng hợp câu trả lời thông minh dựa trên:
@@ -179,36 +180,61 @@ class OllamaClient:
                 "   - Khi câu hỏi CHỈ hỏi về Case2: Nêu rõ tổng chi phí tối ưu Z_min = 1.820 VNĐ/ngày (xA ≈ 193,33, xB ≈ 93,33, xC ≈ 173,33 kg/ngày; Đạm=90, Đường=130, Khoáng=10).\n"
             ) if (asks_case1 or asks_case2 or "sheet" in q_lower or "case" in q_lower) else ""
 
-            system_prompt = (
-                "Bạn là trợ lý AI thông minh GraphMind (AEGIS Enterprise Knowledge Intelligence Platform). "
-                "Bạn sử dụng kiến trúc Hybrid GraphRAG kết hợp giữa đồ thị tri thức Neo4j và tìm kiếm vector Qdrant. "
-                "Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, chính xác, khách quan dựa trên ngữ cảnh được cung cấp.\n"
-                "QUY TẮC BẮT BUỘC:\n"
-                "1. Tuyệt đối chỉ sử dụng dữ kiện và số liệu có thật trong ngữ cảnh. Không tự suy diễn hay bịa đặt số liệu.\n"
-                "2. ĐỊNH DẠNG TRÌNH BÀY:\n"
-                "   - Với câu hỏi hỏi về khách hàng/sản phẩm đứng đầu hoặc mua nhiều nhất: Nêu rõ khách hàng [Xếp hạng #1] ở câu đầu tiên kèm các số liệu chính xác (số lượng sản phẩm, số đơn hàng, chi tiêu), sau đó liệt kê các vị trí kế tiếp rõ ràng.\n"
-                "   - Với câu hỏi hỏi về doanh thu, xu hướng tài chính, hoặc biến động theo năm/thời gian: Trình bày chi tiết doanh thu gộp (TotalDue), doanh thu thuần (SubTotal) và số đơn hàng theo từng năm (hoặc mốc thời gian), tuyệt đối không nhầm lẫn các năm thành khách hàng.\n"
-                "   - Với câu hỏi hỏi về số lượng, cơ cấu, hoặc phân bố danh mục tài liệu/hợp đồng: BẮT BUỘC nêu rõ tổng số lượng ngay câu đầu tiên (ví dụ: 'Toàn hệ thống hiện có tổng cộng X tài liệu/hợp đồng...'), sau đó liệt kê chi tiết số lượng và tỷ lệ phần trăm theo từng phòng ban.\n"
-                "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò hoặc điều khoản cụ thể: Trả lời trực tiếp thông tin đó ngay dòng đầu tiên.\n"
-                "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
-                "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu.\n"
-                + (excel_rules + "\n" if excel_rules else "") +
-                "3. QUY TẮC TỪ CHỐI & KIỂM TRA ĐỐI TƯỢNG (GROUNDING REFUSAL):\n"
-                "   - Nếu câu hỏi hỏi về một tài liệu, hợp đồng, phòng ban hoặc đối tượng cụ thể mà không xuất hiện trong ngữ cảnh, bạn phải trả lời rõ ràng rằng thông tin đó không tồn tại trong kho tri thức.\n"
-                "   - TUYỆT ĐỐI KHÔNG được gán ghép phòng ban, nội dung hay số liệu của một tài liệu khác trong ngữ cảnh cho tài liệu mà người dùng đang hỏi.\n"
-                "4. QUY TẮC TRUY VẤN XẾP HẠNG & SO SÁNH (RANKING & SUPERLATIVES):\n"
-                "   - Khi câu hỏi yêu cầu tìm đối tượng 'nhất' (chi tiêu nhiều nhất, chi tiêu thấp nhất, mua nhiều nhất, ít nhất, doanh thu cao/thấp nhất, nhiều/ít đơn nhất,...):\n"
-                "     BẮT BUỘC tuân thủ đúng thứ tự xếp hạng (Hạng 1, Hạng 2, Hạng 3) đã được cơ sở dữ liệu tính toán sẵn trong phần 'THỰC THỂ ĐỒ THỊ LIÊN QUAN (NEO4J GRAPH DB)'.\n"
-                "     Đối tượng mang nhãn 'Hạng 1' (hoặc Đứng đầu / Thấp nhất / Nhiều nhất) là đối tượng duy nhất đứng vị trí cao nhất/thấp nhất tương ứng. TUYỆT ĐỐI KHÔNG hoán đổi vị trí hoặc kết luận đối tượng Hạng 2/Hạng 3 cao hơn Hạng 1.\n"
-                "   - Định dạng số tiền: Luôn viết rõ ràng, có phân cách hàng nghìn (ví dụ: $989,184.08 USD, không viết gộp hoặc nhầm dấu thập phân)."
-            )
+            if is_document_summary:
+                system_prompt = (
+                    "Bạn là trợ lý AI thông minh GraphMind (AEGIS Enterprise Knowledge Intelligence Platform). "
+                    f"Nhiệm vụ của bạn là đọc hiểu và LẬP BẢN TÓM TẮT BÁO CÁO (EXECUTIVE SUMMARY) cho tài liệu '{target_doc_name or 'Tài liệu'}'.\n"
+                    "QUY TẮC TÓM TẮT NỘI DUNG TÀI LIỆU:\n"
+                    "1. BẮT BUỘC viết 100% bằng TIẾNG VIỆT mạch lạc, chuẩn mực hành chính - kinh tế.\n"
+                    "2. TUYỆT ĐỐI KHÔNG copy-paste lại các đoạn văn bản tiếng Anh nguyên văn dài dòng. Phải đọc hiểu và diễn giải lại nội dung từng điều khoản thành các ý chính (bullet points) bằng tiếng Việt rõ ràng.\n"
+                    "3. DỊCH THUẬT NGỮ PHÁP LÝ CHÍNH XÁC: 'non-exclusive' là 'phi độc quyền' (hoặc 'không độc quyền'), tuyệt đối không dịch nhầm thành 'độc quyền'.\n"
+                    "4. TUYỆT ĐỐI KHÔNG đưa số liệu doanh thu ERP, đơn hàng hay khách hàng bên ngoài tài liệu vào câu trả lời.\n"
+                    "5. TRÌNH BÀY ĐÚNG THEO 3 PHẦN SAU:\n"
+                    "   **Phần 1: Thông tin hợp đồng & Các bên tham gia (Parties & Purpose)**\n"
+                    "   - Tên tài liệu/loại thỏa thuận, ngày có hiệu lực.\n"
+                    "   - Tên đầy đủ của các bên tham gia (Bên cấp phép/sản xuất, Bên phân phối/đối tác).\n"
+                    "   - Mục đích hợp tác & Phạm vi/sản phẩm chính yếu.\n\n"
+                    "   **Phần 2: Các điều khoản & Quy định cốt lõi (Core Clauses & Rights)**\n"
+                    "   - Quy trình đặt hàng, giao nhận, chấp thuận hoặc từ chối đơn hàng.\n"
+                    "   - Quy định về sửa đổi, bổ sung hoặc hủy bỏ đơn hàng/hợp đồng.\n\n"
+                    "   **Phần 3: Nghĩa vụ, miễn trừ trách nhiệm & Quản trị rủi ro (Obligations & Governance)**\n"
+                    "   - Các trường hợp miễn trừ trách nhiệm bồi hoàn (Indemnity Exclusions).\n"
+                    "   - Giới hạn trách nhiệm pháp lý tối đa (Limitation of Liability).\n\n"
+                    "6. Kết thúc trọn vẹn tại Phần 3, TUYỆT ĐỐI KHÔNG để đầu mục lửng lơ hoặc viết thêm các dòng dẫn chứng cứ thô (như 'Trích đoạn #...:') ở cuối bài."
+                )
+            else:
+                system_prompt = (
+                    "Bạn là trợ lý AI thông minh GraphMind (AEGIS Enterprise Knowledge Intelligence Platform). "
+                    "Bạn sử dụng kiến trúc Hybrid GraphRAG kết hợp giữa đồ thị tri thức Neo4j và tìm kiếm vector Qdrant. "
+                    "Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, chính xác, khách quan dựa trên ngữ cảnh được cung cấp.\n"
+                    "QUY TẮC BẮT BUỘC:\n"
+                    "1. Tuyệt đối chỉ sử dụng dữ kiện và số liệu có thật trong ngữ cảnh. Không tự suy diễn hay bịa đặt số liệu.\n"
+                    "2. ĐỊNH DẠNG TRÌNH BÀY:\n"
+                    "   - Với câu hỏi hỏi về khách hàng/sản phẩm đứng đầu hoặc mua nhiều nhất: Nêu rõ khách hàng [Xếp hạng #1] ở câu đầu tiên kèm các số liệu chính xác (số lượng sản phẩm, số đơn hàng, chi tiêu), sau đó liệt kê các vị trí kế tiếp rõ ràng.\n"
+                    "   - Với câu hỏi hỏi về doanh thu, xu hướng tài chính, hoặc biến động theo năm/thời gian: Trình bày chi tiết doanh thu gộp (TotalDue), doanh thu thuần (SubTotal) và số đơn hàng theo từng năm (hoặc mốc thời gian), tuyệt đối không nhầm lẫn các năm thành khách hàng.\n"
+                    "   - Với câu hỏi hỏi về số lượng, cơ cấu, hoặc phân bố danh mục tài liệu/hợp đồng: BẮT BUỘC nêu rõ tổng số lượng ngay câu đầu tiên (ví dụ: 'Toàn hệ thống hiện có tổng cộng X tài liệu/hợp đồng...'), sau đó liệt kê chi tiết số lượng và tỷ lệ phần trăm theo từng phòng ban.\n"
+                    "   - Nếu câu hỏi hỏi về một nhân sự, trưởng nhóm, vai trò hoặc điều khoản cụ thể: Trả lời trực tiếp thông tin đó ngay dòng đầu tiên.\n"
+                    "   - Các chi tiết hỗ trợ hoặc chứng cứ trích đoạn BẮT BUỘC phải xuống dòng và đánh số rõ ràng (1., 2., 3.,...).\n"
+                    "   - Trình bày công thức và giải thích một cách mạch lạc, dễ hiểu.\n"
+                    + (excel_rules + "\n" if excel_rules else "") +
+                    "3. QUY TẮC TỪ CHỐI & KIỂM TRA ĐỐI TƯỢNG (GROUNDING REFUSAL):\n"
+                    "   - Nếu câu hỏi hỏi về một tài liệu, hợp đồng, phòng ban hoặc đối tượng cụ thể mà không xuất hiện trong ngữ cảnh, bạn phải trả lời rõ ràng rằng thông tin đó không tồn tại trong kho tri thức.\n"
+                    "   - TUYỆT ĐỐI KHÔNG được gán ghép phòng ban, nội dung hay số liệu của một tài liệu khác trong ngữ cảnh cho tài liệu mà người dùng đang hỏi.\n"
+                    "4. QUY TẮC TRUY VẤN XẾP HẠNG & SO SÁNH (RANKING & SUPERLATIVES):\n"
+                    "   - Khi câu hỏi yêu cầu tìm đối tượng 'nhất' (chi tiêu nhiều nhất, chi tiêu thấp nhất, mua nhiều nhất, ít nhất, doanh thu cao/thấp nhất, nhiều/ít đơn nhất,...):\n"
+                    "     BẮT BUỘC tuân thủ đúng thứ tự xếp hạng (Hạng 1, Hạng 2, Hạng 3) đã được cơ sở dữ liệu tính toán sẵn trong phần 'THỰC THỂ ĐỒ THỊ LIÊN QUAN (NEO4J GRAPH DB)'.\n"
+                    "     Đối tượng mang nhãn 'Hạng 1' (hoặc Đứng đầu / Thấp nhất / Nhiều nhất) là đối tượng duy nhất đứng vị trí cao nhất/thấp nhất tương ứng. TUYỆT ĐỐI KHÔNG hoán đổi vị trí hoặc kết luận đối tượng Hạng 2/Hạng 3 cao hơn Hạng 1.\n"
+                    "   - Định dạng số tiền: Luôn viết rõ ràng, có phân cách hàng nghìn (ví dụ: $989,184.08 USD, không viết gộp hoặc nhầm dấu thập phân)."
+                )
             context_block = ""
             if chunks_context:
                 context_block += f"\n\n--- CHỨNG CỨ VĂN BẢN (QDRANT VECTOR DB) ---\n{chunks_context}"
             if entities_context:
                 context_block += f"\n\n--- THỰC THỂ ĐỒ THỊ LIÊN QUAN (NEO4J GRAPH DB) ---\n{entities_context}"
 
-            if asks_case1 and asks_case2:
+            if is_document_summary:
+                call_to_action = f"Hãy lập bản tóm tắt nội dung tài liệu '{target_doc_name or 'này'}' hoàn toàn bằng TIẾNG VIỆT súc tích theo cấu trúc 3 phần trên (tuyệt đối không chép lại văn bản tiếng Anh thô):"
+            elif asks_case1 and asks_case2:
                 call_to_action = "Hãy tổng hợp câu trả lời chi tiết cho CẢ HAI SHEET (Phần 1: Sheet Case1 - Vận chuyển hàng hóa; Phần 2: Sheet Case2 - Phân bổ thức ăn gia súc):"
             elif asks_case1:
                 call_to_action = "Hãy tổng hợp câu trả lời chi tiết cho Sheet Case1 (Vận chuyển hàng hóa):"
@@ -239,7 +265,7 @@ class OllamaClient:
         # 4. Gửi request sang Ollama
         start_time = time.time()
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=3.0)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=5.0)) as client:
                 res = await client.post(
                     f"{self.base_url}/api/chat",
                     json={
@@ -249,7 +275,7 @@ class OllamaClient:
                         "options": {
                             "temperature": 0.2,
                             "top_p": 0.9,
-                            "num_predict": 192,
+                            "num_predict": 1536 if is_document_summary else 1024,
                             "repeat_penalty": 1.15
                         }
                     }
