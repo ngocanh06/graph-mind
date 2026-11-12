@@ -334,6 +334,13 @@ except ImportError:
     from modules.m6_admin_security.user_admin_api import router as admin_router
 app.include_router(admin_router, prefix="/api/v1")
 
+# PB42 Handover Dossier & Telemetry router
+try:
+    from app.api.v1.pb42 import router as pb42_router
+except ImportError:
+    from api.v1.pb42 import router as pb42_router
+app.include_router(pb42_router, prefix="/api/v1")
+
 # M6 Forgot Password / OTP router (PB43)
 try:
     from app.modules.m6_admin_security.forgot_password_router import router as forgot_router

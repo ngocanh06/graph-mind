@@ -3,7 +3,9 @@ User Admin API (M6) — CRUD tài khoản, RBAC, audit log
 Router prefix: /api/v1/admin
 Yêu cầu: Bearer token + role it_admin hoặc is_superuser
 """
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,7 +18,7 @@ from app.core.security import get_password_hash, decode_access_token
 from app.db.postgres.database import get_db
 from app.db.postgres.models.user import User
 from app.db.postgres.models.audit_log import AuditLog
-from app.modules.m6_admin_security.audit_service import log_action
+from app.modules.m6_admin_security.audit_service import log_action, verify_audit_chain
 from app.modules.m6_admin_security.deps import get_admin_user
 from app.modules.m6_admin_security.rbac import (
     is_superuser_for_role,
@@ -502,6 +504,54 @@ async def get_audit_logs(
     rows = (await db.execute(stmt)).scalars().all()
 
     return AuditLogListResponse(total=total, items=rows)
+
+
+MAX_VERIFY_CHUNK_SIZE = 10000
+_VERIFY_RATE_LIMIT = defaultdict(list)
+_VERIFY_RATE_WINDOW_SECONDS = 60.0
+_VERIFY_RATE_MAX_REQUESTS = 10
+
+
+def _check_verify_rate_limit(actor_id: str):
+    now = time.time()
+    history = [t for t in _VERIFY_RATE_LIMIT[actor_id] if now - t < _VERIFY_RATE_WINDOW_SECONDS]
+    if len(history) >= _VERIFY_RATE_MAX_REQUESTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Quá nhiều yêu cầu kiểm tra toàn vẹn audit logs. Vui lòng thử lại sau 1 phút.",
+        )
+    history.append(now)
+    _VERIFY_RATE_LIMIT[actor_id] = history
+
+
+@router.get("/audit-logs/verify")
+@router.post("/audit-logs/verify")
+async def verify_audit_logs_endpoint(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+    from_seq: Optional[int] = Query(None, ge=1, description="Số thứ tự bắt đầu chuỗi cần kiểm tra"),
+    to_seq: Optional[int] = Query(None, ge=1, description="Số thứ tự kết thúc chuỗi cần kiểm tra"),
+):
+    """
+    PB42 Phần 1B — Endpoint Admin kiểm chứng chuỗi băm toàn vẹn (tamper-evident) của audit_logs.
+    Bảo vệ chống DoS bằng Rate Limit (10 req/phút) và giới hạn kích thước đoạn (tối đa 10,000 bản ghi/lần).
+    """
+    _check_verify_rate_limit(str(admin.user_id))
+
+    if from_seq is not None and to_seq is not None:
+        if to_seq < from_seq:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"to_seq ({to_seq}) phải lớn hơn hoặc bằng from_seq ({from_seq}).",
+            )
+        chunk_size = to_seq - from_seq + 1
+        if chunk_size > MAX_VERIFY_CHUNK_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Kích thước đoạn kiểm tra ({chunk_size}) vượt quá giới hạn tối đa ({MAX_VERIFY_CHUNK_SIZE} bản ghi/lần).",
+            )
+
+    return await verify_audit_chain(db, from_seq=from_seq, to_seq=to_seq)
 
 
 from app.modules.m6_admin_security.permissions_api import router as permissions_router

@@ -4,6 +4,7 @@ Namespace: pb56_*
 Runs against an in-memory SQLite async database or Postgres test session.
 """
 from datetime import datetime, timezone, timedelta
+import os
 import uuid
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -53,17 +54,21 @@ try:
 except ImportError:
     from sqlalchemy.ext.asyncio import create_async_engine as real_create_engine
 
-TEST_DB_URL = "postgresql+asyncpg://postgres:123123@localhost:5432/graphmind_pb56_test"
+from app.tests.safety_db_guard import assert_test_database, get_test_database_url
+
+TEST_DB_URL = os.getenv("TEST_DATABASE_URL", "postgresql+asyncpg://postgres:123123@localhost:5432/graphmind_pb56_test")
 
 @pytest.fixture
 async def test_db_session():
     """Isolated dedicated Postgres test DB session for PB56 tests."""
+    assert_test_database(TEST_DB_URL)
     engine = real_create_engine(TEST_DB_URL, echo=False)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with engine.begin() as conn:
-        # Re-create PB56 tables in test database
-        await conn.run_sync(Base.metadata.drop_all)
+        # Re-create PB56 tables cleanly with CASCADE in test database
+        await conn.execute(text("DROP SCHEMA public CASCADE;"))
+        await conn.execute(text("CREATE SCHEMA public;"))
         await conn.run_sync(Base.metadata.create_all)
 
     async with async_session() as session:

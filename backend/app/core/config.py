@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     # Security & Authentication
     SECRET_KEY: str = "change-me"
+    TELEMETRY_HMAC_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 

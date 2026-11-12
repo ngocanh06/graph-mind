@@ -1,0 +1,29 @@
+{
+  "snapshot_created_at_utc": "2026-11-12T14:11:57.620365+00:00",
+  "git_commit_hash": "a64b90b4b6326ac7bb679145c77b32dee5bf7e57",
+  "git_branch": "Admin",
+  "git_dirty": true,
+  "uncommitted_changes_count": 12,
+  "database_name": "graphmind_db",
+  "total_records": 54,
+  "ollama_config": {
+    "model": "qwen2.5-7b-graphmind",
+    "actual_runtime_model_tag": "qwen2.5-7b-graphmind:latest",
+    "architecture": "qwen2",
+    "parameters": "7.6B",
+    "quantization": "Q4_K_M",
+    "num_predict": 512,
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "repeat_penalty": 1.15,
+    "client_timeout_seconds": 60.0,
+    "client_connect_timeout_seconds": 3.0,
+    "base_url": "http://localhost:11434"
+  },
+  "outlier_record_id": "72893ab7-5d7b-4996-84ea-a8d65af25915",
+  "outlier_reason": "Laptop entered Modern Standby/Sleep at 17:03:37 and resumed at 17:36:27 local time during query execution; perf_counter recorded 2,026,202 ms llm_ms. Preserved intact in baseline.",
+  "benchmark_window": {
+    "start_utc": "2026-11-10T10:01:31.952219Z",
+    "end_utc": "2026-11-10T10:52:48.990579Z"
+  }
+}

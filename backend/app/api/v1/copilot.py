@@ -30,6 +30,7 @@ try:
     from app.modules.m3_hybrid_copilot.inference.client import llm_client
     from app.modules.m3_hybrid_copilot.query_engine.context_fusion import reciprocal_rank_fusion
     from app.modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
+    from app.modules.m3_hybrid_copilot.telemetry import StageTimer, record_copilot_telemetry
 except ImportError:
     from core.security import decode_access_token
     from core.rbac import check_data_scope_permission, filter_graph_entities_by_scope
@@ -41,6 +42,7 @@ except ImportError:
     from modules.m3_hybrid_copilot.inference.client import llm_client
     from modules.m3_hybrid_copilot.query_engine.context_fusion import reciprocal_rank_fusion
     from modules.m3_hybrid_copilot.query_engine.text_to_cypher import execute_text_to_cypher
+    from modules.m3_hybrid_copilot.telemetry import StageTimer, record_copilot_telemetry
 
 router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
@@ -489,6 +491,7 @@ class CopilotAskRequest(BaseModel):
     lang: Optional[str] = "vi"
     session_id: Optional[str] = None
     document_id: Optional[str] = None
+    is_benchmark: Optional[bool] = False
 
 
 class CitationItem(BaseModel):
@@ -831,6 +834,7 @@ async def ask_copilot(
     Tự động lưu câu hỏi của người dùng và câu trả lời vào database PostgreSQL của tài khoản đó.
     Tuân thủ phân quyền phạm vi phòng ban (Department Scope - BR-02, BR-04) và hiển thị trích dẫn (FR32).
     """
+    timer = StageTimer()
     user = scope.user
     clean_query = req.query.strip()
     is_vi = (req.lang or "vi") == "vi"
@@ -860,13 +864,17 @@ async def ask_copilot(
         db.add(session_obj)
         await db.flush()
 
-    # 1.1 Greeting Fast-Path Router (0 citations, immediate sub-10ms response)
+    # 1.1 Greeting Fast-Path Router (0 citations, immediate response)
     user_label = _resolve_user_label(user, scope)
-    if _GREETING_RE.match(clean_query):
+    with timer.stage("classify"):
+        is_greeting = bool(_GREETING_RE.match(clean_query))
+    if is_greeting:
         greeting_text = (
             "Xin chào! Tôi là GraphMind AI Copilot — Trợ lý Trí tuệ Doanh nghiệp liên kết đồ thị tri thức Neo4j và kho vector Qdrant. "
             "Tôi có thể hỗ trợ gì cho bạn về dữ liệu khách hàng, đơn hàng, hợp đồng hoặc tra cứu chính sách hôm nay?"
         )
+        timer.stop()
+        real_lat_s = timer.total_latency_s
         now_str = datetime.now().strftime("%H:%M")
         user_msg = {
             "id": f"u_{int(time.time()*1000)}",
@@ -883,7 +891,7 @@ async def ask_copilot(
             "confidence": "100%",
             "confidenceScore": 100,
             "citationCount": 0,
-            "latency": "0.01s",
+            "latency": f"{real_lat_s}s",
             "introText": greeting_text,
             "text": greeting_text,
             "answer": greeting_text,
@@ -895,12 +903,24 @@ async def ask_copilot(
         session_obj.updated_at = datetime.now()
         await db.commit()
         await db.refresh(session_obj)
+        await record_copilot_telemetry(
+            db,
+            timer=timer,
+            query=clean_query,
+            query_outcome="greeting",
+            answer_path="greeting",
+            requires_citation=False,
+            raw_citations=[],
+            session_id=session_obj.id,
+            user_id=user.user_id,
+            is_benchmark=bool(req.is_benchmark),
+        )
         return {
             "success": True,
             "answer": greeting_text,
             "text": greeting_text,
             "model": copilot_msg["model"],
-            "latency": 0.01,
+            "latency": real_lat_s,
             "sessionId": str(session_obj.id),
             "session": session_obj.to_dict(),
             "citations": [],
@@ -916,9 +936,12 @@ async def ask_copilot(
         }
 
     # 1.5. RBAC & Department Data Scope Security Gate (BR-02 / US19 / Admin Matrix)
-    user_role = getattr(user, "role", "standard")
-    allowed, reject_reason = check_data_scope_permission(clean_query, user_role, scope=scope)
+    user_role = getattr(scope, "role", None) or getattr(user, "role", "standard")
+    with timer.stage("classify"):
+        allowed, reject_reason = check_data_scope_permission(clean_query, user_role, scope=scope)
     if not allowed and reject_reason:
+        timer.stop()
+        real_lat_s = timer.total_latency_s
         blocked_msg = {
             "success": True,
             "answer": reject_reason,
@@ -945,7 +968,7 @@ async def ask_copilot(
                 }
             ],
             "confidenceScore": 100,
-            "latency": 0.05,
+            "latency": real_lat_s,
             "model": "GraphMind RBAC Engine (Level-3 Isolation)",
             "query": clean_query,
             "sessionId": str(session_obj.id),
@@ -969,7 +992,7 @@ async def ask_copilot(
             "confidence": "100%",
             "confidenceScore": 100,
             "citationCount": len(blocked_msg.get("citations", [])),
-            "latency": "0.05s",
+            "latency": f"{real_lat_s}s",
             "introText": reject_reason,
             "text": reject_reason,
             "answer": reject_reason,
@@ -981,644 +1004,698 @@ async def ask_copilot(
         session_obj.updated_at = datetime.now()
         await db.commit()
         await db.refresh(session_obj)
+        await record_copilot_telemetry(
+            db,
+            timer=timer,
+            query=clean_query,
+            query_outcome="refusal_rbac",
+            answer_path="rbac_gate",
+            requires_citation=False,
+            raw_citations=blocked_msg["citations"],
+            session_id=session_obj.id,
+            user_id=user.user_id,
+            is_benchmark=bool(req.is_benchmark),
+        )
         blocked_msg["session"] = session_obj.to_dict()
         return blocked_msg
 
     # 2. Hybrid Retrieval: Qdrant Vector + Neo4j Graph
     # Intelligently route queries between Central Document Repository (cuad_contracts: DOCX, XLSX, PDF, R&D, Contracts, Policies)
     # and AdventureWorks ERP Operational Data (adventureworks_entities: Products, Stores, Vendors, Customers, Orders)
-    q_lower = clean_query.lower()
-    is_doc_repo_query = any(k in q_lower for k in [
-        "tài liệu", "văn bản", "file", "hồ sơ", "tập tin", "đoạn", "docx", "pdf", "xlsx",
-        "quy hoạch", "tuyến tính", "mô hình", "bài toán", "nghiên cứu", "r&d", "rnd",
-        "chính sách", "hợp đồng", "contract", "điều khoản", "clause", "tuân thủ", "compliance",
-        "trách nhiệm", "liability", "bồi hoàn", "indemnif", "chấm dứt", "termination",
-        "luật áp dụng", "governing law", "bảo mật", "confidential", "sop", "pháp lý", "hàm mục tiêu",
-        "ràng buộc", "biến quyết định"
-    ])
-    
-    is_business_semantic_query = any(k in q_lower for k in [
-        "doanh thu", "revenue", "xu hướng", "trend", "tăng trưởng", "growth",
-        "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
-        "sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike", "nhà cung cấp", "vendor",
-        "cửa hàng", "store", "đại lý", "mountain", "road", "touring",
-        "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component",
-        "bán chạy", "tồn kho", "aov", "arpc", "chi tiêu", "mua nhiều", "mua ít",
-        "danh mục sản phẩm", "category", "subcategory", "lợi nhuận", "doanh số"
-    ])
+    with timer.stage("classify"):
+        q_lower = clean_query.lower()
+        is_doc_repo_query = any(k in q_lower for k in [
+            "tài liệu", "văn bản", "file", "hồ sơ", "tập tin", "đoạn", "docx", "pdf", "xlsx",
+            "quy hoạch", "tuyến tính", "mô hình", "bài toán", "nghiên cứu", "r&d", "rnd",
+            "chính sách", "hợp đồng", "contract", "điều khoản", "clause", "tuân thủ", "compliance",
+            "trách nhiệm", "liability", "bồi hoàn", "indemnif", "chấm dứt", "termination",
+            "luật áp dụng", "governing law", "bảo mật", "confidential", "sop", "pháp lý", "hàm mục tiêu",
+            "ràng buộc", "biến quyết định"
+        ])
+        
+        is_business_semantic_query = any(k in q_lower for k in [
+            "doanh thu", "revenue", "xu hướng", "trend", "tăng trưởng", "growth",
+            "đơn hàng", "salesorder", "order", "khách hàng", "customer", "vip",
+            "sản phẩm", "product", "hàng hóa", "giá", "xe đạp", "bike", "nhà cung cấp", "vendor",
+            "cửa hàng", "store", "đại lý", "mountain", "road", "touring",
+            "jersey", "helmet", "mũ bảo hiểm", "quần áo", "phụ tùng", "component",
+            "bán chạy", "tồn kho", "aov", "arpc", "chi tiêu", "mua nhiều", "mua ít",
+            "danh mục sản phẩm", "category", "subcategory", "lợi nhuận", "doanh số"
+        ])
 
-    is_doc_content_query = any(k in q_lower for k in [
-        "trình bày", "nội dung", "tóm tắt", "giải thích", "nói về", "cho tôi biết nội dung",
-        "nội dung chính", "các điều khoản chính", "nội dung file", "nội dung tài liệu", "hợp đồng này",
-        "chi tiết hợp đồng", "văn bản này", "nói về điều gì", "ý nghĩa", "review", "đọc file",
-        "thông tin file", "thông tin tài liệu", "tổng quan"
-    ])
+        is_doc_content_query = any(k in q_lower for k in [
+            "trình bày", "nội dung", "tóm tắt", "giải thích", "nói về", "cho tôi biết nội dung",
+            "nội dung chính", "các điều khoản chính", "nội dung file", "nội dung tài liệu", "hợp đồng này",
+            "chi tiết hợp đồng", "văn bản này", "nói về điều gì", "ý nghĩa", "review", "đọc file",
+            "thông tin file", "thông tin tài liệu", "tổng quan"
+        ])
 
-    is_doc_metadata_query = any(k in q_lower for k in [
-        "mã hồ sơ", "mã tài liệu", "phòng ban nào", "ai tải lên", "khi nào", "bao nhiêu chunk",
-        "bao nhiêu đoạn", "lập chỉ mục", "indexing", "metadata", "dung lượng", "hash"
-    ])
+        is_doc_metadata_query = any(k in q_lower for k in [
+            "mã hồ sơ", "mã tài liệu", "phòng ban nào", "ai tải lên", "khi nào", "bao nhiêu chunk",
+            "bao nhiêu đoạn", "lập chỉ mục", "indexing", "metadata", "dung lượng", "hash"
+        ])
 
-    is_doc_clause_query = any(k in q_lower for k in [
-        "điều khoản", "clause", "bồi thường", "indemnif", "chấm dứt", "termination",
-        "trách nhiệm", "liability", "luật áp dụng", "governing law", "bảo mật", "confidential",
-        "chuyển nhượng", "transfer", "cổ phần", "share purchase", "thời hạn", "term"
-    ]) and not is_doc_metadata_query
+        is_doc_clause_query = any(k in q_lower for k in [
+            "điều khoản", "clause", "bồi thường", "indemnif", "chấm dứt", "termination",
+            "trách nhiệm", "liability", "luật áp dụng", "governing law", "bảo mật", "confidential",
+            "chuyển nhượng", "transfer", "cổ phần", "share purchase", "thời hạn", "term"
+        ]) and not is_doc_metadata_query
 
-    # 2.0 Document Identity & Provenance Gate: Check if query specifically targets a known document
-    active_target_doc = None
-    target_doc_id = None
-    doc_filter = None
-    candidate_tokens: List[str] = []
+        # 2.0 Document Identity & Provenance Gate: Check if query specifically targets a known document
+        active_target_doc = None
+        target_doc_id = None
+        doc_filter = None
+        candidate_tokens: List[str] = []
 
-    GENERIC_STOP = {
-        "trong", "tai", "lieu", "khoan", "dong", "hang", "phan", "minh", "mind", "graph",
-        "dieu", "biet", "chinh", "nhom", "truong", "danh", "sach", "toan", "bo", "cac", "la",
-        "thanh", "vien", "nao", "sao", "cho", "du", "an", "van", "ban", "ve", "gi", "ai",
-        "he", "thong", "quy", "dinh", "bao", "cao", "nguoi", "phu", "trach", "giam", "doc",
-        "systems", "system", "corp", "corporation", "company", "agreement", "inc", "ltd", "llc",
-        "group", "holdings", "media", "services", "service", "contract", "contracts",
-        "cuad", "adventureworks", "erp", "dataset", "datasets", "chi", "so", "co", "cau", "muc", "loai",
-        "customer", "customers", "product", "products", "category", "categories", "subcategory",
-        "salesorder", "bikes", "components", "clothing", "accessories", "mountain", "touring",
-        "revenue", "subtotal", "totaldue", "listprice", "orderqty", "linetotal"
-    }
-    try:
-        # A. Explicit document_id passed in request
-        if req.document_id:
-            doc_matches = neo4j_client.run_cypher("""
-                MATCH (d:Document)
-                WHERE d.id = $doc_id AND d.id <> ''
-                RETURN d.name as name, d.id as id
-                LIMIT 1
-            """, {"doc_id": req.document_id})
-            if doc_matches:
-                active_target_doc = doc_matches[0]["name"]
-                target_doc_id = doc_matches[0]["id"]
+        GENERIC_STOP = {
+            "trong", "tai", "lieu", "khoan", "dong", "hang", "phan", "minh", "mind", "graph",
+            "dieu", "biet", "chinh", "nhom", "truong", "danh", "sach", "toan", "bo", "cac", "la",
+            "thanh", "vien", "nao", "sao", "cho", "du", "an", "van", "ban", "ve", "gi", "ai",
+            "he", "thong", "quy", "dinh", "bao", "cao", "nguoi", "phu", "trach", "giam", "doc",
+            "systems", "system", "corp", "corporation", "company", "agreement", "inc", "ltd", "llc",
+            "group", "holdings", "media", "services", "service", "contract", "contracts",
+            "cuad", "adventureworks", "erp", "dataset", "datasets", "chi", "so", "co", "cau", "muc", "loai",
+            "customer", "customers", "product", "products", "category", "categories", "subcategory",
+            "salesorder", "bikes", "components", "clothing", "accessories", "mountain", "touring",
+            "revenue", "subtotal", "totaldue", "listprice", "orderqty", "linetotal"
+        }
+        rbac_target_blocked = False
+        rbac_target_res_type = None
+        rbac_target_role_label = None
+        rbac_target_reject_msg = None
+        entity_gate_not_found_msg = None
+        try:
+            # A. Explicit document_id passed in request
+            if req.document_id:
+                doc_matches = neo4j_client.run_cypher("""
+                    MATCH (d:Document)
+                    WHERE d.id = $doc_id AND d.id <> ''
+                    RETURN d.name as name, d.id as id
+                    LIMIT 1
+                """, {"doc_id": req.document_id})
+                if doc_matches:
+                    active_target_doc = doc_matches[0]["name"]
+                    target_doc_id = doc_matches[0]["id"]
 
-        # B. Exact ID or Document Name directly in current query (skip partial token matching for pure ERP queries)
-        if not active_target_doc and (is_doc_repo_query or not is_business_semantic_query or any(ext in q_lower for ext in [".pdf", ".docx", ".xlsx", ".txt", ".csv"])):
-            doc_matches = neo4j_client.run_cypher("""
-                MATCH (d:Document)
-                WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
-                   OR toLower($q) CONTAINS toLower(d.name)
-                RETURN d.name as name, d.id as id
-                LIMIT 1
-            """, {"q": clean_query})
-            if not doc_matches:
-                raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
-                candidate_tokens = [
-                    t for t in raw_tokens
-                    if not t.isdigit() and t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
-                ]
-                for t in sorted(candidate_tokens, key=len, reverse=True):
-                    doc_matches = neo4j_client.run_cypher("""
-                        MATCH (d:Document)
-                        WHERE toLower(d.name) CONTAINS toLower($t)
-                        RETURN d.name as name, d.id as id
-                        LIMIT 2
-                    """, {"t": t})
-                    if doc_matches:
-                        break
+            # B. Exact ID or Document Name directly in current query (skip partial token matching for pure ERP queries)
+            if not active_target_doc and (is_doc_repo_query or not is_business_semantic_query or any(ext in q_lower for ext in [".pdf", ".docx", ".xlsx", ".txt", ".csv"])):
+                doc_matches = neo4j_client.run_cypher("""
+                    MATCH (d:Document)
+                    WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
+                       OR toLower($q) CONTAINS toLower(d.name)
+                    RETURN d.name as name, d.id as id
+                    LIMIT 1
+                """, {"q": clean_query})
+                if not doc_matches:
+                    raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
+                    candidate_tokens = [
+                        t for t in raw_tokens
+                        if not t.isdigit() and t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
+                    ]
+                    for t in sorted(candidate_tokens, key=len, reverse=True):
+                        doc_matches = neo4j_client.run_cypher("""
+                            MATCH (d:Document)
+                            WHERE toLower(d.name) CONTAINS toLower($t)
+                            RETURN d.name as name, d.id as id
+                            LIMIT 2
+                        """, {"t": t})
+                        if doc_matches:
+                            break
 
-            if doc_matches:
-                active_target_doc = doc_matches[0]["name"]
-                target_doc_id = doc_matches[0]["id"]
+                if doc_matches:
+                    active_target_doc = doc_matches[0]["name"]
+                    target_doc_id = doc_matches[0]["id"]
 
-        # C. Follow-up query in session: inherit active document only when clearly verifiable (Requirement 3)
-        if not active_target_doc and session_obj and session_obj.messages:
-            is_verifiable_follow_up = any(re.search(pat, q_lower) for pat in [
-                r"\bcase\s*[12]\b", r"\bsheet\b", r"\btuyến\b", r"\bvận chuyển\b", r"\bthức ăn\b",
-                r"\bsolver\b", r"\btối ưu\b", r"\bchi phí\b", r"\bràng buộc\b", r"\bphương án\b",
-                r"\bhàm lượng\b", r"\bkhối lượng\b", r"\bở trên\b", r"\btài liệu trên\b", r"\bfile trên\b"
-            ])
-            if is_verifiable_follow_up:
-                for prev_m in reversed(session_obj.messages):
-                    for cit in (prev_m.get("citations") or []):
-                        c_doc_id = cit.get("document_id") or cit.get("doc_id")
-                        if c_doc_id and not str(c_doc_id).startswith("AW-"):
+            # C. Follow-up query in session: inherit active document only when clearly verifiable (Requirement 3)
+            if not active_target_doc and session_obj and session_obj.messages:
+                is_verifiable_follow_up = any(re.search(pat, q_lower) for pat in [
+                    r"\bcase\s*[12]\b", r"\bsheet\b", r"\btuyến\b", r"\bvận chuyển\b", r"\bthức ăn\b",
+                    r"\bsolver\b", r"\btối ưu\b", r"\bchi phí\b", r"\bràng buộc\b", r"\bphương án\b",
+                    r"\bhàm lượng\b", r"\bkhối lượng\b", r"\bở trên\b", r"\btài liệu trên\b", r"\bfile trên\b"
+                ])
+                if is_verifiable_follow_up:
+                    for prev_m in reversed(session_obj.messages):
+                        for cit in (prev_m.get("citations") or []):
+                            c_doc_id = cit.get("document_id") or cit.get("doc_id")
+                            if c_doc_id and not str(c_doc_id).startswith("AW-"):
+                                cand = neo4j_client.run_cypher("""
+                                    MATCH (d:Document)
+                                    WHERE d.id = $doc_id
+                                    RETURN d.name as name, d.id as id
+                                    LIMIT 1
+                                """, {"doc_id": str(c_doc_id)})
+                                if cand:
+                                    active_target_doc = cand[0]["name"]
+                                    target_doc_id = cand[0]["id"]
+                                    break
+                        if active_target_doc:
+                            break
+
+                        prev_text = prev_m.get("text") or ""
+                        if prev_text:
                             cand = neo4j_client.run_cypher("""
                                 MATCH (d:Document)
-                                WHERE d.id = $doc_id
+                                WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
+                                   OR toLower($q) CONTAINS toLower(d.name)
                                 RETURN d.name as name, d.id as id
                                 LIMIT 1
-                            """, {"doc_id": str(c_doc_id)})
+                            """, {"q": prev_text})
                             if cand:
                                 active_target_doc = cand[0]["name"]
                                 target_doc_id = cand[0]["id"]
                                 break
-                    if active_target_doc:
-                        break
-
-                    prev_text = prev_m.get("text") or ""
-                    if prev_text:
-                        cand = neo4j_client.run_cypher("""
-                            MATCH (d:Document)
-                            WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
-                               OR toLower($q) CONTAINS toLower(d.name)
-                            RETURN d.name as name, d.id as id
-                            LIMIT 1
-                        """, {"q": prev_text})
-                        if cand:
-                            active_target_doc = cand[0]["name"]
-                            target_doc_id = cand[0]["id"]
+                        if active_target_doc:
                             break
-                    if active_target_doc:
-                        break
 
-        if active_target_doc:
-            from app.core.rbac import resolve_resource_type
-            target_res_type = resolve_resource_type(active_target_doc)
-            if scope.allowed_resources and target_res_type not in scope.allowed_resources and not scope.is_unrestricted:
-                role_label = getattr(user, "role", "user")
-                reject_msg = (
-                    f"Theo ma trận phân quyền của Quản trị viên (Admin RBAC Matrix), vai trò [{role_label}] "
-                    f"không có quyền truy vấn hoặc tra cứu tài liệu '{active_target_doc}' thuộc phạm vi [{target_res_type}]."
-                )
-                blocked_msg = {
-                    "success": True,
-                    "answer": reject_msg,
-                    "text": reject_msg,
-                    "evidenceChips": [
-                        {
-                            "id": "rbac-scope-guard",
-                            "label": f"RBAC Access Denied: {target_res_type}",
-                            "source": "Chính sách phân quyền Admin RBAC Matrix",
-                        }
-                    ],
-                    "citations": [
-                        {
-                            "docName": "Chính sách kiểm soát truy cập (Admin RBAC Matrix)",
-                            "file": f"Phạm vi {target_res_type}",
-                            "match": "RESTRICTED",
-                            "location": f"Phạm vi: {target_res_type} bị chặn đối với vai trò {role_label}",
-                            "startLine": 1,
-                            "endLine": 1,
-                            "text": reject_msg,
-                            "chunkId": "SEC-SCOPE-GUARD",
-                            "sourceType": "RBAC Security Gate",
-                            "score": 100.0,
-                        }
-                    ],
-                    "confidenceScore": 100,
-                    "latency": 0.05,
-                    "model": "GraphMind RBAC Matrix Guard",
-                    "query": clean_query,
-                    "sessionId": str(session_obj.id),
-                    "session_id": str(session_obj.id),
-                }
-                now_str = datetime.now().strftime("%H:%M")
-                user_label = _resolve_user_label(user, scope)
-                new_msgs = list(session_obj.messages or [])
-                new_msgs.append({
-                    "id": f"u_{int(time.time()*1000)}",
-                    "sender": "user",
-                    "time": now_str,
-                    "userLabel": user_label,
-                    "text": clean_query,
-                })
-                new_msgs.append({
-                    "id": f"c_{int(time.time()*1000)}",
-                    "sender": "copilot",
-                    "time": now_str,
-                    "verifiedBadge": "RBAC Refusal",
-                    "confidence": "100%",
-                    "confidenceScore": 100,
-                    "citationCount": len(blocked_msg.get("citations", [])),
-                    "latency": "0.05s",
-                    "introText": reject_msg,
-                    "text": reject_msg,
-                    "answer": reject_msg,
-                    "evidenceChips": blocked_msg["evidenceChips"],
-                    "citations": blocked_msg["citations"],
-                    "model": blocked_msg["model"],
-                })
-                session_obj.messages = new_msgs
-                session_obj.updated_at = datetime.now()
-                await db.commit()
-                await db.refresh(session_obj)
-                blocked_msg["session"] = session_obj.to_dict()
-                return blocked_msg
-
-            is_doc_repo_query = True
-            doc_filter = {
-                "should": [
-                    {"key": "contract_name", "match": {"value": active_target_doc}},
-                    {"key": "source_file", "match": {"value": active_target_doc}},
-                    {"key": "doc_id", "match": {"value": target_doc_id}},
-                    {"key": "document_id", "match": {"value": target_doc_id}},
-                ]
-            }
-        else:
-            # 2.0.1 ENTITY EXISTENCE GATE: If user explicitly asks about a specific named document/file/contract
-            # but it does not exist anywhere in Neo4j or Qdrant, refuse immediately to avoid false-positive hallucinations
-            targeted_doc_term = None
-            is_inventory_early = any(k in q_lower for k in [
-                "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
-                "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
-            ])
-            is_agg_query = any(k in q_lower for k in [
-                "cơ cấu", "phân bố", "danh mục", "bao nhiêu", "thống kê", "tổng cộng", "tổng số",
-                "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số", "tuân thủ", "compliance",
-                "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
-            ])
-            if not is_inventory_early and not is_agg_query:
-                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
-                if t_match:
-                    cand = t_match.group(1).strip()
-                    if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
-                        targeted_doc_term = cand
-                elif candidate_tokens and is_doc_repo_query:
-                    targeted_doc_term = candidate_tokens[0]
-
-            if targeted_doc_term:
-                term_in_docs = False
-                try:
-                    chk_hits = qdrant_client.vector_search(query=targeted_doc_term, collection_name="cuad_contracts", limit=3)
-                    for qh in chk_hits:
-                        src = (qh.get("source_file") or qh.get("contract_name") or "").lower()
-                        txt = (qh.get("text") or "").lower()
-                        if targeted_doc_term.lower() in src or targeted_doc_term.lower() in txt:
-                            term_in_docs = True
-                            break
-                except Exception:
-                    term_in_docs = False
-
-                if not term_in_docs:
-                    not_found_msg = (
-                        f"Không tìm thấy tài liệu hoặc hồ sơ nào có tên '{targeted_doc_term}' trong kho tri thức của hệ thống. "
-                        f"Vui lòng kiểm tra lại tên tài liệu hoặc nạp tài liệu vào kho lưu trữ của phòng ban để AI Copilot có thể tra cứu."
+            if active_target_doc:
+                from app.core.rbac import resolve_resource_type
+                target_res_type = resolve_resource_type(active_target_doc)
+                if scope.allowed_resources and target_res_type not in scope.allowed_resources and not scope.is_unrestricted:
+                    rbac_target_blocked = True
+                    rbac_target_res_type = target_res_type
+                    rbac_target_role_label = getattr(user, "role", "user")
+                    rbac_target_reject_msg = (
+                        f"Theo ma trận phân quyền của Quản trị viên (Admin RBAC Matrix), vai trò [{rbac_target_role_label}] "
+                        f"không có quyền truy vấn hoặc tra cứu tài liệu '{active_target_doc}' thuộc phạm vi [{target_res_type}]."
                     )
-                    blocked_msg = {
-                        "success": True,
-                        "answer": not_found_msg,
-                        "text": not_found_msg,
-                        "evidenceChips": [],
-                        "citations": [],
-                        "confidenceScore": 0,
-                        "latency": 0.05,
-                        "model": "GraphMind Entity Existence Gate",
-                        "query": clean_query,
-                        "sessionId": str(session_obj.id),
-                        "session_id": str(session_obj.id),
+                else:
+                    is_doc_repo_query = True
+                    doc_filter = {
+                        "should": [
+                            {"key": "contract_name", "match": {"value": active_target_doc}},
+                            {"key": "source_file", "match": {"value": active_target_doc}},
+                            {"key": "doc_id", "match": {"value": target_doc_id}},
+                            {"key": "document_id", "match": {"value": target_doc_id}},
+                        ]
                     }
-                    now_str = datetime.now().strftime("%H:%M")
-                    user_label = _resolve_user_label(user, scope)
-                    new_msgs = list(session_obj.messages or [])
-                    new_msgs.append({
-                        "id": f"u_{int(time.time()*1000)}",
-                        "sender": "user",
-                        "time": now_str,
-                        "userLabel": user_label,
-                        "text": clean_query,
-                    })
-                    new_msgs.append({
-                        "id": f"c_{int(time.time()*1000)}",
-                        "sender": "copilot",
-                        "time": now_str,
-                        "verifiedBadge": "Entity Gate Refusal",
-                        "confidence": "0%",
-                        "confidenceScore": 0,
-                        "citationCount": 0,
-                        "latency": "0.05s",
-                        "introText": not_found_msg,
-                        "text": not_found_msg,
-                        "answer": not_found_msg,
-                        "evidenceChips": [],
-                        "citations": [],
-                        "model": blocked_msg["model"],
-                    })
-                    session_obj.messages = new_msgs
-                    session_obj.updated_at = datetime.now()
-                    await db.commit()
-                    await db.refresh(session_obj)
-                    blocked_msg["session"] = session_obj.to_dict()
-                    return blocked_msg
-    except Exception as e:
-        logger.warning(f"[Copilot Gate] Error in document identity gate: {e}")
+            else:
+                # 2.0.1 ENTITY EXISTENCE GATE: If user explicitly asks about a specific named document/file/contract
+                # but it does not exist anywhere in Neo4j or Qdrant, refuse immediately to avoid false-positive hallucinations
+                targeted_doc_term = None
+                is_inventory_early = any(k in q_lower for k in [
+                    "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
+                    "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
+                ])
+                is_agg_query = any(k in q_lower for k in [
+                    "cơ cấu", "phân bố", "danh mục", "bao nhiêu", "thống kê", "tổng cộng", "tổng số",
+                    "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số", "tuân thủ", "compliance",
+                    "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
+                ])
+                if not is_inventory_early and not is_agg_query:
+                    t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
+                    if t_match:
+                        cand = t_match.group(1).strip()
+                        if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
+                            targeted_doc_term = cand
+                    elif candidate_tokens and is_doc_repo_query:
+                        targeted_doc_term = candidate_tokens[0]
+
+                if targeted_doc_term:
+                    term_in_docs = False
+                    try:
+                        chk_hits = qdrant_client.vector_search(query=targeted_doc_term, collection_name="cuad_contracts", limit=3)
+                        for qh in chk_hits:
+                            src = (qh.get("source_file") or qh.get("contract_name") or "").lower()
+                            txt = (qh.get("text") or "").lower()
+                            if targeted_doc_term.lower() in src or targeted_doc_term.lower() in txt:
+                                term_in_docs = True
+                                break
+                    except Exception:
+                        term_in_docs = False
+
+                    if not term_in_docs:
+                        entity_gate_not_found_msg = (
+                            f"Không tìm thấy tài liệu hoặc hồ sơ nào có tên '{targeted_doc_term}' trong kho tri thức của hệ thống. "
+                            f"Vui lòng kiểm tra lại tên tài liệu hoặc nạp tài liệu vào kho lưu trữ của phòng ban để AI Copilot có thể tra cứu."
+                        )
+        except Exception as e:
+            logger.warning(f"[Copilot Gate] Error in document identity gate: {e}")
+
+    if rbac_target_blocked and rbac_target_reject_msg:
+        timer.stop()
+        real_lat_s = timer.total_latency_s
+        blocked_msg = {
+            "success": True,
+            "answer": rbac_target_reject_msg,
+            "text": rbac_target_reject_msg,
+            "evidenceChips": [
+                {
+                    "id": "rbac-scope-guard",
+                    "label": f"RBAC Access Denied: {rbac_target_res_type}",
+                    "source": "Chính sách phân quyền Admin RBAC Matrix",
+                }
+            ],
+            "citations": [
+                {
+                    "docName": "Chính sách kiểm soát truy cập (Admin RBAC Matrix)",
+                    "file": f"Phạm vi {rbac_target_res_type}",
+                    "match": "RESTRICTED",
+                    "location": f"Phạm vi: {rbac_target_res_type} bị chặn đối với vai trò {rbac_target_role_label}",
+                    "startLine": 1,
+                    "endLine": 1,
+                    "text": rbac_target_reject_msg,
+                    "chunkId": "SEC-SCOPE-GUARD",
+                    "sourceType": "RBAC Security Gate",
+                    "score": 100.0,
+                }
+            ],
+            "confidenceScore": 100,
+            "latency": real_lat_s,
+            "model": "GraphMind RBAC Matrix Guard",
+            "query": clean_query,
+            "sessionId": str(session_obj.id),
+            "session_id": str(session_obj.id),
+        }
+        now_str = datetime.now().strftime("%H:%M")
+        user_label = _resolve_user_label(user, scope)
+        new_msgs = list(session_obj.messages or [])
+        new_msgs.append({
+            "id": f"u_{int(time.time()*1000)}",
+            "sender": "user",
+            "time": now_str,
+            "userLabel": user_label,
+            "text": clean_query,
+        })
+        new_msgs.append({
+            "id": f"c_{int(time.time()*1000)}",
+            "sender": "copilot",
+            "time": now_str,
+            "verifiedBadge": "RBAC Refusal",
+            "confidence": "100%",
+            "confidenceScore": 100,
+            "citationCount": len(blocked_msg.get("citations", [])),
+            "latency": f"{real_lat_s}s",
+            "introText": rbac_target_reject_msg,
+            "text": rbac_target_reject_msg,
+            "answer": rbac_target_reject_msg,
+            "evidenceChips": blocked_msg["evidenceChips"],
+            "citations": blocked_msg["citations"],
+            "model": blocked_msg["model"],
+        })
+        session_obj.messages = new_msgs
+        session_obj.updated_at = datetime.now()
+        await db.commit()
+        await db.refresh(session_obj)
+        await record_copilot_telemetry(
+            db,
+            timer=timer,
+            query=clean_query,
+            query_outcome="refusal_rbac",
+            answer_path="rbac_gate",
+            requires_citation=False,
+            raw_citations=blocked_msg["citations"],
+            session_id=session_obj.id,
+            user_id=user.user_id,
+            is_benchmark=bool(req.is_benchmark),
+        )
+        blocked_msg["session"] = session_obj.to_dict()
+        return blocked_msg
+
+    if entity_gate_not_found_msg:
+        timer.stop()
+        real_lat_s = timer.total_latency_s
+        blocked_msg = {
+            "success": True,
+            "answer": entity_gate_not_found_msg,
+            "text": entity_gate_not_found_msg,
+            "evidenceChips": [],
+            "citations": [],
+            "confidenceScore": 0,
+            "latency": real_lat_s,
+            "model": "GraphMind Entity Existence Gate",
+            "query": clean_query,
+            "sessionId": str(session_obj.id),
+            "session_id": str(session_obj.id),
+        }
+        now_str = datetime.now().strftime("%H:%M")
+        user_label = _resolve_user_label(user, scope)
+        new_msgs = list(session_obj.messages or [])
+        new_msgs.append({
+            "id": f"u_{int(time.time()*1000)}",
+            "sender": "user",
+            "time": now_str,
+            "userLabel": user_label,
+            "text": clean_query,
+        })
+        new_msgs.append({
+            "id": f"c_{int(time.time()*1000)}",
+            "sender": "copilot",
+            "time": now_str,
+            "verifiedBadge": "Entity Gate Refusal",
+            "confidence": "0%",
+            "confidenceScore": 0,
+            "citationCount": 0,
+            "latency": f"{real_lat_s}s",
+            "introText": entity_gate_not_found_msg,
+            "text": entity_gate_not_found_msg,
+            "answer": entity_gate_not_found_msg,
+            "evidenceChips": [],
+            "citations": [],
+            "model": blocked_msg["model"],
+        })
+        session_obj.messages = new_msgs
+        session_obj.updated_at = datetime.now()
+        await db.commit()
+        await db.refresh(session_obj)
+        await record_copilot_telemetry(
+            db,
+            timer=timer,
+            query=clean_query,
+            query_outcome="refusal_grounding",
+            answer_path="grounding_gate",
+            requires_citation=False,
+            raw_citations=[],
+            session_id=session_obj.id,
+            user_id=user.user_id,
+            is_benchmark=bool(req.is_benchmark),
+        )
+        blocked_msg["session"] = session_obj.to_dict()
+        return blocked_msg
 
     vector_hits = []
     # 2.1 Route to relevant Qdrant vector collections
-    if active_target_doc or target_doc_id:
-        # STRICT DOCUMENT ISOLATION & SEQUENTIAL EXTRACTION (GraphRAG Document Understanding):
-        # When a specific document is identified, strictly scope search to cuad_contracts with doc_filter.
-        # Absolutely DO NOT query or mix adventureworks_entities ERP data!
-        if is_doc_content_query:
-            ordered_chunks = qdrant_client.get_document_chunks(
-                doc_id=target_doc_id,
-                contract_name=active_target_doc,
-                collection_name="cuad_contracts",
-                limit=50
-            )
-            if ordered_chunks:
-                selected = []
-                # Preamble / Header chunks (chunk 0, 1) are mandatory
-                for ch in ordered_chunks[:2]:
-                    selected.append(ch)
-                # Find key structural article chunks
-                for ch in ordered_chunks[2:]:
-                    txt = (ch.get("text") or "").lower()
-                    if any(term in txt for term in ["article", "section", "agree", "obligation", "term", "law", "liability", "indemn"]):
+    with timer.stage("vector_retrieval"):
+        if active_target_doc or target_doc_id:
+            # STRICT DOCUMENT ISOLATION & SEQUENTIAL EXTRACTION (GraphRAG Document Understanding):
+            # When a specific document is identified, strictly scope search to cuad_contracts with doc_filter.
+            # Absolutely DO NOT query or mix adventureworks_entities ERP data!
+            if is_doc_content_query:
+                ordered_chunks = qdrant_client.get_document_chunks(
+                    doc_id=target_doc_id,
+                    contract_name=active_target_doc,
+                    collection_name="cuad_contracts",
+                    limit=50
+                )
+                if ordered_chunks:
+                    selected = []
+                    # Preamble / Header chunks (chunk 0, 1) are mandatory
+                    for ch in ordered_chunks[:2]:
+                        selected.append(ch)
+                    # Find key structural article chunks
+                    for ch in ordered_chunks[2:]:
+                        txt = (ch.get("text") or "").lower()
+                        if any(term in txt for term in ["article", "section", "agree", "obligation", "term", "law", "liability", "indemn"]):
+                            if ch not in selected:
+                                selected.append(ch)
+                        if len(selected) >= 5:
+                            break
+                    for ch in ordered_chunks:
+                        if len(selected) >= 5:
+                            break
                         if ch not in selected:
                             selected.append(ch)
-                    if len(selected) >= 5:
-                        break
-                for ch in ordered_chunks:
-                    if len(selected) >= 5:
-                        break
-                    if ch not in selected:
-                        selected.append(ch)
-                vector_hits = selected
+                    vector_hits = selected
+                else:
+                    cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+                    vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.01]
+            elif is_doc_clause_query:
+                cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
+                head_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=2)
+                vector_hits = []
+                if head_chunks:
+                    vector_hits.append(head_chunks[0])
+                for ch in cuad_hits:
+                    if not any(h.get("id") == ch.get("id") for h in vector_hits):
+                        vector_hits.append(ch)
             else:
                 cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-                vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.01]
-        elif is_doc_clause_query:
-            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
-            head_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=2)
-            vector_hits = []
-            if head_chunks:
-                vector_hits.append(head_chunks[0])
-            for ch in cuad_hits:
-                if not any(h.get("id") == ch.get("id") for h in vector_hits):
-                    vector_hits.append(ch)
-        else:
+                min_score = 0.01 if doc_filter else 0.25
+                vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
+        elif is_doc_repo_query and is_business_semantic_query:
+            # Cross-domain query: search both collections and sort by cosine score
+            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+            aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
+            combined = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.25] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
+            vector_hits = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)[:8]
+        elif is_doc_repo_query:
+            # User is querying about knowledge repository documents, files, models, or contracts
             cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
             min_score = 0.01 if doc_filter else 0.25
             vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
-    elif is_doc_repo_query and is_business_semantic_query:
-        # Cross-domain query: search both collections and sort by cosine score
-        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
-        combined = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.25] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
-        vector_hits = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)[:8]
-    elif is_doc_repo_query:
-        # User is querying about knowledge repository documents, files, models, or contracts
-        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-        min_score = 0.01 if doc_filter else 0.25
-        vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
-        if not vector_hits and not doc_filter:
-            aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=3)
-            vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.35]
-    elif is_business_semantic_query:
-        # User is querying specifically about ERP operations, sales, products, orders
-        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=5)
-        vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
-        if not vector_hits:
-            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
-            vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.35]
-    else:
-        # General query: search both collections and pick top matches by similarity
-        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6)
-        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
-        combined = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.28] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.28]
-        vector_hits = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)[:6]
+            if not vector_hits and not doc_filter:
+                aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=3)
+                vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.35]
+        elif is_business_semantic_query:
+            # User is querying specifically about ERP operations, sales, products, orders
+            aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=5)
+            vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
+            if not vector_hits:
+                cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
+                vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.35]
+        else:
+            # General query: search both collections and pick top matches by similarity
+            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6)
+            aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
+            combined = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.28] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.28]
+            vector_hits = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)[:6]
 
-    # 2.1.0 Filter vector hits by scope.allowed_resources (Admin RBAC Matrix)
-    if scope.allowed_resources and not scope.is_unrestricted:
-        from app.core.rbac import resolve_resource_type
-        def _is_v_allowed(vh):
-            pl = vh.get("payload") if isinstance(vh.get("payload"), dict) else vh
-            if pl.get("source") == "adventureworks" or "entity_type" in pl:
-                e_type = pl.get("entity_type", "")
-                if e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail"]:
-                    return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
-                return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
-            rt = resolve_resource_type(vh)
-            return rt in scope.allowed_resources
+        # 2.1.0 Filter vector hits by scope.allowed_resources (Admin RBAC Matrix)
+        if scope.allowed_resources and not scope.is_unrestricted:
+            from app.core.rbac import resolve_resource_type
+            def _is_v_allowed(vh):
+                pl = vh.get("payload") if isinstance(vh.get("payload"), dict) else vh
+                if pl.get("source") == "adventureworks" or "entity_type" in pl:
+                    e_type = pl.get("entity_type", "")
+                    if e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail"]:
+                        return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
+                    return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+                rt = resolve_resource_type(vh)
+                return rt in scope.allowed_resources
 
-        vector_hits = [vh for vh in vector_hits if _is_v_allowed(vh)]
+            vector_hits = [vh for vh in vector_hits if _is_v_allowed(vh)]
 
-    # 2.1.1 Document Chunk Consolidation & Exact Provenance:
-    is_inventory_query = any(k in q_lower for k in [
-        "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
-        "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
-    ])
-    if not active_target_doc and vector_hits and not is_inventory_query and not is_business_semantic_query:
-        top_hit = vector_hits[0]
-        top_name = top_hit.get("source_file") or top_hit.get("contract_name")
-        top_doc_id = top_hit.get("document_id") or top_hit.get("doc_id")
-        top_score = float(top_hit.get("score") or 0.0)
-        is_cuad_doc = (top_hit.get("source") != "adventureworks") and ("entity_type" not in (top_hit.get("payload") or {}))
-        if is_cuad_doc and top_name and top_score >= 0.28:
-            # Check relevance: do not lock onto top_name if user asked for specific tokens absent from top_name
-            should_lock = True
-            if candidate_tokens:
-                should_lock = any(tok.lower() in top_name.lower() or tok.lower() in (top_hit.get("text") or "").lower() for tok in candidate_tokens)
-            if should_lock:
-                active_target_doc = top_name
-                target_doc_id = top_doc_id
-                doc_filter = {
-                    "should": [
-                        {"key": "contract_name", "match": {"value": active_target_doc}},
-                        {"key": "source_file", "match": {"value": active_target_doc}},
-                        {"key": "doc_id", "match": {"value": target_doc_id}},
-                        {"key": "document_id", "match": {"value": target_doc_id}},
-                    ]
-                }
-                if is_doc_content_query:
-                    ordered_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=50)
-                    if ordered_chunks:
-                        vector_hits = ordered_chunks[:5]
-                else:
-                    # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
-                    deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-                    if deep_hits:
-                        vector_hits = deep_hits
+        # 2.1.1 Document Chunk Consolidation & Exact Provenance:
+        is_inventory_query = any(k in q_lower for k in [
+            "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
+            "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
+        ])
+        if not active_target_doc and vector_hits and not is_inventory_query and not is_business_semantic_query:
+            top_hit = vector_hits[0]
+            top_name = top_hit.get("source_file") or top_hit.get("contract_name")
+            top_doc_id = top_hit.get("document_id") or top_hit.get("doc_id")
+            top_score = float(top_hit.get("score") or 0.0)
+            is_cuad_doc = (top_hit.get("source") != "adventureworks") and ("entity_type" not in (top_hit.get("payload") or {}))
+            if is_cuad_doc and top_name and top_score >= 0.28:
+                # Check relevance: do not lock onto top_name if user asked for specific tokens absent from top_name
+                should_lock = True
+                if candidate_tokens:
+                    should_lock = any(tok.lower() in top_name.lower() or tok.lower() in (top_hit.get("text") or "").lower() for tok in candidate_tokens)
+                if should_lock:
+                    active_target_doc = top_name
+                    target_doc_id = top_doc_id
+                    doc_filter = {
+                        "should": [
+                            {"key": "contract_name", "match": {"value": active_target_doc}},
+                            {"key": "source_file", "match": {"value": active_target_doc}},
+                            {"key": "doc_id", "match": {"value": target_doc_id}},
+                            {"key": "document_id", "match": {"value": target_doc_id}},
+                        ]
+                    }
+                    if is_doc_content_query:
+                        ordered_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=50)
+                        if ordered_chunks:
+                            vector_hits = ordered_chunks[:5]
+                    else:
+                        # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
+                        deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+                        if deep_hits:
+                            vector_hits = deep_hits
 
     graph_hits = []
-    if active_target_doc or target_doc_id:
-        # Match exact doc_id if provided, else exact name in Neo4j with duplicate detection
-        if target_doc_id:
-            doc_nodes = neo4j_client.run_cypher("""
-                MATCH (d:Document)
-                WHERE d.id = $doc_id AND $doc_id <> ''
-                OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
-                RETURN d.name AS name, d.id AS id, coalesce(dept.name, d.department, 'Chung') AS dept,
-                       coalesce(d.chunksCount, 0) AS chunksCount, elementId(d) AS _id, ['Document'] AS _labels
-                LIMIT 2
-            """, {"doc_id": target_doc_id})
-        else:
-            doc_nodes = neo4j_client.run_cypher("""
-                MATCH (d:Document)
-                WHERE d.name = $name AND $name <> ''
-                OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
-                RETURN d.name AS name, d.id AS id, coalesce(dept.name, d.department, 'Chung') AS dept,
-                       coalesce(d.chunksCount, 0) AS chunksCount, elementId(d) AS _id, ['Document'] AS _labels
-                LIMIT 2
-            """, {"name": active_target_doc})
-
-        if doc_nodes and len(doc_nodes) == 1:
-            d0 = doc_nodes[0]
-            if is_doc_content_query:
-                doc_snippet = f"Tài liệu / Hợp đồng: {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}."
+    with timer.stage("graph_retrieval"):
+        if active_target_doc or target_doc_id:
+            # Match exact doc_id if provided, else exact name in Neo4j with duplicate detection
+            if target_doc_id:
+                doc_nodes = neo4j_client.run_cypher("""
+                    MATCH (d:Document)
+                    WHERE d.id = $doc_id AND $doc_id <> ''
+                    OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+                    RETURN d.name AS name, d.id AS id, coalesce(dept.name, d.department, 'Chung') AS dept,
+                           coalesce(d.chunksCount, 0) AS chunksCount, elementId(d) AS _id, ['Document'] AS _labels
+                    LIMIT 2
+                """, {"doc_id": target_doc_id})
             else:
-                doc_snippet = f"Tài liệu {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}, gồm {d0.get('chunksCount')} đoạn vector đã lập chỉ mục vào Neo4j và Qdrant."
+                doc_nodes = neo4j_client.run_cypher("""
+                    MATCH (d:Document)
+                    WHERE d.name = $name AND $name <> ''
+                    OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+                    RETURN d.name AS name, d.id AS id, coalesce(dept.name, d.department, 'Chung') AS dept,
+                           coalesce(d.chunksCount, 0) AS chunksCount, elementId(d) AS _id, ['Document'] AS _labels
+                    LIMIT 2
+                """, {"name": active_target_doc})
 
-            graph_hits.append({
-                "_id": d0.get("_id") or d0.get("id"),
-                "_labels": ["Document", d0.get("dept")],
-                "name": d0.get("name"),
-                "id": d0.get("id"),
-                "document_id": d0.get("id"),
-                "source_file": d0.get("name"),
-                "department": d0.get("dept"),
-                "snippet": doc_snippet,
-                "is_content_query": is_doc_content_query,
-            })
-    else:
-        # Structured or general query: execute text-to-cypher (with multi-turn session context)
-        graph_hits = execute_text_to_cypher(
-            clean_query,
-            session_id=str(session_obj.id) if session_obj else "default",
-            history_messages=(session_obj.messages if session_obj else None),
-        )
-        if not graph_hits:
-            stop_words = {"tài", "liệu", "trong", "cho", "tôi", "biết", "các", "có", "bao", "nhiêu", "chính", "cụ", "thể", "từng", "là", "gì", "của", "phòng", "về"}
-            meaningful_words = [w for w in clean_query.split() if len(w) >= 3 and w.lower() not in stop_words]
-            search_terms = [clean_query]
-            if meaningful_words:
-                search_terms.append(" ".join(meaningful_words[:3]))
-                search_terms.extend(meaningful_words[:2])
-            for term in search_terms:
-                matches = neo4j_client.search_nodes(query=term, limit=4)
-                if matches:
-                    graph_hits.extend(matches)
+            if doc_nodes and len(doc_nodes) == 1:
+                d0 = doc_nodes[0]
+                if is_doc_content_query:
+                    doc_snippet = f"Tài liệu / Hợp đồng: {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}."
+                else:
+                    doc_snippet = f"Tài liệu {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}, gồm {d0.get('chunksCount')} đoạn vector đã lập chỉ mục vào Neo4j và Qdrant."
+
+                graph_hits.append({
+                    "_id": d0.get("_id") or d0.get("id"),
+                    "_labels": ["Document", d0.get("dept")],
+                    "name": d0.get("name"),
+                    "id": d0.get("id"),
+                    "document_id": d0.get("id"),
+                    "source_file": d0.get("name"),
+                    "department": d0.get("dept"),
+                    "snippet": doc_snippet,
+                    "is_content_query": is_doc_content_query,
+                })
+        else:
+            # Structured or general query: execute text-to-cypher (with multi-turn session context)
+            graph_hits = execute_text_to_cypher(
+                clean_query,
+                session_id=str(session_obj.id) if session_obj else "default",
+                history_messages=(session_obj.messages if session_obj else None),
+            )
+            if not graph_hits:
+                stop_words = {"tài", "liệu", "trong", "cho", "tôi", "biết", "các", "có", "bao", "nhiêu", "chính", "cụ", "thể", "từng", "là", "gì", "của", "phòng", "về"}
+                meaningful_words = [w for w in clean_query.split() if len(w) >= 3 and w.lower() not in stop_words]
+                search_terms = [clean_query]
+                if meaningful_words:
+                    search_terms.append(" ".join(meaningful_words[:3]))
+                    search_terms.extend(meaningful_words[:2])
+                for term in search_terms:
+                    matches = neo4j_client.search_nodes(query=term, limit=4)
+                    if matches:
+                        graph_hits.extend(matches)
+                        break
+
+            # If query is a system inventory summary or a verified NL2Cypher analytical query,
+            # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
+            if any(
+                gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+                or gh.get("grounded_answer")
+                for gh in graph_hits
+            ):
+                vector_hits = []
+
+            # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
+            for vh in vector_hits:
+                pl = vh.get("payload") or {}
+                e_type = pl.get("entity_type")
+                c_name = vh.get("source_file") or vh.get("contract_name")
+                doc_id = vh.get("document_id") or vh.get("doc_id")
+
+                if (c_name or doc_id) and not e_type:
+                    # Document expansion from central repository in Neo4j using EXACT IDENTITY with fail-closed duplicate check
+                    try:
+                        if doc_id:
+                            doc_res = neo4j_client.run_cypher("""
+                                MATCH (d:Document)
+                                WHERE d.id = $doc_id AND $doc_id <> ''
+                                OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+                                RETURN d.name as name, d.id as id, coalesce(dept.name, d.department, 'Chung') as dept, coalesce(d.chunksCount, 0) as chunksCount
+                                LIMIT 2
+                            """, {"doc_id": doc_id})
+                        else:
+                            doc_res = neo4j_client.run_cypher("""
+                                MATCH (d:Document)
+                                WHERE d.name = $c_name AND $c_name <> ''
+                                OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+                                RETURN d.name as name, d.id as id, coalesce(dept.name, d.department, 'Chung') as dept, coalesce(d.chunksCount, 0) as chunksCount
+                                LIMIT 2
+                            """, {"c_name": c_name})
+
+                        if doc_res and len(doc_res) == 1:
+                            r0 = doc_res[0]
+                            graph_hits.append({
+                                "_id": r0["id"],
+                                "_labels": ["Document", r0["dept"]],
+                                "name": r0["name"],
+                                "id": r0["id"],
+                                "document_id": r0["id"],
+                                "source_file": r0["name"],
+                                "snippet": f"Tài liệu {r0['name']} (Mã: {r0['id']}) thuộc phòng ban {r0['dept']}, đã lập chỉ mục {r0['chunksCount']} đoạn véc-tơ trong kho tri thức."
+                            })
+                    except Exception:
+                        pass
+
+                if e_type == "Product" and pl.get("entity_id"):
+                    pid = pl.get("entity_id")
+                    p_name = pl.get("name")
+                    try:
+                        sub_res = neo4j_client.run_cypher("""
+                            MATCH (p:Product {id: $pid})
+                            OPTIONAL MATCH (o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p)
+                            OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
+                            WITH p, count(DISTINCT o) as orderCount, count(DISTINCT c) as custCount, round(sum(r.LineTotal), 2) as revenue
+                            RETURN p.name as name, orderCount, custCount, revenue
+                        """, {"pid": pid})
+                        if sub_res and sub_res[0].get("orderCount", 0) > 0:
+                            r0 = sub_res[0]
+                            graph_hits.append({
+                                "_id": f"product_subgraph_{pid}",
+                                "_labels": ["Product", "SalesHistory"],
+                                "name": f"Lịch sử bán hàng: {p_name}",
+                                "snippet": f"Sản phẩm {p_name} (Mã #{pid}): Đã bán trong {r0['orderCount']} đơn hàng cho {r0['custCount']} khách hàng, mang lại tổng doanh thu thuần ${r0['revenue']:,.2f} USD."
+                            })
+                    except Exception:
+                        pass
+                    break  # Enrich top matched product
+                elif e_type == "SalesOrder" and pl.get("entity_id"):
+                    so_id = int(pl.get("entity_id"))
+                    try:
+                        sub_res = neo4j_client.run_cypher("""
+                            MATCH (o:SalesOrder)
+                            WHERE o.id = $so_id OR o.salesOrderId = $so_id OR o.SalesOrderID = $so_id
+                            OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
+                            OPTIONAL MATCH (o)-[:CONTAINS_PRODUCT]->(p:Product)
+                            RETURN coalesce(o.totalDue, o.TotalDue, 0.0) as totalDue,
+                                    toString(coalesce(o.orderDate, o.OrderDate, '')) as orderDate,
+                                    coalesce(c.name, 'Customer #' + toString(c.id)) as custName,
+                                    collect(coalesce(p.name, p.title, p.Name))[0..4] as products
+                        """, {"so_id": so_id})
+                        if sub_res:
+                            r0 = sub_res[0]
+                            graph_hits.append({
+                                "_id": f"order_subgraph_{so_id}",
+                                "_labels": ["SalesOrder", "Customer", "Product"],
+                                "name": f"Đơn hàng #{so_id}",
+                                "snippet": f"Đơn hàng #{so_id} của {r0['custName']} (Ngày đặt: {r0['orderDate']}, Tổng tiền ${r0['totalDue']:,.2f} USD). Sản phẩm đã đặt: {', '.join(r0['products'])}."
+                            })
+                    except Exception:
+                        pass
+                    break
+                elif e_type == "SalesOrderDetail" and (pl.get("SalesOrderID") or pl.get("order_id")):
+                    so_id = int(pl.get("SalesOrderID") or pl.get("order_id"))
+                    try:
+                        sub_res = neo4j_client.run_cypher("""
+                            MATCH (o:SalesOrder)
+                            WHERE o.id = $so_id OR o.salesOrderId = $so_id OR o.SalesOrderID = $so_id
+                            OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
+                            RETURN coalesce(o.totalDue, o.TotalDue, 0.0) as totalDue,
+                                    coalesce(c.name, 'Customer #' + toString(c.id)) as custName
+                        """, {"so_id": so_id})
+                        if sub_res:
+                            r0 = sub_res[0]
+                            graph_hits.append({
+                                "_id": f"order_detail_subgraph_{so_id}",
+                                "_labels": ["SalesOrder", "SalesOrderDetail"],
+                                "name": f"Đơn hàng liên kết #{so_id}",
+                                "snippet": f"Mục chi tiết thuộc Đơn hàng #{so_id} (Khách hàng: {r0['custName']}, Tổng giá trị đơn: ${r0['totalDue']:,.2f} USD)."
+                            })
+                    except Exception:
+                        pass
                     break
 
-        # If query is a system inventory summary or a verified NL2Cypher analytical query,
-        # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
-        if any(
-            gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
-            or gh.get("grounded_answer")
-            for gh in graph_hits
-        ):
-            vector_hits = []
+        # Lọc node thực thể theo Data Scope & Admin RBAC Matrix của vai trò
+        graph_hits = filter_graph_entities_by_scope(graph_hits, user_role)
+        if scope.allowed_resources and not scope.is_unrestricted:
+            from app.core.rbac import resolve_resource_type
+            def _is_g_allowed(gh):
+                labels = gh.get("_labels") or []
+                if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+                    return True
+                if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
+                    return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
+                if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory", "Category", "SubCategory", "FinancialTrend", "BusinessKPI"] for l in labels):
+                    return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+                rt = resolve_resource_type(gh)
+                return rt in scope.allowed_resources
 
-        # 2.2 Graph expansion from top Qdrant hits (Bridge Vector -> Graph)
-        for vh in vector_hits:
-            pl = vh.get("payload") or {}
-            e_type = pl.get("entity_type")
-            c_name = vh.get("source_file") or vh.get("contract_name")
-            doc_id = vh.get("document_id") or vh.get("doc_id")
-
-            if (c_name or doc_id) and not e_type:
-                # Document expansion from central repository in Neo4j using EXACT IDENTITY with fail-closed duplicate check
-                try:
-                    if doc_id:
-                        doc_res = neo4j_client.run_cypher("""
-                            MATCH (d:Document)
-                            WHERE d.id = $doc_id AND $doc_id <> ''
-                            OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
-                            RETURN d.name as name, d.id as id, coalesce(dept.name, d.department, 'Chung') as dept, coalesce(d.chunksCount, 0) as chunksCount
-                            LIMIT 2
-                        """, {"doc_id": doc_id})
-                    else:
-                        doc_res = neo4j_client.run_cypher("""
-                            MATCH (d:Document)
-                            WHERE d.name = $c_name AND $c_name <> ''
-                            OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
-                            RETURN d.name as name, d.id as id, coalesce(dept.name, d.department, 'Chung') as dept, coalesce(d.chunksCount, 0) as chunksCount
-                            LIMIT 2
-                        """, {"c_name": c_name})
-
-                    if doc_res and len(doc_res) == 1:
-                        r0 = doc_res[0]
-                        graph_hits.append({
-                            "_id": r0["id"],
-                            "_labels": ["Document", r0["dept"]],
-                            "name": r0["name"],
-                            "id": r0["id"],
-                            "document_id": r0["id"],
-                            "source_file": r0["name"],
-                            "snippet": f"Tài liệu {r0['name']} (Mã: {r0['id']}) thuộc phòng ban {r0['dept']}, đã lập chỉ mục {r0['chunksCount']} đoạn véc-tơ trong kho tri thức."
-                        })
-                except Exception:
-                    pass
-
-            if e_type == "Product" and pl.get("entity_id"):
-                pid = pl.get("entity_id")
-                p_name = pl.get("name")
-                try:
-                    sub_res = neo4j_client.run_cypher("""
-                        MATCH (p:Product {id: $pid})
-                        OPTIONAL MATCH (o:SalesOrder)-[r:CONTAINS_PRODUCT]->(p)
-                        OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
-                        WITH p, count(DISTINCT o) as orderCount, count(DISTINCT c) as custCount, round(sum(r.LineTotal), 2) as revenue
-                        RETURN p.name as name, orderCount, custCount, revenue
-                    """, {"pid": pid})
-                    if sub_res and sub_res[0].get("orderCount", 0) > 0:
-                        r0 = sub_res[0]
-                        graph_hits.append({
-                            "_id": f"product_subgraph_{pid}",
-                            "_labels": ["Product", "SalesHistory"],
-                            "name": f"Lịch sử bán hàng: {p_name}",
-                            "snippet": f"Sản phẩm {p_name} (Mã #{pid}): Đã bán trong {r0['orderCount']} đơn hàng cho {r0['custCount']} khách hàng, mang lại tổng doanh thu thuần ${r0['revenue']:,.2f} USD."
-                        })
-                except Exception:
-                    pass
-                break  # Enrich top matched product
-            elif e_type == "SalesOrder" and pl.get("entity_id"):
-                so_id = int(pl.get("entity_id"))
-                try:
-                    sub_res = neo4j_client.run_cypher("""
-                        MATCH (o:SalesOrder)
-                        WHERE o.id = $so_id OR o.salesOrderId = $so_id OR o.SalesOrderID = $so_id
-                        OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
-                        OPTIONAL MATCH (o)-[:CONTAINS_PRODUCT]->(p:Product)
-                        RETURN coalesce(o.totalDue, o.TotalDue, 0.0) as totalDue,
-                                toString(coalesce(o.orderDate, o.OrderDate, '')) as orderDate,
-                                coalesce(c.name, 'Customer #' + toString(c.id)) as custName,
-                                collect(coalesce(p.name, p.title, p.Name))[0..4] as products
-                    """, {"so_id": so_id})
-                    if sub_res:
-                        r0 = sub_res[0]
-                        graph_hits.append({
-                            "_id": f"order_subgraph_{so_id}",
-                            "_labels": ["SalesOrder", "Customer", "Product"],
-                            "name": f"Đơn hàng #{so_id}",
-                            "snippet": f"Đơn hàng #{so_id} của {r0['custName']} (Ngày đặt: {r0['orderDate']}, Tổng tiền ${r0['totalDue']:,.2f} USD). Sản phẩm đã đặt: {', '.join(r0['products'])}."
-                        })
-                except Exception:
-                    pass
-                break
-            elif e_type == "SalesOrderDetail" and (pl.get("SalesOrderID") or pl.get("order_id")):
-                so_id = int(pl.get("SalesOrderID") or pl.get("order_id"))
-                try:
-                    sub_res = neo4j_client.run_cypher("""
-                        MATCH (o:SalesOrder)
-                        WHERE o.id = $so_id OR o.salesOrderId = $so_id OR o.SalesOrderID = $so_id
-                        OPTIONAL MATCH (c:Customer)-[:PLACED_ORDER]->(o)
-                        RETURN coalesce(o.totalDue, o.TotalDue, 0.0) as totalDue,
-                                coalesce(c.name, 'Customer #' + toString(c.id)) as custName
-                    """, {"so_id": so_id})
-                    if sub_res:
-                        r0 = sub_res[0]
-                        graph_hits.append({
-                            "_id": f"order_detail_subgraph_{so_id}",
-                            "_labels": ["SalesOrder", "SalesOrderDetail"],
-                            "name": f"Đơn hàng liên kết #{so_id}",
-                            "snippet": f"Mục chi tiết thuộc Đơn hàng #{so_id} (Khách hàng: {r0['custName']}, Tổng giá trị đơn: ${r0['totalDue']:,.2f} USD)."
-                        })
-                except Exception:
-                    pass
-                break
-
-    # Lọc node thực thể theo Data Scope & Admin RBAC Matrix của vai trò
-    graph_hits = filter_graph_entities_by_scope(graph_hits, user_role)
-    if scope.allowed_resources and not scope.is_unrestricted:
-        from app.core.rbac import resolve_resource_type
-        def _is_g_allowed(gh):
-            labels = gh.get("_labels") or []
-            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
-                return True
-            if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
-                return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
-            if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory", "Category", "SubCategory", "FinancialTrend", "BusinessKPI"] for l in labels):
-                return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
-            rt = resolve_resource_type(gh)
-            return rt in scope.allowed_resources
-
-        graph_hits = [gh for gh in graph_hits if _is_g_allowed(gh)]
+            graph_hits = [gh for gh in graph_hits if _is_g_allowed(gh)]
 
     # 2.5 GROUNDING GATE (Requirement 5)
     # Empirically calibrated threshold on all-MiniLM-L6-v2 cosine similarity:
@@ -1628,6 +1705,8 @@ async def ask_copilot(
     has_valid_graph = len(graph_hits) > 0
 
     if top_vec_score < GROUNDING_MIN_SCORE and not has_valid_graph:
+        timer.stop()
+        real_lat_s = timer.total_latency_s
         safe_reply = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức để trả lời câu hỏi này."
         blocked_msg = {
             "success": True,
@@ -1636,7 +1715,7 @@ async def ask_copilot(
             "evidenceChips": [],
             "citations": [],
             "confidenceScore": 0,
-            "latency": 0.05,
+            "latency": real_lat_s,
             "model": "GraphMind Grounding Gate (Calibrated 0.28)",
             "query": clean_query,
             "sessionId": str(session_obj.id),
@@ -1660,7 +1739,7 @@ async def ask_copilot(
             "confidence": "0%",
             "confidenceScore": 0,
             "citationCount": 0,
-            "latency": "0.05s",
+            "latency": f"{real_lat_s}s",
             "introText": safe_reply,
             "text": safe_reply,
             "answer": safe_reply,
@@ -1672,38 +1751,60 @@ async def ask_copilot(
         session_obj.updated_at = datetime.now()
         await db.commit()
         await db.refresh(session_obj)
+        await record_copilot_telemetry(
+            db,
+            timer=timer,
+            query=clean_query,
+            query_outcome="refusal_grounding",
+            answer_path="grounding_gate",
+            requires_citation=False,
+            raw_citations=[],
+            session_id=session_obj.id,
+            user_id=user.user_id,
+            is_benchmark=bool(req.is_benchmark),
+        )
         blocked_msg["session"] = session_obj.to_dict()
         return blocked_msg
 
-    # 3. Fusion Ranking: Reciprocal Rank Fusion (RRF k=60)
-    fused_results = reciprocal_rank_fusion(vector_hits, graph_hits, k=60, top_n=6)
+    # 3. Fusion Ranking: Reciprocal Rank Fusion (RRF k=60) & Layer-2 Context Gate
+    with timer.stage("fusion"):
+        fused_results = reciprocal_rank_fusion(vector_hits, graph_hits, k=60, top_n=6)
 
-    # 4. Context Synthesis & LLM Generation (PR1 Layer-2 Context Gate)
-    raw_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"] or vector_hits
-    raw_entities = [it["raw"] for it in fused_results if it["type"] == "graph"] or graph_hits
+        # 4. Context Synthesis & LLM Generation (PR1 Layer-2 Context Gate)
+        raw_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"] or vector_hits
+        raw_entities = [it["raw"] for it in fused_results if it["type"] == "graph"] or graph_hits
 
-    # Enforce Layer-2 Gate: verify ground truth against Neo4j SYNCED state & provenance
-    verified_chunks, verified_entities = apply_layer2_context_gate(raw_chunks, raw_entities)
+        # Enforce Layer-2 Gate: verify ground truth against Neo4j SYNCED state & provenance
+        verified_chunks, verified_entities = apply_layer2_context_gate(raw_chunks, raw_entities)
 
     if not verified_chunks and not verified_entities:
         # Zero Retrieval: Grounding Refusal without invoking LLM
         answer_text = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức"
-        latency = 0.05
         model_display = f"{llm_client.model} (PR1 Layer-2 Refusal)"
         confidence_score = 0
         citations_detail = []
         evidence_chips = []
+        telemetry_outcome = "refusal_layer2"
+        telemetry_answer_path = "layer2_gate"
+        telemetry_requires_citation = False
     else:
-        gen_result = await llm_client.generate_rag_answer(
-            query=clean_query,
-            evidence_chunks=verified_chunks,
-            graph_entities=verified_entities,
-            lang=req.lang or "vi",
-        )
+        with timer.stage("llm"):
+            gen_result = await llm_client.generate_rag_answer(
+                query=clean_query,
+                evidence_chunks=verified_chunks,
+                graph_entities=verified_entities,
+                lang=req.lang or "vi",
+            )
         answer_text = gen_result.get("answer") or ""
-        latency = gen_result.get("latency", 1.25)
         model_display = gen_result.get("model", f"{llm_client.model} (Ollama Local)")
         confidence_score = 90 if (is_doc_content_query and verified_chunks) else (80 if fused_results else 60)
+        telemetry_outcome = "degraded_fallback" if gen_result.get("fallback") else "answered"
+        telemetry_answer_path = gen_result.get("answer_path") or (
+            "fallback" if gen_result.get("fallback") else (
+                "nl2cypher_fastpath" if ("NL2Cypher Verified" in str(model_display) or "Graph Verified" in str(model_display)) else "rag_llm"
+            )
+        )
+        telemetry_requires_citation = True
 
         # Build citations & chips strictly from evidence serialized into prompt
         used_chunks = gen_result.get("used_chunks", verified_chunks)
@@ -1742,6 +1843,7 @@ async def ask_copilot(
                     "chunkId": f"#AW-{e_type.upper()}-{e_id}",
                     "sourceType": "Qdrant Vector DB (AdventureWorks)",
                     "score": score_val,
+                    "citation_valid": bool(e_id),
                 })
             else:
                 c_name = ch.get("source_file") or ch.get("contract_name") or "CUAD Contract Document"
@@ -1778,6 +1880,7 @@ async def ask_copilot(
                     "chunkId": f"#VEC-{chunk_num}" if chunk_num is not None else str(doc_id_val)[:8],
                     "sourceType": "Qdrant Vector DB (CUAD)",
                     "score": score_val,
+                    "citation_valid": str(doc_id_val) != "UNKNOWN_DOC",
                 })
 
         for ent in used_entities:
@@ -1816,6 +1919,7 @@ async def ask_copilot(
                     "sourceType": "Neo4j Graph DB",
                     "neo4jNode": "ComplianceReport:CUAD" if is_comp else "DocumentSummary:ContractPortfolio",
                     "score": 100.0,
+                    "citation_valid": True,
                 })
                 continue
 
@@ -1846,6 +1950,7 @@ async def ask_copilot(
                     "sourceType": "Neo4j Graph DB",
                     "neo4jNode": f"{labels_str}:{ent_name}",
                     "score": 95.0,
+                    "citation_valid": bool(node_clean_id),
                 })
                 continue
 
@@ -1872,6 +1977,7 @@ async def ask_copilot(
                             "sourceType": "Neo4j Graph DB",
                             "neo4jNode": f"Company:{ent_name}",
                             "score": 98.0,
+                            "citation_valid": True,
                         })
                 continue
 
@@ -1896,6 +2002,7 @@ async def ask_copilot(
                 "sourceType": "Neo4j Graph DB",
                 "neo4jNode": f"{labels_str}:{ent_name}",
                 "score": 98.0,
+                "citation_valid": bool(src_doc),
             })
 
         # Enforce BR-02 & FR32: Filter/redact citations outside caller's Department Scope
@@ -1929,6 +2036,9 @@ async def ask_copilot(
                 confidence_score = min(82, max(45, int(top_vec_score * 100)))
             else:
                 confidence_score = 25
+
+    timer.stop()
+    latency = timer.total_latency_s
 
     # 5. Lưu user message và copilot message vào PostgreSQL
     now_str = datetime.now().strftime("%H:%M")
@@ -1966,6 +2076,19 @@ async def ask_copilot(
 
     await db.commit()
     await db.refresh(session_obj)
+
+    await record_copilot_telemetry(
+        db,
+        timer=timer,
+        query=clean_query,
+        query_outcome=telemetry_outcome,
+        answer_path=telemetry_answer_path,
+        requires_citation=telemetry_requires_citation,
+        raw_citations=citations_detail,
+        session_id=session_obj.id,
+        user_id=user.user_id,
+        is_benchmark=bool(req.is_benchmark),
+    )
 
     # 6. Response data
     response_data = {
