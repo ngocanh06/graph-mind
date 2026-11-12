@@ -1,0 +1,24 @@
+{
+  "exported_at": "2026-11-12T13:25:20.679248+00:00",
+  "git_commit": "a64b90b4b6326ac7bb679145c77b32dee5bf7e57",
+  "total_rows": 54,
+  "ollama_config": {
+    "model": "qwen2.5-7b-graphmind",
+    "base_url": "http://localhost:11434",
+    "timeout_seconds": 60.0,
+    "connect_timeout_seconds": 3.0,
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "num_predict": 512,
+    "repeat_penalty": 1.15
+  },
+  "outlier_note": "Row 72893ab7-5d7b-4996-84ea-a8d65af25915 with total_latency_ms=2041687 (llm_ms=2026202) is preserved intact as baseline evidence.",
+  "outcome_breakdown": {
+    "greeting:greeting": 6,
+    "answered:nl2cypher_fastpath": 19,
+    "degraded_fallback:fallback": 14,
+    "refusal_grounding:grounding_gate": 7,
+    "refusal_rbac:rbac_gate": 7,
+    "answered:rag_llm": 1
+  }
+}

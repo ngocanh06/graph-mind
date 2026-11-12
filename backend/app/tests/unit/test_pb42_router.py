@@ -58,6 +58,7 @@ async def test_pb42_telemetry_summary_endpoint():
     """Kiểm tra schema và dữ liệu trả về của /api/v1/pb42/telemetry/summary."""
     mock_summary = {
         "empty": False,
+        "scope": "all_benchmark_and_real_queries_excluding_outliers",
         "definition": CITATION_RATE_DEFINITION,
         "filter_applied": {
             "from_time": None,
@@ -67,16 +68,20 @@ async def test_pb42_telemetry_summary_endpoint():
         },
         "data_start": "2026-11-10T10:01:31.952219Z",
         "data_end": "2026-11-10T10:52:48.990579Z",
-        "total_queries": 54,
+        "total_queries": 53,
         "real_queries_count": 0,
-        "benchmark_queries_count": 54,
+        "benchmark_queries_count": 53,
         "outlier_queries_count": 1,
-        "outcome_distribution": {"answered": 20, "degraded_fallback": 14, "refusal_rbac": 7},
+        "outcome_distribution": {"answered": 20, "degraded_fallback": 13, "refusal_rbac": 7, "refusal_grounding": 7, "greeting": 6},
         "citation_metrics": {
             "denominator_requires_citation_answered": 20,
             "numerator_all_valid_citation_queries": 20,
             "citation_rate_pct": 100.0,
             "null_source_citation_count": 0,
+            "by_answer_path": {
+                "nl2cypher_fastpath": {"n": 19, "citation_rate_pct": 100.0},
+                "rag_llm": {"n": 1, "citation_rate_pct": 100.0},
+            }
         },
         "by_answer_path": [
             {
@@ -88,8 +93,10 @@ async def test_pb42_telemetry_summary_endpoint():
                 "min_ms": 266,
                 "max_ms": 18993,
                 "avg_ms": 2167.0,
-                "slo_1200_met_rate_pct": 52.63,
-                "slo_2800_met_rate_pct": 84.21,
+                "slo_applicable_ms": 1200,
+                "slo_applicable_met_rate_pct": 73.68,
+                "slo_1200_met_rate_pct": 73.68,
+                "slo_2800_met_rate_pct": 89.47,
                 "degraded_fallback_count": 0,
                 "timeout_llm_count": 0,
             }
@@ -106,12 +113,17 @@ async def test_pb42_telemetry_summary_endpoint():
                 res = await client.get("/api/v1/pb42/telemetry/summary?include_benchmark=true&exclude_outliers=true")
                 assert res.status_code == 200, res.text
                 data = res.json()
+                assert "scope" in data
                 assert "definition" in data
                 assert "mẫu số = lượt requires_citation=true" in data["definition"]
                 assert data["citation_metrics"]["citation_rate_pct"] == 100.0
-                assert data["total_queries"] == 54
+                assert "by_answer_path" in data["citation_metrics"]
+                assert data["total_queries"] == 53
                 assert len(data["by_answer_path"]) == 1
-                assert data["by_answer_path"][0]["answer_path"] == "nl2cypher_fastpath"
+                p0 = data["by_answer_path"][0]
+                assert p0["answer_path"] == "nl2cypher_fastpath"
+                assert p0["slo_applicable_ms"] == 1200
+                assert p0["slo_applicable_met_rate_pct"] == 73.68
     finally:
         app.dependency_overrides.pop(get_admin_user, None)
 
