@@ -106,6 +106,10 @@ class AuditLogOut(BaseModel):
     status: str
     detail: Optional[str]
     created_at: datetime
+    entry_sha256: Optional[str] = None
+    prev_hash: Optional[str] = None
+    chain_seq: Optional[int] = None
+    pre_chain: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 

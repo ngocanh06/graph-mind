@@ -198,6 +198,7 @@ class OllamaClient:
         3. Thực thể và quan hệ từ Neo4j Knowledge Graph
         """
         is_vi = lang == "vi"
+        gen_start_perf = time.perf_counter()
         evidence_chunks = evidence_chunks or []
         graph_entities = graph_entities or []
 
@@ -316,8 +317,9 @@ class OllamaClient:
                     "success": True,
                     "answer": top_ent["grounded_answer"],
                     "model": f"{self.model} (NL2Cypher Verified)",
-                    "latency": 0.05,
+                    "latency": round(time.perf_counter() - gen_start_perf, 4),
                     "fallback": False,
+                    "answer_path": "nl2cypher_fastpath",
                     "used_chunks": used_chunks,
                     "used_entities": used_entities or graph_entities[:4],
                 }
@@ -326,8 +328,9 @@ class OllamaClient:
                     "success": True,
                     "answer": top_ent["snippet"],
                     "model": f"{self.model} (Graph Verified)",
-                    "latency": 0.05,
+                    "latency": round(time.perf_counter() - gen_start_perf, 4),
                     "fallback": False,
+                    "answer_path": "nl2cypher_fastpath",
                     "used_chunks": used_chunks,
                     "used_entities": used_entities or graph_entities[:4],
                 }
@@ -415,7 +418,7 @@ class OllamaClient:
         ]
 
         # 4. Gửi request sang Ollama
-        start_time = time.time()
+        start_time = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=3.0)) as client:
                 res = await client.post(
@@ -432,7 +435,7 @@ class OllamaClient:
                         }
                     }
                 )
-                latency = round(time.time() - start_time, 2)
+                latency = round(time.perf_counter() - start_time, 4)
                 if res.status_code == 200:
                     data = res.json()
                     answer = data.get("message", {}).get("content", "").strip()
@@ -443,6 +446,7 @@ class OllamaClient:
                             "model": f"{self.model} (Ollama Local)",
                             "latency": latency,
                             "fallback": False,
+                            "answer_path": "rag_llm",
                             "used_chunks": used_chunks,
                             "used_entities": used_entities,
                         }
@@ -450,7 +454,7 @@ class OllamaClient:
             logger.warning(f"Ollama generation failed or timed out: {e}")
 
         # Fallback graceful response nếu Ollama chưa sẵn sàng hoặc quá thời gian
-        latency = round(time.time() - start_time, 2)
+        latency = round(time.perf_counter() - start_time, 4)
         if is_vi:
             if is_cuad_document and (is_doc_content_query or not is_doc_metadata_query):
                 c0 = evidence_chunks[0]
@@ -506,6 +510,7 @@ class OllamaClient:
             "model": f"{self.model} (Document Grounded)",
             "latency": latency,
             "fallback": True,
+            "answer_path": "fallback",
             "used_chunks": used_chunks,
             "used_entities": used_entities,
         }
