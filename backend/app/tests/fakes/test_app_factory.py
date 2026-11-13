@@ -77,6 +77,14 @@ def create_test_app(
     test_app.post("/api/documents/delete", tags=["Documents"])(api_delete_document)
     test_app.post("/api/v1/documents/delete", tags=["Documents"])(api_delete_document)
 
+    from app.main import get_document_raw_file, download_document_file, get_document_detail
+    test_app.get("/api/documents/raw", tags=["Documents"])(get_document_raw_file)
+    test_app.get("/api/v1/documents/raw", tags=["Documents"])(get_document_raw_file)
+    test_app.get("/api/documents/download", tags=["Documents"])(download_document_file)
+    test_app.get("/api/v1/documents/download", tags=["Documents"])(download_document_file)
+    test_app.get("/api/documents/detail", tags=["Documents"])(get_document_detail)
+    test_app.get("/api/v1/documents/detail", tags=["Documents"])(get_document_detail)
+
     # Import rbac dependencies for override
     from app.core.rbac import get_request_user
     from fastapi import Header
