@@ -1893,7 +1893,7 @@ async def ask_copilot(
                     target_doc_name=target_doc_title,
                 )
             answer_text = gen_result.get("answer") or ""
-            latency = gen_result.get("latency", 1.25)
+            latency = float(gen_result.get("latency") or 0.0)
             model_display = f"{llm_client.model} (Document Summary Engine)"
             confidence_score = 85 if fused_results else 70
             used_chunks = gen_result.get("used_chunks", verified_chunks)
@@ -1911,7 +1911,7 @@ async def ask_copilot(
                     lang=req.lang or "vi",
                 )
             answer_text = gen_result.get("answer") or ""
-            latency = gen_result.get("latency", 1.25)
+            latency = float(gen_result.get("latency") or 0.0)
             model_display = gen_result.get("model", f"{llm_client.model} (Ollama Local)")
             confidence_score = 90 if (is_doc_content_query and verified_chunks) else (80 if fused_results else 60)
             used_chunks = gen_result.get("used_chunks", verified_chunks)

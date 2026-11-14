@@ -4,10 +4,8 @@ import {
   AlertTriangle,
   Lock, Unlock, KeyRound, Trash2, RefreshCw, Sliders, Clock
 } from "lucide-react";
-import { FileText } from "lucide-react";
 import GranularRbacMatrix from "./GranularRbacMatrix";
 import PendingApprovalsPanel from "./PendingApprovalsPanel";
-import Pb42HandoverPanel from "./pb42/Pb42HandoverPanel";
 import { Server } from "lucide-react";
 import WorkstationsPanel from "../m1_data_sync/pb56_workstations/WorkstationsPanel";
 import { fetchPb56Status } from "../m1_data_sync/pb56_workstations/workstationsApi";
@@ -308,7 +306,6 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
     }] : []),
     { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: Users },
     { id: "audit", label: isVi ? "Nhật ký Kiểm toán" : "Audit Trail", icon: ClipboardList },
-    { id: "pb42_handover", label: isVi ? "Hồ sơ Vận hành PB42" : "PB42 Handover Dossier", icon: FileText },
   ];
 
   return (
@@ -505,10 +502,6 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
 
         {isPb56Enabled && activeTab === "workstations" && (
           <WorkstationsPanel lang={lang} showToast={showToast} />
-        )}
-
-        {activeTab === "pb42_handover" && (
-          <Pb42HandoverPanel lang={lang} isVi={isVi} showToast={showToast} />
         )}
 
 
