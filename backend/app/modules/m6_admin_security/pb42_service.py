@@ -112,6 +112,105 @@ async def compute_prechain_aggregate_hash(db: AsyncSession) -> str:
     return h.hexdigest()
 
 
+SLO_FASTPATH_MS = 1200
+SLO_RAG_LLM_MS = 2800
+SLO_THRESHOLDS_MS = [SLO_FASTPATH_MS, SLO_RAG_LLM_MS]
+
+PB42_KNOWN_LIMITATIONS = [
+    ("LIM-01", "Quyền Role Runtime & Khả năng gỡ Trigger", "Backend kết nối DB bằng role 'postgres' (Superuser & Table Owner). Trong PostgreSQL, REVOKE không ảnh hưởng tới Owner/Superuser. Trigger trg_audit_logs_immutable và trg_audit_logs_truncate hiện đang kích hoạt (tgenabled='O'), nhưng tiến trình có quyền superuser có thể vô hiệu hóa bằng lệnh ALTER TABLE audit_logs DISABLE TRIGGER ALL hoặc cấu hình session_replication_role='replica'. Đề xuất: tạo role runtime riêng chỉ có quyền INSERT và SELECT."),
+    ("LIM-02", "Sự kiện bảo trì (Maintenance Event)", "Vào lúc 20:42:35 UTC+7 (13:42:35 UTC) ngày 12/11/2026: Người thực hiện là coding agent theo yêu cầu của chủ dự án đã gỡ trigger nội bộ để xóa 120 dòng test phát sinh từ bài test live 1B (resource_type='pb42_1b_test'). Không có dòng audit thật nào bị sửa hay đánh lại chain_seq. Dòng mới tiếp theo bắt đầu từ chain_seq=1 với GENESIS_PREV_HASH (chuỗi 64 ký tự '0')."),
+    ("LIM-03", "Bản chất dữ liệu Telemetry (real_queries_count = 0)", "Toàn bộ 54 dòng số liệu trong hồ sơ này đều là dữ liệu từ 1 đợt benchmark nhân tạo duy nhất (is_benchmark = True) chạy ngày 10/11/2026. Chưa có dữ liệu phát sinh từ người dùng thật. Bảng copilot_query_telemetry từng bị drop khi chạy downgrade migration 1A, làm mất lượt chạy sơ khởi (max 85.652 ms)."),
+    ("LIM-04", "Dòng ngoại lai 2.041.687 ms do máy Sleep", "Query 72893ab7-5d7b-4996-84ea-a8d65af25915 có latency 33.7 phút do máy tính rơi vào Modern Standby/Sleep (17:03:37 - 17:36:27 UTC+7, Kernel-Power Event 506). Dòng này được lưu nguyên vẹn trong baseline và gắn cờ trong bảng copilot_telemetry_outliers."),
+    (
+        "LIM-05",
+        "RAG LLM 13/14 lượt suy thoái (Timeout Prefill/Decode trên 100% CPU)",
+        "[ĐÃ ĐO] Ollama (qwen2.5-7b) chạy trên 100% CPU đạt tốc độ decode 2,24 tok/s và tốc độ prefill 10,4–11,3 tok/s (trung bình 10,9 tok/s). "
+        "Độ dài prompt RAG thực tế dựng từ client.py đạt 1.759–2.118 tokens (5.424–6.784 ký tự), cần 160,7–197,4 giây chỉ để hoàn thành prefill. "
+        "Trong đợt benchmark, có 14 truy vấn rơi vào fallback: 1 lượt outlier 2.041.687 ms do máy rơi vào Modern Standby (đã đo 32m50s trong log Kernel-Power ID 506); "
+        "13 lượt fallback còn lại có total_latency_ms từ 60.833 ms đến 76.777 ms (trung bình 66.799 ms), trong đó riêng chặng llm_ms luôn dao động từ 60.343 ms đến 65.631 ms (trung bình 61.430 ms). "
+        "[SUY LUẬN CÓ CĂN CỨ] Cấu hình httpx client đặt timeout cứng 60.0s (connect 3.0s). Do giai đoạn prefill prompt RAG trên CPU cần 160–197s (>260% ngân sách), "
+        "tiến trình httpx bị timeout ngay trong giai đoạn prefill (khi mới nạp được ~660 tokens, tương đương 30–35% prompt), hoàn toàn chưa kịp bước vào giai đoạn decode token, buộc hệ thống kích hoạt degraded fallback. "
+        "Phần total_latency vượt 60s (lên tới 76,8s) là do cộng dồn thời gian của chặng Graph retrieval (avg 3.087 ms, max 10.073 ms) và Vector retrieval (avg 1.750 ms, max 7.310 ms) chạy trước đó. "
+        "1 lượt rag_llm thành công duy nhất (llm_ms 55,4s) là do ngữ cảnh ngắn hơn hoặc được tái sử dụng KV-cache từ lượt chạy trước. "
+        "[GIẢ ĐỊNH / CẢNH BÁO] Khi trang bị GPU chuyên dụng (VRAM >= 16GB), thời gian prefill và decode ước tính sẽ giảm xuống dưới 1.500 ms (ước tính chưa kiểm chứng); "
+        "tuy nhiên riêng nâng cấp GPU là chưa đủ để đạt SLO tổng 1.200/2.800 ms vì graph_retrieval_ms (lượt thành công: 3.916 ms; grounding_gate avg 7.008 ms) và vector retrieval cũng vượt ngưỡng. "
+        "Giới hạn dữ liệu: toàn bộ 54 truy vấn đều là benchmark nhân tạo (real = 0), telemetry không lưu độ dài prompt, số đo tok/s thực hiện trên một máy đơn lẻ."
+    ),
+    ("LIM-06", "Chuỗi Audit chưa có Anchor ngoài DB", "Chuỗi hash bảo vệ tính toàn vẹn và ngăn chặn sửa/xóa chèn giữa chuỗi, nhưng không phát hiện được hành vi superuser cắt đuôi toàn bộ chuỗi nếu người nhận không lưu trữ Head Hash ở kênh độc lập bên ngoài (email xác thực, văn bản ký biên bản)."),
+]
+
+
+def get_pb42_limitations() -> List[Dict[str, str]]:
+    """Trả danh sách limitations nguyên văn từ hằng số dùng chung của hệ thống."""
+    return [
+        {"id": lim[0], "title": lim[1], "description": lim[2]}
+        for lim in PB42_KNOWN_LIMITATIONS
+    ]
+
+
+def get_handover_export_dir() -> Path:
+    """Trả đường dẫn thư mục lưu trữ các gói bàn giao export và manifest."""
+    base_dir = Path(__file__).resolve().parent.parent.parent / "data" / "handover_exports"
+    base_dir.mkdir(parents=True, exist_ok=True)
+    return base_dir
+
+
+def get_handover_manifest_by_id(export_id: str) -> Optional[Dict[str, Any]]:
+    """Tìm và trả dữ liệu manifest.json theo export_id (đã kiểm tra an toàn đường dẫn)."""
+    # 1. Xác thực nghiêm ngặt UUID trước khi đụng vào filesystem
+    try:
+        val = uuid.UUID(str(export_id).strip())
+        canonical_id = str(val)
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+    export_dir = get_handover_export_dir().resolve()
+    manifest_file = (export_dir / f"manifest_{canonical_id}.json").resolve()
+
+    # 2. Đảm bảo resolved path nằm strictly bên trong export_dir
+    try:
+        if not manifest_file.is_relative_to(export_dir):
+            return None
+    except AttributeError:
+        if not str(manifest_file).startswith(str(export_dir)):
+            return None
+
+    if manifest_file.is_file():
+        try:
+            with open(manifest_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data.get("export_id") == canonical_id:
+                    return data
+        except Exception:
+            pass
+
+    # 3. Quét fallback trong các tệp zip (kiểm tra an toàn resolved_zpath)
+    if export_dir.exists():
+        for zpath in export_dir.glob("GraphMind_Handover_Package_*.zip"):
+            resolved_zpath = zpath.resolve()
+            try:
+                if not resolved_zpath.is_relative_to(export_dir):
+                    continue
+            except AttributeError:
+                if not str(resolved_zpath).startswith(str(export_dir)):
+                    continue
+
+            if not resolved_zpath.is_file():
+                continue
+
+            try:
+                with zipfile.ZipFile(resolved_zpath, "r") as zf:
+                    for zipinfo in zf.infolist():
+                        if zipinfo.filename == "manifest.json":
+                            data = json.loads(zf.read(zipinfo).decode("utf-8"))
+                            if data.get("export_id") == canonical_id:
+                                return data
+            except Exception:
+                continue
+
+    return None
+
+
 def get_applicable_slo(answer_path: str) -> Tuple[Optional[int], str]:
     """
     Ánh xạ SLO theo từng answer_path:
@@ -120,9 +219,9 @@ def get_applicable_slo(answer_path: str) -> Tuple[Optional[int], str]:
     - fallback, unknown: Không áp dụng (luôn xem là trượt SLO / 0%)
     """
     if answer_path in ("nl2cypher_fastpath", "greeting", "rbac_gate", "grounding_gate"):
-        return 1200, "slo_1200"
+        return SLO_FASTPATH_MS, "slo_1200"
     elif answer_path == "rag_llm":
-        return 2800, "slo_2800"
+        return SLO_RAG_LLM_MS, "slo_2800"
     else:
         return None, "none"
 
@@ -182,6 +281,7 @@ async def get_telemetry_summary_data(
             "message": "Không có dữ liệu telemetry phù hợp với bộ lọc.",
             "scope": scope_name,
             "definition": CITATION_RATE_DEFINITION,
+            "slo_thresholds_ms": SLO_THRESHOLDS_MS,
             "total_queries": 0,
             "real_queries_count": 0,
             "benchmark_queries_count": 0,
@@ -341,6 +441,7 @@ async def get_telemetry_summary_data(
         "empty": False,
         "scope": scope_name,
         "definition": CITATION_RATE_DEFINITION,
+        "slo_thresholds_ms": SLO_THRESHOLDS_MS,
         "filter_applied": {
             "from_time": from_time.isoformat() if from_time else None,
             "to_time": to_time.isoformat() if to_time else None,
@@ -678,14 +779,7 @@ async def generate_handover_package(
     # Sheet 6: Limitations
     ws_lim = wb.create_sheet("Limitations")
     ws_lim.append(["Mã", "Hạng mục giới hạn", "Nội dung chi tiết & Bằng chứng thực tế"])
-    limitations_list = [
-        ("LIM-01", "Quyền Role Runtime & Khả năng gỡ Trigger", "Backend kết nối DB bằng role 'postgres' (Superuser & Table Owner). Trong PostgreSQL, REVOKE không ảnh hưởng tới Owner/Superuser. Trigger trg_audit_logs_immutable và trg_audit_logs_truncate hiện đang kích hoạt (tgenabled='O'), nhưng tiến trình có quyền superuser có thể vô hiệu hóa bằng lệnh ALTER TABLE audit_logs DISABLE TRIGGER ALL hoặc cấu hình session_replication_role='replica'. Đề xuất: tạo role runtime riêng chỉ có quyền INSERT và SELECT."),
-        ("LIM-02", "Sự kiện bảo trì (Maintenance Event)", "Vào lúc 20:42:35 UTC+7 (13:42:35 UTC) ngày 12/11/2026: Người thực hiện là coding agent theo yêu cầu của chủ dự án đã gỡ trigger nội bộ để xóa 120 dòng test phát sinh từ bài test live 1B (resource_type='pb42_1b_test'). Không có dòng audit thật nào bị sửa hay đánh lại chain_seq. Dòng mới tiếp theo bắt đầu từ chain_seq=1 với GENESIS_PREV_HASH (chuỗi 64 ký tự '0')."),
-        ("LIM-03", "Bản chất dữ liệu Telemetry (real_queries_count = 0)", "Toàn bộ 54 dòng số liệu trong hồ sơ này đều là dữ liệu từ 1 đợt benchmark nhân tạo duy nhất (is_benchmark = True) chạy ngày 10/11/2026. Chưa có dữ liệu phát sinh từ người dùng thật. Bảng copilot_query_telemetry từng bị drop khi chạy downgrade migration 1A, làm mất lượt chạy sơ khởi (max 85.652 ms)."),
-        ("LIM-04", "Dòng ngoại lai 2.041.687 ms do máy Sleep", "Query 72893ab7-5d7b-4996-84ea-a8d65af25915 có latency 33.7 phút do máy tính rơi vào Modern Standby/Sleep (17:03:37 - 17:36:27 UTC+7, Kernel-Power Event 506). Dòng này được lưu nguyên vẹn trong baseline và gắn cờ trong bảng copilot_telemetry_outliers."),
-        ("LIM-05", "RAG LLM chỉ 1/15 lượt thành công (Timeout)", "Ollama chạy trên 100% CPU dẫn đến tốc độ decode chỉ đạt ~2.0 tok/s. Khi câu trả lời vượt quá 120-140 tokens, thời gian suy luận vượt ngưỡng timeout 60.0s của httpx client. 13/14 lượt bị degraded fallback do timeout. Phần thời gian dôi dư trên 60s (lên tới 76.8s) là do cộng dồn thời gian của các chặng Non-LLM chạy trước đó."),
-        ("LIM-06", "Chuỗi Audit chưa có Anchor ngoài DB", "Chuỗi hash bảo vệ tính toàn vẹn và ngăn chặn sửa/xóa chèn giữa chuỗi, nhưng không phát hiện được hành vi superuser cắt đuôi toàn bộ chuỗi nếu người nhận không lưu trữ Head Hash ở kênh độc lập bên ngoài (email xác thực, văn bản ký biên bản)."),
-    ]
+    limitations_list = PB42_KNOWN_LIMITATIONS
     for lim in limitations_list:
         ws_lim.append([lim[0], escape_excel_formula(lim[1]), escape_excel_formula(lim[2])])
 
@@ -882,13 +976,19 @@ async def generate_handover_package(
         zf.writestr("manifest.json", manifest_bytes)
 
     zip_bytes = zip_buffer.getvalue()
+    zip_sha256 = hashlib.sha256(zip_bytes).hexdigest()
+    manifest_data["zip_sha256"] = zip_sha256
 
     # Lưu bản copy trên ổ đĩa để kiểm tra và đối chiếu
-    export_dir = Path("app/data/handover_exports")
-    export_dir.mkdir(parents=True, exist_ok=True)
+    export_dir = get_handover_export_dir()
     zip_disk_path = export_dir / zip_filename
     with open(zip_disk_path, "wb") as f:
         f.write(zip_bytes)
+
+    # Lưu manifest theo export_id để truy xuất độc lập
+    manifest_disk_path = export_dir / f"manifest_{manifest_data['export_id']}.json"
+    with open(manifest_disk_path, "w", encoding="utf-8") as f:
+        json.dump(manifest_data, f, indent=2, ensure_ascii=False)
 
     # Ghi audit log sự kiện xuất hồ sơ bàn giao (ghi rõ các SHA-256)
     excel_hash = manifest_data["files"]["dossier_excel"]["sha256"]
@@ -900,7 +1000,7 @@ async def generate_handover_package(
         resource_type="handover_package",
         resource_id=manifest_data["export_id"],
         status="OK",
-        detail=f"Handover export package generated. XLSX_SHA256={excel_hash[:16]}..., PDF_SHA256={pdf_hash[:16]}...",
+        detail=f"Handover export package generated. ZIP_SHA256={zip_sha256[:16]}..., XLSX_SHA256={excel_hash[:16]}..., PDF_SHA256={pdf_hash[:16]}...",
     )
 
     return zip_bytes, zip_filename, manifest_data

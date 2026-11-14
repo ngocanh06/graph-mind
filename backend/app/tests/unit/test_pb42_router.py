@@ -14,6 +14,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import ASGITransport, AsyncClient
+from fastapi import HTTPException
 import openpyxl
 
 from app.main import app
@@ -211,5 +212,142 @@ async def test_pb42_handover_export_endpoint():
                 assert res.headers["content-type"] == "application/zip"
                 assert "GraphMind_Handover_Package_test.zip" in res.headers["content-disposition"]
                 assert res.headers["x-handover-export-id"] == "exp-12345"
+                assert "x-handover-zip-sha256" in res.headers
     finally:
         app.dependency_overrides.pop(get_admin_user, None)
+
+
+@pytest.mark.asyncio
+async def test_pb42_slo_thresholds_in_summary():
+    """Kiểm tra trường root slo_thresholds_ms [1200, 2800] trong response summary."""
+    from app.modules.m6_admin_security.pb42_service import SLO_THRESHOLDS_MS
+
+    app.dependency_overrides[get_admin_user] = lambda: MockAdmin()
+    mock_db = AsyncMock()
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            with patch("app.api.v1.pb42.get_telemetry_summary_data", new=AsyncMock(return_value={
+                "empty": False,
+                "scope": "test_scope",
+                "definition": "test_def",
+                "slo_thresholds_ms": SLO_THRESHOLDS_MS,
+                "total_queries": 53,
+                "real_queries_count": 0,
+                "benchmark_queries_count": 53,
+                "by_answer_path": [],
+            })):
+                res = await client.get("/api/v1/pb42/telemetry/summary")
+                assert res.status_code == 200
+                data = res.json()
+                assert "slo_thresholds_ms" in data
+                assert data["slo_thresholds_ms"] == [1200, 2800]
+                assert data["slo_thresholds_ms"] == SLO_THRESHOLDS_MS
+    finally:
+        app.dependency_overrides.pop(get_admin_user, None)
+
+
+@pytest.mark.asyncio
+async def test_pb42_limitations_endpoint():
+    """Kiểm tra endpoint GET /api/v1/pb42/limitations."""
+    from app.modules.m6_admin_security.pb42_service import PB42_KNOWN_LIMITATIONS
+
+    # 1. Unauthenticated -> 401/403
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res_no_auth = await client.get("/api/v1/pb42/limitations")
+        assert res_no_auth.status_code in (401, 403)
+
+    # 2. Authenticated Admin -> 200 + đầy đủ LIM-01 đến LIM-06
+    app.dependency_overrides[get_admin_user] = lambda: MockAdmin()
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.get("/api/v1/pb42/limitations")
+            assert res.status_code == 200, res.text
+            items = res.json()
+            assert len(items) == len(PB42_KNOWN_LIMITATIONS)
+            lim_ids = [item["id"] for item in items]
+            assert "LIM-01" in lim_ids
+            assert "LIM-06" in lim_ids
+            # Kiểm tra nội dung nguyên văn
+            for item, orig in zip(items, PB42_KNOWN_LIMITATIONS):
+                assert item["id"] == orig[0]
+                assert item["title"] == orig[1]
+                assert item["description"] == orig[2]
+    finally:
+        app.dependency_overrides.pop(get_admin_user, None)
+
+
+class MockStandardUser:
+    user_id = "00000000-0000-0000-0000-000000000002"
+    email = "standard_user@graphmind.local"
+    role = "standard"
+    is_superuser = False
+
+
+@pytest.mark.asyncio
+async def test_pb42_handover_manifest_endpoint():
+    """Kiểm tra GET /api/v1/pb42/handover-manifest/{export_id}."""
+    test_id = "00000000-0000-0000-0000-000000000123"
+    mock_manifest = {
+        "export_id": test_id,
+        "git_commit": "abc1234",
+        "files": {
+            "dossier_excel": {"filename": "test.xlsx", "sha256": "1111"},
+            "dossier_pdf": {"filename": "test.pdf", "sha256": "2222"},
+        }
+    }
+
+    # 1. Unauthenticated -> 401/403
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res_no_auth = await client.get(f"/api/v1/pb42/handover-manifest/{test_id}")
+        assert res_no_auth.status_code in (401, 403)
+
+    # 2. Authenticated Non-Admin (Standard User) -> 403
+    def mock_forbidden():
+        raise HTTPException(status_code=403, detail="Chỉ Quản trị viên hệ thống (IT Admin) mới có quyền truy cập.")
+
+    app.dependency_overrides[get_admin_user] = mock_forbidden
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res_standard = await client.get(f"/api/v1/pb42/handover-manifest/{test_id}")
+        assert res_standard.status_code == 403
+        res_lim_std = await client.get("/api/v1/pb42/limitations")
+        assert res_lim_std.status_code == 403
+
+    # 3. Authenticated Admin + Valid UUID export_id -> 200
+    app.dependency_overrides[get_admin_user] = lambda: MockAdmin()
+    try:
+        with patch("app.api.v1.pb42.get_handover_manifest_by_id", side_effect=lambda eid: mock_manifest if eid == test_id else None):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                res_ok = await client.get(f"/api/v1/pb42/handover-manifest/{test_id}")
+                assert res_ok.status_code == 200, res_ok.text
+                data = res_ok.json()
+                assert data["export_id"] == test_id
+                assert "files" in data
+                assert data["files"]["dossier_excel"]["sha256"] == "1111"
+
+                # 4. Valid UUID nhưng không có dữ liệu -> 404
+                res_404_uuid = await client.get("/api/v1/pb42/handover-manifest/00000000-0000-0000-0000-000000000999")
+                assert res_404_uuid.status_code == 404
+
+                # 5. Các chuỗi Directory Traversal & Không phải UUID -> 404/422 ngay lập tức, không đụng filesystem
+                for attack_str in ["../x", "..%2F", "/etc/passwd", "\\windows\\system32", "not-a-uuid", "1234"]:
+                    res_attack = await client.get(f"/api/v1/pb42/handover-manifest/{attack_str}")
+                    assert res_attack.status_code in (404, 422, 307)
+    finally:
+        app.dependency_overrides.pop(get_admin_user, None)
+
+
+def test_get_handover_manifest_by_id_path_traversal_protection():
+    """Kiểm tra get_handover_manifest_by_id từ chối tất cả chuỗi traversal và non-UUID."""
+    from app.modules.m6_admin_security.pb42_service import get_handover_manifest_by_id
+
+    assert get_handover_manifest_by_id("../x") is None
+    assert get_handover_manifest_by_id("..\\x") is None
+    assert get_handover_manifest_by_id("/etc/passwd") is None
+    assert get_handover_manifest_by_id("C:\\Windows\\System32") is None
+    assert get_handover_manifest_by_id("not-a-uuid") is None
+    assert get_handover_manifest_by_id("") is None
+    assert get_handover_manifest_by_id(None) is None

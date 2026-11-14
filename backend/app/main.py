@@ -235,7 +235,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Error-Code"],
+    expose_headers=[
+        "X-Error-Code",
+        "X-Handover-Export-ID",
+        "X-Handover-Zip-SHA256",
+    ],
 )
 
 # Authentication routers (/api/v1/auth and /api/auth)

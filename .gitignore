@@ -83,3 +83,5 @@ backend/app/modules/m1_data_sync/data/google_oauth_config.json
 
 backend/app/data/
 
+app/data/
+

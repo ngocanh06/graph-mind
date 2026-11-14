@@ -7,10 +7,11 @@ Endpoints:
 - POST /api/v1/pb42/handover-export: Xuất gói hồ sơ bàn giao (.zip chứa .xlsx, .pdf, manifest.json)
 """
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+import hashlib
+import uuid
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Response
-from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
@@ -23,6 +24,8 @@ from app.modules.m6_admin_security.pb42_service import (
     get_latency_histogram_data,
     generate_handover_package,
     compute_prechain_aggregate_hash,
+    get_pb42_limitations,
+    get_handover_manifest_by_id,
 )
 
 router = APIRouter(prefix="/pb42", tags=["PB42 Handover & Telemetry"])
@@ -98,9 +101,16 @@ async def get_audit_integrity_endpoint(
                 detail=f"Kích thước đoạn kiểm tra ({chunk_size}) vượt quá giới hạn tối đa ({MAX_VERIFY_CHUNK_SIZE})",
             )
 
-    is_valid, checked_count, broken_at_seq, pre_chain_count = await verify_audit_chain(
-        db, from_seq=from_seq, to_seq=to_seq
-    )
+    verify_res = await verify_audit_chain(db, from_seq=from_seq, to_seq=to_seq)
+    if isinstance(verify_res, dict):
+        is_valid = verify_res.get("valid", False)
+        checked_count = verify_res.get("checked_count", 0)
+        broken_at_seq = verify_res.get("first_broken_seq")
+        pre_chain_count = verify_res.get("pre_chain_count", 0)
+        reason = verify_res.get("reason")
+    else:
+        is_valid, checked_count, broken_at_seq, pre_chain_count = verify_res
+        reason = (f"Chain verification failed at seq {broken_at_seq}" if broken_at_seq is not None else "Chain verification failed") if not is_valid else None
 
     # Lấy thông tin head
     head_res = await db.execute(
@@ -121,6 +131,7 @@ async def get_audit_integrity_endpoint(
         "is_valid": is_valid,
         "checked_count": checked_count,
         "broken_at_seq": broken_at_seq,
+        "reason": reason,
         "pre_chain_count": pre_chain_count,
         "head_chain_seq": head_seq,
         "head_entry_sha256": head_hash,
@@ -128,6 +139,17 @@ async def get_audit_integrity_endpoint(
         "scope_note": "Phạm vi hash là phương án (b) 10 trường ORM; 293 dòng pre_chain không có hash chuỗi.",
         "external_anchor_requirement": "Cần neo giữ Head Hash ở hệ thống lưu trữ bên ngoài để ngăn chặn tấn công cắt đuôi chuỗi.",
     }
+
+
+@router.get("/limitations")
+async def get_limitations_endpoint(
+    admin_user: Any = Depends(get_admin_user),
+) -> List[Dict[str, str]]:
+    """
+    Trả danh sách nguyên văn các giới hạn kỹ thuật đã biết của hệ thống (Chỉ IT Admin).
+    Dùng chung một nguồn hằng số duy nhất với file xuất bàn giao (Excel/PDF/Manifest).
+    """
+    return get_pb42_limitations()
 
 
 @router.post("/handover-export")
@@ -138,13 +160,44 @@ async def export_handover_package_endpoint(
     """
     Xuất trọn gói hồ sơ bàn giao hệ thống (.zip chứa .xlsx, .pdf, manifest.json).
     Chỉ dành riêng cho Quản trị viên (Admin).
+    Bổ sung header X-Handover-Zip-SHA256 để frontend/người dùng đối chiếu toàn vẹn gói.
     """
     zip_bytes, zip_filename, manifest_data = await generate_handover_package(db, admin_user)
+    zip_sha256 = manifest_data.get("zip_sha256") or hashlib.sha256(zip_bytes).hexdigest()
     return Response(
         content=zip_bytes,
         media_type="application/zip",
         headers={
             "Content-Disposition": f"attachment; filename={zip_filename}",
             "X-Handover-Export-ID": manifest_data["export_id"],
+            "X-Handover-Zip-SHA256": zip_sha256,
         },
     )
+
+
+@router.get("/handover-manifest/{export_id}")
+async def get_handover_manifest_endpoint(
+    export_id: str,
+    admin_user: Any = Depends(get_admin_user),
+) -> Dict[str, Any]:
+    """
+    Lấy thông tin JSON Manifest của gói bàn giao theo export_id (Chỉ IT Admin).
+    Xác thực export_id phải là UUID hợp lệ trước khi chạm hệ thống tệp.
+    """
+    # 1. Xác thực export_id phải là UUID hợp lệ, chặn đứng Directory Traversal
+    try:
+        parsed_uuid = uuid.UUID(str(export_id).strip())
+        canonical_export_id = str(parsed_uuid)
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Mã export_id không hợp lệ: {export_id}",
+        )
+
+    manifest = get_handover_manifest_by_id(canonical_export_id)
+    if not manifest:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Không tìm thấy manifest cho export_id: {canonical_export_id}",
+        )
+    return manifest
