@@ -455,6 +455,27 @@ export async function fetchDocumentDetail(docId, currentUser = null, department 
   return null;
 }
 
+export async function fetchDocumentRawBlob(filename, department = "legal", currentUser = null) {
+  const sp = new URLSearchParams();
+  if (filename) sp.set("filename", filename);
+  if (department) sp.set("department", department);
+
+  let res = await fetch(`${API_BASE}/documents/raw?${sp.toString()}`, {
+    headers: getAuthHeaders(currentUser),
+  });
+  if (!res.ok) {
+    // Fallback to /documents/download
+    res = await fetch(`${API_BASE}/documents/download?${sp.toString()}`, {
+      headers: getAuthHeaders(currentUser),
+    });
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Không thể nạp nội dung tệp gốc.");
+  }
+  return await res.blob();
+}
+
 export async function downloadDocumentFile(filename, department = "legal", currentUser = null) {
   const sp = new URLSearchParams();
   if (filename) sp.set("filename", filename);

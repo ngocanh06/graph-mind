@@ -1,0 +1,654 @@
+
+==================== SME Manager (Table 4) ====================
+
+[US01] As a SME Manager
+I want to: Log in to the GraphMind system with secure authentication
+So that: I can access the platform and am granted permissions strictly according to my role
+Acceptance Criteria:
+• The system authenticates login using JWT (JSON Web Token).
+• Access to functions and data is controlled by RBAC according to the assigned role (SME Manager, Standard User, Admin or Research Team).
+• OAuth 2.0 is supported for user authentication flows and for delegating optional access to the Google Drive/Sheets API.
+• Invalid credentials are rejected with a clear error message and no session is created.
+Module: Module 6 — System Admin & Security · Sprint: Sprint 1
+Backlog: PB01 · Jira: C1SE18-6, C1SE18-7, C1SE18-8, C1SE18-11
+------------------------------------------------------------
+
+[US02] As a SME Manager
+I want to: Ask natural-language questions through the Chat UI of the Web Dashboard in a multi-turn conversation
+So that: I quickly receive a synthesized answer without manually querying each separate system
+Acceptance Criteria:
+• The Chat UI supports multi-turn natural-language conversations over the enterprise's CRM/ERP (AdventureWorks) and contract (CUAD) data.
+• The Hybrid Query Engine analyzes the question to identify relevant business entities (Customer, Product, Contract, etc.) before performing graph traversal on Neo4j and vector search on Qdrant.
+• The fused retrieval context is passed to the fine-tuned Qwen2.5-7B-Instruct model (LoRA/PEFT via Unsloth) to generate the answer.
+• Every returned answer includes explicit source citations.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprints 2–3
+Backlog: PB51, PB27 · Jira: C1SE18-21 → C1SE18-24 (Sprint 2 frontend); C1SE18-45 → C1SE18-47, C1SE18-49 (Sprint 3 engine)
+------------------------------------------------------------
+
+[US03] As a SME Manager
+I want to: Ask a direct single-entity lookup question (single-hop), e.g. order information or a specific contract clause
+So that: I obtain accurate, individual information without manual searching
+Acceptance Criteria:
+• The system answers single-hop questions accurately based on AdventureWorks (CRM/ERP) or CUAD (contracts) data.
+• Answer Correctness for the single-hop group is measured on the 100–200-question benchmark.
+Module: Module 5 · Module 3 (Enterprise Multi-facet Search · Hybrid AI Copilot & Search) · Sprint: Sprint 3
+Backlog: PB22 · Jira: C1SE18-45 → C1SE18-47, C1SE18-49
+------------------------------------------------------------
+
+[US04] As a SME Manager
+I want to: Ask a question requiring the linking of two directly related entities (2-hop), e.g. "Which vendor supplies the best-selling product for customer X?"
+So that: I make decisions based on relationships between business entities without manual cross-checking
+Acceptance Criteria:
+• The system performs graph traversal on Neo4j across two linked relationships within the same data source (e.g. Customer → Order → Product, Product → Vendor, or Contract → Clause).
+• 2-hop answers are evaluated using Answer Correctness and Retrieval/Citation Precision.
+Module: Module 5 · Module 3 (Enterprise Multi-facet Search · Hybrid AI Copilot & Search) · Sprint: Sprint 3
+Backlog: PB23 · Jira: C1SE18-45 → C1SE18-47, C1SE18-49
+------------------------------------------------------------
+
+[US05] As a SME Manager
+I want to: Ask a cross-source governance question, e.g. "Which customers have a contract containing an Uncapped Liability clause and also a decline in purchase volume in the most recent quarter?"
+So that: I can detect legal/business risk spanning both CRM/ERP and contract data without missing information
+Acceptance Criteria:
+• Hybrid GraphRAG combines graph traversal on Neo4j over the Customer–Order–Contract link (created by controlled synthetic linking) with vector search on Qdrant over contract-clause content.
+• Results from both retrieval channels are fused before being passed to the fine-tuned Qwen2.5-7B-Instruct model.
+• The answer cites both the CRM/ERP data and the relevant contract clause.
+• Cross-source questions are evaluated using the five indicators: Answer Correctness, Retrieval/Citation Precision, Hallucination Rate, AI Response Time and Fine-tuning Effectiveness.
+Module: Module 5 · Module 3 (Enterprise Multi-facet Search · Hybrid AI Copilot & Search) · Sprint: Sprint 3
+Backlog: PB26 · Jira: C1SE18-45 → C1SE18-47, C1SE18-49
+------------------------------------------------------------
+
+[US06] As a SME Manager
+I want to: View the specific source citation in the Source and Citation Viewer for every system-generated answer
+So that: I can verify the reliability of the answer and avoid the risk of unsubstantiated information (hallucination)
+Acceptance Criteria:
+• The Source and Citation Viewer displays an explicit citation to the specific CRM/ERP table (SalesOrderHeader, Customer, Product, etc.) and/or contract clause (ClauseType, ContractID), together with the column name and value used.
+• Clicking a citation opens the underlying data row or the original contract passage.
+• The rate of accurate citations is manually verified according to the Retrieval/Citation Precision indicator.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 3
+Backlog: PB29 · Jira ID pending
+------------------------------------------------------------
+
+[US07] As a SME Manager
+I want to: View and browse the knowledge graph (Knowledge Graph Viewer) showing business entities and relationships
+So that: I can visualize the relationships among customers, orders, products, vendors and contracts to support decision-making
+Acceptance Criteria:
+• The Knowledge Graph Viewer displays entity types per the schema mapping: Customer, Product, Order, Employee, Vendor, Contract, Clause.
+• Graph data is queried directly from the Neo4j graph database.
+• Users can browse Customer → Order → Product and Customer → Contract relationships (via controlled synthetic linking).
+• For a given question, the viewer can display the nodes and edges directly relevant to it as supporting evidence.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 2
+Backlog: PB15 · Jira: C1SE18-21 → C1SE18-24
+------------------------------------------------------------
+
+[US08] As a SME Manager
+I want to: Have the AEGIS Local Agent (File Watcher) automatically monitor my local data folder and perform incremental synchronization to the system
+So that: New or changed data is updated into the platform without me having to upload it manually each time
+Acceptance Criteria:
+• The AEGIS Local Agent detects changes in the watched local folders and performs incremental synchronization to the Backend Cloud.
+• All communication between the AEGIS Local Agent and the Backend Cloud is encrypted via HTTPS/TLS.
+• Sensitive original contract data may be kept on the SME's internal infrastructure; only the necessary metadata/embedding is synchronized to the Cloud.
+Module: Module 1 — Data Source & Sync Management · Sprint: Sprint 3
+Backlog: PB05 · Jira: C1SE18-48
+------------------------------------------------------------
+
+[US10] As a SME Manager
+I want to: Be assured that my sensitive contract data is protected when synchronized to the Cloud
+So that: I can use the platform with confidence, without fear of leaking sensitive business/legal information
+Acceptance Criteria:
+• View/edit permissions for sensitive data (contract clauses) are restricted according to the user's RBAC role.
+• All query history and administrative actions are recorded in the Audit Log for traceability.
+• All communication between the AEGIS Local Agent and the Backend Cloud is encrypted via HTTPS/TLS.
+Module: Module 6 — System Admin & Security · Sprint: Sprint 3
+Backlog: PB04 · Jira ID pending
+------------------------------------------------------------
+
+[US11] As a SME Manager
+I want to: Know the accuracy and reliability of AI answers through accompanying evaluation indicators
+So that: I can trust the answer when making an important decision
+Acceptance Criteria:
+• Answer reliability is reported through Answer Correctness, Retrieval/Citation Precision and Hallucination Rate from the benchmark evaluation; Hallucination Rate is determined by fact-checking answers against the source data.
+• AI Response Time (latency) is measured automatically for every query.
+• A summary of these indicators is viewable on the Web Dashboard.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB31 · Jira ID pending
+------------------------------------------------------------
+
+[US12] As a SME Manager
+I want to: Access the GraphMind platform via a browser-based Web Dashboard
+So that: I can use the full Chat UI, Source and Citation Viewer and Knowledge Graph Viewer functionality without installing complex software
+Acceptance Criteria:
+• The Web Dashboard is built with React/Next.js and communicates with the Backend via REST API (FastAPI).
+• The interface includes at least three views: Chat UI, Source and Citation Viewer and Knowledge Graph Viewer.
+• The Web Dashboard is completed and integrated with the backend in Sprint 4.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB30 · Jira ID pending
+------------------------------------------------------------
+
+[US31] As a SME Manager
+I want to: Register an account, reset a forgotten password and verify my identity with a one-time password (OTP)
+So that: I can obtain and recover secure access to the platform
+Acceptance Criteria:
+• A new user can register an account; registration data is validated before the account is created.
+• A user who has forgotten the password can reset it through a verification flow.
+• The system supports OTP (one-time password) verification as part of authentication.
+• Invalid or expired OTPs are rejected with a clear error message.
+Module: Module 6 — System Admin & Security · Sprint: Sprint 1
+Backlog: PB43 · Jira: C1SE18-9 (Register & Forgot Password API), C1SE18-10 (OTP Authentication API)
+------------------------------------------------------------
+
+[US32] As a SME Manager
+I want to: See a Home & Dashboard page after logging in
+So that: I can reach the main functions of the platform and see key information at a glance
+Acceptance Criteria:
+• After a successful login the SME Manager lands on the Home & Dashboard page.
+• The page provides navigation to the functions permitted for the user's RBAC role (e.g. AI Copilot, Enterprise Search, Knowledge Graph Viewer, alerts).
+• The page loads correctly in a supported desktop web browser.
+Module: Module 4 — Decision Support & Alerts · Sprint: Sprint 1
+Backlog: PB44 · Jira: C1SE18-12 → C1SE18-15
+------------------------------------------------------------
+
+[US33] As a SME Manager
+I want to: View an Executive Decision Dashboard with visual charts of aggregated business data
+So that: I can track core business indicators without manual compilation
+Acceptance Criteria:
+• The dashboard shows revenue over time and top high-value customers (from AdventureWorks data).
+• The dashboard shows contract-type distribution and clause-compliance rate (from CUAD data).
+• Chart data is retrieved from the platform's knowledge base and updates after new data is synchronized.
+Module: Module 4 — Decision Support & Alerts · Sprint: Sprint 4
+Backlog: PB57 · Jira ID pending
+------------------------------------------------------------
+
+[US34] As a SME Manager
+I want to: Use a Smart Risk & Alert Center that lists contracts nearing expiration and shifts in customer behavior
+So that: I can identify legal and business risks proactively without waiting for a manual report
+Acceptance Criteria:
+• The Alert Center lists contracts expiring within the next 15–30 days.
+• The Alert Center raises alerts for VIP customers whose order frequency is declining.
+• Alerts are shown only within the SME Manager's granted permissions.
+Module: Module 4 — Decision Support & Alerts · Sprint: Sprint 4
+Backlog: PB58 · Jira ID pending
+------------------------------------------------------------
+
+[US35] As a SME Manager
+I want to: Generate an Executive Briefing with one click [Optional / Stretch]
+So that: The weekly/monthly business, receivables and contract status is summarized automatically into a report file
+Acceptance Criteria:
+• A one-click action makes the AI summarize the week's/month's business, receivables and contract status.
+• The summary can be exported as a PDF or Word file.
+• This story is not part of any committed Sprint (see Section 1.5).
+Module: Module 4 — Decision Support & Alerts · Sprint: Optional / Stretch (no committed Sprint)
+Backlog: PB65 · Jira ID pending
+------------------------------------------------------------
+
+[US36] As a SME Manager
+I want to: Search across Customers, Products, Contracts and documents from a unified search bar with multi-facet filters
+So that: I can find any business entity quickly in one place
+Acceptance Criteria:
+• A single keyword search covers Customers, Products, Contracts and documents simultaneously.
+• Multi-facet filters are available for responsible department, creation date, transaction value and document validity status.
+• Search results are limited to the data the user is permitted to access.
+Module: Module 5 — Enterprise Multi-facet Search · Sprint: Sprint 3
+Backlog: PB52 · Jira: C1SE18-45 → C1SE18-47 (Frontend Query Interface, Backend Hybrid Query Engine API)
+------------------------------------------------------------
+
+[US37] As a SME Manager
+I want to: Manage my chat sessions and pin important Q&A sessions as shared team documents
+So that: valuable answers can be reviewed later and shared with the team
+Acceptance Criteria:
+• The chat history of each user is stored and can be reopened.
+• An important Q&A session can be pinned as a shared team document.
+• Shared sessions respect the RBAC/Data Scope of the users who open them.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB59 · Jira ID pending
+------------------------------------------------------------
+
+[US38] As a SME Manager
+I want to: Author internal process guides and policies (SOP) in a built-in text editor on the Web
+So that: staff can follow up-to-date internal procedures stored in the internal knowledge base
+Acceptance Criteria:
+• A built-in text editor lets the user create, edit and publish an SOP/policy document directly on the Web.
+• Saved documents appear in the SOP & Internal Knowledge Base.
+• Editing rights are governed by RBAC.
+Module: Module 2 — Knowledge Management & Editor · Sprint: Sprint 3
+Backlog: PB53 · Jira: C1SE18-50, C1SE18-51
+------------------------------------------------------------
+
+==================== Standard User (Table 5) ====================
+
+[US19] As a Standard User
+I want to: Ask natural-language questions within my authorized Data Scope
+So that: I quickly receive an answer correct to the scope of my own work data without manually looking it up myself
+Acceptance Criteria:
+• The Hybrid Query Engine only queries data within the Department/Data Scope granted to the Standard User by RBAC.
+• The returned answer includes an explicit source citation within the permitted data scope.
+• A Standard User cannot query another department's data unless authorized.
+• The Chat UI supports multi-turn conversations.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprints 2–3
+Backlog: PB51, PB27 · Jira: C1SE18-21 → C1SE18-24 (Sprint 2 frontend); C1SE18-45 → C1SE18-47, C1SE18-49 (Sprint 3 engine)
+------------------------------------------------------------
+
+[US20] As a Standard User
+I want to: Search enterprise information from a unified search bar using filters in Enterprise Multi-facet Search
+So that: I can quickly narrow search results to match my exact work needs
+Acceptance Criteria:
+• Enterprise Multi-facet Search supports keyword search and filtering by entity type (Customer, Product, Order, Contract, etc.) and by responsible department, creation date, transaction value and document validity status within the granted Data Scope.
+• Search results display only data within the Standard User's Department/Data Scope.
+Module: Module 5 — Enterprise Multi-facet Search · Sprint: Sprint 3
+Backlog: PB52 · Jira: C1SE18-45 → C1SE18-47 (Frontend Query Interface, Backend Hybrid Query Engine API)
+------------------------------------------------------------
+
+[US21] As a Standard User
+I want to: View the source citation in the Source and Citation Viewer for every answer within my permitted data scope
+So that: I can verify the reliability of an answer before using it
+Acceptance Criteria:
+• The Source and Citation Viewer displays an explicit citation to the specific data table/contract clause within the granted scope of authority.
+• A Standard User cannot view citations to data outside their Data Scope.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 3
+Backlog: PB29 · Jira ID pending
+------------------------------------------------------------
+
+[US22] As a Standard User
+I want to: View the Knowledge Graph Viewer within my granted permission scope
+So that: I understand the relationships among entities relevant to my own work
+Acceptance Criteria:
+• The Knowledge Graph Viewer displays only entities/relationships within the Data Scope granted to the Standard User by RBAC.
+• Graph data is queried directly from the Neo4j graph database according to the assigned permissions.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 2
+Backlog: PB15 · Jira: C1SE18-21 → C1SE18-24
+------------------------------------------------------------
+
+[US23] As a Standard User
+I want to: Receive permitted alerts/notifications from the Smart Risk & Alert Center
+So that: I am promptly aware of alerts relevant to my own scope of work
+Acceptance Criteria:
+• A Standard User receives only alerts related to their granted Department/Data Scope.
+• A Standard User does not receive alerts belonging to another department's sensitive data scope.
+• All alerts are logged for the audit trail.
+Module: Module 4 — Decision Support & Alerts · Sprint: Sprint 4
+Backlog: PB40 · Jira ID pending
+------------------------------------------------------------
+
+[US39] As a Standard User
+I want to: See a Home & Dashboard page after logging in
+So that: I can reach the functions I am permitted to use and see key information at a glance
+Acceptance Criteria:
+• After a successful login the Standard User lands on the Home & Dashboard page.
+• The page provides navigation only to the functions permitted by the user's RBAC role, Department Scope and Data Scope.
+Module: Module 4 — Decision Support & Alerts · Sprint: Sprint 1
+Backlog: PB44 · Jira: C1SE18-12 → C1SE18-15
+------------------------------------------------------------
+
+==================== Admin (Table 6) ====================
+
+[US09] As a Admin
+I want to: Optionally connect and synchronize data from the Google Drive API / Google Sheets API [Optional / Stretch]
+So that: I can extend the system's data sources beyond internal local data
+Acceptance Criteria:
+• The Admin can configure and authenticate Google Drive/Google Sheets accounts via the OAuth 2.0 standard.
+• Data from the connected source is synchronized into the platform.
+• This story is optional and is not part of any committed Sprint (see Section 1.5).
+Module: Module 1 — Data Source & Sync Management · Sprint: Optional / Stretch (no committed Sprint)
+Backlog: PB06 · Jira ID pending
+------------------------------------------------------------
+
+[US13] As a Admin
+I want to: Manage user accounts, departments and role-based access permissions
+So that: each user can access only the functions and data appropriate to their role
+Acceptance Criteria:
+• The Admin Panel supports creating/editing/deleting user accounts and assigning roles under RBAC.
+• Users are organized by department; Department Scope and Data Scope can be configured so that each role may query only its permitted knowledge (e.g. Sales staff may query only Orders/Customers).
+• User authentication is based on JWT and OAuth 2.0.
+• Every permission-assignment action performed by the Admin is recorded in the Audit Log.
+Module: Module 6 — System Admin & Security · Sprint: Sprint 2
+Backlog: PB02 · Jira: C1SE18-26 → C1SE18-28, C1SE18-31
+------------------------------------------------------------
+
+[US14] As a Admin
+I want to: Monitor and manage system data, including the Knowledge Graph (Neo4j) and Vector Database (Qdrant)
+So that: enterprise knowledge data remains consistent and accurately updated
+Acceptance Criteria:
+• The Admin Panel displays the data status in Neo4j (graph DB) and Qdrant (vector DB).
+• Schema conflicts between the two data sources are flagged, based on the unified schema-mapping design (Customer, Product, Order, Employee, Vendor, Contract, Clause).
+Module: Module 6 — System Admin & Security · Sprint: Sprint 2
+Backlog: PB13 · Jira ID pending
+------------------------------------------------------------
+
+[US17] As a Admin
+I want to: Manage security configuration and monitor access logs of the system
+So that: data remains secure when synchronizing from the Local Agent to the Backend Cloud
+Acceptance Criteria:
+• All communication between the AEGIS Local Agent and the Backend Cloud is encrypted via HTTPS/TLS.
+• The Admin can view the Audit Log recording query history and administrative actions.
+• JWT, OAuth 2.0 and RBAC configuration is managed centrally in the Admin Panel.
+Module: Module 6 — System Admin & Security · Sprint: Sprint 2
+Backlog: PB03 · Jira: C1SE18-26 → C1SE18-28, C1SE18-31
+------------------------------------------------------------
+
+[US18] As a Admin
+I want to: Perform CRUD operations on the core databases, including the Knowledge Graph (Neo4j) and Vector Database (Qdrant), from the Admin Panel
+So that: the system always has accurate, diverse and up-to-date data
+Acceptance Criteria:
+• The Admin can create, read, update and delete (CRUD) entities in the Knowledge Graph (Customer, Product, Order, Employee, Vendor, Contract, Clause) per the designed schema mapping.
+• The Admin can create, update and delete embeddings in Qdrant corresponding to new or changed contract text/clauses.
+• Every data change is recorded in the Audit Log for traceability.
+Module: Module 6 — System Admin & Security · Sprint: Sprint 2
+Backlog: PB14 · Jira ID pending
+------------------------------------------------------------
+
+[US29] As a Admin
+I want to: Directly edit Knowledge Graph content and related documentation through the Knowledge Editor (human-in-the-loop)
+So that: entities, relationships and source documents can be corrected or enriched when AI extraction is inaccurate, without re-running the full ETL/NER pipeline
+Acceptance Criteria:
+• The Knowledge Editor shows AI-extracted entities (Customer, Product, Contract) and relationships and supports create/update/delete operations on graph nodes, relationships and linked source documents, subject to RBAC.
+• Every edit made through the Knowledge Editor is recorded in the Audit Log.
+Module: Module 2 — Knowledge Management & Editor · Sprint: Sprint 3
+Backlog: PB41 · Jira: C1SE18-50, C1SE18-51
+------------------------------------------------------------
+
+[US30] As a Admin
+I want to: View an Admin Analytics Dashboard summarizing system usage, RBAC activity and AI operation statistics
+So that: I can monitor platform health, user activity and AI usage before project handover
+Acceptance Criteria:
+• The dashboard displays user/account statistics, RBAC change history and Audit Log summaries.
+• The dashboard displays AI operation statistics (query volume, average AI Response Time).
+• Dashboard data can be exported to support the End-to-End Test and the project handover package.
+Module: Module 6 · Module 4 (System Admin & Security · Decision Support & Alerts) · Sprint: Sprint 4
+Backlog: PB42 · Jira: C1SE18-64 → C1SE18-67
+------------------------------------------------------------
+
+[US40] As a Admin
+I want to: Browse ingested documents and data in the Knowledge Base (Document & Data Explorer) with file preview
+So that: I can verify what has been ingested into the platform
+Acceptance Criteria:
+• The Knowledge Base lists ingested documents (contract PDFs, order/customer data files).
+• Selecting a document opens a file preview.
+• Visibility of documents is restricted according to RBAC.
+Module: Module 2 — Knowledge Management & Editor · Sprint: Sprint 2
+Backlog: PB50 · Jira: C1SE18-18 → C1SE18-20
+------------------------------------------------------------
+
+[US41] As a Admin
+I want to: Manage AEGIS Local Agents through the AEGIS Local Agent Panel
+So that: I can monitor and control local data synchronization across workstations
+Acceptance Criteria:
+• The panel lists the workstations with an AEGIS Local Agent installed and shows Online/Offline status.
+• The Admin can configure the watched folders and the synchronization mode (real-time or periodic) and trigger an incremental sync.
+• The panel shows synchronization status and audit information (files ingested, records extracted, error messages) stored in PostgreSQL.
+Module: Module 1 — Data Source & Sync Management · Sprint: Sprint 4
+Backlog: PB56 · Jira: C1SE18-60 → C1SE18-62
+------------------------------------------------------------
+
+[US42] As a Admin
+I want to: Have edits made in the Knowledge Editor integrated with the AI Copilot (Graph Editor & AI Copilot Integration)
+So that: the AI Copilot answers with corrected knowledge
+Acceptance Criteria:
+• Edits to graph nodes and relationships are reflected consistently in Neo4j and in the corresponding Qdrant embeddings.
+• Subsequent AI Copilot answers use the updated knowledge.
+• Every integrated edit is recorded in the Audit Log.
+Module: Module 2 · Module 3 (Knowledge Management & Editor · Hybrid AI Copilot & Search) · Sprint: Sprint 3
+Backlog: PB54 · Jira: C1SE18-52
+------------------------------------------------------------
+
+[US43] As a Admin
+I want to: Have a defined database architecture for the platform
+So that: user accounts, RBAC policies, system metadata and synchronization audit logs are stored reliably alongside the graph and vector stores
+Acceptance Criteria:
+• PostgreSQL stores user accounts, RBAC policies, system metadata and synchronization audit logs.
+• The architecture documents how PostgreSQL, Neo4j and Qdrant work together.
+Module: Module 6 — System Admin & Security · Sprint: Sprint 1
+Backlog: PB45 · Jira: C1SE18-17
+------------------------------------------------------------
+
+[US44] As a Admin
+I want to: View an LLMOps & Cost Dashboard [Optional / Stretch]
+So that: I can follow fine-tuning runs, checkpoints and inference latency in one place
+Acceptance Criteria:
+• The dashboard tracks fine-tuning training runs, GPU usage and training time (Kaggle GPU sessions), model checkpoints (Hugging Face Hub) and inference latency.
+• This story is not part of any committed Sprint (see Section 1.5).
+Module: Module 6 — System Admin & Security · Sprint: Optional / Stretch (no committed Sprint)
+Backlog: PB66 · Jira ID pending
+------------------------------------------------------------
+
+==================== Research Team (Table 7) ====================
+
+[US15] As a Research Team
+I want to: Track the language-model fine-tuning process and manage training checkpoints
+So that: the Qwen2.5-7B-Instruct model can be fine-tuned via LoRA/PEFT with Unsloth across multiple sessions despite GPU resource limits
+Acceptance Criteria:
+• Track LoRA/PEFT fine-tuning progress on a Kaggle Notebook (NVIDIA T4 GPU, ~30 GPU-hours/week limit).
+• Training checkpoints are saved periodically (each epoch/N steps) to a Kaggle Dataset/Hugging Face Hub so that fine-tuning can continue across sessions.
+• Fine-tuning Effectiveness is evaluated separately in US55.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 2
+Backlog: PB18 · Jira ID pending
+------------------------------------------------------------
+
+[US16] As a Research Team
+I want to: View the experimental comparison report across the three query baselines (Vector RAG, Pure GraphRAG, Hybrid GraphRAG)
+So that: there is quantitative data to evaluate the effectiveness of Hybrid GraphRAG against the other methods
+Acceptance Criteria:
+• The report displays results across five indicators: Answer Correctness, Retrieval/Citation Precision, Hallucination Rate, AI Response Time and Fine-tuning Effectiveness.
+• All three baselines (Vector RAG on Qdrant, Pure GraphRAG on Neo4j, Hybrid GraphRAG) are evaluated on the same 100–200-question benchmark (single-hop/2-hop/cross-source).
+• The report includes a qualitative analysis for each level of question complexity and empirical conclusions on Hybrid GraphRAG.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB36 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US24] As a Research Team
+I want to: Perform ETL and data ingestion from the CRM/ERP (AdventureWorks) and contract (CUAD) data sources
+So that: raw data is standardized and ready for subsequent AI processing steps
+Acceptance Criteria:
+• The ETL pipeline performs preprocessing/normalization (Python/Pandas) of input data from AdventureWorks (structured CRM/ERP data) and CUAD (510 commercial contracts labeled under 41 clause types).
+• Text extracted from CUAD contracts is manually verified on a random sample to confirm extraction quality.
+• Data is chunked into an appropriate structure before Entity/Relation Extraction.
+• Invalid data errors/formatting issues are logged for review.
+Module: Module 1 — Data Source & Sync Management · Sprint: Sprint 1
+Backlog: PB07, PB46 · Jira: C1SE18-29 (Data Ingestion Pipeline)
+------------------------------------------------------------
+
+[US25] As a Research Team
+I want to: Perform Entity Extraction, Relation Extraction and Entity Resolution on standardized data
+So that: business entities and relationships (Customer, Product, Order, Employee, Vendor, Contract, Clause) are accurately identified for the Knowledge Graph
+Acceptance Criteria:
+• Entity Extraction identifies entity types per the designed schema mapping; the CUAD expert annotations (41 clause types) serve as reference labels.
+• Relation Extraction identifies relationships between entities (e.g. Customer → Order → Product → Vendor).
+• Entity Resolution removes duplicate entities before Knowledge Graph construction.
+• NER/RE and Entity Resolution quality is evaluated on a validation sample in Sprint 2.
+Module: Module 2 — Knowledge Management & Editor · Sprint: Sprint 2
+Backlog: PB08, PB09, PB10, PB19 · Jira ID pending
+------------------------------------------------------------
+
+[US26] As a Research Team
+I want to: Generate embeddings and index data into the Qdrant vector database
+So that: vector search can efficiently retrieve text/contract-clause content
+Acceptance Criteria:
+• Embeddings are generated for each text chunk/contract clause after the chunking step.
+• Embedding data is indexed into Qdrant corresponding to the original text.
+• Embedding updates/deletions are synchronized when source data changes.
+Module: Module 2 — Knowledge Management & Editor · Sprint: Sprint 2
+Backlog: PB12 · Jira ID pending
+------------------------------------------------------------
+
+[US27] As a Research Team
+I want to: Build the Knowledge Graph in Neo4j from extracted entities and relationships
+So that: the system has a single, consistent knowledge graph to support graph traversal and GraphRAG
+Acceptance Criteria:
+• Knowledge Graph construction writes entities/relationships into Neo4j per the schema mapping (Customer, Product, Order, Employee, Vendor, Contract, Clause).
+• Customer–Contract relationships are loaded from the controlled synthetic linking lookup table.
+• The graph is updated incrementally as new data arrives from ETL/data ingestion.
+Module: Module 2 — Knowledge Management & Editor · Sprint: Sprint 2
+Backlog: PB11 · Jira ID pending
+------------------------------------------------------------
+
+[US28] As a Research Team
+I want to: Implement Hybrid Retrieval and explainable answer generation combining graph traversal (Neo4j) and vector search (Qdrant)
+So that: the answer draws on both data channels and can be verified by users
+Acceptance Criteria:
+• Question-intent analysis identifies the relevant business entities and routes the query.
+• Text-to-Cypher generates valid Cypher queries for graph retrieval on Neo4j; vector search on Qdrant returns semantically relevant contract text; both are tested with sample questions across the three complexity levels (single-hop, 2-hop, cross-source).
+• Graph and vector results are fused (Context Fusion), ranked by relevance and passed to the fine-tuned Qwen2.5-7B-Instruct model to generate the answer.
+• Multi-hop and cross-source retrieval is supported.
+• Each answer is accompanied by supporting evidence (the relevant graph nodes/edges and retrieved passages) and source citations; the system does not expose the model's internal chain-of-thought.
+• Query routing and retrieval are tuned and defects found in testing are fixed in Sprint 4.
+Module: Module 5 · Module 3 (Enterprise Multi-facet Search · Hybrid AI Copilot & Search) · Sprint: Sprints 3–4
+Backlog: PB20, PB21, PB24, PB25, PB28, PB37 · Jira: C1SE18-45 → C1SE18-47, C1SE18-49
+------------------------------------------------------------
+
+[US45] As a Research Team
+I want to: Build a controlled synthetic linking process between the AdventureWorks and CUAD datasets
+So that: cross-source questions can be built and evaluated transparently and reproducibly
+Acceptance Criteria:
+• Each AdventureWorks Customer is assigned to 1–3 CUAD contracts using documented business-logic rules and fixed random seeds.
+• The mapping is stored in a standalone lookup table, separate from the original data; the original AdventureWorks and CUAD data remain unaltered.
+• Source code, random seeds and assignment rules are published with the project.
+• The linking is used only for cross-source Q&A generation and benchmark evaluation.
+Module: Module 1 — Data Source & Sync Management · Sprint: Sprint 1
+Backlog: PB47 · Jira ID pending
+------------------------------------------------------------
+
+[US46] As a Research Team
+I want to: Build a Q&A dataset (2,000–3,000 pairs) from AdventureWorks and CUAD
+So that: quality training data is available for fine-tuning the language model
+Acceptance Criteria:
+• The dataset contains 2,000–3,000 question-answer pairs generated semi-automatically (schema templates and prompt engineering) from real AdventureWorks and CUAD content after controlled synthetic linking.
+• Pairs cover three groups: single-hop, 2-hop and cross-source.
+• The dataset is split 80/10/10 (train/validation/test) with an even distribution across the three groups in every subset.
+• A random sample is manually checked for errors and mislabels.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 1
+Backlog: PB16 · Jira ID pending
+------------------------------------------------------------
+
+[US47] As a Research Team
+I want to: Set up the Kaggle environment and fine-tune Qwen2.5-7B-Instruct with LoRA/PEFT via Unsloth
+So that: an open-source model adapted to the SME domain is available without depending on third-party LLM APIs
+Acceptance Criteria:
+• Fine-tuning runs on a Kaggle Notebook (NVIDIA T4) using Hugging Face Transformers, PEFT/LoRA and Unsloth on the training split of the Q&A dataset.
+• Planned hyperparameters: learning rate 2e-4, batch size 4 (with gradient accumulation if needed), 3 epochs, LoRA rank r = 16; the ~51 s/step speed is treated as a hardware ceiling.
+• Periodic checkpoints are saved to a Kaggle Dataset/Hugging Face Hub; initial checkpoints are delivered in Sprint 2.
+• The LoRA adapter/weights are exported for self-hosted inference. This is fine-tuning of an existing open-weight model, not training from scratch.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 2
+Backlog: PB17 · Jira ID pending
+------------------------------------------------------------
+
+[US48] As a Research Team
+I want to: Provide a Document Ingestion API for feeding documents into the system
+So that: contract PDFs and order/customer data files can be pushed into the ingestion pipeline
+Acceptance Criteria:
+• The API accepts documents and passes them to the data ingestion pipeline.
+• Ingestion results and errors are logged.
+Module: Module 1 — Data Source & Sync Management · Sprint: Sprint 2
+Backlog: PB48 · Jira: C1SE18-38
+------------------------------------------------------------
+
+[US49] As a Research Team
+I want to: Provide a File Watcher API for file synchronization and tracking
+So that: the AEGIS Local Agent can be built on a stable foundation
+Acceptance Criteria:
+• The API tracks file changes (create/modify/delete) in watched folders and exposes them for incremental synchronization.
+Module: Module 1 — Data Source & Sync Management · Sprint: Sprint 2
+Backlog: PB49 · Jira: C1SE18-30
+------------------------------------------------------------
+
+[US50] As a Research Team
+I want to: Deploy the fine-tuned Qwen2.5-7B-Instruct as a self-hosted inference service integrated into the FastAPI backend
+So that: answers are generated on infrastructure controlled by the SME
+Acceptance Criteria:
+• The fine-tuned model (merged or separate LoRA adapter) is served as a self-hosted inference service (on-premise/private cloud).
+• The Backend (FastAPI) calls this service for answer generation, without third-party LLM API calls.
+• Inference latency can be measured per query.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 3
+Backlog: PB55 · Jira ID pending
+------------------------------------------------------------
+
+[US51] As a Research Team
+I want to: Build a benchmark of 100–200 governance questions across three complexity levels
+So that: there is an objective basis for evaluating the system
+Acceptance Criteria:
+• Questions are built from real AdventureWorks and CUAD data after controlled synthetic linking, with reference answers and sources.
+• The distribution across single-hop/2-hop/cross-source is about 40–60 / 30–60 / 30–80 questions.
+• Questions are cross-reviewed among team members.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB32 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US52] As a Research Team
+I want to: Build three baselines: Vector RAG, Pure GraphRAG and Hybrid GraphRAG
+So that: there is a fair, quantitative comparison of Hybrid GraphRAG against the other two methods
+Acceptance Criteria:
+• Vector RAG uses only vector search on Qdrant; Pure GraphRAG uses only graph traversal on Neo4j; Hybrid GraphRAG combines both and fuses the results before the LLM.
+• All three baselines share the same data infrastructure and the same benchmark.
+• Each baseline can be run and tested independently.
+Module: Module 5 · Module 3 (Enterprise Multi-facet Search · Hybrid AI Copilot & Search) · Sprint: Sprint 4
+Backlog: PB33 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US53] As a Research Team
+I want to: Measure Answer Correctness using ground truth, LLM-as-Judge and human verification
+So that: there is an objective indicator that reduces bias when assessing answer quality
+Acceptance Criteria:
+• Answers are scored by LLM-as-Judge against the reference (ground-truth) answers.
+• The research team manually verifies a representative sample to calibrate the LLM-as-Judge results.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB34 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US54] As a Research Team
+I want to: Measure Retrieval/Citation Precision, Hallucination Rate and AI Response Time across the three baselines
+So that: there is a comprehensive set of indicators for comparing the proposed system against the baselines
+Acceptance Criteria:
+• Retrieval/Citation Precision is verified manually (citations are accurate and directly related to the answer).
+• Hallucination Rate is determined by fact-checking answers against the original data.
+• AI Response Time is measured automatically from receiving a question to returning a complete answer.
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB35 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US55] As a Research Team
+I want to: Measure Fine-tuning Effectiveness
+So that: the improvement brought by LoRA/PEFT fine-tuning is quantified
+Acceptance Criteria:
+• Answer Correctness of the base (non-fine-tuned) Qwen2.5-7B-Instruct is compared with the fine-tuned model on the same benchmark questions.
+• The improvement is reported per question level (single-hop, 2-hop, cross-source).
+Module: Module 3 — Hybrid AI Copilot & Search · Sprint: Sprint 4
+Backlog: PB60 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US56] As a Research Team
+I want to: Finalize the Technical Report
+So that: the methodology, benchmark and evaluation results are documented for the evaluation board
+Acceptance Criteria:
+• The report presents the methodology, benchmark, evaluation results of the three baselines on the five indicators and empirical conclusions with qualitative analysis per complexity level.
+• The report is completed within Sprint 4.
+Module: All modules (Module 1 – Module 6), project-wide · Sprint: Sprint 4
+Backlog: PB38 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US57] As a Research Team
+I want to: Prepare the AI Usage Disclosure Statement
+So that: the use of AI in the project is disclosed transparently
+Acceptance Criteria:
+• The statement discloses the AI tools used in the project, including the AI-assisted independent reviewer assessment in the Proposal.
+• The statement is published together with the project.
+Module: All modules (Module 1 – Module 6), project-wide · Sprint: Sprint 4
+Backlog: PB61 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US58] As a Research Team
+I want to: Complete the team Reflection and 360-degree Peer Evaluation
+So that: lessons learned are captured and each member's contribution is evaluated
+Acceptance Criteria:
+• A peer evaluation is completed for all five team members.
+• The team reflection records lessons learned for future work.
+Module: All modules (Module 1 – Module 6), project-wide · Sprint: Sprint 4
+Backlog: PB39 · Jira ID pending (to be created at Sprint 4 Planning, C1SE18-68)
+------------------------------------------------------------
+
+[US59] As a Research Team
+I want to: Integrate the frontend and backend, run the End-to-End Test, fix defects and close the project
+So that: the MVP is delivered stable and documented
+Acceptance Criteria:
+• The frontend and backend are integrated and the hybrid deployment (AEGIS Local Agent connected to the Backend Cloud) works end to end.
+• The End-to-End Test is executed; a Test Report and Bug Report are produced and defects are fixed.
+• The final documentation package, source code, demo, project closing and retrospective are completed.
+Module: All modules (Module 1 – Module 6), project-wide · Sprint: Sprint 4
+Backlog: PB62, PB63, PB64 · Jira: C1SE18-68 → C1SE18-73
+------------------------------------------------------------
