@@ -372,7 +372,7 @@ export default function App() {
           onMarkAllNotifRead={markAllNotifRead}
         />
 
-        <main ref={workspaceRef} className="workspace" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", background: "var(--bg-app)" }}>
+        <main ref={workspaceRef} className="workspace" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", background: "radial-gradient(1200px 500px at 50% 0px, rgba(6, 182, 212, 0.035) 0%, rgba(255, 255, 255, 0) 100%), var(--bg-app)" }}>
           {view === "home" && (
             <HomeView
               onNavigate={handleNavigate}

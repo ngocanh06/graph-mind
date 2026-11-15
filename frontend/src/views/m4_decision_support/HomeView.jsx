@@ -206,14 +206,14 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
         <div
           style={{
             background: "var(--surface, #ffffff)",
-            border: "1px solid var(--border, #e2e8f0)",
-            borderRadius: "14px",
-            padding: "20px 24px",
+            border: "1px solid var(--border, #e8edf3)",
+            borderRadius: "16px",
+            padding: "24px 28px",
             marginBottom: "24px",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+            boxShadow: "0 8px 30px -4px rgba(8, 145, 178, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02)",
           }}
         >
-          <div style={{ marginBottom: "14px" }}>
+          <div style={{ marginBottom: "16px" }}>
             <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-1, #0f172a)", margin: "0 0 4px 0", fontFamily: "var(--f-display)" }}>
               {isVi ? `Bàn làm việc Kinh doanh — ${userName}` : `Sales Operations Workspace — ${userName}`}
             </h2>
@@ -230,14 +230,15 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
               display: "flex",
               alignItems: "center",
               gap: 12,
-              background: "var(--surface-2, #f8fafc)",
-              border: "1px solid var(--border, #e2e8f0)",
-              borderRadius: "10px",
-              padding: "8px 14px",
+              background: "#ffffff",
+              border: "1.5px solid #d9e3ed",
+              borderRadius: "12px",
+              padding: "10px 16px",
               boxSizing: "border-box",
+              boxShadow: "0 2px 6px -1px rgba(0, 0, 0, 0.02)",
             }}
           >
-            <i className="fa-solid fa-magnifying-glass" style={{ color: "var(--cyan, #0891b2)", fontSize: 15 }} />
+            <i className="fa-solid fa-magnifying-glass" style={{ color: "var(--cyan, #0891b2)", fontSize: 16 }} />
             <input
               type="text"
               value={omnibarQuery}
@@ -266,15 +267,16 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "8px 16px",
-                borderRadius: "8px",
+                padding: "9px 18px",
+                borderRadius: "9px",
                 fontSize: "12.5px",
                 fontWeight: 600,
                 cursor: "pointer",
                 flexShrink: 0,
-                background: "var(--cyan, #0891b2)",
+                background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
                 color: "#ffffff",
                 border: "none",
+                boxShadow: "0 3px 12px rgba(8, 145, 178, 0.28)",
               }}
             >
               <i className="fa-solid fa-arrow-right" style={{ fontSize: 12 }} />
@@ -283,7 +285,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
           </div>
 
           {/* Quick prompt chips */}
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "12px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "14px" }}>
             <span style={{ fontSize: "11.5px", color: "var(--text-3, #64748b)", fontWeight: 600 }}>
               {isVi ? "Gợi ý 1-chạm:" : "Quick Prompts:"}
             </span>
@@ -297,23 +299,24 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 6,
-                    padding: "4px 11px",
+                    padding: "5px 13px",
                     borderRadius: "999px",
                     background: "var(--surface, #ffffff)",
-                    border: "1px solid var(--border, #e2e8f0)",
+                    border: "1px solid var(--border, #e8edf3)",
                     color: "var(--text-2, #334155)",
                     fontSize: "11.5px",
                     fontWeight: 500,
                     cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
                     transition: "all 0.15s ease",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--cyan, #0891b2)";
+                    e.currentTarget.style.borderColor = "var(--cyan-electric, #06b6d4)";
                     e.currentTarget.style.color = "var(--cyan, #0891b2)";
-                    e.currentTarget.style.background = "var(--surface-hover, #f1f5f9)";
+                    e.currentTarget.style.background = "var(--cyan-dim, #f0fdfa)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
+                    e.currentTarget.style.borderColor = "var(--border, #e8edf3)";
                     e.currentTarget.style.color = "var(--text-2, #334155)";
                     e.currentTarget.style.background = "var(--surface, #ffffff)";
                   }}
@@ -787,15 +790,15 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
       <div
         style={{
           background: "var(--surface, #ffffff)",
-          border: "1px solid var(--border, #e2e8f0)",
-          borderRadius: "14px",
-          padding: "20px 24px",
+          border: "1px solid var(--border, #e8edf3)",
+          borderRadius: "16px",
+          padding: "24px 28px",
           marginBottom: "24px",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+          boxShadow: "0 8px 30px -4px rgba(8, 145, 178, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02)",
           position: "relative",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
           <div>
             <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-1, #0f172a)", margin: "0 0 4px 0", fontFamily: "var(--f-display)" }}>
               {isVi ? `Xin chào, ${userName}` : `Welcome back, ${userName}`}
@@ -813,28 +816,29 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "7px 14px",
-                borderRadius: "8px",
+                padding: "8px 15px",
+                borderRadius: "9px",
                 fontSize: "12px",
                 fontWeight: 600,
                 background: "var(--surface, #ffffff)",
-                border: "1px solid var(--border, #e2e8f0)",
+                border: "1px solid var(--border, #e8edf3)",
                 color: "var(--text-2, #334155)",
                 cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
                 transition: "all 0.15s ease",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--surface-hover, #f1f5f9)";
-                e.currentTarget.style.borderColor = "var(--cyan, #0891b2)";
+                e.currentTarget.style.background = "var(--cyan-dim, #f0fdfa)";
+                e.currentTarget.style.borderColor = "var(--cyan-electric, #06b6d4)";
                 e.currentTarget.style.color = "var(--cyan, #0891b2)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "var(--surface, #ffffff)";
-                e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
+                e.currentTarget.style.borderColor = "var(--border, #e8edf3)";
                 e.currentTarget.style.color = "var(--text-2, #334155)";
               }}
             >
-              <i className="fa-solid fa-file-lines" style={{ fontSize: 13 }} />
+              <i className="fa-solid fa-file-lines" style={{ fontSize: 13, color: "var(--cyan, #0891b2)" }} />
               <span>{isVi ? "Tóm tắt điều hành" : "Executive Briefing"}</span>
             </button>
           )}
@@ -846,14 +850,15 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
             display: "flex",
             alignItems: "center",
             gap: 12,
-            background: "var(--surface-2, #f8fafc)",
-            border: "1px solid var(--border, #e2e8f0)",
-            borderRadius: "10px",
-            padding: "8px 14px",
+            background: "#ffffff",
+            border: "1.5px solid #d9e3ed",
+            borderRadius: "12px",
+            padding: "10px 16px",
             boxSizing: "border-box",
+            boxShadow: "0 2px 6px -1px rgba(0, 0, 0, 0.02)",
           }}
         >
-          <i className="fa-solid fa-magnifying-glass" style={{ color: "var(--cyan, #0891b2)", fontSize: 15 }} />
+          <i className="fa-solid fa-magnifying-glass" style={{ color: "var(--cyan, #0891b2)", fontSize: 16 }} />
           <input
             type="text"
             value={omnibarQuery}
@@ -882,15 +887,16 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              padding: "8px 16px",
-              borderRadius: "8px",
+              padding: "9px 18px",
+              borderRadius: "9px",
               fontSize: "12.5px",
               fontWeight: 600,
               cursor: "pointer",
               flexShrink: 0,
-              background: "var(--cyan, #0891b2)",
+              background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
               color: "#ffffff",
               border: "none",
+              boxShadow: "0 3px 12px rgba(8, 145, 178, 0.28)",
             }}
           >
             <i className="fa-solid fa-arrow-right" style={{ fontSize: 12 }} />
@@ -899,7 +905,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
         </div>
 
         {/* Quick prompt chips */}
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "12px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "14px" }}>
           <span style={{ fontSize: "11.5px", color: "var(--text-3, #64748b)", fontWeight: 600 }}>
             {isVi ? "Gợi ý 1-chạm:" : "Quick Prompts:"}
           </span>
@@ -913,23 +919,24 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: "4px 11px",
+                  padding: "5px 13px",
                   borderRadius: "999px",
                   background: "var(--surface, #ffffff)",
-                  border: "1px solid var(--border, #e2e8f0)",
+                  border: "1px solid var(--border, #e8edf3)",
                   color: "var(--text-2, #334155)",
                   fontSize: "11.5px",
                   fontWeight: 500,
                   cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
                   transition: "all 0.15s ease",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--cyan, #0891b2)";
+                  e.currentTarget.style.borderColor = "var(--cyan-electric, #06b6d4)";
                   e.currentTarget.style.color = "var(--cyan, #0891b2)";
-                  e.currentTarget.style.background = "var(--surface-hover, #f1f5f9)";
+                  e.currentTarget.style.background = "var(--cyan-dim, #f0fdfa)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--border, #e2e8f0)";
+                  e.currentTarget.style.borderColor = "var(--border, #e8edf3)";
                   e.currentTarget.style.color = "var(--text-2, #334155)";
                   e.currentTarget.style.background = "var(--surface, #ffffff)";
                 }}

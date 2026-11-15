@@ -24,9 +24,9 @@ export default function Card({
     <div
       style={{
         background: "var(--surface, #FFFFFF)",
-        border: "1px solid var(--border, #e2e8f0)",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+        border: "1px solid var(--border, #e8edf3)",
+        borderRadius: "14px",
+        boxShadow: "0 4px 18px -2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02)",
         display: "flex",
         flexDirection: "column",
         transition: hoverable ? "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)" : "none",

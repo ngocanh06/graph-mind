@@ -37,13 +37,13 @@ export default function StatCard({
       onClick={onClick}
       style={{
         background: "var(--surface, #FFFFFF)",
-        border: "1px solid var(--border, #e2e8f0)",
-        borderRadius: "12px",
-        padding: "18px 20px",
+        border: "1px solid var(--border, #e8edf3)",
+        borderRadius: "14px",
+        padding: "20px 22px",
         display: "flex",
         flexDirection: "column",
-        gap: "10px",
-        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+        gap: "12px",
+        boxShadow: "0 4px 18px -2px rgba(8, 145, 178, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02)",
         cursor: isClickable ? "pointer" : "default",
         transition: isClickable ? "all 0.18s ease" : "none",
         boxSizing: "border-box",

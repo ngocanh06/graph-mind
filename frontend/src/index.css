@@ -26,12 +26,12 @@
   --r-2xl: 12px;
 
   /* ── Shadows (Soft UI Evolution — improved, not neumorphic) */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
-  --shadow-lg: 0 10px 24px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.04);
-  --shadow-xl: 0 20px 40px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.06);
-  --shadow-focus: 0 0 0 3px rgba(8, 145, 178, 0.2);
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-sm: 0 2px 6px -1px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  --shadow-md: 0 6px 20px -3px rgba(8, 145, 178, 0.05), 0 2px 6px rgba(0,0,0,0.02);
+  --shadow-lg: 0 12px 32px -4px rgba(8, 145, 178, 0.08), 0 4px 10px rgba(0,0,0,0.03);
+  --shadow-xl: 0 20px 44px -6px rgba(8, 145, 178, 0.12), 0 6px 14px rgba(0,0,0,0.04);
+  --shadow-focus: 0 0 0 3px rgba(6, 182, 212, 0.18);
   --shadow-focus-danger: 0 0 0 3px rgba(220,38,38,0.18);
 
   /* ── Semantic Backgrounds & Surfaces Aliases ─────────── */
@@ -66,18 +66,18 @@ h1, h2, h3, h4, h5, h6 {
    Tone Xanh Ngọc Lam làm điểm nhấn thanh lịch, viền trung tính gọn gàng
    ============================================================ */
 :root, [data-theme="light"] {
-  --void: #f8fafc;
-  --base: #f8fafc;        /* Trắng sáng ngà thanh nhã, siêu sạch, không chói */
-  --base-alt: #f1f5f9;    
+  --void: #ffffff;
+  --base: #fbfdfe;        /* Trắng sáng ngà thanh nhã, quang độ cao, siêu sạch */
+  --base-alt: #f4f8fb;    
   --surface: #ffffff;     /* Trắng tinh khiết cho Card & Khung làm việc */
-  --surface-2: #f8fafc;   /* Nền phụ nhẹ nhàng */
-  --surface-3: #f1f5f9;   
-  --surface-hover: #f1f5f9;
+  --surface-2: #ffffff;   /* Ô input trắng sáng tinh khôi, không bị sụt xám */
+  --surface-3: #f1f6fa;   
+  --surface-hover: #f0fdfa;
   
-  --border: #e2e8f0;      /* Viền xám sáng trung tính, mỏng gọn, không loè loẹt */
+  --border: #e8edf3;      /* Viền sáng mỏng mịn phản chiếu ánh sáng, không xám tối */
   --border-soft: #f1f5f9; /* Viền ngăn cách cực nhẹ */
   --border-strong: #cbd5e1; /* Xám trung bình */
-  --border-focus: #0891b2;  /* Xanh ngọc lam khi focus */
+  --border-focus: #06b6d4;  /* Xanh ngọc lam rực sáng khi focus */
 
   --text-1: #0f172a;      /* Slate-900 (Đen than đậm, rõ nét, dễ đọc) */
   --text-2: #334155;      /* Slate-700 */
@@ -106,7 +106,7 @@ h1, h2, h3, h4, h5, h6 {
   --brand-glow: none;
   --brand-gradient: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
   --brand-gradient-hover: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
-  --brand-gradient-shadow: 0 2px 6px rgba(8, 145, 178, 0.2);
+  --brand-gradient-shadow: 0 3px 12px rgba(8, 145, 178, 0.25);
 
   --green: #059669;
   --green-dim: #ecfdf5;
@@ -912,6 +912,7 @@ svg {
   flex: 1;
   overflow: hidden;
   position: relative;
+  background: radial-gradient(1200px 500px at 50% 0px, rgba(6, 182, 212, 0.035) 0%, rgba(255, 255, 255, 0) 100%), var(--bg-app);
 }
 
 .view {
