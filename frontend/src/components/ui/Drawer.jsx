@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { X } from "lucide-react";
 
 /**
  * Enterprise Slide-over Drawer (UI/UX Pro Max)
@@ -121,7 +120,7 @@ export default function Drawer({
               justifyContent: "center",
             }}
           >
-            <X size={16} strokeWidth={2} />
+            <i className="fa-solid fa-xmark" style={{ fontSize: 15 }} />
           </button>
         </div>
 

@@ -67,8 +67,8 @@ export default function Tabs({
                     fontWeight: 700,
                     padding: "1px 6px",
                     borderRadius: "9999px",
-                    background: isActive ? "var(--blue-soft, rgba(37,99,235,0.08))" : "var(--border, #E2E8F0)",
-                    color: isActive ? "var(--blue, #2563EB)" : "var(--text-3, #64748B)",
+                    background: isActive ? "var(--cyan-soft, rgba(8,145,178,0.09))" : "var(--border, #E2E8F0)",
+                    color: isActive ? "var(--cyan, #0891B2)" : "var(--text-3, #64748B)",
                   }}
                 >
                   {tab.badge}
@@ -93,15 +93,17 @@ export default function Tabs({
               padding: "10px 4px",
               fontSize: "13.5px",
               fontWeight: isActive ? 700 : 500,
-              color: isActive ? "var(--blue, #2563EB)" : "var(--text-3, #64748B)",
+              color: isActive ? "var(--cyan, #0891B2)" : "var(--text-3, #64748B)",
               background: "transparent",
               border: "none",
-              borderBottom: `2px solid ${isActive ? "var(--blue, #2563EB)" : "transparent"}`,
+              borderBottom: `2px solid ${isActive ? "var(--cyan, #0891B2)" : "transparent"}`,
               marginBottom: "-1px",
               cursor: "pointer",
               whiteSpace: "nowrap",
               transition: "all 0.15s ease",
             }}
+            onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = "var(--text-1)"; }}
+            onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = "var(--text-3, #64748B)"; }}
           >
             {Icon && <Icon size={15} strokeWidth={2} />}
             <span>{tab.label}</span>
@@ -112,8 +114,8 @@ export default function Tabs({
                   fontWeight: 700,
                   padding: "1px 6px",
                   borderRadius: "9999px",
-                  background: isActive ? "var(--blue-dim, #DBEAFE)" : "var(--surface-3, #EDF2F7)",
-                  color: isActive ? "var(--blue, #2563EB)" : "var(--text-3, #64748B)",
+                  background: isActive ? "var(--cyan-dim, #CFFAFE)" : "var(--surface-3, #EDF2F7)",
+                  color: isActive ? "var(--cyan, #0891B2)" : "var(--text-3, #64748B)",
                 }}
               >
                 {tab.badge}

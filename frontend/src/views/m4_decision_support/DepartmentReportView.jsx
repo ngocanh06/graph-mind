@@ -1,11 +1,45 @@
 import React, { useState, useEffect } from "react";
-import {
-  Users, CheckCircle2, Clock, AlertTriangle, FileText,
-  Sparkles, Download, ArrowUpRight, ShieldCheck, Send,
-  RefreshCw, ChevronRight, Filter, Search, Award,
-  Building2, BookOpen, Layers, BarChart3, Bot, Check,
-  Copy, Printer, MessageSquare
-} from "lucide-react";
+// Authentic FontAwesome Icon Adapters (100% FontAwesome, Zero AI-looking SVG icons)
+const makeFa = (faClass) => ({ size = 16, className = "", style = {} }) => (
+  <i
+    className={`${faClass} ${className}`}
+    style={{
+      fontSize: size,
+      width: size,
+      height: size,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      lineHeight: 1,
+      ...style
+    }}
+  />
+);
+
+const Users = makeFa("fa-solid fa-users");
+const CheckCircle2 = makeFa("fa-solid fa-circle-check");
+const Clock = makeFa("fa-solid fa-clock");
+const AlertTriangle = makeFa("fa-solid fa-triangle-exclamation");
+const FileText = makeFa("fa-solid fa-file-lines");
+const Sparkles = makeFa("fa-solid fa-wand-magic-sparkles");
+const Download = makeFa("fa-solid fa-download");
+const ArrowUpRight = makeFa("fa-solid fa-arrow-up-right-from-square");
+const ShieldCheck = makeFa("fa-solid fa-shield-halved");
+const Send = makeFa("fa-solid fa-paper-plane");
+const RefreshCw = makeFa("fa-solid fa-arrows-rotate");
+const ChevronRight = makeFa("fa-solid fa-chevron-right");
+const Filter = makeFa("fa-solid fa-filter");
+const Search = makeFa("fa-solid fa-magnifying-glass");
+const Award = makeFa("fa-solid fa-award");
+const Building2 = makeFa("fa-solid fa-building");
+const BookOpen = makeFa("fa-solid fa-book-open");
+const Layers = makeFa("fa-solid fa-layer-group");
+const BarChart3 = makeFa("fa-solid fa-chart-column");
+const Bot = makeFa("fa-solid fa-robot");
+const Check = makeFa("fa-solid fa-check");
+const Copy = makeFa("fa-solid fa-copy");
+const Printer = makeFa("fa-solid fa-print");
+const MessageSquare = makeFa("fa-solid fa-comment-dots");
 import { Badge, Button, Modal } from "../../components/ui";
 import {
   fetchDepartmentActivityReport,
@@ -14,11 +48,11 @@ import {
 } from "../../services/api";
 
 const DEPT_OPTIONS = [
-  { id: "sales", labelVi: "Kinh Doanh & Khách Hàng", labelEn: "Sales & Accounts", badge: "SALES", color: "#2563EB" },
-  { id: "legal", labelVi: "Pháp Chế & Tuân Thủ", labelEn: "Legal & Compliance", badge: "LEGAL", color: "#7C3AED" },
-  { id: "operations", labelVi: "Vận Hành & Kho Vận", labelEn: "Operations & Supply", badge: "OPS", color: "#059669" },
-  { id: "it", labelVi: "Công Nghệ & An Toàn TT", labelEn: "IT & SecOps", badge: "IT", color: "#D97706" },
-  { id: "hr", labelVi: "Nhân Sự & Đào Tạo", labelEn: "Human Resources", badge: "HR", color: "#DC2626" },
+  { id: "sales", labelVi: "Kinh Doanh & Khách Hàng", labelEn: "Sales & Accounts", badge: "SALES", color: "#0891b2" },
+  { id: "legal", labelVi: "Pháp Chế & Tuân Thủ", labelEn: "Legal & Compliance", badge: "LEGAL", color: "#0e7490" },
+  { id: "operations", labelVi: "Vận Hành & Kho Vận", labelEn: "Operations & Supply", badge: "OPS", color: "#0d9488" },
+  { id: "it", labelVi: "Công Nghệ & An Toàn TT", labelEn: "IT & SecOps", badge: "IT", color: "#0284c7" },
+  { id: "hr", labelVi: "Nhân Sự & Đào Tạo", labelEn: "Human Resources", badge: "HR", color: "#64748b" },
 ];
 
 const STATUS_UI = {
@@ -188,7 +222,7 @@ export default function DepartmentReportView({
   const escalations = reportData?.escalations || [];
 
   return (
-    <div className="view active dept-report-container" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 24px 64px 24px" }}>
+    <div className="dept-report-container" style={{ width: "100%", boxSizing: "border-box" }}>
       {/* ── HIGH-END CSS STYLESHEET ─────────────────────────────────────────── */}
       <style>{`
         .dept-report-container {
@@ -196,33 +230,22 @@ export default function DepartmentReportView({
           margin: 0 auto;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 28px;
           font-family: var(--f-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
           color: var(--text-1);
         }
 
-        /* HERO CARD */
+        /* HERO CARD (Clean Enterprise B2B Header) */
         .dept-hero {
-          background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+          background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 16px;
-          padding: 24px 28px;
-          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+          border-radius: 10px;
+          padding: 22px 26px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
           position: relative;
-          overflow: hidden;
           display: flex;
           flex-direction: column;
-          gap: 18px;
-        }
-        .dept-hero-glow {
-          position: absolute;
-          top: -50px;
-          right: -40px;
-          width: 320px;
-          height: 320px;
-          background: radial-gradient(circle, rgba(5, 150, 105, 0.12) 0%, rgba(37, 99, 235, 0.08) 50%, transparent 70%);
-          pointer-events: none;
-          filter: blur(35px);
+          gap: 20px;
         }
 
         /* PILLS & BADGES */
@@ -230,26 +253,26 @@ export default function DepartmentReportView({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 4px 10px;
-          border-radius: 20px;
-          font-size: 11.5px;
-          font-weight: 700;
-          letter-spacing: 0.02em;
+          padding: 3px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.01em;
         }
         .dept-tag-green {
-          background: rgba(16, 185, 129, 0.1);
+          background: rgba(16, 185, 129, 0.08);
           color: #059669;
-          border: 1px solid rgba(16, 185, 129, 0.25);
+          border: 1px solid rgba(16, 185, 129, 0.2);
         }
         .dept-tag-blue {
-          background: rgba(37, 99, 235, 0.08);
-          color: #2563eb;
-          border: 1px solid rgba(37, 99, 235, 0.2);
+          background: rgba(8, 145, 178, 0.08);
+          color: #0891b2;
+          border: 1px solid rgba(8, 145, 178, 0.2);
         }
         .dept-tag-purple {
-          background: rgba(124, 58, 237, 0.08);
-          color: #7c3aed;
-          border: 1px solid rgba(124, 58, 237, 0.2);
+          background: rgba(14, 116, 144, 0.08);
+          color: #0e7490;
+          border: 1px solid rgba(14, 116, 144, 0.2);
         }
         .dept-tag-neutral {
           background: var(--surface-2);
@@ -260,25 +283,37 @@ export default function DepartmentReportView({
         /* KPI MATRIX */
         .dept-kpi-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 20px;
+        }
+        @media (max-width: 1280px) {
+          .dept-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+          }
+        }
+        @media (max-width: 640px) {
+          .dept-kpi-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+          }
         }
         .dept-kpi-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 14px;
-          padding: 18px 20px;
+          border-radius: 10px;
+          padding: 20px 22px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          gap: 12px;
-          transition: all 0.2s ease;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+          gap: 14px;
+          transition: all 0.15s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
         .dept-kpi-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-          border-color: var(--border-focus, #3b82f6);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          border-color: var(--border-focus, #0891b2);
         }
         .dept-kpi-val {
           font-size: 26px;
@@ -316,7 +351,7 @@ export default function DepartmentReportView({
           white-space: nowrap;
         }
         .dept-tab-btn.active {
-          color: #2563eb;
+          color: #0891b2;
           background: var(--surface);
           border-color: var(--border);
           box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
@@ -329,7 +364,7 @@ export default function DepartmentReportView({
           left: 0;
           right: 0;
           height: 2px;
-          background: #2563eb;
+          background: #0891b2;
         }
 
         /* DATA TABLE */
@@ -355,28 +390,31 @@ export default function DepartmentReportView({
           vertical-align: middle;
         }
         .dept-table tr:hover td {
-          background: rgba(37, 99, 235, 0.02);
+          background: rgba(8, 145, 178, 0.03);
         }
 
-        /* BUTTONS */
-        .btn-magic {
-          background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+        /* BUTTONS (Clean Enterprise Actions) */
+        .btn-action-primary {
+          background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
           color: #ffffff;
           border: none;
-          box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+          box-shadow: 0 1px 3px rgba(8, 145, 178, 0.25);
+          transition: all 0.15s ease;
         }
-        .btn-magic:hover {
-          filter: brightness(1.08);
-          transform: translateY(-1px);
+        .btn-action-primary:hover {
+          background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+          box-shadow: 0 3px 8px rgba(8, 145, 178, 0.35);
         }
         .btn-emerald {
-          background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+          background: #0d9488;
           color: #ffffff;
           border: none;
-          box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+          box-shadow: 0 1px 3px rgba(13, 148, 136, 0.25);
+          transition: all 0.15s ease;
         }
         .btn-emerald:hover {
-          filter: brightness(1.08);
+          background: #0f766e;
+          box-shadow: 0 3px 8px rgba(13, 148, 136, 0.35);
         }
 
         /* OFFICIAL MEMO DOSSIER */
@@ -395,11 +433,11 @@ export default function DepartmentReportView({
         .memo-stripe {
           position: absolute;
           top: 0; left: 0; right: 0; height: 5px;
-          background: linear-gradient(90deg, #059669 0%, #0284c7 40%, #7c3aed 80%, #f59e0b 100%);
+          background: linear-gradient(90deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%);
         }
         .memo-sign-cert {
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(37, 99, 235, 0.02) 100%);
-          border: 1.5px dashed rgba(16, 185, 129, 0.4);
+          background: linear-gradient(135deg, rgba(8, 145, 178, 0.05) 0%, rgba(6, 182, 212, 0.03) 100%);
+          border: 1.5px dashed rgba(8, 145, 178, 0.4);
           border-radius: 12px;
           padding: 18px 22px;
           display: flex;
@@ -439,71 +477,67 @@ export default function DepartmentReportView({
 
       {/* ── 1. HERO HEADER CARD ────────────────────────────────────────────── */}
       <section className="dept-hero">
-        <div className="dept-hero-glow"></div>
-
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
           <div>
-            {/* Tag strip */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
-              <span className="dept-tag dept-tag-green">
-                <ShieldCheck size={14} />
-                {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban (BR-02 / BR-04)" : "Aggregated Department Report (BR-02 / BR-04)"}
+            {/* Department Context Badge */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "3px 10px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: "600",
+                background: "rgba(16, 185, 129, 0.08)",
+                color: "#059669",
+                border: "1px solid rgba(16, 185, 129, 0.2)"
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981" }} />
+                {currentProfile.nameVi || (isVi ? "Khối Kinh Doanh & Khách Hàng" : "Commercial Operations")}
               </span>
-              <span className="dept-tag dept-tag-blue">
-                <Building2 size={14} />
-                {currentProfile.nameVi || (isVi ? "Khối Kinh Doanh & Vận Hành" : "Commercial Operations")}
-              </span>
-              <span className="dept-tag dept-tag-neutral">
-                <Users size={14} />
-                {isVi ? `Quản lý: ${currentProfile.managerName || "Trần M. Anh"}` : `Manager: ${currentProfile.managerName || "Tran M. Anh"}`}
-              </span>
-              <span className="dept-tag dept-tag-purple">
-                <Award size={14} />
-                {isVi ? "SLA Hoàn tất 100%" : "100% SLA"}
-              </span>
-              <span className="dept-tag dept-tag-green">
-                <CheckCircle2 size={14} />
-                {isVi ? "Hiệu suất: 8/8 Đạt A+ · 0 Ca tồn đọng" : "Staff Performance: 8/8 Grade A+ · 0 Backlog"}
+              <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                • {isVi ? `Quản lý: ${currentProfile.managerName || "Trần M. Anh"}` : `Manager: ${currentProfile.managerName || "Tran M. Anh"}`}
               </span>
             </div>
 
-            <h1 style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 6px 0", letterSpacing: "-0.02em" }}>
-              {isVi ? "Báo Cáo Tổng Hợp Hoạt Động & Ca Tác Nghiệp Phòng Ban" : "Aggregated Department Activity & Operations Report"}
+            <h1 style={{ fontSize: "22px", fontWeight: "700", color: "var(--text-1)", margin: "0 0 4px 0", letterSpacing: "-0.01em" }}>
+              {isVi ? "Báo Cáo Tác Nghiệp & Vận Hành Phòng Ban" : "Department Operations & Shift Activity Report"}
             </h1>
-            <p style={{ fontSize: "13.5px", color: "var(--text-3)", margin: 0, lineHeight: 1.5, maxWidth: "780px" }}>
+            <p style={{ fontSize: "13px", color: "var(--text-3)", margin: 0, lineHeight: 1.5 }}>
               {isVi
-                ? `Hệ thống giám sát và phê duyệt ca làm việc của đội ngũ chuyên viên, tổng hợp kết quả bảo vệ hợp đồng, tình hình áp dụng quy trình chuẩn SOP và kiến nghị điều hành gửi Ban Giám Đốc.`
-                : `Supervision and shift sign-off dashboard for department specialists, synthesizing protected contracts, SOP compliance, and executive escalations.`}
+                ? "Theo dõi tiến độ ca làm việc của đội ngũ chuyên viên, mức độ tuân thủ SOP và số liệu vận hành theo thời gian thực."
+                : "Real-time supervision of staff shift logs, SOP adherence, and operational performance."}
             </p>
           </div>
 
           {/* Action Cluster */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             <button
               onClick={() => onNavigate("sop")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 14px", borderRadius: "8px", border: "1px solid var(--border)",
-                background: "var(--surface)", color: "var(--text-2)", fontSize: "13px", fontWeight: "600", cursor: "pointer"
+                padding: "7px 14px", borderRadius: "6px", border: "1px solid var(--border)",
+                background: "var(--surface)", color: "var(--text-2)", fontSize: "12.5px", fontWeight: "600", cursor: "pointer"
               }}
               title={isVi ? "Mở trình biên soạn SOP phòng ban" : "Open SOP Editor"}
             >
-              <BookOpen size={15} />
+              <BookOpen size={14} />
               <span>{isVi ? "Quy Trình SOP" : "SOP Hub"}</span>
             </button>
 
             <button
               onClick={handleSynthesize}
               disabled={isSynthesizing}
-              className="btn-magic"
+              className="btn-action-primary"
               style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer"
+                padding: "7px 16px", borderRadius: "6px", fontSize: "12.5px", fontWeight: "600", cursor: "pointer"
               }}
-              title={isVi ? "AI tự động phân tích và lập báo cáo tổng hợp" : "AI auto-synthesize department activity"}
+              title={isVi ? "Tự động phân tích và lập báo cáo tổng hợp" : "Synthesize department activity"}
             >
-              <Sparkles size={15} />
-              <span>{isSynthesizing ? (isVi ? "AI Đang Tổng Hợp..." : "Synthesizing...") : (isVi ? "AI Tổng Hợp Hoạt Động" : "AI Synthesize Report")}</span>
+              <RefreshCw size={14} className={isSynthesizing ? "animate-spin" : ""} />
+              <span>{isSynthesizing ? (isVi ? "Đang tổng hợp..." : "Synthesizing...") : (isVi ? "Tổng hợp số liệu" : "Synthesize Report")}</span>
             </button>
 
             <button
@@ -511,18 +545,18 @@ export default function DepartmentReportView({
               className="btn-emerald"
               style={{
                 display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer"
+                padding: "7px 16px", borderRadius: "6px", fontSize: "12.5px", fontWeight: "600", cursor: "pointer"
               }}
               title={isVi ? "Đệ trình báo cáo lên Ban Giám Đốc" : "Escalate Report to Executive Board"}
             >
-              <Send size={15} />
-              <span>{isVi ? "Trình Ban Giám Đốc" : "Escalate to Board"}</span>
+              <Send size={14} />
+              <span>{isVi ? "Gửi duyệt Ban Giám Đốc" : "Submit for Approval"}</span>
             </button>
           </div>
         </div>
 
         {/* ── DEPARTMENT SWITCHER & TIMEFRAME FILTERS ───────────────────────── */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", borderTop: "1px solid var(--border)", paddingTop: "20px", marginTop: "6px" }}>
           {/* Department selector (unlocked for Exec/Admin, locked with scope badge for Manager) */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -539,9 +573,9 @@ export default function DepartmentReportView({
                     borderRadius: "6px",
                     fontSize: "12.5px",
                     fontWeight: "700",
-                    border: "1px solid #2563eb",
+                    border: "1px solid #0891b2",
                     background: "var(--surface)",
-                    color: "#2563eb",
+                    color: "#0891b2",
                     cursor: "pointer",
                   }}
                   title={isVi ? "Menu dropdown chọn lọc phòng ban" : "Dropdown department selector"}
@@ -578,11 +612,11 @@ export default function DepartmentReportView({
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ padding: "5px 12px", borderRadius: "6px", fontSize: "12.5px", fontWeight: "700", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", border: "1px solid rgba(37, 99, 235, 0.25)" }}>
+                <span style={{ padding: "5px 12px", borderRadius: "6px", fontSize: "12.5px", fontWeight: "700", background: "rgba(8, 145, 178, 0.1)", color: "#0891b2", border: "1px solid rgba(8, 145, 178, 0.25)" }}>
                   {currentProfile.nameVi || (isVi ? "Phòng Kinh Doanh & Khách Hàng Doanh Nghiệp" : "Corporate Sales")}
                 </span>
                 <span style={{ fontSize: "11.5px", color: "var(--text-4)", fontStyle: "italic" }}>
-                  {isVi ? "(Phạm vi cố định theo phân quyền BR-04)" : "(Scope enforced via BR-04)"}
+                  {isVi ? "(Phạm vi phân quyền theo phòng ban)" : "(Department scoped access)"}
                 </span>
               </div>
             )}
@@ -608,9 +642,10 @@ export default function DepartmentReportView({
                   fontSize: "12px",
                   fontWeight: timeframe === tf.id ? "700" : "500",
                   border: "1px solid",
-                  borderColor: timeframe === tf.id ? "#2563eb" : "var(--border)",
-                  background: timeframe === tf.id ? "#2563eb" : "var(--surface)",
+                  borderColor: timeframe === tf.id ? "#0891b2" : "var(--border)",
+                  background: timeframe === tf.id ? "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)" : "var(--surface)",
                   color: timeframe === tf.id ? "#ffffff" : "var(--text-3)",
+                  boxShadow: timeframe === tf.id ? "0 1px 3px rgba(8, 145, 178, 0.25)" : "none",
                   cursor: "pointer",
                 }}
               >
@@ -676,9 +711,9 @@ export default function DepartmentReportView({
         <div className="dept-kpi-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              {isVi ? "Quy Chế & SOP Nội Bộ (BR-04)" : "Internal SOPs & Policies"}
+              {isVi ? "Quy Chế & Quy Trình SOP" : "Internal SOPs & Policies"}
             </span>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(124, 58, 237, 0.1)", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(14, 116, 144, 0.1)", color: "#0e7490", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BookOpen size={16} />
             </div>
           </div>
@@ -690,7 +725,7 @@ export default function DepartmentReportView({
               </span>
             </div>
             <div style={{ height: 4, background: "var(--border)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
-              <div style={{ width: "80%", height: "100%", background: "linear-gradient(90deg, #7c3aed, #a855f7)" }}></div>
+              <div style={{ width: "80%", height: "100%", background: "linear-gradient(90deg, #0e7490, #0891b2)" }}></div>
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-4)", marginTop: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
               <ShieldCheck size={12} />
@@ -705,16 +740,16 @@ export default function DepartmentReportView({
             <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               {isVi ? "Doanh Số & Hợp Đồng Bảo Vệ" : "Protected Pipeline Value"}
             </span>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(8, 145, 178, 0.1)", color: "#0891b2", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BarChart3 size={16} />
             </div>
           </div>
           <div>
-            <div className="dept-kpi-val" style={{ color: "#2563eb" }}>
+            <div className="dept-kpi-val" style={{ color: "#0891b2" }}>
               {kpis.protectedPipelineFormatted || "4.1 Tỷ VND"}
             </div>
             <div style={{ height: 4, background: "var(--border)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
-              <div style={{ width: "92%", height: "100%", background: "linear-gradient(90deg, #2563eb, #60a5fa)" }}></div>
+              <div style={{ width: "92%", height: "100%", background: "linear-gradient(90deg, #0891b2, #06b6d4)" }}></div>
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-4)", marginTop: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
               <Award size={12} />
@@ -727,9 +762,9 @@ export default function DepartmentReportView({
         <div className="dept-kpi-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              {isVi ? "Trợ Lý AI Copilot Phòng Ban" : "Dept AI Copilot Utilization"}
+              {isVi ? "Hiệu Suất Hỗ Trợ Tri Thức" : "Knowledge Assistance Utilization"}
             </span>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(217, 119, 6, 0.1)", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(8, 145, 178, 0.1)", color: "#0891b2", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Bot size={16} />
             </div>
           </div>
@@ -741,10 +776,10 @@ export default function DepartmentReportView({
               </span>
             </div>
             <div style={{ height: 4, background: "var(--border)", borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
-              <div style={{ width: "95%", height: "100%", background: "linear-gradient(90deg, #d97706, #f59e0b)" }}></div>
+              <div style={{ width: "95%", height: "100%", background: "linear-gradient(90deg, #0891b2, #00e5ff)" }}></div>
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-4)", marginTop: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Sparkles size={12} />
+              <CheckCircle2 size={12} />
               <span>{isVi ? `Độ chính xác trích dẫn: ${kpis.citationPrecisionRate || 94.2}%` : `Citation Precision: ${kpis.citationPrecisionRate || 94.2}%`}</span>
             </div>
           </div>
@@ -759,7 +794,7 @@ export default function DepartmentReportView({
         >
           <Users size={15} />
           <span>{isVi ? "Báo Cáo Ca của Đội Ngũ & Phê Duyệt" : "Team Shift Submissions & Approval"}</span>
-          <span style={{ fontSize: "11px", padding: "1px 6px", borderRadius: "10px", background: "rgba(37,99,235,0.1)", color: "#2563eb" }}>
+          <span style={{ fontSize: "11px", padding: "1px 6px", borderRadius: "10px", background: "rgba(8,145,178,0.1)", color: "#0891b2" }}>
             {submissions.length}
           </span>
         </button>
@@ -794,7 +829,7 @@ export default function DepartmentReportView({
 
       {/* ── TAB 1: TEAM SHIFT SUBMISSIONS & MANAGER APPROVAL ──────────────── */}
       {activeTab === "submissions" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
             <div>
               <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 4px 0" }}>
@@ -863,7 +898,7 @@ export default function DepartmentReportView({
 
           {/* Expanded Submission Detail Preview */}
           <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px 20px" }}>
-            <div style={{ fontSize: "12px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "800", color: "#0891b2", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
               <Award size={15} />
               {isVi ? "ĐIỂM NỔI BẬT & ĐỀ XUẤT CỦA CÁC CHUYÊN VIÊN TRONG CA" : "SHIFT HIGHLIGHTS & ESCALATIONS SUMMARY"}
             </div>
@@ -891,7 +926,7 @@ export default function DepartmentReportView({
 
       {/* ── TAB 2: AGGREGATED REAL-TIME ACTIVITY STREAM ────────────────────── */}
       {activeTab === "activity" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div>
             <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 4px 0" }}>
               {isVi ? "Dòng Sự Kiện Tác Nghiệp Tổng Hợp Của Phòng Ban" : "Department Real-time Operational Stream"}
@@ -918,7 +953,7 @@ export default function DepartmentReportView({
                   boxShadow: "0 1px 4px rgba(0,0,0,0.02)"
                 }}
               >
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(37, 99, 235, 0.08)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "2px" }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(8, 145, 178, 0.08)", color: "#0891b2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "2px" }}>
                   <Clock size={16} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -941,11 +976,11 @@ export default function DepartmentReportView({
 
       {/* ── TAB 3: DEPARTMENT SOPS & INTERNAL KNOWLEDGE ───────────────────── */}
       {activeTab === "sops" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
             <div>
               <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: "0 0 4px 0" }}>
-                {isVi ? "Quy Trình Chuẩn (SOP) Phục Vụ Ca Tác Nghiệp (FR26 / BR-04)" : "Standard Operating Procedures (SOPs) & Internal Policies"}
+                {isVi ? "Quy Trình Chuẩn (SOP) Phục Vụ Ca Tác Nghiệp" : "Standard Operating Procedures (SOPs) & Internal Policies"}
               </h3>
               <p style={{ fontSize: "12.5px", color: "var(--text-3)", margin: 0 }}>
                 {isVi
@@ -981,7 +1016,7 @@ export default function DepartmentReportView({
               >
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#2563eb", background: "rgba(37,99,235,0.08)", padding: "2px 8px", borderRadius: "4px" }}>
+                    <span style={{ fontFamily: "var(--f-mono)", fontSize: "11.5px", fontWeight: "700", color: "#0891b2", background: "rgba(8,145,178,0.08)", padding: "2px 8px", borderRadius: "4px" }}>
                       {sop.code}
                     </span>
                     <span style={{ fontSize: "11px", fontWeight: "700", color: sop.status === "PUBLISHED" ? "#059669" : "#d97706", background: sop.status === "PUBLISHED" ? "rgba(16,185,129,0.1)" : "rgba(217,119,6,0.1)", padding: "2px 8px", borderRadius: "10px" }}>
@@ -1002,7 +1037,7 @@ export default function DepartmentReportView({
                   </span>
                   <button
                     onClick={() => onNavigate("sop")}
-                    style={{ fontSize: "12px", fontWeight: "700", color: "#2563eb", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    style={{ fontSize: "12px", fontWeight: "700", color: "#0891b2", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
                   >
                     <span>{isVi ? "Xem chi tiết" : "View"}</span>
                     <ArrowUpRight size={13} />
@@ -1054,7 +1089,7 @@ export default function DepartmentReportView({
 
           {/* Section 1: Executive Summary */}
           <div>
-            <div style={{ fontSize: "13.5px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+            <div style={{ fontSize: "13.5px", fontWeight: "800", color: "#0891b2", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
               <Award size={16} />
               I. {isVi ? "TỔNG QUAN HIỆU SUẤT TÁC NGHIỆP CỦA PHÒNG BAN" : "EXECUTIVE SUMMARY & OPERATIONAL PERFORMANCE"}
             </div>
@@ -1070,20 +1105,20 @@ export default function DepartmentReportView({
 
           {/* Section 2: Key Escalations to Board of Directors */}
           <div>
-            <div style={{ fontSize: "13.5px", fontWeight: "800", color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+            <div style={{ fontSize: "13.5px", fontWeight: "800", color: "#0891b2", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
               <Send size={16} />
               II. {isVi ? "CÁC ĐỀ XUẤT & KIẾN NGHỊ ĐIỀU HÀNH GỬI BAN GIÁM ĐỐC" : "MANAGERIAL ESCALATIONS TO THE EXECUTIVE BOARD"}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {escalations.map((esc, i) => (
                 <div key={esc.id || i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: esc.priority === "HIGH" ? "rgba(220, 38, 38, 0.1)" : "rgba(37, 99, 235, 0.1)", color: esc.priority === "HIGH" ? "#dc2626" : "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", shrink: 0, marginTop: "2px" }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: esc.priority === "HIGH" ? "rgba(220, 38, 38, 0.1)" : "rgba(8, 145, 178, 0.1)", color: esc.priority === "HIGH" ? "#dc2626" : "#0891b2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", shrink: 0, marginTop: "2px" }}>
                     {i + 1}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                       <span style={{ fontWeight: "700", fontSize: "13.5px", color: "var(--text-1)" }}>{esc.title}</span>
-                      <span style={{ fontSize: "10.5px", fontWeight: "700", color: esc.priority === "HIGH" ? "#dc2626" : "#2563eb", background: esc.priority === "HIGH" ? "rgba(220,38,38,0.1)" : "rgba(37,99,235,0.1)", padding: "1px 6px", borderRadius: "8px" }}>
+                      <span style={{ fontSize: "10.5px", fontWeight: "700", color: esc.priority === "HIGH" ? "#dc2626" : "#0891b2", background: esc.priority === "HIGH" ? "rgba(220,38,38,0.1)" : "rgba(8,145,178,0.1)", padding: "1px 6px", borderRadius: "8px" }}>
                         {esc.priority}
                       </span>
                       <span style={{ fontSize: "11px", color: "var(--text-4)" }}>
@@ -1227,8 +1262,8 @@ export default function DepartmentReportView({
           title={isVi ? "Đệ Trình Báo Cáo Phòng Ban Lên Ban Giám Đốc" : "Escalate Department Dossier to Executive Board"}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "6px 0" }}>
-            <div style={{ background: "rgba(37, 99, 235, 0.06)", border: "1px solid rgba(37, 99, 235, 0.2)", padding: "14px", borderRadius: "10px", fontSize: "13px", lineHeight: "1.5" }}>
-              <div style={{ fontWeight: "700", color: "#2563eb", marginBottom: "4px" }}>
+            <div style={{ background: "rgba(8, 145, 178, 0.06)", border: "1px solid rgba(8, 145, 178, 0.2)", padding: "14px", borderRadius: "10px", fontSize: "13px", lineHeight: "1.5" }}>
+              <div style={{ fontWeight: "700", color: "#0891b2", marginBottom: "4px" }}>
                 {isVi ? "Kính gửi Ban Giám Đốc (CEO & Hội Đồng Quản Trị):" : "To the Board of Directors & C-Suite:"}
               </div>
               <p style={{ margin: 0, color: "var(--text-2)" }}>

@@ -208,48 +208,105 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
     showToast(isVi ? `Đã xuất tệp Word '${filename}' thành công!` : `Exported Word document '${filename}' successfully!`);
   };
 
+  const renderScopeSwitcher = () => (
+    <div style={{
+      maxWidth: 1440,
+      margin: "0 auto 24px auto",
+      width: "100%",
+      boxSizing: "border-box",
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: "14px",
+      padding: "10px 18px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flexWrap: "wrap",
+      gap: "12px",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.03)"
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          {isVi ? "CHẾ ĐỘ BÁO CÁO:" : "REPORT VIEW:"}
+        </span>
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          padding: "3px",
+          background: "var(--surface-2)",
+          borderRadius: 8,
+          border: "1px solid var(--border)"
+        }}>
+          {(isExecRole || isAdminRole) && (
+            <button
+              onClick={() => setReportMode("executive")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 6,
+                fontSize: 12.5,
+                fontWeight: reportMode === "executive" ? 700 : 600,
+                background: reportMode === "executive" ? "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)" : "transparent",
+                color: reportMode === "executive" ? "#ffffff" : "var(--text-3)",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+                boxShadow: reportMode === "executive" ? "0 1px 3px rgba(8,145,178,0.25)" : "none"
+              }}
+            >
+              <i className="fa-solid fa-chart-line" style={{ fontSize: 12 }} />
+              <span>{isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setReportMode("department")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 14px",
+              borderRadius: 6,
+              fontSize: 12.5,
+              fontWeight: reportMode === "department" ? 700 : 600,
+              background: reportMode === "department" ? "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)" : "transparent",
+              color: reportMode === "department" ? "#ffffff" : "var(--text-3)",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              boxShadow: reportMode === "department" ? "0 1px 3px rgba(8,145,178,0.25)" : "none"
+            }}
+          >
+            <i className="fa-solid fa-building-user" style={{ fontSize: 12 }} />
+            <span>{isVi ? "Báo Cáo Cấp Phòng Ban" : "Department Report"}</span>
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 11.5, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <i className="fa-solid fa-shield-halved" style={{ color: "var(--blue)", fontSize: 12 }} />
+          <b>{isVi ? "Phạm vi thẩm quyền:" : "Access Scope:"}</b>
+          {isExecRole
+            ? (isVi ? "Cấp Ban Giám Đốc (Toàn quyền chuyển đổi phạm vi)" : "Executive Board (Global scope)")
+            : isManagerRole
+            ? (isVi ? "Trưởng phòng (Khóa phạm vi phòng ban)" : "Department Manager (Department scoped)")
+            : (isVi ? "Quản trị viên hệ thống" : "System Administrator")}
+        </span>
+      </div>
+    </div>
+  );
+
   // ----------------------------------------------------------------------
   // RENDER FOR DEPARTMENT MANAGER OR USERS INSPECTING DEPARTMENT REPORT
   // ----------------------------------------------------------------------
   if (reportMode === "department") {
     return (
-      <div className="view active" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
-        {/* Scope Mode Switcher Bar */}
-        <div style={{ maxWidth: 1440, margin: "0 auto 16px auto", width: "100%", boxSizing: "border-box" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
-            <button
-              onClick={() => setReportMode("department")}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
-                background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
-              }}
-            >
-              {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
-            </button>
-            {/* BR-04 Enforcement: Only Executive or IT Admin can switch to Strategic / Comprehensive Telemetry */}
-            {(isExecRole || isAdminRole) && (
-              <button
-                onClick={() => setReportMode("executive")}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
-                  background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
-                }}
-              >
-                {isAdminRole
-                  ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện" : "Strategic Briefing & Global Telemetry")
-                  : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing")}
-              </button>
-            )}
-            {/* Department Managers have locked department scope (BR-04) */}
-            {isManagerRole && (
-              <span style={{ fontSize: 11.5, color: "var(--text-4)", padding: "4px 10px", fontStyle: "italic" }}>
-                {isVi ? "Phạm vi: Cấp trung (BR-04 cố định)" : "Scope: Department Scope (BR-04)"}
-              </span>
-            )}
-          </div>
-        </div>
+      <div style={{ minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}>
+        {renderScopeSwitcher()}
         <DepartmentReportView
           onNavigate={onNavigate}
           t={t}
@@ -272,7 +329,7 @@ if (isSalesRole && reportMode === "shift") {
   // RENDER FOR EXECUTIVE / C-LEVEL / IT ADMIN (STRATEGIC REPORT)
   // ----------------------------------------------------------------------
   return (
-    <section className="view active text-on-surface flex flex-col gap-space-md" style={{ overflowY: "auto", maxHeight: "100%", padding: "16px 20px 48px 20px" }}>
+    <section className="text-on-surface flex flex-col gap-6" style={{ minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}>
       {/* Scoped Print Styles for Executive Briefing (FR44 PDF Export) */}
       <style>{`
         @media print {
@@ -334,30 +391,7 @@ if (isSalesRole && reportMode === "shift") {
       )}
 
       {/* Scope Mode Switcher Bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, width: "fit-content", border: "1px solid var(--border)" }}>
-        <button
-          onClick={() => setReportMode("executive")}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 700,
-            background: "#2563eb", color: "#ffffff", border: "none", cursor: "pointer"
-          }}
-        >
-          {isAdminRole
-            ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện" : "Strategic Briefing & Global Telemetry")
-            : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing")}
-        </button>
-        <button
-          onClick={() => setReportMode("department")}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "6px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 600,
-            background: "transparent", color: "var(--text-3)", border: "none", cursor: "pointer"
-          }}
-        >
-          {isVi ? "Báo Cáo Tổng Hợp Cấp Phòng Ban" : "Aggregated Department Report"}
-        </button>
-      </div>
+      {renderScopeSwitcher()}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
@@ -471,7 +505,7 @@ if (isSalesRole && reportMode === "shift") {
             className="btn sm flex items-center gap-1.5"
             title={isVi ? "Xuất báo cáo chiến lược ra file Word (.doc)" : "Export strategic briefing to Word (.doc)"}
           >
-            <Icon name="fa-solid fa-file-word" size={13} style={{ color: "#2563eb" }} />
+            <Icon name="fa-solid fa-file-word" size={13} style={{ color: "#0891b2" }} />
             <span>{isVi ? "Xuất Word" : "Export Word"}</span>
           </button>
           <button
@@ -584,7 +618,7 @@ if (isSalesRole && reportMode === "shift") {
             <h3 className="text-sm font-bold text-tertiary uppercase tracking-wider">
               4. {isVi ? "HÀNH ĐỘNG CHIẾN LƯỢC ĐỀ XUẤT CẤP C-SUITE" : "RECOMMENDED C-SUITE EXECUTIVE ACTIONS"}
             </h3>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", background: "rgba(37, 99, 235, 0.1)", padding: "2px 8px", borderRadius: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#0891b2", background: "rgba(8, 145, 178, 0.1)", padding: "2px 8px", borderRadius: 4 }}>
               {isVi ? "Thẩm quyền: Ban Giám Đốc Phê Duyệt Hạn Mức" : "Authority: Executive Board Authorization"}
             </span>
           </div>
@@ -609,7 +643,7 @@ if (isSalesRole && reportMode === "shift") {
                   borderRadius: 6,
                   fontSize: 12,
                   fontWeight: 700,
-                  background: csuiteDiscountApproved ? "rgba(16, 185, 129, 0.15)" : "#2563eb",
+                  background: csuiteDiscountApproved ? "rgba(16, 185, 129, 0.15)" : "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
                   color: csuiteDiscountApproved ? "#059669" : "#ffffff",
                   border: csuiteDiscountApproved ? "1px solid rgba(16, 185, 129, 0.3)" : "none",
                   cursor: csuiteDiscountApproved ? "default" : "pointer",
@@ -704,7 +738,7 @@ if (isSalesRole && reportMode === "shift") {
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {isVi ? "Độ Trễ Hệ Thống (P95 / P99)" : "System Latency"}
                   </div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: "#2563eb", margin: "6px 0 2px 0" }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "#0891b2", margin: "6px 0 2px 0" }}>
                     18ms <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-4)" }}>/ 42ms P99</span>
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
@@ -730,11 +764,11 @@ if (isSalesRole && reportMode === "shift") {
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {isVi ? "An Toàn Thông Tin (SecOps)" : "Information Security"}
                   </div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: "#7c3aed", margin: "6px 0 2px 0" }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "#0e7490", margin: "6px 0 2px 0" }}>
                     100%
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>
-                    {isVi ? "2FA Active · Mã hóa SHA256 · Chuẩn BR-04" : "2FA Active · SHA256 hashed · BR-04 scope"}
+                    {isVi ? "2FA Active · Mã hóa SHA256 · Kiểm soát phân tầng" : "2FA Active · SHA256 hashed · Tiered access"}
                   </div>
                 </div>
               </div>
@@ -767,9 +801,9 @@ if (isSalesRole && reportMode === "shift") {
                       borderRadius: 6,
                       fontSize: 12,
                       fontWeight: 700,
-                      background: "rgba(37, 99, 235, 0.08)",
-                      color: "#2563eb",
-                      border: "1px solid rgba(37, 99, 235, 0.25)",
+                      background: "rgba(8, 145, 178, 0.08)",
+                      color: "#0891b2",
+                      border: "1px solid rgba(8, 145, 178, 0.25)",
                       cursor: "pointer"
                     }}
                   >
@@ -794,7 +828,7 @@ if (isSalesRole && reportMode === "shift") {
                   </thead>
                   <tbody>
                     <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
-                      <td style={{ padding: "10px", fontWeight: 700, color: "#2563eb" }}>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "#0891b2" }}>
                         {isVi ? "Cấp 1: Vi mô (Micro)" : "Level 1: Micro Scope"}
                       </td>
                       <td style={{ padding: "10px" }}>
@@ -815,7 +849,7 @@ if (isSalesRole && reportMode === "shift") {
 
                     <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
                       <td style={{ padding: "10px", fontWeight: 700, color: "#059669" }}>
-                        {isVi ? "Cấp 2: Cấp trung (BR-04)" : "Level 2: Dept Scope"}
+                        {isVi ? "Cấp 2: Quản lý phòng ban" : "Level 2: Department Head"}
                       </td>
                       <td style={{ padding: "10px" }}>
                         <b>Trần M. Anh</b> (@manager)
@@ -834,7 +868,7 @@ if (isSalesRole && reportMode === "shift") {
                     </tr>
 
                     <tr>
-                      <td style={{ padding: "10px", fontWeight: 700, color: "#7c3aed" }}>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "#0e7490" }}>
                         {isVi ? "Cấp 3: Vĩ mô (Enterprise)" : "Level 3: Enterprise"}
                       </td>
                       <td style={{ padding: "10px" }}>

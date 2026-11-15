@@ -218,6 +218,13 @@ class OllamaClient:
             "mã hồ sơ", "mã tài liệu", "phòng ban nào", "ai tải lên", "khi nào", "bao nhiêu chunk",
             "bao nhiêu đoạn", "lập chỉ mục", "indexing", "metadata", "dung lượng", "hash"
         ])
+        is_doc_expiry_query = any(k in q_lower for k in [
+            "hết hạn", "sắp hết hạn", "ngày hết hạn", "thời hạn", "hiệu lực", "khi nào hết hạn",
+            "hết hiệu lực", "thời hạn hợp đồng", "kéo dài bao lâu", "tái ký", "gia hạn", "hạn hợp đồng",
+            "expiration", "expiry", "expire", "expires", "term and termination"
+        ])
+        if is_doc_expiry_query:
+            is_doc_content_query = False
 
         # Check if evidence chunks belong to central document repository (CUAD contracts / SOP / Policies)
         is_cuad_document = False

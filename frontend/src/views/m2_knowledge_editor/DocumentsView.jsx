@@ -484,7 +484,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           if (docxContainerRef.current && activeDocDetail?.chunks_list?.length > 0) {
             docxContainerRef.current.innerHTML = `
               <div style="font-family: 'Times New Roman', serif; line-height: 1.8; color: #1e293b; padding: 12px;">
-                <div style="border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 24px;">
+                <div style="border-bottom: 2px solid #0891b2; padding-bottom: 12px; margin-bottom: 24px;">
                   <h1 style="font-size: 22px; font-weight: bold; margin: 0 0 6px 0; color: #0f172a;">${activeDocDetail.name}</h1>
                   <p style="font-size: 12px; color: #64748b; margin: 0;">Chế độ đọc toàn văn dự phòng</p>
                 </div>

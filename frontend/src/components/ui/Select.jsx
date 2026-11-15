@@ -1,5 +1,4 @@
 import React from "react";
-import { ChevronDown, AlertCircle } from "lucide-react";
 
 /**
  * Enterprise Form Select (UI/UX Pro Max)
@@ -87,7 +86,7 @@ export default function Select({
             alignItems: "center",
           }}
         >
-          <ChevronDown size={15} />
+          <i className="fa-solid fa-chevron-down" style={{ fontSize: 13 }} />
         </div>
       </div>
 
@@ -104,7 +103,7 @@ export default function Select({
             fontWeight: 500,
           }}
         >
-          <AlertCircle size={13} />
+          <i className="fa-solid fa-circle-exclamation" style={{ fontSize: 13 }} />
           <span>{error}</span>
         </div>
       ) : helperText ? (

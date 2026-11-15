@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { I18N } from "./data/i18n";
 import { INITIAL_DATA } from "./data/mockData";
 import { ENTERPRISE_ROLES } from "./data/roles";
-import { fetchHealth, fetchSignals, fetchEntities, getCurrentUserApi, getValidTokenForUser } from "./services/api";
+import { fetchHealth, fetchSignals, fetchEntities, getValidTokenForUser } from "./services/api";
 
 import Topbar from "./components/Topbar";
 import NavRail from "./components/NavRail";
-import DemoBanner from "./components/DemoBanner";
 import WatcherToast from "./components/WatcherToast";
 import { useWatcherEvents } from "./hooks/useWatcherEvents";
 import LandingPage from "./components/LandingPage";
@@ -106,7 +105,7 @@ export default function App() {
       const saved = localStorage.getItem("aegis_user");
       if (saved) {
         const u = JSON.parse(saved);
-        if (u.id === "executive") return ENTERPRISE_ROLES.executive;
+        if (ENTERPRISE_ROLES[u?.id]) return ENTERPRISE_ROLES[u.id];
         return u;
       }
     } catch (e) {}
@@ -116,67 +115,9 @@ export default function App() {
   const [pageMode, setPageMode] = useState(initialRoute.mode); // "app" | "landing" | "login"
   const [isRailOpen, setIsRailOpen] = useState(true);
   const [demoStep, setDemoStep] = useState(1);
-  const [selectedEntity, setSelectedEntity] = useState("29818");
+  const [selectedEntity, setSelectedEntity] = useState(null);
   const [selectedDocId, setSelectedDocId] = useState(null);
   const [initialCopilotQuery, setInitialCopilotQuery] = useState("");
-
-  // State cảnh báo bảo mật khi bị đá phiên do đăng nhập đồng thời
-  const [kickedNotice, setKickedNotice] = useState(() => {
-    try {
-      const msg = sessionStorage.getItem("aegis_kicked_notice");
-      if (msg) {
-        sessionStorage.removeItem("aegis_kicked_notice");
-        return msg;
-      }
-    } catch (e) {}
-    return "";
-  });
-
-  // Lắng nghe sự kiện bị đá phiên (Concurrent Login Kicked)
-  useEffect(() => {
-    const handleKicked = (e) => {
-      const msg = e.detail?.message || "Tài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác. Bạn đã được tự động đăng xuất để bảo vệ dữ liệu.";
-      setKickedNotice(msg);
-      setPageMode("login");
-    };
-    window.addEventListener("graphmind:concurrent-login-kicked", handleKicked);
-    return () => window.removeEventListener("graphmind:concurrent-login-kicked", handleKicked);
-  }, []);
-
-  // Heartbeat kiểm tra phiên hoạt động định kỳ mỗi 3 giây + kiểm tra tức thì khi quay lại tab (focus / visibility)
-  useEffect(() => {
-    if (pageMode !== "app") return;
-
-    const checkSession = async () => {
-      const currentToken = localStorage.getItem("aegis_token");
-      if (!currentToken) return;
-      await getCurrentUserApi(currentToken);
-    };
-
-    // Kiểm tra ngay 1 lần sau 500ms
-    const initialTimer = setTimeout(checkSession, 500);
-
-    // Chu kỳ định kỳ mỗi 3 giây
-    const intervalId = setInterval(checkSession, 3000);
-
-    // Kiểm tra tức thì ngay khi người dùng chuyển focus hoặc active lại tab
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === "visible") {
-        checkSession();
-      }
-    };
-
-    window.addEventListener("focus", handleVisibilityOrFocus);
-    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(intervalId);
-      window.removeEventListener("focus", handleVisibilityOrFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
-    };
-  }, [pageMode]);
-
 
   const {
     events: notifEvents,
@@ -192,14 +133,21 @@ export default function App() {
     const normView = (targetView === "graph" || targetView === "knowledge") ? "knowledge" : targetView;
     if (normView === "documents" && payload) {
       setSelectedDocId(payload);
-    } else if (normView === "knowledge" && payload) {
-      setSelectedEntity(payload);
+    } else if (normView === "knowledge") {
+      setSelectedEntity(payload || null);
     } else if (normView === "copilot" && payload) {
       const queryStr = typeof payload === "string" ? payload : payload.query || "";
       setInitialCopilotQuery(queryStr);
     }
     setView(normView);
   };
+
+  const workspaceRef = useRef(null);
+  useEffect(() => {
+    if (workspaceRef.current) {
+      workspaceRef.current.scrollTop = 0;
+    }
+  }, [view]);
 
   const [entities, setEntities] = useState(INITIAL_DATA.entities);
   const [signals, setSignals] = useState(INITIAL_DATA.signals);
@@ -218,9 +166,9 @@ export default function App() {
     localStorage.setItem("aegis_lang", lang);
   }, [lang]);
 
-  // Enable smooth window scrolling for Landing Page, Login & Forgot Password
+  // Enable smooth window scrolling for Landing Page & Login
   useEffect(() => {
-    if (pageMode === "landing" || pageMode === "login" || pageMode === "forgot_password") {
+    if (pageMode === "landing" || pageMode === "login") {
       document.documentElement.style.scrollBehavior = "smooth";
       document.documentElement.style.overflow = "auto";
       document.body.style.overflow = "auto";
@@ -239,8 +187,6 @@ export default function App() {
         window.history.replaceState(null, "", window.location.pathname + "#landing");
       } else if (pageMode === "login") {
         window.history.replaceState(null, "", window.location.pathname + "#login");
-      } else if (pageMode === "forgot_password") {
-        window.history.replaceState(null, "", window.location.pathname + "#forgot-password");
       } else if (pageMode === "app") {
         localStorage.setItem("aegis_current_view", view);
         window.history.replaceState(null, "", window.location.pathname + "#" + view);
@@ -254,8 +200,6 @@ export default function App() {
       const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
       if (hash === "login") {
         setPageMode("login");
-      } else if (hash === "forgot-password" || hash === "forgot_password") {
-        setPageMode("forgot_password");
       } else if (hash === "landing") {
         setPageMode("landing");
       } else if (VALID_VIEWS.includes(hash)) {
@@ -342,10 +286,7 @@ export default function App() {
   if (pageMode === "login") {
     return (
       <LoginPage
-        kickedNotice={kickedNotice}
-        onClearKickedNotice={() => setKickedNotice("")}
         onEnterPlatform={(authenticatedUser) => {
-          setKickedNotice("");
           const user = (authenticatedUser && authenticatedUser.id)
             ? authenticatedUser
             : (ENTERPRISE_ROLES[authenticatedUser] || ENTERPRISE_ROLES.executive);
@@ -384,7 +325,7 @@ export default function App() {
 
   // 3. ENTERPRISE WORKSPACE (ROLE-AWARE)
   return (
-    <div className="app-container" style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "var(--bg-app)" }}>
+    <div className="app-container" style={{ display: "flex", flexDirection: "row", height: "100vh", width: "100vw", overflow: "hidden", background: "var(--bg-app)" }}>
       {/* Modern SaaS Watcher Toast Preview */}
       <WatcherToast
         event={toastEvent}
@@ -393,44 +334,45 @@ export default function App() {
         onNavigate={handleNavigate}
       />
 
-      <Topbar
-        view={view}
-        lang={lang}
-        theme={theme}
-        role={role}
-        currentUser={currentUser}
-        onThemeChange={setTheme}
-        onLangChange={setLang}
-        onRoleChange={handleRoleChange}
+      {/* ── 1. FULL VERTICAL SIDEBAR (100% HEIGHT) ───────────────── */}
+      <NavRail
+        currentView={view}
+        onNavigate={handleNavigate}
         onOpenLanding={() => setPageMode("landing")}
         onLogout={handleLogout}
-        onNavigate={handleNavigate}
+        isOpen={isRailOpen}
+        onToggleOpen={() => setIsRailOpen(!isRailOpen)}
         t={t}
-        apiConnected={apiConnected}
-        notifEvents={notifEvents}
-        notifUnreadCount={notifUnreadCount}
-        notifReadIds={notifReadIds}
-        onMarkNotifRead={markNotifRead}
-        onMarkAllNotifRead={markAllNotifRead}
+        lang={lang}
+        role={role}
+        currentUser={currentUser}
+        onRoleChange={handleRoleChange}
       />
 
-      {/* Main Content: Sidebar + Workspace */}
-      <div className="shell" style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, overflow: "hidden" }}>
-        <NavRail
-          currentView={view}
-          onNavigate={handleNavigate}
-          onOpenLanding={() => setPageMode("landing")}
-          onLogout={handleLogout}
-          isOpen={isRailOpen}
-          onToggleOpen={() => setIsRailOpen(!isRailOpen)}
-          t={t}
+      {/* ── 2. MAIN COLUMN: HEADER CONNECTED TO SIDEBAR + WORKSPACE ── */}
+      <div className="shell" style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, height: "100vh", overflow: "hidden", background: "var(--bg-app)" }}>
+        <Topbar
+          view={view}
           lang={lang}
+          theme={theme}
           role={role}
           currentUser={currentUser}
+          onThemeChange={setTheme}
+          onLangChange={setLang}
           onRoleChange={handleRoleChange}
+          onOpenLanding={() => setPageMode("landing")}
+          onLogout={handleLogout}
+          onNavigate={handleNavigate}
+          t={t}
+          apiConnected={apiConnected}
+          notifEvents={notifEvents}
+          notifUnreadCount={notifUnreadCount}
+          notifReadIds={notifReadIds}
+          onMarkNotifRead={markNotifRead}
+          onMarkAllNotifRead={markAllNotifRead}
         />
 
-        <main className="workspace" style={{ flex: 1, overflowY: "auto", minWidth: 0, background: "var(--bg-app)" }}>
+        <main ref={workspaceRef} className="workspace" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", background: "var(--bg-app)" }}>
           {view === "home" && (
             <HomeView
               onNavigate={handleNavigate}
@@ -483,7 +425,7 @@ export default function App() {
           )}
 
           {view === "explorer" && (
-            <div style={{ height: "100%", overflowY: "auto", padding: 20 }}>
+            <div style={{ height: "100%", overflowY: "auto" }}>
               <KnowledgeExplorerView lang={lang} />
             </div>
           )}

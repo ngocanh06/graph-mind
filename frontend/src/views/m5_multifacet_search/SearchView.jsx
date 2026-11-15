@@ -267,7 +267,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   const pendingCount = assignedTasks.filter((t) => t.status === "PENDING").length;
 
   return (
-    <div className="view active" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="view active" style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px 24px 60px", boxSizing: "border-box", width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
       {/* Toast Notification */}
       {toastMsg && (
         <div style={{
@@ -299,15 +299,15 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
         const PERSONA = {
           standard: {
             initials: currentUser?.avatar || "OP",
-            bgGradient: "linear-gradient(135deg, #2563eb, #0284c7)",
-            shadowColor: "rgba(37, 99, 235, 0.25)",
+            bgGradient: "linear-gradient(135deg, #0891b2, #0284c7)",
+            shadowColor: "rgba(8, 145, 178, 0.25)",
             title: isVi
               ? `Tác Nghiệp Khách Hàng — ${currentUser?.name || "Chuyên viên Nghiệp vụ"}`
               : `Client Operations Hub — ${currentUser?.name || "Operations Specialist"}`,
             badge: isVi ? (currentUser?.badge || "CHUYÊN VIÊN NGHIỆP VỤ") : "OPERATIONS SPECIALIST",
-            badgeColor: "#2563eb",
-            badgeBg: "rgba(37, 99, 235, 0.08)",
-            badgeBorder: "rgba(37, 99, 235, 0.2)",
+            badgeColor: "#0891b2",
+            badgeBg: "rgba(8, 145, 178, 0.08)",
+            badgeBorder: "rgba(8, 145, 178, 0.2)",
             subtitle: isVi
               ? `${currentUser?.department || "Phòng Nghiệp vụ & Vận hành"} · Ca làm việc: 08:00 - 17:30 · Phân quyền: Nghiệp vụ (Operations Tier)`
               : `${currentUser?.departmentEn || "Operations Department"} · Shift: 08:00 - 17:30 · Operations Access Tier`,
@@ -328,7 +328,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric4Label: isVi ? "Trợ lực bởi AI Copilot" : "AI Copilot Assistance",
             metric4Val: assignedTasks.length > 0 ? "89.4%" : "--",
             metric4Sub: assignedTasks.length > 0 ? (isVi ? "Tiết kiệm ~2.5 giờ làm việc/ngày" : "Saves ~2.5 hours/day") : (isVi ? "Chưa có tương tác cùng AI" : "No AI sessions logged"),
-            metric4Color: assignedTasks.length > 0 ? "#2563eb" : "var(--text-3)",
+            metric4Color: assignedTasks.length > 0 ? "#0891b2" : "var(--text-3)",
           },
           knowledge_manager: {
             initials: "TA",
@@ -351,7 +351,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric2Label: isVi ? "Giá trị phơi nhiễm giám sát" : "Monitored Value",
             metric2Val: "$4.8M USD",
             metric2Sub: isVi ? "AdventureWorks ERP & CUAD" : "AdventureWorks ERP & CUAD",
-            metric2Color: "#2563eb",
+            metric2Color: "#0891b2",
             metric3Label: isVi ? "Quy trình & Hợp đồng phụ trách" : "Department Documents",
             metric3Val: dbMetrics ? `${dbMetrics.total_documents} tài liệu` : "35 tài liệu",
             metric3Sub: isVi ? "30 hợp đồng CUAD & 5 CSDL ERP" : "30 CUAD & 5 ERP DBs",
@@ -390,7 +390,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric4Label: isVi ? "Vectơ nhúng ngữ nghĩa" : "Vector Chunks",
             metric4Val: `${(dbMetrics?.total_vectors || 9140).toLocaleString()} vectors`,
             metric4Sub: isVi ? "Qdrant Vector DB (cuad_contracts)" : "Qdrant Vector DB",
-            metric4Color: "#2563eb",
+            metric4Color: "#0891b2",
           },
           it_admin: {
             initials: "SA",
@@ -421,7 +421,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             metric4Label: isVi ? "Điểm nhúng Qdrant" : "Qdrant Vectors",
             metric4Val: `${(dbMetrics?.total_vectors ?? 0).toLocaleString()} vectors`,
             metric4Sub: isVi ? "Qdrant collection cuad_contracts" : "cuad_contracts active",
-            metric4Color: "#2563eb",
+            metric4Color: "#0891b2",
           }
         };
 
@@ -590,7 +590,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     border: "none",
                     transition: "all 0.15s ease",
                     background: activeTab === "qdrant" ? "var(--surface)" : "transparent",
-                    color: activeTab === "qdrant" ? "#7c3aed" : "var(--text-3)",
+                    color: activeTab === "qdrant" ? "#0891b2" : "var(--text-3)",
                     boxShadow: activeTab === "qdrant" ? "var(--shadow-sm)" : "none"
                   }}
                 >
@@ -725,7 +725,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       {/* 2. NỘI DUNG CHÍNH: CÁC TAB TÁC NGHIỆP, EXPLORER, GRAPH, VECTOR */}
       {/* ============================================================ */}
       {activeTab === "explorer" ? (
-        <KnowledgeExplorerView lang={lang} />
+        <KnowledgeExplorerView lang={lang} embedded={true} />
       ) : activeTab === "neo4j" ? (
         <div style={{ background: "var(--surface, #fff)", padding: 18, borderRadius: 14, border: "1.5px solid var(--border-soft, #e2e8f0)", minHeight: 650 }}>
           <GraphPanel lang={lang} onSelectNode={onSelectEntity} />
@@ -791,8 +791,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                   width: "60px",
                   height: "60px",
                   borderRadius: "50%",
-                  background: "rgba(37, 99, 235, 0.08)",
-                  color: "#2563eb",
+                  background: "rgba(8, 145, 178, 0.08)",
+                  color: "#0891b2",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -933,9 +933,9 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     fontSize: "13px",
                     color: "var(--text-1)"
                   }}>
-                    <Icon name="fa-solid fa-wand-magic-sparkles" size={15} style={{ color: "var(--cyan)", fontSize: "14px" }} />
+                    <Icon name="fa-solid fa-lightbulb" size={15} style={{ color: "var(--cyan)", fontSize: "14px" }} />
                     <span>
-                      <b style={{ color: "var(--cyan)" }}>{isVi ? "Hành động đề xuất từ AI:" : "AI Recommended Action:"}</b> {task.suggestedAction}
+                      <b style={{ color: "var(--cyan)" }}>{isVi ? "Khuyến nghị xử lý:" : "Recommended Action:"}</b> {task.suggestedAction}
                     </span>
                   </div>
 
@@ -1059,22 +1059,22 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
           }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
-                <h2 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-1)", margin: 0, letterSpacing: "-0.01em" }}>
-                  SCREEN-020 — {isVi ? "Enterprise Multi-facet Search (Tìm Kiếm Hợp Nhất Đa Chiều)" : "Enterprise Multi-facet Search"}
-                </h2>
-                <span style={{
-                  fontSize: "11px",
-                  fontWeight: "750",
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                  background: "var(--surface-3)",
-                  color: "var(--text-2)",
-                  border: "1px solid var(--border-soft)",
-                  fontFamily: "var(--f-mono)"
+                <div style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "8px",
+                  background: "var(--teal-soft, rgba(13, 148, 136, 0.1))",
+                  color: "var(--teal, #0d9488)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "13px"
                 }}>
-                  M5 Module • 4 Sections Grouping
-                </span>
+                  <i className="fa-solid fa-magnifying-glass" />
+                </div>
+                <h2 style={{ fontSize: "17px", fontWeight: "700", color: "var(--text-1)", margin: 0, letterSpacing: "-0.01em" }}>
+                  {isVi ? "Tìm kiếm Hợp nhất Đa chiều" : "Enterprise Multi-facet Search"}
+                </h2>
               </div>
               <p style={{ fontSize: "12.5px", color: "var(--text-3)", margin: "4px 0 0 0", lineHeight: "1.4" }}>
                 {isVi
@@ -1433,9 +1433,9 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", paddingTop: "2px" }}>
                 {[
                   { id: "ALL", label: isVi ? "Tất cả kết quả" : "All Results", count: displayCountAll.toLocaleString(), icon: "fa-layer-group" },
-                  { id: "CONTRACT", label: isVi ? "Hợp Đồng & CUAD" : "Contracts", count: displayCountContracts.toLocaleString(), icon: "fa-file-signature", color: "#6366f1" },
-                  { id: "CUSTOMER", label: isVi ? "Khách Hàng (CRM)" : "Customers", count: displayCountCustomers.toLocaleString(), icon: "fa-building", color: "#3b82f6" },
-                  { id: "PRODUCT", label: isVi ? "Sản Phẩm & Dịch Vụ" : "Products", count: displayCountProducts.toLocaleString(), icon: "fa-box-open", color: "#10b981" },
+                  { id: "CONTRACT", label: isVi ? "Hợp Đồng & CUAD" : "Contracts", count: displayCountContracts.toLocaleString(), icon: "fa-file-signature", color: "#0891b2" },
+                  { id: "CUSTOMER", label: isVi ? "Khách Hàng (CRM)" : "Customers", count: displayCountCustomers.toLocaleString(), icon: "fa-building", color: "#0284c7" },
+                  { id: "PRODUCT", label: isVi ? "Sản Phẩm & Dịch Vụ" : "Products", count: displayCountProducts.toLocaleString(), icon: "fa-box-open", color: "#0d9488" },
                   { id: "DOCUMENT", label: isVi ? "Tài Liệu & SOP" : "Documents", count: displayCountDocuments.toLocaleString(), icon: "fa-file-lines", color: "#64748b" }
                 ].map((cat) => {
                   const isActive = activeCategory === cat.id;
@@ -1574,9 +1574,9 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     </thead>
                     <tbody>
                       {[
-                        ...(activeCategory === "ALL" || activeCategory === "CONTRACT" ? filteredContracts.map((c) => ({ ...c, catLabel: "HỢP ĐỒNG", catColor: "#6366f1" })) : []),
-                        ...(activeCategory === "ALL" || activeCategory === "CUSTOMER" ? filteredCustomers.map((cu) => ({ ...cu, catLabel: "KHÁCH HÀNG", catColor: "#3b82f6", title: cu.name, value: cu.revenue })) : []),
-                        ...(activeCategory === "ALL" || activeCategory === "PRODUCT" ? filteredProducts.map((p) => ({ ...p, catLabel: "SẢN PHẨM", catColor: "#10b981", title: p.name, value: p.value })) : []),
+                        ...(activeCategory === "ALL" || activeCategory === "CONTRACT" ? filteredContracts.map((c) => ({ ...c, catLabel: "HỢP ĐỒNG", catColor: "#0891b2" })) : []),
+                        ...(activeCategory === "ALL" || activeCategory === "CUSTOMER" ? filteredCustomers.map((cu) => ({ ...cu, catLabel: "KHÁCH HÀNG", catColor: "#0284c7", title: cu.name, value: cu.revenue })) : []),
+                        ...(activeCategory === "ALL" || activeCategory === "PRODUCT" ? filteredProducts.map((p) => ({ ...p, catLabel: "SẢN PHẨM", catColor: "#0d9488", title: p.name, value: p.value })) : []),
                         ...(activeCategory === "ALL" || activeCategory === "DOCUMENT" ? filteredDocuments.map((d) => ({ ...d, catLabel: "TÀI LIỆU", catColor: "#64748b", value: d.size })) : [])
                       ].map((row, idx) => (
                         <tr key={idx} style={{ borderBottom: "1px solid var(--border-soft)", transition: "background 0.15s ease" }}>
@@ -1679,16 +1679,16 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           gap: "8px",
                           margin: 0
                         }}>
-                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#6366f1", display: "inline-block" }}></span>
+                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#0891b2", display: "inline-block" }}></span>
                           <span>{isVi ? "Hợp Đồng & Điều Khoản Pháp Lý (CUAD)" : "Contracts & Legal Clauses (CUAD)"}</span>
                           <span style={{
                             fontSize: "11px",
                             fontWeight: "700",
-                            color: "#6366f1",
-                            background: "rgba(99, 102, 241, 0.1)",
+                            color: "#0891b2",
+                            background: "rgba(8, 145, 178, 0.1)",
                             padding: "2px 8px",
                             borderRadius: "10px",
-                            border: "1px solid rgba(99, 102, 241, 0.2)"
+                            border: "1px solid rgba(8, 145, 178, 0.2)"
                           }}>
                             {displayCountContracts.toLocaleString()} {isVi ? "kết quả" : "results"}
                           </span>
@@ -1726,8 +1726,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                   fontSize: "10.5px",
                                   fontWeight: "800",
                                   fontFamily: "var(--f-mono)",
-                                  background: "rgba(99, 102, 241, 0.1)",
-                                  color: "#4f46e5",
+                                  background: "rgba(8, 145, 178, 0.1)",
+                                  color: "#0e7490",
                                   padding: "2px 7px",
                                   borderRadius: "4px"
                                 }}>
@@ -1840,7 +1840,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                             className="btn secondary"
                             style={{ padding: "8px 18px", fontSize: "12.5px", fontWeight: "750" }}
                           >
-                            <Icon name="fa-solid fa-file-signature" size={14} style={{ marginRight: "8px", color: "#6366f1" }} />
+                            <Icon name="fa-solid fa-file-signature" size={14} style={{ marginRight: "8px", color: "#0891b2" }} />
                             {isVi ? `Xem tất cả ${displayCountContracts.toLocaleString()} Hợp đồng & Điều khoản CUAD →` : `View all ${displayCountContracts.toLocaleString()} CUAD Contracts →`}
                           </button>
                         </div>

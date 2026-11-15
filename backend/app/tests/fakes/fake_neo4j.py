@@ -39,7 +39,12 @@ class FakeNeo4jClient:
         self._node_count = node_count
         self._relationship_count = relationship_count
 
-    def run_cypher(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def run_cypher(
+        self,
+        query: str,
+        params: Optional[Dict[str, Any]] = None,
+        raise_errors: bool = False,
+    ) -> List[Dict[str, Any]]:
         """
         Record executed query and parameters for test assertion (Spy).
         Return canned response if keyword matches; otherwise return empty list.

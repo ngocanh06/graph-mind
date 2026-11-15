@@ -35,10 +35,10 @@ export default function Badge({
       dotColor: "var(--red, #DC2626)",
     },
     info: {
-      background: "var(--blue-soft, rgba(37,99,235,0.08))",
-      color: "var(--blue, #2563EB)",
-      borderColor: "rgba(37,99,235,0.25)",
-      dotColor: "var(--blue, #2563EB)",
+      background: "var(--cyan-soft, rgba(8,145,178,0.09))",
+      color: "var(--cyan, #0891B2)",
+      borderColor: "rgba(8,145,178,0.25)",
+      dotColor: "var(--cyan, #0891B2)",
     },
     cyan: {
       background: "var(--cyan-soft, rgba(8,145,178,0.09))",

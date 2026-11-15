@@ -5,7 +5,7 @@ Endpoints:
 - GET    /api/v1/sop: Lấy danh sách quy trình SOP (hỗ trợ lọc dept, status, search)
 - GET    /api/v1/sop/{sop_id}: Lấy chi tiết quy trình SOP
 - POST   /api/v1/sop: Tạo mới hoặc lưu bản nháp SOP
-- PUT    /api/v1/sop/{sop_id}: Cập nhật bản nháp SOP
+- POST   /api/v1/sop: Cập nhật bản nháp khi mã SOP đã tồn tại
 - POST   /api/v1/sop/publish: Xuất bản SOP cho phòng ban (Kiểm tra BR-04 & Ground-Truth Ingestion)
 - POST   /api/v1/sop/{sop_id}/publish: Xuất bản SOP theo ID
 - DELETE /api/v1/sop/{sop_id}: Xóa bản nháp SOP
@@ -29,6 +29,7 @@ try:
     from app.db.postgres.models.sop_document import SopDocument
     from app.db.neo4j.client import neo4j_client
     from app.db.qdrant.client import qdrant_client
+    from app.modules.m6_admin_security.audit_service import log_action
     from app.schemas.sop import (
         SopCreateRequest,
         SopUpdateRequest,
@@ -43,6 +44,7 @@ except ImportError:
     from db.postgres.models.sop_document import SopDocument
     from db.neo4j.client import neo4j_client
     from db.qdrant.client import qdrant_client
+    from modules.m6_admin_security.audit_service import log_action
     from schemas.sop import (
         SopCreateRequest,
         SopUpdateRequest,
@@ -646,26 +648,14 @@ async def publish_sop(
     sop.author_name = user.full_name or user.username
 
     # 5. GHI NHẬT KÝ AUDIT LOG (SRS FR6)
-    try:
-        await db.execute(
-            text(
-                """
-                INSERT INTO audit_logs (audit_id, user_id, action, module_name, target_type, target_id, details, created_at)
-                VALUES (:aid, :uid, :act, :mod, :ttype, :tid, :details, NOW())
-                """
-            ),
-            {
-                "aid": uuid.uuid4(),
-                "uid": user.user_id,
-                "act": "PUBLISH_SOP",
-                "mod": "Module 2 - Knowledge Editor",
-                "ttype": "SOP",
-                "tid": sop.code,
-                "details": f'{{"code": "{sop.code}", "title": "{sop.title}", "dept": "{sop.department}"}}',
-            },
-        )
-    except Exception as e:
-        logger.warning(f"Ghi audit log xuất bản SOP thất bại: {e}")
+    await log_action(
+        db,
+        action="PUBLISH_SOP",
+        actor_id=user.user_id,
+        resource_type="SOP",
+        resource_id=sop.code,
+        detail=f'code={sop.code} title={sop.title} dept={sop.department}',
+    )
 
     await db.commit()
     await db.refresh(sop)

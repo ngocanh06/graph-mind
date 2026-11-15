@@ -49,12 +49,24 @@ export async function fetchEntities() {
   return null;
 }
 
-export async function verifyEntityApi(entityId, verified, auditor = "Dieu Hoang (CFO)") {
+export async function verifyEntityApi(entityId, verified, auditor = "Dieu Hoang (CFO)", currentUser = null) {
   try {
     const res = await fetch(`${API_BASE}/graph/verify`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(currentUser),
       body: JSON.stringify({ entityId, verified, auditor })
+    });
+    if (res.ok) return await res.json();
+  } catch (e) { }
+  return null;
+}
+
+export async function saveEntityPropertiesApi(entityId, properties, currentUser = null) {
+  try {
+    const res = await fetch(`${API_BASE}/graph/entity/${encodeURIComponent(entityId)}/properties`, {
+      method: "PUT",
+      headers: getAuthHeaders(currentUser),
+      body: JSON.stringify(properties)
     });
     if (res.ok) return await res.json();
   } catch (e) { }

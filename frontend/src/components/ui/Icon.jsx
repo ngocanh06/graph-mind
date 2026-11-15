@@ -1,124 +1,191 @@
 import React from "react";
-import * as LucideIcons from "lucide-react";
 
 /**
- * Universal Icon Resolver (UI/UX Pro Max)
- * Maps Lucide names and legacy icon classes to clean Lucide SVG icons.
- * Guarantees zero reliance on external font files, ensuring strict SVG vector rendering.
+ * Universal FontAwesome Icon Component
+ * Renders authentic FontAwesome icons from @fortawesome/fontawesome-free.
+ * Supports FontAwesome classes (e.g. "fa-solid fa-house") and maps Lucide names to FontAwesome.
  */
 
-const FA_TO_LUCIDE = {
-  "fa-check": "Check",
-  "fa-square-check": "CheckSquare",
-  "fa-circle-check": "CheckCircle2",
-  "fa-check-double": "CheckCheck",
-  "fa-magnifying-glass": "Search",
-  "fa-magnifying-glass-plus": "ZoomIn",
-  "fa-magnifying-glass-minus": "ZoomOut",
-  "fa-rotate": "RotateCw",
-  "fa-rotate-left": "RotateCcw",
-  "fa-spinner": "Loader2",
-  "fa-wand-magic-sparkles": "Sparkles",
-  "fa-paper-plane": "Send",
-  "fa-file-lines": "FileText",
-  "fa-file-pdf": "FileText",
-  "fa-file-excel": "FileSpreadsheet",
-  "fa-file-csv": "FileSpreadsheet",
-  "fa-file-spreadsheet": "FileSpreadsheet",
-  "fa-file-code": "FileCode",
-  "fa-file-word": "FileText",
-  "fa-file": "FileText",
-  "fa-file-contract": "FileCheck",
-  "fa-file-signature": "FileCheck",
-  "fa-file-circle-plus": "FilePlus",
-  "fa-chart-pie": "PieChart",
-  "fa-chart-line": "TrendingUp",
-  "fa-chart-simple": "BarChart3",
-  "fa-building": "Building2",
-  "fa-building-circle-check": "Building2",
-  "fa-building-columns": "Landmark",
-  "fa-calendar": "Calendar",
-  "fa-calendar-check": "CalendarCheck",
-  "fa-calendar-day": "Calendar",
-  "fa-calendar-week": "Calendar",
-  "fa-clock": "Clock",
-  "fa-hourglass-half": "Hourglass",
-  "fa-shield-halved": "Shield",
-  "fa-shield-check": "ShieldCheck",
-  "fa-user-shield": "ShieldCheck",
-  "fa-circle-nodes": "Share2",
-  "fa-diagram-project": "Network",
-  "fa-brain": "Brain",
-  "fa-robot": "Bot",
-  "fa-copy": "Copy",
-  "fa-pen-to-square": "Edit",
-  "fa-pen-nib": "PenTool",
-  "fa-sliders": "SlidersHorizontal",
-  "fa-table-cells-large": "LayoutGrid",
-  "fa-table-list": "List",
-  "fa-list": "List",
-  "fa-list-check": "CheckSquare",
-  "fa-list-ol": "ListOrdered",
-  "fa-list-ul": "List",
-  "fa-arrow-left": "ArrowLeft",
-  "fa-arrow-right": "ArrowRight",
-  "fa-arrow-turn-down-right": "CornerDownRight",
-  "fa-chevron-left": "ChevronLeft",
-  "fa-chevron-right": "ChevronRight",
-  "fa-angles-left": "ChevronsLeft",
-  "fa-angles-right": "ChevronsRight",
-  "fa-xmark": "X",
-  "fa-plus": "Plus",
-  "fa-circle-plus": "PlusCircle",
-  "fa-minus": "Minus",
-  "fa-trash-can": "Trash2",
-  "fa-eye": "Eye",
-  "fa-expand": "Maximize2",
-  "fa-compress": "Minimize2",
-  "fa-grip": "Grid",
-  "fa-border-all": "Grid",
-  "fa-link": "Link",
-  "fa-tags": "Tag",
-  "fa-envelope": "Mail",
-  "fa-phone": "Phone",
-  "fa-lock": "Lock",
-  "fa-key": "Key",
-  "fa-server": "Server",
-  "fa-folder-open": "FolderOpen",
-  "fa-bell": "Bell",
-  "fa-box-open": "Package",
-  "fa-briefcase": "Briefcase",
-  "fa-cloud-arrow-down": "CloudDownload",
-  "fa-cloud-arrow-up": "CloudUpload",
-  "fa-paperclip": "Paperclip",
-  "fa-award": "Award",
-  "fa-medal": "Award",
-  "fa-stamp": "Award",
-  "fa-certificate": "Award",
-  "fa-lightbulb": "Lightbulb",
-  "fa-newspaper": "Newspaper",
-  "fa-star": "Star",
-  "fa-triangle-exclamation": "AlertTriangle",
-  "fa-circle-exclamation": "AlertCircle",
-  "fa-circle-info": "Info",
-  "fa-circle-question": "HelpCircle",
-  "fa-user": "User",
-  "fa-id-badge": "UserCheck",
-  "fa-hand-holding-dollar": "DollarSign",
-  "fa-filter-circle-xmark": "FilterX",
-  "fa-print": "Printer",
-  "fa-quote-left": "Quote",
-  "fa-terminal": "Terminal",
-  "fa-layer-group": "Layers",
-  "fa-house": "Home",
-  "fa-highlighter": "Highlighter",
-  "fa-ban": "Ban",
+const LUCIDE_TO_FA = {
+  Home: "fa-solid fa-house",
+  Bot: "fa-solid fa-robot",
+  Search: "fa-solid fa-magnifying-glass",
+  Share2: "fa-solid fa-circle-nodes",
+  Activity: "fa-solid fa-chart-line",
+  LayoutDashboard: "fa-solid fa-gauge-high",
+  AlertTriangle: "fa-solid fa-triangle-exclamation",
+  AlertCircle: "fa-solid fa-circle-exclamation",
+  Info: "fa-solid fa-circle-info",
+  BarChart2: "fa-solid fa-chart-simple",
+  BarChart3: "fa-solid fa-chart-simple",
+  BarChart: "fa-solid fa-chart-column",
+  PieChart: "fa-solid fa-chart-pie",
+  FolderOpen: "fa-solid fa-folder-open",
+  Folder: "fa-solid fa-folder",
+  ClipboardList: "fa-solid fa-clipboard-list",
+  Database: "fa-solid fa-database",
+  Settings: "fa-solid fa-gear",
+  ChevronLeft: "fa-solid fa-chevron-left",
+  ChevronRight: "fa-solid fa-chevron-right",
+  ChevronDown: "fa-solid fa-chevron-down",
+  ChevronUp: "fa-solid fa-chevron-up",
+  ChevronsLeft: "fa-solid fa-angles-left",
+  ChevronsRight: "fa-solid fa-angles-right",
+  Bell: "fa-solid fa-bell",
+  UploadCloud: "fa-solid fa-cloud-arrow-up",
+  CloudUpload: "fa-solid fa-cloud-arrow-up",
+  Download: "fa-solid fa-download",
+  CloudDownload: "fa-solid fa-cloud-arrow-down",
+  Moon: "fa-solid fa-moon",
+  Sun: "fa-solid fa-sun",
+  Globe: "fa-solid fa-globe",
+  LogOut: "fa-solid fa-arrow-right-from-bracket",
+  Check: "fa-solid fa-check",
+  CheckCheck: "fa-solid fa-check-double",
+  CheckCircle2: "fa-solid fa-circle-check",
+  CheckCircle: "fa-solid fa-circle-check",
+  CheckSquare: "fa-solid fa-square-check",
+  Shield: "fa-solid fa-shield",
+  ShieldCheck: "fa-solid fa-shield-halved",
+  ShieldAlert: "fa-solid fa-shield-halved",
+  Building: "fa-solid fa-building",
+  Building2: "fa-solid fa-building",
+  ArrowRight: "fa-solid fa-arrow-right",
+  ArrowLeft: "fa-solid fa-arrow-left",
+  ArrowUp: "fa-solid fa-arrow-up",
+  ArrowDown: "fa-solid fa-arrow-down",
+  Sparkles: "fa-solid fa-wand-magic-sparkles",
+  Wand2: "fa-solid fa-wand-magic-sparkles",
+  FileText: "fa-solid fa-file-lines",
+  File: "fa-solid fa-file",
+  FileEdit: "fa-solid fa-file-pen",
+  FileSpreadsheet: "fa-solid fa-file-excel",
+  FileCode: "fa-solid fa-file-code",
+  FilePlus: "fa-solid fa-file-circle-plus",
+  FileCheck: "fa-solid fa-file-contract",
+  RefreshCw: "fa-solid fa-arrows-rotate",
+  RotateCw: "fa-solid fa-rotate-right",
+  RotateCcw: "fa-solid fa-rotate-left",
+  MessageSquare: "fa-solid fa-comment-dots",
+  MessagesSquare: "fa-solid fa-comments",
+  DollarSign: "fa-solid fa-dollar-sign",
+  Clock: "fa-solid fa-clock",
+  Hourglass: "fa-solid fa-hourglass-half",
+  TrendingDown: "fa-solid fa-arrow-trend-down",
+  TrendingUp: "fa-solid fa-arrow-trend-up",
+  ExternalLink: "fa-solid fa-arrow-up-right-from-square",
+  Trash2: "fa-solid fa-trash-can",
+  Trash: "fa-solid fa-trash",
+  Edit: "fa-solid fa-pen-to-square",
+  Copy: "fa-solid fa-copy",
+  Plus: "fa-solid fa-plus",
+  PlusCircle: "fa-solid fa-circle-plus",
+  Minus: "fa-solid fa-minus",
+  X: "fa-solid fa-xmark",
+  Eye: "fa-solid fa-eye",
+  EyeOff: "fa-solid fa-eye-slash",
+  Filter: "fa-solid fa-filter",
+  FilterX: "fa-solid fa-filter-circle-xmark",
+  Network: "fa-solid fa-diagram-project",
+  SlidersHorizontal: "fa-solid fa-sliders",
+  Sliders: "fa-solid fa-sliders",
+  Maximize2: "fa-solid fa-expand",
+  Minimize2: "fa-solid fa-compress",
+  Lock: "fa-solid fa-lock",
+  Key: "fa-solid fa-key",
+  Send: "fa-solid fa-paper-plane",
+  Inbox: "fa-solid fa-inbox",
+  User: "fa-solid fa-user",
+  Users: "fa-solid fa-users",
+  UserCheck: "fa-solid fa-user-check",
+  Terminal: "fa-solid fa-terminal",
+  Layers: "fa-solid fa-layer-group",
+  Grid: "fa-solid fa-table-cells-large",
+  LayoutGrid: "fa-solid fa-table-cells-large",
+  List: "fa-solid fa-list",
+  ListOrdered: "fa-solid fa-list-ol",
+  Link: "fa-solid fa-link",
+  Tag: "fa-solid fa-tag",
+  Mail: "fa-solid fa-envelope",
+  Phone: "fa-solid fa-phone",
+  Server: "fa-solid fa-server",
+  Star: "fa-solid fa-star",
+  Calendar: "fa-solid fa-calendar-days",
+  HelpCircle: "fa-solid fa-circle-question",
+  CircleHelp: "fa-solid fa-circle-question",
+  PanelLeft: "fa-solid fa-bars",
+  Menu: "fa-solid fa-bars",
+  Loader2: "fa-solid fa-spinner fa-spin",
+  Paperclip: "fa-solid fa-paperclip",
+  Award: "fa-solid fa-award",
+  Lightbulb: "fa-solid fa-lightbulb",
+  Printer: "fa-solid fa-print",
+  Quote: "fa-solid fa-quote-left",
+  Brain: "fa-solid fa-brain",
+  ZoomIn: "fa-solid fa-magnifying-glass-plus",
+  ZoomOut: "fa-solid fa-magnifying-glass-minus",
+  HardDrive: "fa-solid fa-hard-drive",
+  Table: "fa-solid fa-table",
+  FolderSync: "fa-solid fa-folder-tree",
+  Play: "fa-solid fa-play",
+  BookOpen: "fa-solid fa-book-open",
+  ThumbsUp: "fa-solid fa-thumbs-up",
+  ThumbsDown: "fa-solid fa-thumbs-down",
+  Bookmark: "fa-solid fa-bookmark",
+  Pin: "fa-solid fa-thumbtack",
+  UserPlus: "fa-solid fa-user-plus",
+  Unlock: "fa-solid fa-unlock",
+  KeyRound: "fa-solid fa-key",
+  Ban: "fa-solid fa-ban",
+  ShoppingCart: "fa-solid fa-cart-shopping",
+  Scale: "fa-solid fa-scale-balanced",
+  Save: "fa-solid fa-floppy-disk",
+  Edit3: "fa-solid fa-pen",
+  Cpu: "fa-solid fa-microchip",
+  FlaskConical: "fa-solid fa-flask",
+  Crown: "fa-solid fa-crown",
 };
+
+export function resolveFaClass(name) {
+  if (!name) return "fa-solid fa-circle-question";
+
+  // If a React component function from lucide-react was passed
+  if (typeof name === "function") {
+    const fnName = name.displayName || name.name;
+    if (fnName && LUCIDE_TO_FA[fnName]) return LUCIDE_TO_FA[fnName];
+    // Check if the component has a common name
+    return "fa-solid fa-circle-info";
+  }
+
+  if (typeof name !== "string") return "fa-solid fa-circle-question";
+
+  const trimmed = name.trim();
+  if (LUCIDE_TO_FA[trimmed]) return LUCIDE_TO_FA[trimmed];
+
+  // Already a full FA class string like "fa-solid fa-house" or "fas fa-check"
+  if (
+    trimmed.startsWith("fa-solid ") ||
+    trimmed.startsWith("fa-regular ") ||
+    trimmed.startsWith("fa-brands ") ||
+    trimmed.startsWith("fas ") ||
+    trimmed.startsWith("far ") ||
+    trimmed.startsWith("fab ")
+  ) {
+    return trimmed;
+  }
+
+  // Starts with fa- like "fa-check" or "fa-robot"
+  if (trimmed.startsWith("fa-")) {
+    return `fa-solid ${trimmed}`;
+  }
+
+  // Bare name like "check"
+  return `fa-solid fa-${trimmed}`;
+}
 
 export default function Icon({
   name,
-  size = 16,
-  strokeWidth = 2,
+  size = 15,
   color = "currentColor",
   className = "",
   style = {},
@@ -126,35 +193,25 @@ export default function Icon({
 }) {
   if (!name) return null;
 
-  let resolvedName = name;
-
-  // Check if string contains FontAwesome class like "fa-solid fa-magnifying-glass"
-  if (typeof name === "string") {
-    const parts = name.split(" ");
-    for (const part of parts) {
-      if (FA_TO_LUCIDE[part]) {
-        resolvedName = FA_TO_LUCIDE[part];
-        break;
-      }
-    }
-  }
-
-  // Get Lucide component
-  const LucideComponent = LucideIcons[resolvedName] || LucideIcons.FileText || LucideIcons.HelpCircle || LucideIcons.CircleHelp;
+  const faClass = resolveFaClass(name);
   const isSpin = typeof name === "string" && (name.includes("fa-spin") || name.includes("spin"));
+  const pxSize = typeof size === "number" ? `${size}px` : size;
 
   return (
-    <LucideComponent
-      size={size}
-      strokeWidth={strokeWidth}
-      color={color}
+    <i
+      className={`${faClass} ${isSpin ? "fa-spin" : ""} ${className}`}
       style={{
-        display: "inline-block",
+        fontSize: pxSize,
+        color: color,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        lineHeight: 1,
+        width: pxSize,
+        height: pxSize,
         verticalAlign: "middle",
-        animation: isSpin ? "spin 1s linear infinite" : undefined,
         ...style,
       }}
-      className={`icon-ui ${className}`}
       aria-hidden="true"
       {...props}
     />

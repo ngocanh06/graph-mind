@@ -1,5 +1,4 @@
 import React from "react";
-import { FolderOpen } from "lucide-react";
 import Button from "./Button";
 
 /**
@@ -7,7 +6,7 @@ import Button from "./Button";
  * Clear explanation of what is empty, why, and actionable next steps
  */
 export default function EmptyState({
-  icon: Icon = FolderOpen,
+  icon: Icon = "fa-solid fa-folder-open",
   title = "No data found",
   description = "There are no items to display at this time.",
   actionLabel,
@@ -17,6 +16,20 @@ export default function EmptyState({
   style = {},
   className = "",
 }) {
+  const renderIcon = () => {
+    if (!Icon) return null;
+    if (typeof Icon === "string") {
+      const cls = Icon.startsWith("fa-") || Icon.startsWith("fas ") ? Icon : `fa-solid fa-${Icon}`;
+      return <i className={cls} style={{ fontSize: 24 }} />;
+    }
+    if (React.isValidElement(Icon)) return Icon;
+    if (typeof Icon === "function") {
+      const Comp = Icon;
+      return <Comp size={24} strokeWidth={1.75} />;
+    }
+    return null;
+  };
+
   return (
     <div
       style={{
@@ -47,7 +60,7 @@ export default function EmptyState({
           marginBottom: "16px",
         }}
       >
-        <Icon size={24} strokeWidth={1.75} />
+        {renderIcon()}
       </div>
 
       <h3

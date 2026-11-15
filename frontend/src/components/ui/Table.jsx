@@ -1,5 +1,4 @@
 import React from "react";
-import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
 /**
  * Enterprise Data Table (UI/UX Pro Max)
@@ -82,15 +81,15 @@ export default function Table({
                   >
                     <span>{col.header}</span>
                     {isSortable && (
-                      <span style={{ color: isSorted ? "var(--blue, #2563EB)" : "var(--text-4, #94A3B8)" }}>
+                      <span style={{ color: isSorted ? "var(--cyan, #0891B2)" : "var(--text-4, #94A3B8)" }}>
                         {isSorted ? (
                           sortDirection === "asc" ? (
-                            <ChevronUp size={13} strokeWidth={2.5} />
+                            <i className="fa-solid fa-chevron-up" style={{ fontSize: 11 }} />
                           ) : (
-                            <ChevronDown size={13} strokeWidth={2.5} />
+                            <i className="fa-solid fa-chevron-down" style={{ fontSize: 11 }} />
                           )
                         ) : (
-                          <ChevronsUpDown size={13} strokeWidth={2} />
+                          <i className="fa-solid fa-sort" style={{ fontSize: 11 }} />
                         )}
                       </span>
                     )}
@@ -133,7 +132,15 @@ export default function Table({
                 }}
               >
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                  {EmptyIcon && <EmptyIcon size={32} strokeWidth={1.5} color="var(--text-4, #94A3B8)" />}
+                  {EmptyIcon && (
+                    typeof EmptyIcon === "string" ? (
+                      <i className={EmptyIcon.startsWith("fa-") ? EmptyIcon : `fa-solid fa-${EmptyIcon}`} style={{ fontSize: 28, color: "var(--text-4, #94A3B8)" }} />
+                    ) : React.isValidElement(EmptyIcon) ? (
+                      EmptyIcon
+                    ) : (
+                      <EmptyIcon size={32} strokeWidth={1.5} color="var(--text-4, #94A3B8)" />
+                    )
+                  )}
                   <span style={{ fontSize: "14px", fontWeight: 500 }}>{emptyMessage}</span>
                 </div>
               </td>

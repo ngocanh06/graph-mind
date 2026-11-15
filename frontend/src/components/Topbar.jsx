@@ -1,9 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ENTERPRISE_ROLES } from "../data/roles";
-import {
-  Bell, ChevronDown, Moon, Sun, Globe, LogOut, Home as HomeIcon,
-  Activity, ShieldCheck, Building2, Check, Search, UploadCloud
-} from "lucide-react";
 
 const VIEW_TITLES = {
   en: {
@@ -38,8 +34,8 @@ const VIEW_TITLES = {
 
 // Role-specific view title overrides
 const ROLE_VIEW_TITLES = {
-  standard: { en: { search: "Client Operations Workspace", documents: "Contracts & Quotes", reports: "Work & Shift Report" }, vi: { search: "Tác nghiệp Khách hàng", documents: "Kho Hợp đồng & Báo giá", reports: "Báo cáo Công việc Ca" }},
-  knowledge_manager: { en: { reports: "Department Performance Reports" }, vi: { reports: "Báo cáo Hiệu suất Phòng ban" }},
+  standard: { en: { search: "Client Operations Workspace", documents: "Contracts & Quotes", reports: "Work & Shift Report" }, vi: { search: "Tác nghiệp Khách hàng", documents: "Kho Hợp đồng & Báo giá", reports: "Báo cáo Công việc Ca" } },
+  knowledge_manager: { en: { reports: "Department Performance Reports" }, vi: { reports: "Báo cáo Hiệu suất Phòng ban" } },
 };
 
 const NOTIF_CONFIG = {
@@ -54,8 +50,8 @@ const NOTIF_CONFIG = {
     icon: "↻",
     labelVi: "Đã cập nhật tài liệu",
     labelEn: "Document updated",
-    color: "#2563eb",
-    bg: "rgba(37, 99, 235, 0.12)",
+    color: "#0891b2",
+    bg: "rgba(8, 145, 178, 0.12)",
   },
   deleted: {
     icon: "✓",
@@ -159,7 +155,7 @@ export default function Topbar({
         <div style={{ minWidth: 0 }}>
           <h1 style={{
             margin: 0,
-            fontSize: 15,
+            fontSize: 15.5,
             fontWeight: 700,
             color: "var(--text-1)",
             letterSpacing: "-0.01em",
@@ -167,22 +163,10 @@ export default function Topbar({
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
-            lineHeight: 1.3,
+            lineHeight: 1.2,
           }}>
             {currentTitle}
           </h1>
-          {/* API status line */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 1 }}>
-            <span style={{
-              width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-              background: apiConnected ? "#10b981" : "#f59e0b",
-            }} />
-            <span style={{ fontSize: 10.5, color: "var(--text-4)", fontFamily: "var(--f-mono)", whiteSpace: "nowrap" }}>
-              {apiConnected
-                ? (isVi ? "API · Trực tuyến" : "API · Online")
-                : (isVi ? "Chế độ Offline" : "Offline Mode")}
-            </span>
-          </div>
         </div>
 
         {/* Global search trigger */}
@@ -194,7 +178,7 @@ export default function Topbar({
             position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
             color: "var(--text-4)", pointerEvents: "none", display: "flex", alignItems: "center",
           }}>
-            <Search size={14} />
+            <i className="fa-solid fa-magnifying-glass" style={{ fontSize: 13 }} />
           </span>
           <input
             type="text"
@@ -217,7 +201,7 @@ export default function Topbar({
               transition: "border-color 0.15s, box-shadow 0.15s",
               outline: "none",
             }}
-            onFocus={e => { e.target.style.borderColor = "var(--border-focus)"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.12)"; }}
+            onFocus={e => { e.target.style.borderColor = "var(--border-focus, #0891b2)"; e.target.style.boxShadow = "0 0 0 3px rgba(8,145,178,0.14)"; }}
             onBlur={e => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; }}
           />
           <kbd style={{
@@ -239,25 +223,20 @@ export default function Topbar({
           id="topbar-upload-button"
           onClick={() => onNavigate("documents", "upload")}
           title={isVi ? "Tải lên tài liệu mới vào Central Storage (/data)" : "Upload new document to Central Storage (/data)"}
+          className="btn-gradient-cyan"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
+            gap: 7,
+            padding: "7px 15px",
             borderRadius: 8,
-            background: "#2563eb",
             color: "#ffffff",
-            fontSize: 12,
+            fontSize: 12.5,
             fontWeight: 700,
             cursor: "pointer",
-            border: "none",
-            boxShadow: "0 1px 3px rgba(37,99,235,0.3)",
-            transition: "all 0.15s ease",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#2563eb")}
         >
-          <UploadCloud size={14} strokeWidth={2.4} />
+          <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: 13 }} />
           <span>{isVi ? "+ Upload tài liệu" : "+ Upload"}</span>
         </button>
 
@@ -302,7 +281,7 @@ export default function Topbar({
               }
             }}
           >
-            <Bell size={17} strokeWidth={1.8} />
+            <i className="fa-solid fa-bell" style={{ fontSize: 15 }} />
             {notifUnreadCount > 0 && (
               <span
                 aria-label={`${notifUnreadCount} ${isVi ? "thông báo mới" : "new notifications"}`}
@@ -389,7 +368,7 @@ export default function Topbar({
                     style={{
                       background: "transparent",
                       border: "none",
-                      color: "var(--brand, #2563eb)",
+                      color: "var(--brand, #0891b2)",
                       fontSize: 11.5,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -422,7 +401,7 @@ export default function Topbar({
                       fontSize: 12.5,
                     }}
                   >
-                    <Bell size={24} style={{ opacity: 0.3, display: "block", margin: "0 auto 8px" }} />
+                    <i className="fa-solid fa-bell" style={{ fontSize: 24, opacity: 0.3, display: "block", margin: "0 auto 8px" }} />
                     {isVi ? "Chưa có thông báo nào" : "No notifications yet"}
                   </div>
                 ) : (
@@ -450,16 +429,16 @@ export default function Topbar({
                           gap: 12,
                           padding: "10px 16px",
                           borderBottom: "1px solid var(--border-soft)",
-                          background: isUnread ? "rgba(37, 99, 235, 0.05)" : "transparent",
+                          background: isUnread ? "rgba(8, 145, 178, 0.06)" : "transparent",
                           cursor: evType !== "deleted" ? "pointer" : "default",
                           transition: "background 0.15s ease",
                           position: "relative",
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
                         onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = isUnread
-                            ? "rgba(37, 99, 235, 0.05)"
-                            : "transparent")
+                        (e.currentTarget.style.background = isUnread
+                          ? "rgba(8, 145, 178, 0.06)"
+                          : "transparent")
                         }
                       >
                         {/* Event Icon Badge */}
@@ -501,7 +480,7 @@ export default function Topbar({
                                   width: 6,
                                   height: 6,
                                   borderRadius: "50%",
-                                  background: "#2563eb",
+                                  background: "#0891b2",
                                   flexShrink: 0,
                                 }}
                               />
@@ -529,7 +508,7 @@ export default function Topbar({
                                 }}
                                 title={item.fileName}
                               >
-                                <span style={{ color: "#7c3aed", fontSize: 13, flexShrink: 0 }}>➔</span>
+                                <i className="fa-solid fa-arrow-right" style={{ color: "var(--cyan, #0891b2)", fontSize: 11, flexShrink: 0 }} />
                                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.fileName}</span>
                               </div>
                             </div>
@@ -562,8 +541,9 @@ export default function Topbar({
                               {timeDisplay}
                             </span>
                             {evType !== "deleted" && (
-                              <span style={{ fontSize: 10.5, color: "var(--brand, #2563eb)", fontWeight: 600 }}>
-                                {isVi ? "Xem tài liệu →" : "View doc →"}
+                              <span style={{ fontSize: 10.5, color: "var(--brand, #0891b2)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <span>{isVi ? "Xem tài liệu" : "View doc"}</span>
+                                <i className="fa-solid fa-chevron-right" style={{ fontSize: 9 }} />
                               </span>
                             )}
                           </div>
@@ -587,7 +567,7 @@ export default function Topbar({
                   color: "var(--text-4)",
                 }}
               >
-                <span>AEGIS Local File Watcher</span>
+                <span>{isVi ? "Đồng bộ tài liệu thời gian thực" : "Real-time Document Watcher"}</span>
                 <span>{notifEvents.length} {isVi ? "sự kiện" : "events"}</span>
               </div>
             </div>
@@ -623,25 +603,39 @@ export default function Topbar({
             {/* Avatar */}
             <div style={{
               width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-              background: `linear-gradient(135deg, ${currentUser?.color || "#2563eb"} 0%, ${currentUser?.accentColor || "#0891b2"} 100%)`,
+              background: `linear-gradient(135deg, ${currentUser?.color || "#0891b2"} 0%, ${currentUser?.accentColor || "#06b6d4"} 100%)`,
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "#fff", fontSize: 12, fontWeight: 800, letterSpacing: "0.02em",
+              boxShadow: "0 2px 6px rgba(8, 145, 178, 0.25)",
             }}>
               {currentUser?.avatar || "US"}
             </div>
             {/* Name + role */}
             <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }} className="topbar-user-info">
               <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-1)", whiteSpace: "nowrap", lineHeight: 1.25 }}>
-                {currentUser?.name?.split(" ").slice(-1)[0] || "User"}
+                {(() => {
+                  if (currentUser?.id === "executive" || currentUser?.username === "ceo" || currentUser?.name?.includes("Hương")) return "Hương";
+                  let n = currentUser?.name || "User";
+                  n = n.replace(/\s*\(.*?\)/g, "").trim();
+                  if (ENTERPRISE_ROLES[currentUser?.id]?.name) {
+                    n = ENTERPRISE_ROLES[currentUser.id].name;
+                  }
+                  return n.split(" ").slice(-1)[0] || "User";
+                })()}
               </span>
               <span style={{ fontSize: 10.5, color: "var(--text-3)", whiteSpace: "nowrap", lineHeight: 1.2 }}>
                 {isVi ? currentUser?.badge?.split(" ").slice(0, 2).join(" ") : currentUser?.badgeEn?.split(" ").slice(0, 2).join(" ")}
               </span>
             </div>
-            <ChevronDown
-              size={12}
-              color="var(--text-4)"
-              style={{ transform: isProfileOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}
+            <i
+              className="fa-solid fa-chevron-down"
+              style={{
+                fontSize: 10,
+                color: "var(--text-4)",
+                transform: isProfileOpen ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s ease",
+                flexShrink: 0
+              }}
             />
           </button>
 
@@ -664,16 +658,18 @@ export default function Topbar({
               <div style={{ padding: "14px 16px", background: "var(--surface-2)", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "flex-start", gap: 12 }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                  background: `linear-gradient(135deg, ${currentUser?.color || "#2563eb"} 0%, ${currentUser?.accentColor || "#0891b2"} 100%)`,
+                  background: `linear-gradient(135deg, ${currentUser?.color || "#0891b2"} 0%, ${currentUser?.accentColor || "#06b6d4"} 100%)`,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: "#fff", fontSize: 14, fontWeight: 800,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                  boxShadow: "0 2px 8px rgba(8, 145, 178, 0.25)",
                 }}>
                   {currentUser?.avatar || "US"}
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.3, marginBottom: 2 }}>
-                    {currentUser?.name || "User"}
+                    {(currentUser?.id === "executive" || currentUser?.username === "ceo" || currentUser?.name?.includes("Hương"))
+                      ? "Trần Thị Thu Hương"
+                      : (currentUser?.name?.includes("(") ? (ENTERPRISE_ROLES[currentUser?.id]?.name || currentUser?.name?.replace(/\s*\(.*?\)/g, "").trim()) : (currentUser?.name || "User"))}
                   </div>
                   <div style={{ fontSize: 10.5, color: "var(--text-4)", fontFamily: "var(--f-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 }}>
                     {currentUser?.email || ""}
@@ -693,13 +689,13 @@ export default function Topbar({
               {/* Dept + 2FA */}
               <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-soft)", display: "flex", flexDirection: "column", gap: 5 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, color: "var(--text-2)" }}>
-                  <Building2 size={12} color="var(--text-4)" style={{ flexShrink: 0 }} />
+                  <i className="fa-solid fa-building" style={{ fontSize: 11, color: "var(--text-4)", flexShrink: 0 }} />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {isVi ? currentUser?.department : currentUser?.departmentEn}
                   </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#059669" }}>
-                  <ShieldCheck size={12} style={{ flexShrink: 0 }} />
+                  <i className="fa-solid fa-shield-halved" style={{ fontSize: 11, flexShrink: 0 }} />
                   <span>{isVi ? "2FA Hardware Token: Đã kích hoạt" : "2FA Hardware Token: Active"}</span>
                 </div>
               </div>
@@ -734,7 +730,7 @@ export default function Topbar({
                         </span>
                       </div>
                       {isCurrent ? (
-                        <Check size={12} color={r.color} />
+                        <i className="fa-solid fa-check" style={{ fontSize: 11, color: r.color }} />
                       ) : (
                         <span style={{ fontSize: 9, fontWeight: 700, color: r.color }}>
                           {isVi ? r.badge?.split(" ")[0] : r.badgeEn?.split(" ")[0]}
@@ -748,7 +744,7 @@ export default function Topbar({
               {/* Lang + Theme */}
               <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <Globe size={12} color="var(--text-4)" />
+                  <i className="fa-solid fa-globe" style={{ fontSize: 11, color: "var(--text-4)" }} />
                   <div style={{ display: "flex", gap: 3 }}>
                     {["en", "vi"].map(l => (
                       <button
@@ -756,9 +752,9 @@ export default function Topbar({
                         onClick={() => onLangChange(l)}
                         style={{
                           padding: "3px 9px", borderRadius: 5, fontSize: 10.5, fontWeight: 700,
-                          border: lang === l ? "1px solid #2563eb" : "1px solid var(--border)",
-                          background: lang === l ? "rgba(37,99,235,0.08)" : "transparent",
-                          color: lang === l ? "#2563eb" : "var(--text-3)",
+                          border: lang === l ? "1px solid #0891b2" : "1px solid var(--border)",
+                          background: lang === l ? "rgba(8,145,178,0.1)" : "transparent",
+                          color: lang === l ? "#0891b2" : "var(--text-3)",
                           cursor: "pointer", fontFamily: "var(--f-body)",
                           transition: "all 0.12s",
                         }}
@@ -782,8 +778,8 @@ export default function Topbar({
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   {theme === "light"
-                    ? <Moon size={12} color="#38bdf8" />
-                    : <Sun size={12} color="#d97706" />}
+                    ? <i className="fa-solid fa-moon" style={{ fontSize: 11, color: "#38bdf8" }} />
+                    : <i className="fa-solid fa-sun" style={{ fontSize: 11, color: "#d97706" }} />}
                   {theme === "light" ? "Dark" : "Light"}
                 </button>
               </div>
@@ -803,7 +799,7 @@ export default function Topbar({
                   onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.color = "var(--text-1)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-2)"; }}
                 >
-                  <HomeIcon size={13} color="var(--text-4)" />
+                  <i className="fa-solid fa-house" style={{ fontSize: 11, color: "var(--text-4)", flexShrink: 0 }} />
                   {isVi ? "Trang chủ giới thiệu" : "Public Landing Page"}
                 </button>
 
@@ -822,7 +818,7 @@ export default function Topbar({
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.1)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.3)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(220,38,38,0.05)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.15)"; }}
                   >
-                    <LogOut size={13} />
+                    <i className="fa-solid fa-arrow-right-from-bracket" style={{ fontSize: 11, flexShrink: 0 }} />
                     {isVi ? "Đăng xuất hệ thống" : "Sign Out"}
                   </button>
                 )}

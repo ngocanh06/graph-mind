@@ -302,6 +302,38 @@ class Neo4jClient:
                 nodes = []
                 rels = []
                 seen_nodes = set()
+                if records:
+                    c_id = records[0]["c_id"]
+                    c_props = {k: _clean_val(v) for k, v in dict(records[0]["c_props"] or {}).items()}
+                    c_labels = records[0]["c_labels"] or []
+                    c_name = _extract_display_name(c_props, c_labels, c_id)
+                    nodes.append({
+                        "_id": c_id,
+                        "_labels": c_labels,
+                        "name": c_name,
+                        **c_props
+                    })
+                    seen_nodes.add(c_id)
+                else:
+                    # Fallback: if node has 0 immediate edges, still return the center node
+                    single_q = """
+                        MATCH (center)
+                        WHERE elementId(center) = $node_id OR center.id = $node_id OR center.name = $node_id
+                        RETURN elementId(center) as c_id, labels(center) as c_labels, properties(center) as c_props
+                        LIMIT 1
+                    """
+                    single_res = list(session.run(single_q, node_id=node_id))
+                    if single_res:
+                        c_id = single_res[0]["c_id"]
+                        c_props = {k: _clean_val(v) for k, v in dict(single_res[0]["c_props"] or {}).items()}
+                        c_labels = single_res[0]["c_labels"] or []
+                        c_name = _extract_display_name(c_props, c_labels, c_id)
+                        nodes.append({
+                            "_id": c_id,
+                            "_labels": c_labels,
+                            "name": c_name,
+                            **c_props
+                        })
                 for rec in records:
                     n_id = rec["n_id"]
                     if n_id not in seen_nodes:
@@ -484,7 +516,9 @@ class Neo4jClient:
             print(f"[Neo4j] search_nodes error: {e}")
             return []
 
-    def run_cypher(self, cypher: str, params: Dict = None) -> List[Dict[str, Any]]:
+    def run_cypher(
+        self, cypher: str, params: Dict = None, raise_errors: bool = False
+    ) -> List[Dict[str, Any]]:
         """Execute a raw Cypher query and return serializable records."""
         if not self._connected and not self.connect():
             return []
@@ -508,6 +542,8 @@ class Neo4jClient:
                 return cleaned
         except Exception as e:
             print(f"[Neo4j] run_cypher error: {e}")
+            if raise_errors:
+                raise
             return []
 
     def get_node_count(self) -> int:

@@ -1,5 +1,4 @@
 import React from "react";
-import { Info, AlertTriangle, AlertCircle, CheckCircle2, X } from "lucide-react";
 
 /**
  * Enterprise Alert / Banner (UI/UX Pro Max)
@@ -15,28 +14,28 @@ export default function Alert({
 }) {
   const configs = {
     info: {
-      Icon: Info,
-      bg: "var(--blue-soft, rgba(37,99,235,0.08))",
-      border: "rgba(37,99,235,0.25)",
+      icon: "fa-solid fa-circle-info",
+      bg: "var(--cyan-soft, rgba(8,145,178,0.09))",
+      border: "rgba(8,145,178,0.25)",
       text: "var(--text-1, #0F172A)",
-      iconColor: "var(--blue, #2563EB)",
+      iconColor: "var(--cyan, #0891B2)",
     },
     warning: {
-      Icon: AlertTriangle,
+      icon: "fa-solid fa-triangle-exclamation",
       bg: "var(--amber-soft, rgba(217,119,6,0.08))",
       border: "rgba(217,119,6,0.25)",
       text: "var(--text-1, #0F172A)",
       iconColor: "var(--amber, #D97706)",
     },
     danger: {
-      Icon: AlertCircle,
+      icon: "fa-solid fa-circle-exclamation",
       bg: "var(--red-soft, rgba(220,38,38,0.08))",
       border: "rgba(220,38,38,0.25)",
       text: "var(--text-1, #0F172A)",
       iconColor: "var(--red, #DC2626)",
     },
     success: {
-      Icon: CheckCircle2,
+      icon: "fa-solid fa-circle-check",
       bg: "var(--green-soft, rgba(5,150,105,0.08))",
       border: "rgba(5,150,105,0.25)",
       text: "var(--text-1, #0F172A)",
@@ -45,7 +44,6 @@ export default function Alert({
   };
 
   const current = configs[variant] || configs.info;
-  const Icon = current.Icon;
 
   return (
     <div
@@ -65,7 +63,7 @@ export default function Alert({
       className={`alert-ui alert-${variant} ${className}`}
     >
       <div style={{ color: current.iconColor, flexShrink: 0, marginTop: "1px" }}>
-        <Icon size={18} strokeWidth={2} />
+        <i className={current.icon} style={{ fontSize: 17 }} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0, fontSize: "13px", lineHeight: 1.45 }}>
@@ -93,7 +91,7 @@ export default function Alert({
             alignItems: "center",
           }}
         >
-          <X size={15} />
+          <i className="fa-solid fa-xmark" style={{ fontSize: 14 }} />
         </button>
       )}
     </div>

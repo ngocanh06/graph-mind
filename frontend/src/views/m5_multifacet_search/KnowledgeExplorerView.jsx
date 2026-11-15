@@ -7,13 +7,13 @@ import React, { useState, useEffect } from "react";
 import { searchKnowledgeExplorer, fetchNeo4jNode } from "../../services/api";
 
 const LABEL_COLORS = {
-  Product:     { bg: "#dcfce7", border: "#10b981", text: "#065f46" },
-  Category:    { bg: "#f3e8ff", border: "#8b5cf6", text: "#5b21b6" },
-  SubCategory: { bg: "#fae8ff", border: "#c084fc", text: "#7e22ce" },
-  Customer:    { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" },
-  SalesOrder:  { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" },
-  Employee:    { bg: "#fce7f3", border: "#ec4899", text: "#9d174d" },
-  default:     { bg: "#f1f5f9", border: "#64748b", text: "#334155" },
+  Product:     { bg: "#f0fdf4", border: "#0d9488", text: "#115e59" },
+  Category:    { bg: "#ecfeff", border: "#0891b2", text: "#0e7490" },
+  SubCategory: { bg: "#ecfeff", border: "#06b6d4", text: "#0e7490" },
+  Customer:    { bg: "#f0fdfa", border: "#14b8a6", text: "#0f766e" },
+  SalesOrder:  { bg: "#f0fdfa", border: "#2dd4bf", text: "#0f766e" },
+  Employee:    { bg: "#f8fafc", border: "#475569", text: "#1e293b" },
+  default:     { bg: "#f8fafc", border: "#64748b", text: "#334155" },
 };
 
 function getLabelColor(labels = []) {
@@ -23,7 +23,7 @@ function getLabelColor(labels = []) {
   return LABEL_COLORS.default;
 }
 
-export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mountain Bikes agreement" }) {
+export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mountain Bikes agreement", embedded = false }) {
   const isVi = lang === "vi";
 
   const [query, setQuery] = useState(initialQuery);
@@ -65,17 +65,29 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
   const graphRels = data?.graph?.relationships || [];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 14 }}>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      gap: 14,
+      padding: embedded ? "0" : "16px 20px 48px",
+      boxSizing: "border-box",
+      width: "100%",
+      maxWidth: "100%",
+      minWidth: 0,
+      overflowX: "hidden"
+    }}>
       {/* ── TOP SEARCH BAR ─────────────────────────────────────────────── */}
       <div style={{
         background: "var(--surface, #fff)", padding: "14px 18px", borderRadius: 12,
-        border: "1.5px solid var(--border-soft, #e2e8f0)", boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+        border: "1.5px solid var(--border-soft, #e2e8f0)", boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+        width: "100%", boxSizing: "border-box", minWidth: 0
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>🌐</span>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-1, #0f172a)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>🌐</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-1, #0f172a)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {isVi ? "Knowledge Explorer: Hợp nhất Qdrant + Neo4j" : "Knowledge Explorer: Unified Qdrant + Neo4j"}
               </div>
               <div style={{ fontSize: 12, color: "var(--text-3, #64748b)" }}>
@@ -83,7 +95,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#ede9fe", color: "#6d28d9", fontWeight: 700 }}>
               Qdrant: 9,140 vectors
             </span>
@@ -94,7 +106,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
         </div>
 
         {/* Input */}
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input
             type="text"
             value={query}
@@ -102,7 +114,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
             onKeyDown={e => e.key === "Enter" && handleSearch()}
             placeholder={isVi ? "Nhập câu hỏi hoặc chủ đề (ví dụ: Mountain Bikes agreement, confidentiality, sales orders...)" : "Enter topic or query..."}
             style={{
-              flex: 1, padding: "10px 16px", borderRadius: 10,
+              flex: 1, minWidth: "240px", padding: "10px 16px", borderRadius: 10,
               border: "1.5px solid var(--border-soft, #cbd5e1)", fontSize: 13.5,
               background: "var(--bg-subtle, #f8fafc)", color: "var(--text-1, #0f172a)",
               outline: "none"
@@ -114,7 +126,8 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
             style={{
               padding: "10px 24px", borderRadius: 10, border: "none",
               background: "linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)",
-              color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer"
+              color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer",
+              flexShrink: 0
             }}
           >
             {loading ? "⏳..." : "🔍 Explore"}
@@ -123,7 +136,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
 
         {/* Preset chips */}
         <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-3)" }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-3)", flexShrink: 0 }}>
             {isVi ? "Gợi ý khám phá:" : "Presets:"}
           </span>
           {[
@@ -149,14 +162,24 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
       </div>
 
       {/* ── MAIN WORKSPACE: QDRANT (LEFT) + NEO4J (RIGHT) ─────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.05fr 1fr", gap: 14, flex: 1, minHeight: 460 }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))",
+        gap: 14,
+        flex: 1,
+        minHeight: 440,
+        minWidth: 0,
+        width: "100%",
+        boxSizing: "border-box"
+      }}>
         {/* LEFT: Qdrant Search Results */}
         <div style={{
           background: "var(--surface, #fff)", borderRadius: 12,
           border: "1.5px solid var(--border-soft, #e2e8f0)", padding: 14,
-          display: "flex", flexDirection: "column", minHeight: 0
+          display: "flex", flexDirection: "column", minHeight: 0,
+          minWidth: 0, overflow: "hidden", boxSizing: "border-box"
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
             <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)" }}>
               📄 {isVi ? "Kết quả Vector Semantic từ Qdrant" : "Semantic Results from Qdrant"}
             </div>
@@ -165,7 +188,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
             </span>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
             {loading ? (
               <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>
                 ⏳ {isVi ? "Đang tính toán vector tương đồng..." : "Searching Qdrant vectors..."}
@@ -185,24 +208,31 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
                       padding: 10, borderRadius: 8, cursor: "pointer",
                       border: `1.5px solid ${isSelected ? "#7c3aed" : "var(--border-soft, #e2e8f0)"}`,
                       background: isSelected ? "#f5f3ff" : "var(--bg-subtle, #f8fafc)",
-                      transition: "all 0.15s"
+                      transition: "all 0.15s",
+                      minWidth: 0,
+                      overflow: "hidden"
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, gap: 8, minWidth: 0 }}>
+                      <span style={{
+                        fontWeight: 700, fontSize: 12, color: "var(--text-1)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        flex: 1, minWidth: 0
+                      }}>
                         #{idx + 1} {item.contract_name || "Contract Document"}
                       </span>
                       {item.score != null && (
                         <span style={{
                           fontSize: 10.5, fontWeight: 800, padding: "2px 7px", borderRadius: 10,
                           background: item.score > 0.8 ? "#dcfce7" : "#e0f2fe",
-                          color: item.score > 0.8 ? "#15803d" : "#0369a1"
+                          color: item.score > 0.8 ? "#15803d" : "#0369a1",
+                          flexShrink: 0
                         }}>
                           score: {item.score.toFixed(4)}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 11.5, color: "var(--text-2, #334155)", lineHeight: 1.45, fontStyle: "italic" }}>
+                    <div style={{ fontSize: 11.5, color: "var(--text-2, #334155)", lineHeight: 1.45, fontStyle: "italic", wordBreak: "break-word" }}>
                       {item.text ? (item.text.slice(0, 160) + "...") : "No text excerpt"}
                     </div>
                   </div>
@@ -216,9 +246,10 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
         <div style={{
           background: "var(--surface, #fff)", borderRadius: 12,
           border: "1.5px solid var(--border-soft, #e2e8f0)", padding: 14,
-          display: "flex", flexDirection: "column", minHeight: 0
+          display: "flex", flexDirection: "column", minHeight: 0,
+          minWidth: 0, overflow: "hidden", boxSizing: "border-box"
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
             <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)" }}>
               🕸️ {isVi ? "Thực thể Quan hệ từ Neo4j" : "Related Entities from Neo4j"}
             </div>
@@ -227,7 +258,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
             </span>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
             {loading ? (
               <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>
                 ⏳ {isVi ? "Đang truy vấn đồ thị thực thể Neo4j..." : "Querying Neo4j subgraph..."}
@@ -248,22 +279,28 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
                       padding: "8px 12px", borderRadius: 8, cursor: "pointer",
                       border: `1.5px solid ${isSelected ? c.border : "var(--border-soft, #e2e8f0)"}`,
                       background: isSelected ? c.bg : "var(--surface, #fff)",
-                      display: "flex", alignItems: "center", justifyContent: "space-between"
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      gap: 8, minWidth: 0, overflow: "hidden"
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1, overflow: "hidden" }}>
                       <span style={{
                         padding: "2px 7px", borderRadius: 4, fontSize: 10, fontWeight: 700,
-                        background: c.bg, color: c.text, border: `1px solid ${c.border}`
+                        background: c.bg, color: c.text, border: `1px solid ${c.border}`,
+                        flexShrink: 0
                       }}>
                         {node._labels?.[0] || "Entity"}
                       </span>
-                      <span style={{ fontWeight: 700, fontSize: 12.5, color: "var(--text-1)" }}>
+                      <span style={{
+                        fontWeight: 700, fontSize: 12.5, color: "var(--text-1)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        flex: 1, minWidth: 0
+                      }}>
                         {node.name || node.title || node._id}
                       </span>
                     </div>
                     {node.ListPrice != null && (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#166534" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", flexShrink: 0 }}>
                         ${node.ListPrice}
                       </span>
                     )}
@@ -279,24 +316,34 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
       <div style={{
         background: "var(--surface, #fff)", borderRadius: 12,
         border: "1.5px solid var(--border-soft, #e2e8f0)", padding: 16,
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, minHeight: 160
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
+        gap: 16, minHeight: 160,
+        minWidth: 0, width: "100%", boxSizing: "border-box"
       }}>
         {/* Left: Selected Document / Qdrant Chunk Detail */}
-        <div>
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-3)" }}>
             {isVi ? "Tài liệu Qdrant đang chọn" : "Selected Qdrant Document"}
           </div>
           {selectedResult ? (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)", marginBottom: 4 }}>
+            <div style={{ marginTop: 6, minWidth: 0 }}>
+              <div style={{
+                fontWeight: 800, fontSize: 14, color: "var(--text-1)", marginBottom: 4,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
                 {selectedResult.contract_name || "Contract Document"}
               </div>
-              <div style={{ fontSize: 11.5, color: "var(--text-3)", marginBottom: 6 }}>
+              <div style={{
+                fontSize: 11.5, color: "var(--text-3)", marginBottom: 6,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
                 Point ID: <span style={{ fontFamily: "monospace" }}>{selectedResult.id}</span> · Chunk #{selectedResult.chunk_id} · Similarity: {selectedResult.score}
               </div>
               <div style={{
                 maxHeight: 90, overflowY: "auto", fontSize: 11.5, color: "var(--text-2)",
-                lineHeight: 1.5, background: "var(--bg-subtle, #f8fafc)", padding: 8, borderRadius: 6
+                lineHeight: 1.5, background: "var(--bg-subtle, #f8fafc)", padding: 8, borderRadius: 6,
+                wordBreak: "break-word"
               }}>
                 {selectedResult.text || "No full text available."}
               </div>
@@ -309,16 +356,22 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
         </div>
 
         {/* Right: Selected Neo4j Entity Detail */}
-        <div>
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-3)" }}>
             {isVi ? "Thực thể Neo4j đang chọn" : "Selected Neo4j Entity"}
           </div>
           {selectedEntity ? (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)", marginBottom: 4 }}>
+            <div style={{ marginTop: 6, minWidth: 0 }}>
+              <div style={{
+                fontWeight: 800, fontSize: 14, color: "var(--text-1)", marginBottom: 4,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
                 {selectedEntity.name || selectedEntity._id}
               </div>
-              <div style={{ fontSize: 11.5, color: "var(--text-3)", marginBottom: 6 }}>
+              <div style={{
+                fontSize: 11.5, color: "var(--text-3)", marginBottom: 6,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
                 Labels: {selectedEntity._labels?.join(", ")} · Neo4j ID: <span style={{ fontFamily: "monospace" }}>{selectedEntity._id}</span>
               </div>
               {/* Properties row */}
@@ -326,7 +379,11 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
                 {Object.entries(selectedEntity)
                   .filter(([k]) => !["_id", "_labels", "neighbors", "name", "properties"].includes(k))
                   .map(([k, v]) => (
-                    <div key={k} style={{ fontSize: 11, background: "var(--bg-subtle, #f8fafc)", padding: "3px 8px", borderRadius: 4, border: "1px solid #e2e8f0" }}>
+                    <div key={k} style={{
+                      fontSize: 11, background: "var(--bg-subtle, #f8fafc)", padding: "3px 8px",
+                      borderRadius: 4, border: "1px solid #e2e8f0", maxWidth: "100%",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                    }}>
                       <span style={{ color: "var(--text-3)" }}>{k}: </span>
                       <b>{String(v ?? "")}</b>
                     </div>

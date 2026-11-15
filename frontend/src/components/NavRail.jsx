@@ -1,41 +1,39 @@
 import React from "react";
-import {
-  Home, Bot, Search, Share2, LayoutDashboard, AlertTriangle,
-  BarChart2, FolderOpen, ClipboardList, Settings, Database,
-  ChevronLeft, ChevronRight, Activity
-} from "lucide-react";
 
 const NAV_SECTIONS = (role, isVi) => [
   {
-    id: "core",
-    label: isVi ? "TRỌNG TÂM" : "CORE",
+    id: "overview",
+    label: isVi ? "TỔNG QUAN" : "OVERVIEW",
     items: [
-      { id: "home",      icon: Home,          label: isVi ? "Trang chủ" : "Home", roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "copilot",   icon: Bot,           label: isVi ? "AI Copilot" : "AI Copilot", roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "search",    icon: Search,        label: isVi ? "Tìm kiếm thông minh" : "Smart Search", roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "knowledge", icon: Share2,        label: isVi ? "Knowledge Graph" : "Knowledge Graph", roles: ["executive","knowledge_manager","it_admin"] },
-      { id: "explorer",  icon: Activity,      label: isVi ? "Knowledge Explorer" : "Knowledge Explorer", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "home", icon: "fa-solid fa-house", label: isVi ? "Trang chủ" : "Home", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "executive", icon: "fa-solid fa-chart-line", label: isVi ? "Chỉ số Kinh doanh" : "Business Intel", roles: ["executive","it_admin"] },
     ],
   },
   {
-    id: "decision",
-    label: isVi ? "ĐIỀU HÀNH" : "EXECUTIVE",
-    badge: "EXEC",
-    badgeColor: "#7c3aed",
+    id: "intelligence",
+    label: isVi ? "TRỢ LÝ TRI THỨC" : "AI & SEARCH",
     items: [
-      { id: "executive", icon: LayoutDashboard, label: isVi ? "Dashboard điều hành" : "Executive Dashboard", roles: ["executive","it_admin"] },
-      { id: "risk",      icon: AlertTriangle,   label: isVi ? "Cảnh báo rủi ro" : "Risk Alerts", alert: true, roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "reports",   icon: BarChart2,       label: role === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : (isVi ? "Báo cáo" : "Reports"), roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "copilot", icon: "fa-solid fa-robot", label: isVi ? "AI Copilot" : "AI Copilot", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "search", icon: "fa-solid fa-magnifying-glass", label: isVi ? "Tìm kiếm thông minh" : "Smart Search", roles: ["executive","knowledge_manager","it_admin","standard"] },
     ],
   },
   {
-    id: "knowledge_mgmt",
-    label: isVi ? "TRI THỨC" : "KNOWLEDGE",
+    id: "knowledge_base",
+    label: isVi ? "HỒ SƠ & DỮ LIỆU" : "FILES & DATA",
     items: [
-      { id: "documents",  icon: FolderOpen,      label: isVi ? "Kho tài liệu" : "Documents", roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "sop",        icon: ClipboardList,   label: isVi ? "SOP nội bộ" : "Internal SOP", roles: ["executive","knowledge_manager","it_admin"] },
-      { id: "connectors", icon: Database,        label: isVi ? "Kết nối dữ liệu" : "Data Connectors", roles: ["it_admin"] },
-      { id: "admin",      icon: Settings,        label: isVi ? "Quản trị hệ thống" : "System Admin", roles: ["it_admin"] },
+      { id: "documents", icon: "fa-solid fa-folder-open", label: isVi ? "Kho hợp đồng & File" : "Contracts & Docs", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "knowledge", icon: "fa-solid fa-circle-nodes", label: isVi ? "Đồ thị Tri thức Graph" : "Knowledge Graph", roles: ["executive","knowledge_manager","it_admin"] },
+      { id: "sop", icon: "fa-solid fa-clipboard-list", label: isVi ? "Quy trình SOP" : "Internal SOP", roles: ["executive","knowledge_manager","it_admin"] },
+    ],
+  },
+  {
+    id: "governance",
+    label: isVi ? "GIÁM SÁT & BÁO CÁO" : "GOVERNANCE",
+    items: [
+      { id: "risk", icon: "fa-solid fa-triangle-exclamation", label: isVi ? "Cảnh báo rủi ro" : "Risk Alerts", alert: true, roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "reports", icon: "fa-solid fa-file-invoice", label: role === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : (isVi ? "Báo cáo điều hành" : "Executive Reports"), roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "connectors", icon: "fa-solid fa-database", label: isVi ? "Kết nối dữ liệu" : "Data Connectors", roles: ["it_admin"] },
+      { id: "admin", icon: "fa-solid fa-gear", label: isVi ? "Quản trị hệ thống" : "System Admin", roles: ["it_admin"] },
     ],
   },
 ];
@@ -67,8 +65,7 @@ export default function NavRail({
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        overflowY: "auto",
-        overflowX: "hidden",
+        overflow: "hidden",
         transition: "width 0.22s cubic-bezier(0.4,0,0.2,1)",
         position: "relative",
         zIndex: 40,
@@ -85,85 +82,69 @@ export default function NavRail({
           borderBottom: "1px solid var(--border-soft)",
           flexShrink: 0,
           gap: 8,
+          boxSizing: "border-box",
         }}
       >
-        {isOpen && (
-          <div
-            onClick={onOpenLanding}
-            style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", minWidth: 0, overflow: "hidden" }}
-            title={isVi ? "Về trang chủ" : "Back to landing"}
-          >
-            {/* Brand mark */}
-            <img
-              src="/logo-icon.svg"
-              alt="GraphMind Logo"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                flexShrink: 0,
-                objectFit: "contain",
-                boxShadow: "0 2px 8px rgba(19, 62, 112, 0.18)",
-              }}
-            />
-            <div style={{ minWidth: 0, overflow: "hidden" }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em", fontFamily: "var(--f-display)", whiteSpace: "nowrap" }}>
-                GraphMind
-              </div>
-              <div style={{ fontSize: 9.5, fontWeight: 600, color: "var(--text-4)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                EKMP · v1.2
+        {isOpen ? (
+          <>
+            <div
+              onClick={onOpenLanding}
+              style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", minWidth: 0, overflow: "hidden" }}
+              title={isVi ? "Về trang chủ" : "Back to landing"}
+            >
+              {/* Brand mark */}
+              <img
+                src="/logo-icon.svg"
+                alt="GraphMind Logo"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  flexShrink: 0,
+                  objectFit: "contain",
+                  boxShadow: "0 2px 8px rgba(19, 62, 112, 0.18)",
+                }}
+              />
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
+                <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em", fontFamily: "var(--f-display)", whiteSpace: "nowrap" }}>
+                  GraphMind
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--cyan, #0891b2)", letterSpacing: "0.04em" }}>
+                  Enterprise Knowledge
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {!isOpen && (
+          </>
+        ) : (
           <div
-            onClick={onOpenLanding}
+            onClick={onToggleOpen}
             style={{
-              width: 32,
-              height: 32,
+              width: 38,
+              height: 38,
               borderRadius: 8,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
+              transition: "background 0.15s ease",
             }}
-            title="GraphMind"
+            title={isVi ? "Mở rộng thanh điều hướng (Click)" : "Expand sidebar (Click)"}
+            onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
           >
             <img
               src="/logo-icon.svg"
               alt="GraphMind Logo"
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
+                width: 28,
+                height: 28,
+                borderRadius: 7,
                 objectFit: "contain",
-                boxShadow: "0 2px 8px rgba(19, 62, 112, 0.18)",
+                boxShadow: "0 2px 6px rgba(19, 62, 112, 0.18)",
               }}
             />
           </div>
         )}
-
-        {/* Toggle button */}
-        <button
-          onClick={onToggleOpen}
-          aria-label={isOpen ? (isVi ? "Thu gọn menu" : "Collapse sidebar") : (isVi ? "Mở rộng menu" : "Expand sidebar")}
-          aria-expanded={isOpen}
-          style={{
-            width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-            border: "1px solid var(--border)",
-            background: "var(--surface-2)",
-            color: "var(--text-3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-3)"; e.currentTarget.style.color = "var(--cyan)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.color = "var(--text-3)"; }}
-        >
-          {isOpen ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
-        </button>
       </div>
 
       {/* ── NAVIGATION ───────────────────────────────────── */}
@@ -218,27 +199,26 @@ export default function NavRail({
                         display: "flex",
                         alignItems: "center",
                         gap: 10,
-                        padding: isOpen ? "8px 10px" : "9px 0",
+                        padding: isOpen ? "8px 12px" : "9px 0",
                         justifyContent: isOpen ? "flex-start" : "center",
-                        borderRadius: 8,
-                        border: "none",
-                        background: isActive ? "rgba(37,99,235,0.08)" : "transparent",
-                        color: isActive ? "#2563eb" : "var(--text-2)",
+                        borderRadius: isOpen ? "10px" : "8px",
+                        border: isActive ? "1px solid #a5f3fc" : "1px solid transparent",
+                        background: isActive ? "#ecfeff" : "transparent",
+                        color: isActive ? "#0891b2" : "var(--text-2)",
                         fontSize: 13,
-                        fontWeight: isActive ? 600 : 500,
+                        fontWeight: isActive ? 700 : 500,
                         cursor: "pointer",
                         transition: "all 0.15s ease",
                         textAlign: "left",
                         position: "relative",
-                        marginBottom: 2,
+                        marginBottom: 3,
                         fontFamily: "var(--f-body)",
                         boxSizing: "border-box",
-                        // Left accent border for active
-                        boxShadow: isActive ? "inset 3px 0 0 #2563eb" : "none",
+                        boxShadow: isActive ? "0 1px 4px rgba(8, 145, 178, 0.08)" : "none",
                       }}
                       onMouseEnter={e => {
                         if (!isActive) {
-                          e.currentTarget.style.background = "var(--surface-2)";
+                          e.currentTarget.style.background = "#f4fbfb";
                           e.currentTarget.style.color = "var(--text-1)";
                         }
                       }}
@@ -253,9 +233,9 @@ export default function NavRail({
                       <span style={{
                         width: 20, height: 20, display: "flex", alignItems: "center",
                         justifyContent: "center", flexShrink: 0,
-                        color: isActive ? "#2563eb" : "var(--text-3)",
+                        color: isActive ? "#0891b2" : "var(--text-3)",
                       }}>
-                        <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} />
+                        <i className={item.icon} style={{ fontSize: 14 }} />
                       </span>
 
                       {/* Label */}
@@ -338,7 +318,7 @@ export default function NavRail({
           >
             <div style={{
               width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-              background: `linear-gradient(135deg, ${currentUser?.color || "#2563eb"}, ${currentUser?.accentColor || "#0891b2"})`,
+              background: `linear-gradient(135deg, ${currentUser?.color || "#0891b2"}, ${currentUser?.accentColor || "#06b6d4"})`,
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "#fff", fontSize: 10.5, fontWeight: 800,
               letterSpacing: "0.02em",
@@ -348,7 +328,9 @@ export default function NavRail({
             {isOpen && (
               <div style={{ minWidth: 0, overflow: "hidden" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.25 }}>
-                  {currentUser?.name || "User"}
+                  {(currentUser?.id === "executive" || currentUser?.username === "ceo" || currentUser?.name?.includes("Hương"))
+                    ? "Trần Thị Thu Hương"
+                    : (currentUser?.name?.includes("(") ? (ENTERPRISE_ROLES[currentUser?.id]?.name || currentUser?.name?.replace(/\s*\(.*?\)/g, "").trim()) : (currentUser?.name || "User"))}
                 </div>
                 <div style={{ fontSize: 10, color: "var(--text-4)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {lang === "vi" ? currentUser?.badge : currentUser?.badgeEn}

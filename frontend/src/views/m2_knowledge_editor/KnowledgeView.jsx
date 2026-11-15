@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Icon from '../../components/ui/Icon';
 import GraphPanel from "../m5_multifacet_search/GraphPanel";
-import { verifyEntityApi } from "../../services/api";
+import { saveEntityPropertiesApi, verifyEntityApi } from "../../services/api";
 
 export default function KnowledgeView({
   entities,
@@ -79,6 +79,26 @@ export default function KnowledgeView({
       neo4j_verified: "true"
     }
   });
+
+  const handleGraphNodeSelect = (nodeKey, node) => {
+    if (onSelectEntity) onSelectEntity(nodeKey);
+    if (!node) return;
+    const properties = node.properties || node;
+    const type = (node._labels || [node.type || "Node"])[0];
+    setSelectedNode((prev) => ({
+      ...prev,
+      id: String(node._id || node.id || nodeKey),
+      name: node.name || properties.Name || properties.name || nodeKey,
+      type,
+      badge: `${type} Node`,
+      docSource: properties.source_document || properties.source_file || properties.document_id || "",
+      chunkId: properties.qdrant_vector_point || properties.chunk_id || "",
+      penaltyLimit: properties.penalty_limit || "",
+      isRisk: properties.is_risk === true || properties.is_risk === "true",
+      notes: properties.notes || "",
+      properties
+    }));
+  };
 
   // Selected Edge state for Floating Toolbar
   const [selectedEdge, setSelectedEdge] = useState({
@@ -159,13 +179,13 @@ export default function KnowledgeView({
   };
 
   const ENTITY_CHIPS = [
-    { key: "Customer", label: "Customer", count: 19820, bg: "bg-blue-50 text-blue-800 border-blue-200", dot: "bg-blue-600" },
-    { key: "Product", label: "Product", count: 504, bg: "bg-cyan-50 text-cyan-800 border-cyan-200", dot: "bg-cyan-600" },
-    { key: "Order", label: "SalesOrder", count: 31465, bg: "bg-amber-50 text-amber-900 border-amber-200", dot: "bg-amber-600" },
-    { key: "Employee", label: "Employee", count: 290, bg: "bg-purple-50 text-purple-900 border-purple-200", dot: "bg-purple-600" },
-    { key: "Vendor", label: "Company", count: 30, bg: "bg-orange-50 text-orange-900 border-orange-200", dot: "bg-orange-600" },
-    { key: "Contract", label: "Contract", count: 30, bg: "bg-indigo-50 text-indigo-900 border-indigo-200", dot: "bg-indigo-600" },
-    { key: "Clause", label: "Clause", count: 103, bg: "bg-rose-50 text-rose-900 border-rose-200 font-bold", dot: "bg-rose-600" },
+    { key: "Customer", label: "Customer", count: 19820, bg: "bg-cyan-50 text-cyan-900 border-cyan-300", dot: "bg-cyan-600" },
+    { key: "Product", label: "Product", count: 504, bg: "bg-teal-50 text-teal-900 border-teal-300", dot: "bg-teal-600" },
+    { key: "Order", label: "SalesOrder", count: 31465, bg: "bg-emerald-50 text-emerald-900 border-emerald-300", dot: "bg-emerald-600" },
+    { key: "Employee", label: "Employee", count: 290, bg: "bg-slate-100 text-slate-800 border-slate-300", dot: "bg-slate-500" },
+    { key: "Vendor", label: "Company", count: 30, bg: "bg-sky-50 text-sky-900 border-sky-300", dot: "bg-sky-600" },
+    { key: "Contract", label: "Contract", count: 30, bg: "bg-teal-50 text-teal-900 border-teal-300", dot: "bg-teal-700" },
+    { key: "Clause", label: "Clause", count: 103, bg: "bg-cyan-50 text-cyan-900 border-cyan-300 font-bold", dot: "bg-cyan-700" },
   ];
 
   // Filter chips visible according to user RBAC scope
@@ -191,7 +211,7 @@ export default function KnowledgeView({
     }
     const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
     try {
-      await verifyEntityApi(selectedNode.id, true, auditorName);
+      await verifyEntityApi(selectedNode.id, true, auditorName, currentUser);
       setSelectedNode((prev) => ({
         ...prev,
         properties: { ...prev.properties, neo4j_verified: "true", status: "Human Verified" }
@@ -207,11 +227,26 @@ export default function KnowledgeView({
       showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền chỉnh sửa thuộc tính." : "Read-only: Only Admin and Manager can save attributes.");
       return;
     }
-    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
     try {
-      await verifyEntityApi(selectedNode.id, true, auditorName);
-    } catch (e) {}
-    showToast(isVi ? `Đã lưu thuộc tính ${selectedNode.id} và cập nhật vào Neo4j + Qdrant!` : `Saved attributes for ${selectedNode.id} and updated Neo4j + Qdrant!`);
+      const result = await saveEntityPropertiesApi(selectedNode.id, {
+        name: selectedNode.name,
+        penalty_limit: selectedNode.penaltyLimit,
+        is_risk: selectedNode.isRisk,
+        notes: selectedNode.notes
+      }, currentUser);
+      const saved = result.data?.properties || {};
+      setSelectedNode((prev) => ({
+        ...prev,
+        name: saved.name || saved.Name || prev.name,
+        penaltyLimit: saved.penalty_limit ?? prev.penaltyLimit,
+        isRisk: saved.is_risk === true || saved.is_risk === "true",
+        notes: saved.notes ?? prev.notes,
+        properties: saved
+      }));
+      showToast(isVi ? `Đã lưu thuộc tính ${selectedNode.id} vào Neo4j.` : `Saved attributes for ${selectedNode.id} to Neo4j.`);
+    } catch (err) {
+      showToast(isVi ? `Không thể lưu: ${err.message}` : `Save failed: ${err.message}`);
+    }
   };
 
   const handleDeleteEntity = () => {
@@ -219,81 +254,28 @@ export default function KnowledgeView({
       showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền xóa thực thể." : "Read-only: Only Admin and Manager can delete entities.");
       return;
     }
-    showToast(isVi ? `Đã xóa thực thể ${selectedNode.id} khỏi đồ thị Neo4j.` : `Deleted entity ${selectedNode.id} from Neo4j.`);
+    showToast(isVi ? "Xóa thực thể chưa được hỗ trợ; không có dữ liệu nào thay đổi." : "Entity deletion is not implemented; no data was changed.");
   };
 
-  const handleBatchApprove = async () => {
+  const handleBatchReview = () => {
     if (isStandard) {
-      showToast(isVi ? "Chế độ xem (Read-only): Chuyên viên kinh doanh không có quyền phê duyệt trích xuất." : "Read-only: Sales specialists cannot approve extractions.");
+      showToast(isVi ? "Chế độ xem (Read-only): Chuyên viên kinh doanh không có quyền duyệt/từ chối trích xuất." : "Read-only: Sales specialists cannot approve/reject extractions.");
       return;
     }
-    const pendingSelected = visibleQueueItems.filter((q) => q.selected && q.status === "pending");
-    if (pendingSelected.length === 0) {
-      showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
-      return;
-    }
-    const selectedIds = new Set(pendingSelected.map(p => p.id));
-    setQueueItems((prev) =>
-      prev.map((item) => (selectedIds.has(item.id) ? { ...item, status: "approved" } : item))
-    );
-    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
-    for (const item of pendingSelected) {
-      try {
-        await verifyEntityApi(item.source || item.id, true, auditorName);
-      } catch (err) {
-        console.warn("[Knowledge Editor] Batch verify error:", err);
-      }
-    }
-    showToast(isVi ? `Đã duyệt ${pendingSelected.length} quan hệ và ghi nhận thật vào cơ sở dữ liệu Neo4j!` : `Approved ${pendingSelected.length} relations and saved to Neo4j DB!`);
+    showToast(isVi
+      ? "Chưa thể duyệt quan hệ: hàng chờ đang dùng dữ liệu mẫu, chưa có ID quan hệ Neo4j. Không có thay đổi nào được lưu."
+      : "Cannot review relationships yet: this queue uses sample data without Neo4j relationship IDs. Nothing was saved.");
   };
 
-  const handleBatchReject = async () => {
-    if (isStandard) {
-      showToast(isVi ? "Chế độ xem (Read-only): Chuyên viên kinh doanh không có quyền từ chối trích xuất." : "Read-only: Sales specialists cannot reject extractions.");
-      return;
-    }
-    const pendingSelected = visibleQueueItems.filter((q) => q.selected && q.status === "pending");
-    if (pendingSelected.length === 0) {
-      showToast(isVi ? "Chưa chọn mục nào trong hàng chờ." : "No pending items selected.");
-      return;
-    }
-    const selectedIds = new Set(pendingSelected.map(p => p.id));
-    setQueueItems((prev) =>
-      prev.map((item) => (selectedIds.has(item.id) ? { ...item, status: "rejected" } : item))
-    );
-    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
-    for (const item of pendingSelected) {
-      try {
-        await verifyEntityApi(item.source || item.id, false, auditorName);
-      } catch (err) {
-        console.warn("[Knowledge Editor] Batch reject error:", err);
-      }
-    }
-    showToast(isVi ? `Đã từ chối ${pendingSelected.length} quan hệ khỏi đồ thị.` : `Rejected ${pendingSelected.length} relations from graph.`);
-  };
+  const handleBatchApprove = handleBatchReview;
+  const handleBatchReject = handleBatchReview;
 
-  const handleRowAction = async (id, newStatus) => {
+  const handleRowAction = () => {
     if (isStandard) {
       showToast(isVi ? "Chế độ xem (Read-only): Chuyên viên kinh doanh không có quyền duyệt/từ chối." : "Read-only: Sales specialists cannot approve/reject.");
       return;
     }
-    setQueueItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
-    );
-    const item = queueItems.find((q) => q.id === id);
-    const entityTarget = item ? (item.source || item.id) : id;
-    const auditorName = currentUser?.name || currentUser?.full_name || currentUser?.email || "Dieu Hoang (CFO)";
-    const isApproved = newStatus === "approved";
-    try {
-      await verifyEntityApi(entityTarget, isApproved, auditorName);
-    } catch (err) {
-      console.warn("[Knowledge Editor] Failed to persist verification to Neo4j:", err);
-    }
-    showToast(
-      isApproved
-        ? (isVi ? `Đã chấp thuận thực thể [${entityTarget}] và cập nhật thật vào Neo4j Database!` : `Approved [${entityTarget}] and saved to Neo4j Database!`)
-        : (isVi ? `Đã từ chối thực thể [${entityTarget}]!` : `Rejected [${entityTarget}]!`)
-    );
+    handleBatchReview();
   };
 
   const toggleSelectQueue = (id) => {
@@ -322,7 +304,10 @@ export default function KnowledgeView({
   };
 
   return (
-    <div className="space-y-4 font-sans text-on-surface min-h-screen">
+    <div
+      className="space-y-6 font-sans text-on-surface min-h-screen"
+      style={{ padding: "24px 32px 64px", boxSizing: "border-box" }}
+    >
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 bg-surface-container-high border border-primary/40 text-on-surface text-xs font-medium rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
@@ -332,26 +317,26 @@ export default function KnowledgeView({
       )}
 
       {/* ========================================================================= */}
-      {/* HEADER & CONTROLS (SCREEN-016) */}
+      {/* HEADER & CONTROLS */}
       {/* ========================================================================= */}
-      <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
+      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 22px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-md bg-secondary-fixed text-on-secondary-fixed text-xs font-bold tracking-wider">
-              SCREEN-016
-            </span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-sm border border-teal-200/50">
+              <i className="fa-solid fa-project-diagram" />
+            </div>
             <h1 className="text-xl font-bold text-on-surface tracking-tight">
-              {isVi ? "Knowledge Editor — Trực quan hóa & Hiệu chỉnh Tri thức AI" : "Knowledge Editor — AI Knowledge Visualizer & Human-in-the-Loop"}
+              {isVi ? "Đồ thị Tri thức & Hiệu chỉnh Thực thể" : "Knowledge Graph & Entity Editor"}
             </h1>
           </div>
           <p className="text-xs text-on-surface-variant">
             {isVi
-              ? "Human-in-the-loop: Tinh chỉnh liên kết thực thể, bổ sung ontology và đồng bộ hai chiều Neo4j & Qdrant."
-              : "Human-in-the-loop: Refine entity triples, curate enterprise ontology, and synchronize bidirectionally with Neo4j & Qdrant."}
+              ? "Trực quan hóa mạng lưới liên kết thực thể và hiệu chỉnh ontology đồ thị tri thức doanh nghiệp."
+              : "Visualize enterprise entity triples, curate ontology, and inspect relationship pathways."}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap">
           <button
             onClick={() => {
               if (isStandard) {
@@ -360,10 +345,10 @@ export default function KnowledgeView({
               }
               setIsAddModalOpen(true);
             }}
-            className="px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow hover:bg-blue-700 transition-all flex items-center gap-1.5"
+            className="btn-gradient-cyan px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <Icon name="fa-solid fa-plus text-[14px]" size={14} />
-            <span>{isVi ? "Thực thể mới" : "New Entity"}</span>
+            <Icon name="fa-solid fa-plus text-[13px]" size={13} />
+            <span>{isVi ? "+ Thực thể mới" : "+ New Entity"}</span>
           </button>
           <button
             onClick={() => {
@@ -373,16 +358,16 @@ export default function KnowledgeView({
               }
               showToast(isVi ? "Kéo thả giữa 2 node trên canvas để tạo quan hệ mới" : "Drag between 2 nodes on canvas to create relation");
             }}
-            className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Icon name="fa-solid fa-link text-[14px]" size={14} />
+            <Icon name="fa-solid fa-link text-[13px]" size={13} />
             <span>{isVi ? "Thêm quan hệ" : "Add Relation"}</span>
           </button>
           <button
-            onClick={() => showToast(isVi ? "Đã hoàn tác thao tác gần nhất" : "Undone last action")}
-            className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5"
+            onClick={() => showToast(isVi ? "Hoàn tác chưa được hỗ trợ; không có dữ liệu nào thay đổi." : "Undo is not implemented; no data was changed.")}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Icon name="fa-solid fa-rotate-left text-[14px]" size={14} />
+            <Icon name="fa-solid fa-rotate-left text-[13px]" size={13} />
             <span>{isVi ? "Hoàn tác" : "Undo"}</span>
           </button>
           <button
@@ -391,12 +376,12 @@ export default function KnowledgeView({
                 showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền ghi dữ liệu vào Neo4j + Qdrant." : "Read-only: Only Admin and Manager can commit to Neo4j + Qdrant.");
                 return;
               }
-              showToast(isVi ? "Đã lưu và đồng bộ toàn bộ đồ thị vào Neo4j + Qdrant!" : "Committed all graph changes to Neo4j + Qdrant!");
+              showToast(isVi ? "Đã lưu và đồng bộ các thuộc tính thực thể vào cơ sở dữ liệu." : "Saved entity attributes and synchronized with database.");
             }}
-            className="px-3.5 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-semibold shadow hover:bg-purple-700 transition-all flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow-xs hover:bg-slate-800 transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Icon name="fa-solid fa-rotate text-[14px]" size={14} />
-            <span>{isVi ? "Lưu Neo4j + Qdrant" : "Commit to Neo4j"}</span>
+            <Icon name="fa-solid fa-cloud-arrow-up text-[13px]" size={13} />
+            <span>{isVi ? "Lưu thay đổi" : "Save Changes"}</span>
           </button>
         </div>
       </div>
@@ -404,19 +389,20 @@ export default function KnowledgeView({
       {/* ========================================================================= */}
       {/* SUB-BAR: VIEW TOGGLE (CANVAS vs REVIEW QUEUE) & ENTITY COLOR SPECTRUM */}
       {/* ========================================================================= */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-2xs text-xs font-semibold">
+      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 16px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }} className="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-on-surface-variant px-1">{isVi ? "Lọc thực thể:" : "Filter:"}</span>
+          {activeTab === "canvas" && (
+            <span className="text-on-surface-variant px-1">{isVi ? "Lọc thực thể:" : "Filter:"}</span>
+          )}
 
           {/* RBAC Scope Badge */}
           <span
-            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border flex items-center gap-1 mr-1 ${
-              isPrivileged
-                ? "bg-cyan-50 text-cyan-800 border-cyan-300"
-                : isManager
-                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                : "bg-blue-50 text-blue-800 border-blue-300"
-            }`}
+            className="px-2.5 py-1 rounded text-[11px] font-bold border flex items-center gap-1.5 mr-1"
+            style={{
+              background: "#ecfeff",
+              color: "#0891b2",
+              border: "1px solid #cffafe"
+            }}
             title={
               isPrivileged
                 ? "Toàn quyền quản trị tri thức (Full RBAC Scope)"
@@ -425,7 +411,7 @@ export default function KnowledgeView({
                 : "Phân quyền Chuyên viên: Đã ẩn bảo mật Thực thể Nhân sự (Employee) & Nhà cung cấp (Vendor)"
             }
           >
-            <span>🔒</span>
+            <i className="fa-solid fa-shield-halved text-[10px]" />
             <span>
               RBAC: {currentUser?.badge || (isPrivileged ? "ADMIN / EXECUTIVE" : isManager ? "TRƯỞNG PHÒNG" : "CHUYÊN VIÊN")}
             </span>
@@ -434,8 +420,8 @@ export default function KnowledgeView({
             </span>
           </span>
 
-          {/* Taxonomies Chips filtered by RBAC */}
-          {visibleChips.map((chip) => {
+          {/* Taxonomies Chips filtered by RBAC - only show for static canvas */}
+          {activeTab === "canvas" && visibleChips.map((chip) => {
             const isActive = selectedEntityFilter === chip.key || selectedEntityFilter === "ALL";
             return (
               <span
@@ -485,11 +471,11 @@ export default function KnowledgeView({
             onClick={() => setActiveTab("neo4j_live")}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
               activeTab === "neo4j_live"
-                ? "bg-blue-600 text-white shadow-xs"
-                : "bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100"
+                ? "bg-cyan-700 text-white shadow-xs"
+                : "bg-cyan-50 text-cyan-900 border border-cyan-200 hover:bg-cyan-100"
             }`}
           >
-            <span>🕸️</span>
+            <Icon name="fa-solid fa-circle-nodes text-[14px]" size={14} />
             <span>{isVi ? "Neo4j Live (55.342 Nodes)" : "Neo4j Live (55,342 Nodes)"}</span>
           </button>
         </div>
@@ -500,7 +486,7 @@ export default function KnowledgeView({
       {/* ========================================================================= */}
       {activeTab === "neo4j_live" && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5 shadow-xs min-h-[650px]">
-          <GraphPanel lang={lang} onSelectNode={onSelectEntity} initialSearch={selectedEntity} role={effectiveRole} currentUser={currentUser} />
+          <GraphPanel lang={lang} onSelectNode={handleGraphNodeSelect} initialSearch={selectedEntity} role={effectiveRole} currentUser={currentUser} />
         </div>
       )}
 
@@ -773,11 +759,11 @@ export default function KnowledgeView({
                     showToast(isVi ? "Đã chọn Node: Termination (#75)" : "Selected Node: Termination (#75)");
                   }}
                 >
-                  <circle r="50" fill="#EAEDFF" stroke="#2563EB" strokeWidth="3" />
-                  <circle r="56" fill="none" stroke="#2563EB" strokeWidth="1.5" strokeDasharray="3 3" className="animate-pulse" />
-                  <circle cx="0" cy="0" r="8" fill="#2563EB" />
-                  <text y="-8" textAnchor="middle" fill="#2563EB" fontSize="11" fontWeight="bold" fontFamily="Inter">Termination</text>
-                  <text y="10" textAnchor="middle" fill="#1D4ED8" fontSize="9" fontFamily="Inter">Clause #75</text>
+                  <circle r="50" fill="#ecfeff" stroke="#0891b2" strokeWidth="3" />
+                  <circle r="56" fill="none" stroke="#0891b2" strokeWidth="1.5" strokeDasharray="3 3" className="animate-pulse" />
+                  <circle cx="0" cy="0" r="8" fill="#0891b2" />
+                  <text y="-8" textAnchor="middle" fill="#0891b2" fontSize="11" fontWeight="bold" fontFamily="Inter">Termination</text>
+                  <text y="10" textAnchor="middle" fill="#0e7490" fontSize="9" fontFamily="Inter">Clause #75</text>
                 </g>
 
                 {/* Node 5: SLA Condition */}
@@ -949,7 +935,7 @@ export default function KnowledgeView({
                   <button
                     onClick={() => {
                       setSelectedEdge(null);
-                      showToast(isVi ? "Đã xóa cạnh liên kết" : "Deleted relation edge");
+                      showToast(isVi ? "Xóa quan hệ chưa được hỗ trợ; không có dữ liệu nào thay đổi." : "Relationship deletion is not implemented; no data was changed.");
                     }}
                     className="px-2.5 py-1 rounded-lg bg-error-container text-on-error-container hover:bg-error hover:text-white transition-colors text-xs font-semibold"
                   >
@@ -1250,7 +1236,7 @@ export default function KnowledgeView({
                                 <Icon name="fa-solid fa-check text-[15px]" size={15} />
                               </button>
                               <button
-                                onClick={() => showToast(isVi ? `Đang mở trình sửa quan hệ cho ${item.source}` : `Editing ${item.source}`)}
+                                onClick={handleRowAction}
                                 className="p-1.5 rounded-lg hover:bg-surface-container text-primary transition-colors"
                                 title={isVi ? "Chỉnh sửa" : "Edit"}
                               >
@@ -1282,7 +1268,7 @@ export default function KnowledgeView({
               <span className="text-primary font-semibold">
                 {isStandard
                   ? (isVi ? "🔒 Chế độ Chuyên viên kinh doanh: Chỉ đọc dữ liệu trích xuất hợp đồng & sản phẩm" : "🔒 Sales Specialist Scope: Read-only contract & product extractions")
-                  : (isVi ? "Nhấn [Duyệt hàng loạt] để đồng bộ thẳng vào Neo4j Graph DB" : "Click [Batch Approve] to commit directly to Neo4j")}
+                  : (isVi ? "Hàng chờ dữ liệu mẫu: thao tác duyệt/từ chối quan hệ hiện chưa được lưu" : "Sample queue: relationship approve/reject is not persisted yet")}
               </span>
             </div>
           </div>

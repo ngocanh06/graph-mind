@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { X } from "lucide-react";
 
 /**
  * Enterprise Modal Dialog (UI/UX Pro Max)
@@ -128,7 +127,7 @@ export default function Modal({
               }}
               className="modal-close-btn"
             >
-              <X size={17} strokeWidth={2} />
+              <i className="fa-solid fa-xmark" style={{ fontSize: 16 }} />
             </button>
           )}
         </div>

@@ -26,7 +26,7 @@ const input = {
 const btn = (primary) => ({
   padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
   border: primary ? "none" : "1px solid var(--border)",
-  background: primary ? "linear-gradient(135deg,#0284c7,#2563eb)" : "var(--surface)",
+  background: primary ? "linear-gradient(135deg,#0891b2,#06b6d4)" : "var(--surface)",
   color: primary ? "#fff" : "var(--text-1)",
 });
 
@@ -118,7 +118,7 @@ export default function ShiftReportEditor({ isVi, currentUser, onNavigate }) {
               {isVi ? "Báo Cáo Công Việc Ca" : "Shift Work Report"}
             </h1>
             <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 4 }}>
-              {currentUser?.name || currentUser?.username} · {isVi ? "Phạm vi: cá nhân (BR-02)" : "Scope: personal (BR-02)"}
+              {currentUser?.name || currentUser?.username} · {isVi ? "Phạm vi: Cá nhân" : "Scope: Personal"}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

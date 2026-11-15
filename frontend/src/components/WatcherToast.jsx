@@ -25,9 +25,9 @@ const EVENT_CONFIG = {
     symbol: "↻",
     labelVi: "Đã cập nhật tài liệu",
     labelEn: "Document updated",
-    color: "#2563eb",
-    bg: "#eff6ff",
-    border: "#bfdbfe",
+    color: "#0891b2",
+    bg: "#ecfeff",
+    border: "#a5f3fc",
   },
   deleted: {
     icon: "✕",
@@ -334,9 +334,9 @@ export default function WatcherToast({ event, onDismiss, lang = "vi", onNavigate
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 5,
-                background: "#eff6ff",
-                color: "#2563eb",
-                border: "1px solid #bfdbfe",
+                background: "#ecfeff",
+                color: "#0891b2",
+                border: "1px solid #a5f3fc",
                 padding: "5px 12px",
                 borderRadius: 8,
                 fontSize: 12,
@@ -346,16 +346,16 @@ export default function WatcherToast({ event, onDismiss, lang = "vi", onNavigate
                 whiteSpace: "nowrap",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#2563eb";
+                e.currentTarget.style.background = "#0891b2";
                 e.currentTarget.style.color = "#ffffff";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#eff6ff";
-                e.currentTarget.style.color = "#2563eb";
+                e.currentTarget.style.background = "#ecfeff";
+                e.currentTarget.style.color = "#0891b2";
               }}
             >
               <span>{isVi ? "Kho tài liệu" : "Repository"}</span>
-              <span style={{ fontSize: 11 }}>→</span>
+              <i className="fa-solid fa-arrow-right" style={{ fontSize: 10 }} />
             </button>
           )}
 

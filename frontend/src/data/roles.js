@@ -27,7 +27,7 @@ export const ENTERPRISE_ROLES = {
     departmentEn: "Executive Board & C-Suite",
     avatar: "TH",
     color: "#0891b2",
-    accentColor: "#00e5ff",
+    accentColor: "#06b6d4",
     defaultView: "executive",
     allowedViews: ["executive", "risk", "reports", "copilot", "knowledge", "search"],
     description: "Đài quan sát vĩ mô toàn diện: bức tranh tài chính, vận hành, kiểm soát rủi ro toàn doanh nghiệp và hỗ trợ ra quyết định chiến lược cấp cao.",

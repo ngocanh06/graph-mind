@@ -1,5 +1,4 @@
 import React from "react";
-import { ArrowLeft } from "lucide-react";
 
 /**
  * Enterprise Page Header (UI/UX Pro Max)
@@ -49,7 +48,7 @@ export default function PageHeader({
               }}
               aria-label="Go back"
             >
-              <ArrowLeft size={13} />
+              <i className="fa-solid fa-arrow-left" style={{ fontSize: 12 }} />
               <span>Back</span>
             </button>
           )}

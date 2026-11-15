@@ -51,6 +51,8 @@ frontend/node_modules/
 # Test & scratch caches
 .pytest_cache/
 *.pytest_cache/
+.robot-results/
+.venv-robot/
 scratch/
 .cache_adv_csv/
 .demo_seed_cache/

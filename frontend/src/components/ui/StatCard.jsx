@@ -1,5 +1,4 @@
 import React from "react";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 /**
  * Enterprise StatCard / Metric Widget (UI/UX Pro Max)
@@ -19,18 +18,32 @@ export default function StatCard({
 }) {
   const isClickable = Boolean(onClick);
 
+  const renderIcon = () => {
+    if (!Icon) return null;
+    if (typeof Icon === "string") {
+      const cls = Icon.startsWith("fa-") || Icon.startsWith("fas ") ? Icon : `fa-solid fa-${Icon}`;
+      return <i className={cls} style={{ fontSize: 16 }} />;
+    }
+    if (React.isValidElement(Icon)) return Icon;
+    if (typeof Icon === "function") {
+      const Comp = Icon;
+      return <Comp size={17} strokeWidth={2} />;
+    }
+    return null;
+  };
+
   return (
     <div
       onClick={onClick}
       style={{
         background: "var(--surface, #FFFFFF)",
-        border: "1px solid var(--border, #E2E8F0)",
-        borderRadius: "var(--r-lg, 12px)",
+        border: "1px solid var(--border, #cffafe)",
+        borderRadius: "14px",
         padding: "18px 20px",
         display: "flex",
         flexDirection: "column",
         gap: "10px",
-        boxShadow: "var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))",
+        boxShadow: "0 2px 10px rgba(8, 145, 178, 0.04), 0 1px 2px rgba(0,0,0,0.02)",
         cursor: isClickable ? "pointer" : "default",
         transition: isClickable ? "all 0.18s ease" : "none",
         boxSizing: "border-box",
@@ -42,8 +55,8 @@ export default function StatCard({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
         <span
           style={{
-            fontSize: "12.5px",
-            fontWeight: 600,
+            fontSize: "12px",
+            fontWeight: 700,
             color: "var(--text-3, #64748B)",
             textTransform: "uppercase",
             letterSpacing: "0.04em",
@@ -54,18 +67,19 @@ export default function StatCard({
         {Icon && (
           <div
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: "var(--r-md, 8px)",
-              background: iconBg || "var(--blue-soft, rgba(37,99,235,0.08))",
-              color: iconColor || "var(--blue, #2563EB)",
+              width: 36,
+              height: 36,
+              borderRadius: "10px",
+              background: iconBg || "var(--cyan-soft, rgba(8,145,178,0.08))",
+              color: iconColor || "var(--cyan, #0891b2)",
+              border: "1px solid rgba(8, 145, 178, 0.15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
             }}
           >
-            <Icon size={17} strokeWidth={2} />
+            {renderIcon()}
           </div>
         )}
       </div>
@@ -89,7 +103,7 @@ export default function StatCard({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "3px",
+              gap: "4px",
               fontSize: "12px",
               fontWeight: 700,
               padding: "2px 6px",
@@ -109,11 +123,11 @@ export default function StatCard({
             }}
           >
             {isPositive === true ? (
-              <TrendingUp size={12} strokeWidth={2.5} />
+              <i className="fa-solid fa-arrow-trend-up" style={{ fontSize: 11 }} />
             ) : isPositive === false ? (
-              <TrendingDown size={12} strokeWidth={2.5} />
+              <i className="fa-solid fa-arrow-trend-down" style={{ fontSize: 11 }} />
             ) : (
-              <Minus size={12} strokeWidth={2.5} />
+              <i className="fa-solid fa-minus" style={{ fontSize: 11 }} />
             )}
             <span>{change}</span>
           </div>

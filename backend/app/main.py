@@ -65,6 +65,7 @@ try:
     from app.api.v1.auth import router as auth_router
     from app.api.v1.copilot import router as copilot_router
     from app.api.v1.dashboard import router as dashboard_router
+    from app.api.v1.graph_editor import router as graph_editor_router
     from app.api.v1.sop import router as sop_router
     from app.api.v1.rbac import router as rbac_router
     from app.core.rbac import get_user_scope, ScopeContext, normalize_dept
@@ -72,6 +73,7 @@ except ImportError:
     from api.v1.auth import router as auth_router
     from api.v1.copilot import router as copilot_router
     from api.v1.dashboard import router as dashboard_router
+    from api.v1.graph_editor import router as graph_editor_router
     from api.v1.sop import router as sop_router
     from api.v1.rbac import router as rbac_router
     from core.rbac import get_user_scope, ScopeContext, normalize_dept
@@ -241,6 +243,7 @@ app.add_middleware(
 # Authentication routers (/api/v1/auth and /api/auth)
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(graph_editor_router, tags=["Knowledge Editor"])
 
 # Copilot routers (/api/copilot and /api/v1/copilot)
 app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])

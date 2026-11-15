@@ -1,5 +1,4 @@
 import React from "react";
-import { Search, X, Loader2 } from "lucide-react";
 
 /**
  * Enterprise Search Input with Shortcut & Clear action (UI/UX Pro Max)
@@ -37,9 +36,9 @@ export default function SearchInput({
         }}
       >
         {loading ? (
-          <Loader2 size={15} className="spin" style={{ animation: "spin 0.8s linear infinite" }} />
+          <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: 14 }} />
         ) : (
-          <Search size={15} strokeWidth={2} />
+          <i className="fa-solid fa-magnifying-glass" style={{ fontSize: 14 }} />
         )}
       </div>
 
@@ -83,7 +82,7 @@ export default function SearchInput({
             alignItems: "center",
           }}
         >
-          <X size={14} />
+          <i className="fa-solid fa-xmark" style={{ fontSize: 13 }} />
         </button>
       )}
 

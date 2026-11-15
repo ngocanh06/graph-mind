@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import real routers
 from app.api.v1.auth import router as auth_router
+from app.api.v1.graph_editor import router as graph_editor_router
 from app.api.v1.rbac import router as rbac_router
 from app.modules.m1_data_sync.webhook import (
     router as file_watcher_router,
@@ -61,6 +62,7 @@ def create_test_app(
     # Authentication routers
     test_app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
     test_app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+    test_app.include_router(graph_editor_router)
 
     # RBAC routers
     test_app.include_router(rbac_router, prefix="/api/v1/rbac", tags=["rbac"])
@@ -103,6 +105,8 @@ def create_test_app(
             mock_cursor.fetchone.return_value = None
             mock_cursor.fetchall.return_value = []
             mock_cursor.scalar_one_or_none.return_value = None
+            mock_cursor.scalars.return_value.all.return_value = []
+            mock_session.add_all = MagicMock()
             mock_session.execute.return_value = mock_cursor
             yield mock_session
         test_app.dependency_overrides[get_db] = _default_mock_db

@@ -83,7 +83,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
       {
         num: 1,
         title: "Bước 1: Nạp tài liệu & Kích hoạt Hybrid GraphRAG",
-        desc: "Chuyên viên tải tệp PDF dự thảo lên SCREEN-015. Hệ thống tự động phân tách 128 Chunks vector vào Qdrant và liên kết các node pháp lý tương ứng trong Neo4j."
+        desc: "Chuyên viên tải tệp PDF dự thảo lên Kho tài liệu. Hệ thống tự động phân tách 128 Chunks vector vào Qdrant và liên kết các node pháp lý tương ứng trong Neo4j."
       },
       {
         num: 2,
@@ -93,7 +93,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
       {
         num: 3,
         title: "Bước 3: Hiệu chỉnh Human-in-the-loop & Đề xuất sửa đổi",
-        desc: "Sử dụng Knowledge Editor (SCREEN-016) để xác nhận lại mối liên hệ thực thể, bổ sung chú thích pháp lý trước khi phát hành Báo cáo thẩm định sang ban Giám đốc."
+        desc: "Sử dụng Knowledge Editor để xác nhận lại mối liên hệ thực thể, bổ sung chú thích pháp lý trước khi phát hành Báo cáo thẩm định sang ban Giám đốc."
       }
     ],
     governance:
@@ -158,7 +158,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
           desc: isVi ? "Kiểm tra tính hợp lệ của tài liệu và kích hoạt luồng tác nghiệp." : "Validate input data and initiate execution flow."
         }
       ],
-      governance: isVi ? "Tuân thủ phân quyền RBAC (BR-04) và phê duyệt cấp quản lý." : "Governed by RBAC policy and executive sign-off."
+      governance: isVi ? "Tuân thủ chính sách phân quyền RBAC và phê duyệt cấp quản lý." : "Governed by RBAC policy and executive sign-off."
     });
     setMode("composer");
   };
@@ -282,7 +282,10 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
   });
 
   return (
-    <div className="space-y-4 font-sans text-on-surface min-h-screen">
+    <div
+      className="space-y-6 font-sans text-on-surface min-h-screen"
+      style={{ padding: "24px 32px 64px", boxSizing: "border-box" }}
+    >
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 bg-surface-container-high border border-primary/40 text-on-surface text-xs font-medium rounded-xl shadow-2xl flex items-center gap-2 animate-bounce">
@@ -299,31 +302,28 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
           {/* Header with Scope Banner */}
           <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-md bg-primary-fixed text-on-primary-fixed text-xs font-bold tracking-wider">
-                  SCREEN-017
-                </span>
-                <span className="px-2.5 py-0.5 rounded-md bg-surface-container-highest text-on-surface text-xs font-bold">
-                  BR-04 Scope
-                </span>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-sm border border-teal-200/50">
+                  <i className="fa-solid fa-clipboard-list" />
+                </div>
+                <h1 className="text-xl font-bold text-on-surface tracking-tight">
+                  {isVi ? "Quy trình & Quy chuẩn Vận hành (SOP)" : "Standard Operating Procedures (SOP)"}
+                </h1>
               </div>
-              <h1 className="text-2xl font-bold text-on-surface tracking-tight">
-                {isVi ? "Quy trình & Quy chuẩn Nội bộ (SOP Knowledge Base)" : "Internal SOP Rules & Guidelines"}
-              </h1>
               <p className="text-xs text-on-surface-variant leading-relaxed">
                 {isVi
-                  ? "Quản trị các tài liệu quy trình chuẩn (Standard Operating Procedures) làm ground-truth cho Agent Copilot."
-                  : "Curate Standard Operating Procedures (SOPs) acting as ground-truth rulebook for Agent Copilot."}
+                  ? "Quản trị các tài liệu quy trình chuẩn (SOP) làm cơ sở tham chiếu và hướng dẫn tác nghiệp."
+                  : "Manage Standard Operating Procedures (SOPs) acting as ground-truth rulebook for operations."}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={handleNewSop}
-                className="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow hover:bg-blue-700 transition-all flex items-center gap-2"
+                className="btn-gradient-cyan px-4 py-2 rounded-xl text-white text-xs font-bold shadow flex items-center gap-2 cursor-pointer"
               >
-                <Icon name="fa-solid fa-file-circle-plus text-[16px]" size={16} />
-                <span>{isVi ? "+ Tạo mới SOP (SCREEN-017a)" : "+ Compose SOP"}</span>
+                <i className="fa-solid fa-plus text-[13px]" />
+                <span>{isVi ? "+ Tạo mới SOP" : "+ Compose SOP"}</span>
               </button>
             </div>
           </div>
@@ -497,7 +497,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
               className="hover:text-primary transition-colors flex items-center gap-1 font-semibold"
             >
               <Icon name="fa-solid fa-arrow-left text-[11px]" size={15} />
-              <span>{isVi ? "SOP Nội bộ (SCREEN-017)" : "Back to SOP List"}</span>
+              <span>{isVi ? "Danh sách SOP" : "Back to SOP List"}</span>
             </button>
             <Icon name="fa-solid fa-chevron-right text-[10px] text-outline" size={15} />
             <span>{composerData.dept}</span>
@@ -606,13 +606,13 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                 </button>
               </div>
 
-              {/* AI Assistant Action Button */}
+              {/* Co-writer Action Button */}
               <button
                 onClick={handleAiCoWriter}
-                className="px-3 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold shadow hover:bg-purple-700 transition-all flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow-xs hover:bg-slate-800 transition-all flex items-center gap-1.5"
               >
-                <Icon name="fa-solid fa-wand-magic-sparkles text-[13px]" size={15} />
-                <span>{isVi ? "AI Co-writer: Viết tiếp SOP" : "AI Co-writer: Continue"}</span>
+                <Icon name="fa-solid fa-pen-nib text-[13px]" size={15} />
+                <span>{isVi ? "Soạn thảo tự động" : "Smart Drafting"}</span>
               </button>
             </div>
 
@@ -714,7 +714,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                 </button>
                 <button
                   onClick={handlePublishSop}
-                  className="px-6 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow hover:bg-blue-700 transition-all flex items-center gap-2"
+                  className="btn-gradient-cyan px-6 py-2.5 rounded-xl text-white text-xs font-bold shadow flex items-center gap-2 cursor-pointer"
                 >
                   <Icon name="fa-solid fa-cloud-arrow-up text-[15px]" size={15} />
                   <span>{isVi ? "Xuất bản SOP cho phòng ban (Publish)" : "Publish SOP"}</span>

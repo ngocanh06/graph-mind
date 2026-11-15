@@ -44,6 +44,29 @@ export default function Button({
     boxSizing: "border-box",
   };
 
+  const renderIcon = (isLeft) => {
+    if (!Icon || (isLeft && iconPosition !== "left") || (!isLeft && iconPosition !== "right")) {
+      return null;
+    }
+    const iconSize = size === "sm" ? 13 : 15;
+    if (typeof Icon === "string") {
+      const cls = Icon.startsWith("fa-") || Icon.startsWith("fas ") || Icon.startsWith("far ") || Icon.startsWith("fab ")
+        ? Icon
+        : `fa-solid fa-${Icon}`;
+      return <i className={cls} style={{ fontSize: iconSize }} aria-hidden="true" />;
+    }
+    if (React.isValidElement(Icon)) {
+      return Icon;
+    }
+    if (typeof Icon === "function") {
+      const Comp = Icon;
+      const fnName = Comp.displayName || Comp.name;
+      // If it looks like Lucide or has a mapping
+      return <Comp size={size === "sm" ? 14 : 16} strokeWidth={2} />;
+    }
+    return null;
+  };
+
   const sizeStyles = {
     sm: { height: 32, padding: "0 10px", fontSize: 12.5 },
     md: { height: 38, padding: "0 14px", fontSize: 13.5 },
@@ -53,10 +76,11 @@ export default function Button({
 
   const variantStyles = {
     primary: {
-      background: "var(--blue, #2563EB)",
+      background: "var(--brand-gradient, linear-gradient(135deg, #0891b2 0%, #00e5ff 100%))",
       color: "#FFFFFF",
-      borderColor: "var(--blue, #2563EB)",
-      boxShadow: "0 1px 2px rgba(37,99,235,0.2)",
+      borderColor: "transparent",
+      boxShadow: "var(--brand-gradient-shadow, 0 3px 12px rgba(8, 145, 178, 0.28))",
+      textShadow: "0 1px 2px rgba(0, 30, 50, 0.25)",
     },
     secondary: {
       background: "var(--surface, #FFFFFF)",
@@ -127,12 +151,10 @@ export default function Button({
           }}
         />
       ) : (
-        Icon && iconPosition === "left" && <Icon size={size === "sm" ? 14 : 16} strokeWidth={2} />
+        renderIcon(true)
       )}
       {children}
-      {!loading && Icon && iconPosition === "right" && (
-        <Icon size={size === "sm" ? 14 : 16} strokeWidth={2} />
-      )}
+      {!loading && renderIcon(false)}
     </button>
   );
 }

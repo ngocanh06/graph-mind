@@ -1,10 +1,47 @@
 import React, { useState, useEffect } from "react";
-import {
-  Database, CloudDownload, FileCode, Filter, Share2, Search,
-  HardDrive, Table, Server, Eye, RefreshCw, CheckCircle2,
-  ArrowRight, ShieldCheck, FolderSync, FileText, Check, AlertCircle, Play,
-  ExternalLink, Key, LogOut, Settings, X, Globe, Lock
-} from "lucide-react";
+// Authentic FontAwesome Icon Adapters (100% FontAwesome, Zero AI-looking SVG icons)
+const makeFa = (faClass) => ({ size = 16, className = "", style = {} }) => (
+  <i
+    className={`${faClass} ${className}`}
+    style={{
+      fontSize: size,
+      width: size,
+      height: size,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      lineHeight: 1,
+      ...style
+    }}
+  />
+);
+
+const Database = makeFa("fa-solid fa-database");
+const CloudDownload = makeFa("fa-solid fa-cloud-arrow-down");
+const FileCode = makeFa("fa-solid fa-file-code");
+const Filter = makeFa("fa-solid fa-filter");
+const Share2 = makeFa("fa-solid fa-circle-nodes");
+const Search = makeFa("fa-solid fa-magnifying-glass");
+const HardDrive = makeFa("fa-solid fa-hard-drive");
+const Table = makeFa("fa-solid fa-table");
+const Server = makeFa("fa-solid fa-server");
+const Eye = makeFa("fa-solid fa-eye");
+const RefreshCw = makeFa("fa-solid fa-arrows-rotate");
+const CheckCircle2 = makeFa("fa-solid fa-circle-check");
+const ArrowRight = makeFa("fa-solid fa-arrow-right");
+const ShieldCheck = makeFa("fa-solid fa-shield-halved");
+const FolderSync = makeFa("fa-solid fa-folder-tree");
+const FileText = makeFa("fa-solid fa-file-lines");
+const Check = makeFa("fa-solid fa-check");
+const AlertCircle = makeFa("fa-solid fa-circle-exclamation");
+const Play = makeFa("fa-solid fa-play");
+const ExternalLink = makeFa("fa-solid fa-arrow-up-right-from-square");
+const Key = makeFa("fa-solid fa-key");
+const LogOut = makeFa("fa-solid fa-arrow-right-from-bracket");
+const Settings = makeFa("fa-solid fa-gear");
+const X = makeFa("fa-solid fa-xmark");
+const Globe = makeFa("fa-solid fa-globe");
+const Lock = makeFa("fa-solid fa-lock");
 import { PageHeader, Card, Badge, Button } from "../../components/ui";
 import {
   fetchWatcherSyncStatus,

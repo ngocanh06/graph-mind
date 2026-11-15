@@ -1,5 +1,4 @@
 import React from "react";
-import { AlertCircle, X } from "lucide-react";
 
 /**
  * Enterprise Form Input (UI/UX Pro Max)
@@ -27,6 +26,20 @@ export default function Input({
   const inputId = id || (label ? `input-${label.toLowerCase().replace(/[^a-z0-9]/g, "-")}` : undefined);
   const errorId = inputId ? `${inputId}-error` : undefined;
   const helperId = inputId ? `${inputId}-helper` : undefined;
+
+  const renderIcon = () => {
+    if (!Icon) return null;
+    if (typeof Icon === "string") {
+      const cls = Icon.startsWith("fa-") || Icon.startsWith("fas ") ? Icon : `fa-solid fa-${Icon}`;
+      return <i className={cls} style={{ fontSize: 14 }} />;
+    }
+    if (React.isValidElement(Icon)) return Icon;
+    if (typeof Icon === "function") {
+      const Comp = Icon;
+      return <Comp size={15} strokeWidth={2} />;
+    }
+    return null;
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%", ...style }}>
@@ -59,7 +72,7 @@ export default function Input({
               alignItems: "center",
             }}
           >
-            <Icon size={15} strokeWidth={2} />
+            {renderIcon()}
           </div>
         )}
 
@@ -111,7 +124,7 @@ export default function Input({
               borderRadius: "50%",
             }}
           >
-            <X size={14} />
+            <i className="fa-solid fa-xmark" style={{ fontSize: 13 }} />
           </button>
         )}
       </div>
@@ -129,7 +142,7 @@ export default function Input({
             fontWeight: 500,
           }}
         >
-          <AlertCircle size={13} />
+          <i className="fa-solid fa-circle-exclamation" style={{ fontSize: 13 }} />
           <span>{error}</span>
         </div>
       ) : helperText ? (
