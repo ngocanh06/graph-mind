@@ -88,6 +88,62 @@ def generate_cypher_from_query(query: str) -> str:
         LIMIT 1
         """
 
+    # 0.03 Recent / Newly uploaded documents queries (e.g. tài liệu mới tải lên, tài liệu mới nhất, vừa tải lên)
+    is_recent_doc = (
+        bool(re.search(r"(?:mới|vừa|gần đây|latest|recent)\s*(?:[0-9a-zA-Z_\.\-]+\s+)?(?:tải lên|upload|nạp|thêm|đưa lên|tải)", q_lower)) or
+        bool(re.search(r"(?:tải lên|upload|nạp|tải)\s+(?:mới|gần đây|vừa)", q_lower)) or
+        any(k in q_lower for k in [
+            "mới tải lên", "vừa tải lên", "mới upload", "vừa upload", "mới nhất", "gần đây nhất",
+            "tài liệu mới", "văn bản mới", "hợp đồng mới", "tài liệu gần đây", "văn bản gần đây", "mới thêm"
+        ])
+    ) and any(w in q_lower for w in ["tài liệu", "văn bản", "hợp đồng", "file", "tệp", "document", "upload", "tải", "tên", "hồ sơ"])
+    if is_recent_doc:
+        return f"""
+        MATCH (d:Document)
+        WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
+        OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+        WITH d, coalesce(dept.name, d.department, 'Chung') AS dept_name,
+             coalesce(d.ingestedAt, d.lastModified, '') AS upload_time
+        ORDER BY upload_time DESC
+        RETURN d.name AS name,
+               d.id AS id,
+               d.id AS document_id,
+               d.name AS source_file,
+               dept_name AS department,
+               upload_time AS ingestedAt,
+               coalesce(d.chunksCount, 0) AS chunksCount,
+               'Tài liệu mới được nạp vào kho tri thức gần đây nhất: ' + d.name + ' (Mã hồ sơ: ' + d.id + ', Phòng ban: ' + dept_name + ', Thời gian nạp: ' + upload_time + ', Số đoạn đã lập chỉ mục: ' + toString(coalesce(d.chunksCount, 0)) + ').' AS snippet,
+               elementId(d) AS _id,
+               ['Document', 'DocumentSummary', dept_name] AS _labels
+        LIMIT 5
+        """
+
+    # 0.035 Expiring contracts queries (e.g. hợp đồng sắp hết hạn, danh sách hợp đồng hết hạn, khi nào hết hạn)
+    if any(k in q_lower for k in [
+        "hết hạn", "sắp hết hạn", "ngày hết hạn", "thời hạn", "hết hiệu lực", "hạn hợp đồng",
+        "expiration", "expiry", "expire"
+    ]) and any(w in q_lower for w in ["hợp đồng", "tài liệu", "văn bản", "contract"]):
+        return f"""
+        MATCH (d:Document)
+        WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
+          AND (toLower(d.name) CONTAINS 'expires' OR toLower(d.name) CONTAINS 'expiration' OR toLower(d.name) CONTAINS 'hết hạn')
+        OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+        WITH d, coalesce(dept.name, d.department, 'Chung') AS dept_name,
+             coalesce(d.ingestedAt, d.lastModified, '') AS upload_time
+        ORDER BY d.name ASC
+        RETURN d.name AS name,
+               d.id AS id,
+               d.id AS document_id,
+               d.name AS source_file,
+               dept_name AS department,
+               upload_time AS ingestedAt,
+               coalesce(d.chunksCount, 0) AS chunksCount,
+               'Hợp đồng ghi nhận thời hạn hết hạn: ' + d.name + ' (Mã hồ sơ: ' + d.id + ', Phòng ban: ' + dept_name + ').' AS snippet,
+               elementId(d) AS _id,
+               ['Document', 'ExpiringContract', dept_name] AS _labels
+        LIMIT 10
+        """
+
     # 0.04 Total Documents & System Inventory queries
     if any(k in q_lower for k in [
         "bao nhiêu tài liệu", "bao nhiêu văn bản", "bao nhiêu hợp đồng",
@@ -389,7 +445,7 @@ def execute_text_to_cypher(
             )
             item["snippet"] = r.get("snippet") or str(n_props or {k: v for k, v in r.items() if not k.startswith("_")})[:250]
             # Preserve aggregate & provenance metadata for Layer-2 & RBAC validation
-            for k in ["source_doc_ids", "duplicate_detected", "total_verified_docs", "source_document_id", "document_id", "department", "domain", "id", "CustomerID", "totalQty", "distinctProducts", "order_count", "totalSpent", "totalProductSpent"]:
+            for k in ["source_doc_ids", "duplicate_detected", "total_verified_docs", "source_document_id", "document_id", "department", "domain", "id", "CustomerID", "totalQty", "distinctProducts", "order_count", "totalSpent", "totalProductSpent", "ingestedAt", "chunksCount", "upload_time", "lastModified"]:
                 if k in r:
                     item[k] = r[k]
                 elif k in n_props:

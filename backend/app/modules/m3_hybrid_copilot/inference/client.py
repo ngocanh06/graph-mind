@@ -211,14 +211,21 @@ class OllamaClient:
 
         is_doc_content_query = any(k in q_lower for k in [
             "trình bày", "nội dung", "tóm tắt", "giải thích", "nói về", "cho tôi biết nội dung",
-            "nội dung chính", "các điều khoản chính", "nội dung file", "nội dung tài liệu", "hợp đồng này",
-            "chi tiết hợp đồng", "văn bản này", "nói về điều gì", "ý nghĩa", "review", "đọc file",
+            "nội dung chính", "các điều khoản chính", "nội dung file", "nội dung tài liệu",
+            "chi tiết hợp đồng", "nói về điều gì", "ý nghĩa", "review", "đọc file",
             "thông tin file", "thông tin tài liệu", "tổng quan"
         ])
         is_doc_metadata_query = any(k in q_lower for k in [
             "mã hồ sơ", "mã tài liệu", "phòng ban nào", "ai tải lên", "khi nào", "bao nhiêu chunk",
             "bao nhiêu đoạn", "lập chỉ mục", "indexing", "metadata", "dung lượng", "hash"
         ])
+        is_doc_expiry_query = any(k in q_lower for k in [
+            "hết hạn", "sắp hết hạn", "ngày hết hạn", "thời hạn", "hiệu lực", "khi nào hết hạn",
+            "hết hiệu lực", "thời hạn hợp đồng", "kéo dài bao lâu", "tái ký", "gia hạn", "hạn hợp đồng",
+            "expiration", "expiry", "expire", "expires", "term and termination"
+        ])
+        if is_doc_expiry_query:
+            is_doc_content_query = False
 
         # Check if evidence chunks belong to central document repository (CUAD contracts / SOP / Policies)
         is_cuad_document = False
@@ -513,7 +520,7 @@ class OllamaClient:
         # Fallback graceful response nếu Ollama chưa sẵn sàng hoặc quá thời gian
         latency = round(time.time() - start_time, 2)
         if is_vi:
-            if is_cuad_document and (is_doc_content_query or not is_doc_metadata_query):
+            if is_cuad_document and is_doc_content_query:
                 c0 = evidence_chunks[0]
                 doc_name = c0.get("source_file") or c0.get("contract_name") or "Tài liệu hệ thống"
                 doc_id = c0.get("document_id") or c0.get("doc_id") or ""
@@ -548,7 +555,7 @@ class OllamaClient:
             else:
                 fallback_msg = f"Đã tra cứu dữ liệu cho truy vấn '{query}' nhưng chưa đủ thông tin để kết luận chi tiết."
         else:
-            if is_cuad_document and (is_doc_content_query or not is_doc_metadata_query):
+            if is_cuad_document and is_doc_content_query:
                 c0 = evidence_chunks[0]
                 doc_name = c0.get("source_file") or c0.get("contract_name") or "System Document"
                 doc_id = c0.get("document_id") or c0.get("doc_id") or ""

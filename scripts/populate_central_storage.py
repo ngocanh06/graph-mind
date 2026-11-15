@@ -62,11 +62,15 @@ if PREPACKED_TAR.exists():
     sys.exit(0)
 
 if not CUAD_DIR.exists():
-    print(f"ERROR: {CUAD_DIR} does not exist!")
-    print("Provide the correct path with --cuad-dir <path> or place central_storage_pack.tar in the root directory.")
-    sys.exit(1)
+    if (ROOT_DIR / "legal").exists():
+        CUAD_DIR = ROOT_DIR / "legal"
+    else:
+        print(f"ERROR: {CUAD_DIR} does not exist!")
+        print("Provide the correct path with --cuad-dir <path> or place central_storage_pack.tar in the root directory.")
+        sys.exit(1)
 
-if not ADV_DIR.exists():
+has_local_adv = any((ROOT_DIR / d).exists() for d in ["sales", "rnd", "accounting_procurement", "it"])
+if not ADV_DIR.exists() and not has_local_adv:
     print(f"ERROR: {ADV_DIR} does not exist!")
     print("Provide the correct path with --adv-dir <path> or place central_storage_pack.tar in the root directory.")
     sys.exit(1)
@@ -82,19 +86,27 @@ print(f"[*] Found {len(cuad_files)} CUAD contract PDFs.")
 
 # Collect all AdventureWorks CSVs
 adv_files = []
-for f in os.listdir(ADV_DIR):
-    if not f.lower().endswith(".csv"):
-        continue
-    filepath = ADV_DIR / f
-    if f.startswith(("Sales_", "Person_")):
-        dest = f"sales/{f}"
-    elif f.startswith(("Purchasing_", "HumanResources_")):
-        dest = f"accounting_procurement/{f}"
-    elif f.startswith("Production_"):
-        dest = f"rnd/{f}"
-    else:
-        dest = f"it/{f}"
-    adv_files.append((filepath, dest))
+if ADV_DIR.exists():
+    for f in os.listdir(ADV_DIR):
+        if not f.lower().endswith(".csv"):
+            continue
+        filepath = ADV_DIR / f
+        if f.startswith(("Sales_", "Person_")):
+            dest = f"sales/{f}"
+        elif f.startswith(("Purchasing_", "HumanResources_")):
+            dest = f"accounting_procurement/{f}"
+        elif f.startswith("Production_"):
+            dest = f"rnd/{f}"
+        else:
+            dest = f"it/{f}"
+        adv_files.append((filepath, dest))
+else:
+    for d in ["sales", "accounting_procurement", "rnd", "it"]:
+        dept_dir = ROOT_DIR / d
+        if dept_dir.exists():
+            for f in os.listdir(dept_dir):
+                if f.lower().endswith(".csv"):
+                    adv_files.append((dept_dir / f, f"{d}/{f}"))
 
 print(f"[*] Found {len(adv_files)} AdventureWorks CSV files.")
 all_items = cuad_files + adv_files
