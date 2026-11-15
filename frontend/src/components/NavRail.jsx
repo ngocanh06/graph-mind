@@ -148,7 +148,7 @@ export default function NavRail({
       </div>
 
       {/* ── NAVIGATION ───────────────────────────────────── */}
-      <nav style={{ flex: 1, overflowY: "auto", padding: "10px 0 8px" }}>
+      <nav style={{ flex: 1, overflowY: "auto", padding: "10px 0 8px", scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {sections.map((section) => {
           const visibleItems = section.items.filter(item =>
             !item.roles || item.roles.includes(role)
@@ -201,24 +201,24 @@ export default function NavRail({
                         gap: 10,
                         padding: isOpen ? "8px 12px" : "9px 0",
                         justifyContent: isOpen ? "flex-start" : "center",
-                        borderRadius: isOpen ? "10px" : "8px",
-                        border: isActive ? "1px solid #a5f3fc" : "1px solid transparent",
-                        background: isActive ? "#ecfeff" : "transparent",
+                        borderRadius: isOpen ? "8px" : "6px",
+                        border: isActive ? "1px solid rgba(8, 145, 178, 0.2)" : "1px solid transparent",
+                        background: isActive ? "rgba(8, 145, 178, 0.08)" : "transparent",
                         color: isActive ? "#0891b2" : "var(--text-2)",
                         fontSize: 13,
-                        fontWeight: isActive ? 700 : 500,
+                        fontWeight: isActive ? 600 : 500,
                         cursor: "pointer",
                         transition: "all 0.15s ease",
                         textAlign: "left",
                         position: "relative",
-                        marginBottom: 3,
+                        marginBottom: 2,
                         fontFamily: "var(--f-body)",
                         boxSizing: "border-box",
-                        boxShadow: isActive ? "0 1px 4px rgba(8, 145, 178, 0.08)" : "none",
+                        boxShadow: "none",
                       }}
                       onMouseEnter={e => {
                         if (!isActive) {
-                          e.currentTarget.style.background = "#f4fbfb";
+                          e.currentTarget.style.background = "var(--surface-hover, #f1f5f9)";
                           e.currentTarget.style.color = "var(--text-1)";
                         }
                       }}

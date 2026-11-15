@@ -62,51 +62,51 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ============================================================
    LIGHT MODE (PRIMARY & DEFAULT)
-   Bright, radiant, fresh surfaces with vibrant Xanh Ngọc Lam (Cyan/Teal)
-   Tone Xanh Ngọc Lam tươi sáng, rực rỡ, tinh khiết
+   Basic, clean, bright, and uncluttered (UI/UX Pro Max)
+   Tone Xanh Ngọc Lam làm điểm nhấn thanh lịch, viền trung tính gọn gàng
    ============================================================ */
 :root, [data-theme="light"] {
-  --void: #f6fcfc;
-  --base: #f6fcfc;        /* Trắng ánh ngọc lam siêu sáng, tươi tắn, không bị tối */
-  --base-alt: #ecfeff;    /* Cyan-50 trong trẻo */
-  --surface: #ffffff;     /* Trắng tinh khiết 100% cho Card & Bảng điều khiển */
-  --surface-2: #f4fbfb;   /* Sáng nhẹ phớt ngọc lam, không xỉn */
-  --surface-3: #ecfeff;   /* Ánh ngọc lam dịu mát */
-  --surface-hover: #ecfeff;
+  --void: #f8fafc;
+  --base: #f8fafc;        /* Trắng sáng ngà thanh nhã, siêu sạch, không chói */
+  --base-alt: #f1f5f9;    
+  --surface: #ffffff;     /* Trắng tinh khiết cho Card & Khung làm việc */
+  --surface-2: #f8fafc;   /* Nền phụ nhẹ nhàng */
+  --surface-3: #f1f5f9;   
+  --surface-hover: #f1f5f9;
   
-  --border: #cffafe;      /* Cyan-100 ánh ngọc lam tươi sáng, loại bỏ hoàn toàn viền xám cũ */
-  --border-soft: #e6faf9; /* Mịn màng, dịu mắt */
-  --border-strong: #a5f3fc; /* Cyan-200 */
-  --border-focus: #0891b2;  /* Cyan-600 */
+  --border: #e2e8f0;      /* Viền xám sáng trung tính, mỏng gọn, không loè loẹt */
+  --border-soft: #f1f5f9; /* Viền ngăn cách cực nhẹ */
+  --border-strong: #cbd5e1; /* Xám trung bình */
+  --border-focus: #0891b2;  /* Xanh ngọc lam khi focus */
 
-  --text-1: #0f172a;      /* Slate-900 (Đen Navy đậm nét, độ tương phản cao, siêu sắc sảo) */
-  --text-2: #334155;      /* Slate-700 (Xám than sâu, thanh lịch) */
-  --text-3: #64748b;      /* Slate-500 (Xám trung tính chuẩn xác) */
-  --text-4: #94a3b8;      /* Slate-400 (Xám nhạt cho metadata) */
+  --text-1: #0f172a;      /* Slate-900 (Đen than đậm, rõ nét, dễ đọc) */
+  --text-2: #334155;      /* Slate-700 */
+  --text-3: #64748b;      /* Slate-500 */
+  --text-4: #94a3b8;      /* Slate-400 */
 
   --navy: #0f172a;        
-  --navy-light: #164e63;  /* Cyan-900 */
-  --blue: #0891b2;        /* Xanh ngọc lam chuẩn */
-  --blue-dim: #ecfeff;
+  --navy-light: #164e63;  
+  --blue: #0891b2;        
+  --blue-dim: #f0fdfa;
   --blue-soft: rgba(8, 145, 178, 0.08);
 
-  --cyan: #0891b2;        /* Xanh ngọc lam tươi nét (Cyan-600) */
-  --cyan-dim: #ecfeff;
+  --cyan: #0891b2;        /* Xanh ngọc lam điểm nhấn chủ đạo */
+  --cyan-dim: #f0fdfa;
   --cyan-soft: rgba(8, 145, 178, 0.08);
   --cyan-hover: #0e7490;
-  --cyan-electric: #06b6d4; /* Ngọc lam tươi rực rỡ (Cyan-500) */
-  --cyan-mint: #14b8a6;   /* Teal-500 */
-  --nav-active-bg: #ecfeff;
-  --nav-active-border: #a5f3fc;
+  --cyan-electric: #06b6d4;
+  --cyan-mint: #14b8a6;   
+  --nav-active-bg: rgba(8, 145, 178, 0.08);
+  --nav-active-border: rgba(8, 145, 178, 0.2);
   --nav-active-text: #0891b2;
 
   --brand: #0891b2;
   --brand-hover: #0e7490;
   --brand-soft: rgba(8, 145, 178, 0.08);
-  --brand-glow: 0 0 16px rgba(6, 182, 212, 0.28);
+  --brand-glow: none;
   --brand-gradient: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
-  --brand-gradient-hover: linear-gradient(135deg, #0e7490 0%, #22d3ee 100%);
-  --brand-gradient-shadow: 0 4px 14px rgba(8, 145, 178, 0.25);
+  --brand-gradient-hover: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+  --brand-gradient-shadow: 0 2px 6px rgba(8, 145, 178, 0.2);
 
   --green: #059669;
   --green-dim: #ecfdf5;
@@ -121,9 +121,9 @@ h1, h2, h3, h4, h5, h6 {
   --red-soft: rgba(220, 38, 38, 0.08);
 
   --white-v: #ffffff;
-  --chart-grid: #ecfeff;
-  --graph-bg-1: rgba(8, 145, 178, 0.02);
-  --graph-bg-2: rgba(6, 182, 212, 0.025);
+  --chart-grid: #f1f5f9;
+  --graph-bg-1: rgba(8, 145, 178, 0.015);
+  --graph-bg-2: rgba(8, 145, 178, 0.02);
 }
 
 /* ============================================================
@@ -223,18 +223,18 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-3);
+  background: #94a3b8;
 }
 
 button {
@@ -3037,20 +3037,20 @@ select:focus {
   border-color: #B91C1C;
 }
 
-/* Cyan Gradient Accent Button (Matches Avatar Gradient) */
+/* Cyan Accent Button (Basic, clean, solid) */
 .btn-gradient-cyan {
-  background: var(--brand-gradient, linear-gradient(135deg, #0891b2 0%, #00e5ff 100%)) !important;
+  background: var(--cyan, #0891b2) !important;
   color: #ffffff !important;
   border: none !important;
-  box-shadow: var(--brand-gradient-shadow, 0 3px 12px rgba(8, 145, 178, 0.28)) !important;
-  text-shadow: 0 1px 2px rgba(0, 30, 50, 0.25);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  text-shadow: none !important;
+  transition: all 0.15s ease !important;
 }
 
 .btn-gradient-cyan:hover:not(:disabled) {
-  background: var(--brand-gradient-hover, linear-gradient(135deg, #0e7490 0%, #00cce6 100%)) !important;
-  box-shadow: 0 5px 18px rgba(0, 229, 255, 0.42) !important;
-  transform: translateY(-1px);
+  background: var(--cyan-hover, #0e7490) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  transform: none !important;
 }
 
 .btn-gradient-cyan:active:not(:disabled) {
