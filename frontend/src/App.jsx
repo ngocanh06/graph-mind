@@ -97,7 +97,7 @@ export default function App() {
     try {
       const saved = localStorage.getItem("aegis_user");
       if (saved) return JSON.parse(saved).id || "executive";
-    } catch (e) {}
+    } catch (e) { }
     return "executive";
   });
   const [currentUser, setCurrentUser] = useState(() => {
@@ -108,7 +108,7 @@ export default function App() {
         if (ENTERPRISE_ROLES[u?.id]) return ENTERPRISE_ROLES[u.id];
         return u;
       }
-    } catch (e) {}
+    } catch (e) { }
     return ENTERPRISE_ROLES.executive;
   });
   const [view, setView] = useState(initialRoute.view);
@@ -191,7 +191,7 @@ export default function App() {
         localStorage.setItem("aegis_current_view", view);
         window.history.replaceState(null, "", window.location.pathname + "#" + view);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, [pageMode, view]);
 
   // Lắng nghe sự kiện hashchange nếu người dùng điều hướng bằng URL
@@ -238,7 +238,7 @@ export default function App() {
     try {
       localStorage.setItem("aegis_user", JSON.stringify(user));
       getValidTokenForUser(user);
-    } catch (e) {}
+    } catch (e) { }
     setView("home");
   };
 
@@ -246,7 +246,7 @@ export default function App() {
     try {
       localStorage.removeItem("aegis_token");
       localStorage.removeItem("aegis_auth_user");
-    } catch (e) {}
+    } catch (e) { }
     setPageMode("login");
   };
 
@@ -295,7 +295,7 @@ export default function App() {
           setView(user.defaultView || "executive");
           try {
             localStorage.setItem("aegis_user", JSON.stringify(user));
-          } catch (e) {}
+          } catch (e) { }
           setPageMode("app");
         }}
         onBackToLanding={() => setPageMode("landing")}
