@@ -464,40 +464,47 @@ export default function ExecutiveView({
           </div>
         </div>
 
-        {/* ── KPI QUICK-STATS STRIP ───────────────────────────── */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "16px"
-        }}>
+        {/* ── KPI QUICK-STATS STRIP (1 HÀNG 4 CỘT) ───────────── */}
+        <div
+          className="kpi-quick-strip"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: "16px"
+          }}
+        >
           {quickKpis.map((kpi, idx) => {
             const Icon = kpi.icon;
             return (
               <div
                 key={idx}
                 style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--r-lg)",
-                  padding: "16px 20px",
+                  background: "var(--surface, #ffffff)",
+                  border: "1px solid var(--border, #e8edf3)",
+                  borderRadius: "14px",
+                  padding: "16px 18px",
                   display: "flex",
                   alignItems: "center",
-                  gap: 16,
-                  boxShadow: "var(--shadow-xs)",
-                  transition: "all 0.15s ease",
+                  gap: 14,
+                  boxShadow: "0 4px 16px -2px rgba(8, 145, 178, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02)",
+                  transition: "all 0.18s ease",
+                  minWidth: 0,
+                  boxSizing: "border-box",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px -4px rgba(8, 145, 178, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03)";
+                  e.currentTarget.style.borderColor = "rgba(8, 145, 178, 0.25)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-xs)";
+                  e.currentTarget.style.boxShadow = "0 4px 16px -2px rgba(8, 145, 178, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02)";
+                  e.currentTarget.style.borderColor = "var(--border, #e8edf3)";
                 }}
               >
                 <div style={{
-                  width: 44,
-                  height: 44,
+                  width: 42,
+                  height: 42,
                   borderRadius: 12,
                   background: kpi.bg,
                   color: kpi.color,
@@ -508,14 +515,38 @@ export default function ExecutiveView({
                 }}>
                   <Icon size={20} strokeWidth={2.2} />
                 </div>
-                <div>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                <div style={{ minWidth: 0, overflow: "hidden" }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text-3, #64748b)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.03em",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  }}>
                     {kpi.label}
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-1)", marginTop: 2, fontFamily: "var(--f-display)" }}>
+                  <div style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: "var(--text-1, #0f172a)",
+                    marginTop: 2,
+                    fontFamily: "var(--f-display)",
+                    lineHeight: 1.1
+                  }}>
                     {kpi.value}
                   </div>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: kpi.isPos ? "var(--green)" : "var(--amber)", marginTop: 2 }}>
+                  <div style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: kpi.isPos ? "var(--green, #059669)" : "var(--amber, #ea580c)",
+                    marginTop: 3,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  }}>
                     {kpi.sub}
                   </div>
                 </div>
