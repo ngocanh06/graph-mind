@@ -226,7 +226,7 @@ async def tc_08_live_databases_grounding():
     
     # 1. PostgreSQL
     try:
-        conn = psycopg2.connect("postgresql://postgres:123456@localhost:5432/graph-mind")
+        conn = psycopg2.connect("postgresql://postgres:123456@127.0.0.1:5432/graph-mind")
         cur = conn.cursor()
         cur.execute("SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")
         tbl_cnt = cur.fetchone()[0]
@@ -237,7 +237,7 @@ async def tc_08_live_databases_grounding():
         
     # 2. Neo4j
     try:
-        driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphmind_secret"))
+        driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "graphmind_secret"))
         with driver.session() as s:
             r = s.run("MATCH (n:Document) RETURN count(n) AS cnt").single()
             doc_nodes = r["cnt"] if r else 0
@@ -248,7 +248,7 @@ async def tc_08_live_databases_grounding():
         
     # 3. Qdrant
     try:
-        with urllib.request.urlopen("http://localhost:6333/collections/cuad_contracts", timeout=3) as res:
+        with urllib.request.urlopen("http://127.0.0.1:6333/collections/cuad_contracts", timeout=3) as res:
             q_data = json.loads(res.read().decode())
             pts = q_data.get("result", {}).get("points_count", 0)
         db_status["Qdrant"] = f"OK ({pts} vector points trong cuad_contracts)"
