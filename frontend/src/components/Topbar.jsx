@@ -3,7 +3,7 @@ import { ENTERPRISE_ROLES } from "../data/roles";
 
 const VIEW_TITLES = {
   en: {
-    home: "Home · Dashboard",
+    home: "Home",
     executive: "Executive Intelligence",
     copilot: "AI Copilot Center",
     knowledge: "Knowledge Graph",
@@ -17,7 +17,7 @@ const VIEW_TITLES = {
     admin: "System Administration",
   },
   vi: {
-    home: "Trang chủ · Dashboard",
+    home: "Trang chủ",
     executive: "Tổng quan Lãnh đạo",
     copilot: "Trợ lý AI Copilot",
     knowledge: "Đồ thị Tri thức",
