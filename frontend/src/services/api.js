@@ -3,7 +3,7 @@
  * Communicates with Python FastAPI backend (port 5000) with offline fallback
  */
 
-export const API_BASE = "http://localhost:5000/api";
+export const API_BASE = "http://127.0.0.1:5000/api";
 
 export function triggerConcurrentLoginKicked(message) {
   const kickMsg = message || "Tài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác. Bạn đã được tự động đăng xuất để bảo vệ dữ liệu.";
@@ -720,7 +720,7 @@ export async function fetchRiskAlerts(roleOrUser = "standard", dept = "Kinh doan
 
 export async function fetchWatcherSyncStatus() {
   try {
-    const res = await fetch(`http://localhost:5000/api/v1/sync/file-watcher/status`);
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/sync/file-watcher/status`);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[Watcher] fetchWatcherSyncStatus error:", e);
@@ -745,7 +745,7 @@ export async function triggerMockWatcherDrop(fileName = "HD_CungCap_ThietBi_2026
     formData.append("department", department);
     formData.append("file_name", fileName);
 
-    const res = await fetch(`http://localhost:5000/api/v1/sync/file-watcher`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/sync/file-watcher`, {
       method: "POST",
       headers: {
         "Authorization": "Bearer dev-agent-key"
@@ -1003,7 +1003,7 @@ export async function deleteSop(sopId, currentUser = null) {
 
 export async function fetchGoogleConnectorStatus() {
   try {
-    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/status`);
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/status`);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[GoogleConnector] fetchGoogleConnectorStatus error:", e);
@@ -1013,7 +1013,7 @@ export async function fetchGoogleConnectorStatus() {
 
 export async function fetchGoogleAuthUrl() {
   try {
-    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/auth-url`);
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/auth-url`);
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[GoogleConnector] fetchGoogleAuthUrl error:", e);
@@ -1023,7 +1023,7 @@ export async function fetchGoogleAuthUrl() {
 
 export async function configureGoogleOAuth(clientId, clientSecret, redirectUri) {
   try {
-    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/configure`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/configure`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri })
@@ -1037,7 +1037,7 @@ export async function configureGoogleOAuth(clientId, clientSecret, redirectUri) 
 
 export async function disconnectGoogleOAuth() {
   try {
-    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/disconnect`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/disconnect`, {
       method: "POST"
     });
     if (res.ok) return await res.json();
@@ -1049,7 +1049,7 @@ export async function disconnectGoogleOAuth() {
 
 export async function mockConnectGoogle(email, organization) {
   try {
-    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/mock-connect`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/mock-connect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, organization })
@@ -1063,7 +1063,7 @@ export async function mockConnectGoogle(email, organization) {
 
 export async function syncGoogleDrive() {
   try {
-    const res = await fetch(`http://localhost:5000/api/v1/connectors/google/sync`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/sync`, {
       method: "POST"
     });
     if (res.ok) return await res.json();

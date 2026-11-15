@@ -9,8 +9,8 @@
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const API = "http://localhost:5000/api/v1/sync/file-watcher/events?limit=50";
-const SSE_URL = "http://localhost:5000/api/v1/sync/file-watcher/stream";
+const API = "http://127.0.0.1:5000/api/v1/sync/file-watcher/events?limit=50";
+const SSE_URL = "http://127.0.0.1:5000/api/v1/sync/file-watcher/stream";
 const POLL_MS = 2500;
 const STORAGE_KEY = "graphmind_read_notifications";
 

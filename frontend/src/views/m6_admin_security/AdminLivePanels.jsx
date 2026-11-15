@@ -7,7 +7,7 @@ import { UserPlus, Lock, Unlock, KeyRound, Trash2, ClipboardList, Users, Refresh
 import { Badge, Button, Card, SearchInput } from "../../components/ui";
 import { getAuthHeaders } from "../../services/api";
 
-const ADMIN_API = "http://localhost:5000/api/v1/admin";
+const ADMIN_API = "http://127.0.0.1:5000/api/v1/admin";
 const ROLES = [
   { id: "executive", vi: "Ban lãnh đạo", en: "Executive", badge: "danger" },
   { id: "admin", vi: "Admin hệ thống", en: "Sys Admin", badge: "warning" },
