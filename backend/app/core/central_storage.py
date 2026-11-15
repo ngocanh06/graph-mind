@@ -17,11 +17,12 @@ or on Windows host communicating via Docker container `aegis_file_watcher`.
 import os
 import re
 import json
+import hashlib
 import logging
 import tempfile
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,12 @@ def resolve_canonical_dept(dept: str) -> str:
 
 
 def is_direct_storage_available() -> bool:
-    """Checks if /data is directly accessible on the current host/container."""
+    """Checks if /data is directly accessible on the current host/container.
+    When running on Windows host during local development, Docker named volume
+    is inside WSL2/Linux container and cannot be accessed as direct filesystem path.
+    """
+    if os.name == "nt":
+        return False
     return os.path.exists(DATA_ROOT) and os.path.isdir(DATA_ROOT)
 
 
@@ -336,3 +342,117 @@ def read_file_from_storage(filename: str, department: str) -> Optional[bytes]:
     except Exception as e:
         logger.warning(f"[CentralStorage] Failed to read file from container: {e}")
         return None
+
+
+async def check_document_duplicate(
+    filename: str,
+    content_bytes: bytes,
+    target_dept: Optional[str] = None,
+    db: Any = None,
+    exclude_request_id: Optional[Any] = None,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Kiểm tra xem tên hoặc nội dung (hash) của tài liệu tải lên đã tồn tại trong kho tài liệu chưa.
+    Trả về (is_duplicate: bool, refusal_reason: Optional[str]).
+    Nếu đã tồn tại: từ chối nạp lên và trả về lý do cụ thể bằng tiếng Việt.
+    Nếu chưa tồn tại: cho phép tiếp tục tải lên.
+    """
+    safe_name = sanitize_filename(filename)
+    clean_name_lower = safe_name.lower().strip()
+    file_hash = hashlib.sha256(content_bytes).hexdigest().lower().strip()
+
+    # 1. Kiểm tra đối chiếu trong Neo4j Knowledge Graph (nếu database đang chạy)
+    try:
+        from app.db.neo4j.client import neo4j_client
+        if neo4j_client and (neo4j_client.is_connected or neo4j_client.connect()):
+            res = neo4j_client.run_cypher("""
+                MATCH (d:Document)
+                WHERE toLower(d.name) = $name_lower
+                   OR d.hash = $file_hash
+                   OR d.file_hash = $file_hash
+                RETURN d.name as name, d.id as id, coalesce(d.department, 'Chung') as dept,
+                       coalesce(d.hash, d.file_hash, '') as hash
+                LIMIT 1
+            """, {"name_lower": clean_name_lower, "file_hash": file_hash})
+            if res:
+                matched = res[0]
+                m_name = (matched.get("name") or safe_name).strip()
+                m_id = matched.get("id") or ""
+                m_dept = matched.get("dept") or "Kho tri thức"
+                m_hash = (matched.get("hash") or "").strip().lower()
+
+                if m_hash and m_hash == file_hash:
+                    if m_name.lower() == clean_name_lower:
+                        return True, f"Tài liệu '{safe_name}' (Mã hồ sơ: {m_id}) đã tồn tại trong kho tài liệu ({m_dept}). Hệ thống từ chối nạp tài liệu trùng lặp."
+                    else:
+                        return True, f"Nội dung của tệp '{safe_name}' hoàn toàn trùng khớp với tài liệu '{m_name}' (Mã hồ sơ: {m_id}, phòng ban: {m_dept}) đã có trong kho. Hệ thống từ chối nạp tài liệu trùng lặp nội dung."
+                elif m_name.lower() == clean_name_lower:
+                    return True, f"Tên tài liệu '{safe_name}' đã tồn tại trong kho tài liệu ({m_dept}, Mã hồ sơ: {m_id}). Vui lòng đổi tên tệp trước khi tải lên để tránh ghi đè hoặc xung đột."
+    except Exception as e:
+        logger.debug(f"[DuplicateCheck] Neo4j check skipped or failed: {e}")
+
+    # 2. Kiểm tra trong registry tài liệu đã nạp (watcher_ingested_docs.json)
+    try:
+        data_dir = Path(__file__).resolve().parent.parent / "modules" / "m1_data_sync" / "data"
+        docs_file = data_dir / "watcher_ingested_docs.json"
+        if docs_file.exists():
+            with open(docs_file, "r", encoding="utf-8") as f:
+                docs = json.load(f)
+
+            # A. Kiểm tra theo hash nội dung
+            for doc in docs:
+                d_hash = (doc.get("hash") or doc.get("file_hash") or doc.get("fileHash") or "").strip().lower()
+                d_name = (doc.get("name") or doc.get("raw_id") or "").strip()
+                d_dept = doc.get("dept") or doc.get("department") or "Kho tri thức"
+                d_id = doc.get("id") or ""
+
+                if d_hash and d_hash == file_hash:
+                    if d_name.lower() == clean_name_lower:
+                        return True, f"Tài liệu '{safe_name}' (Mã hồ sơ: {d_id}) đã tồn tại trong kho tài liệu ({d_dept}). Hệ thống từ chối nạp tài liệu trùng lặp."
+                    else:
+                        return True, f"Nội dung của tệp '{safe_name}' hoàn toàn trùng khớp với tài liệu '{d_name}' (Mã hồ sơ: {d_id}, phòng ban: {d_dept}) đã có trong kho. Hệ thống từ chối nạp tài liệu trùng lặp nội dung."
+
+            # B. Kiểm tra theo tên tệp
+            for doc in docs:
+                d_name = (doc.get("name") or doc.get("raw_id") or "").strip()
+                d_dept = doc.get("dept") or doc.get("department") or "Kho tri thức"
+                d_id = doc.get("id") or ""
+
+                if d_name.lower() == clean_name_lower:
+                    return True, f"Tên tài liệu '{safe_name}' đã tồn tại trong kho tài liệu ({d_dept}, Mã hồ sơ: {d_id}). Vui lòng đổi tên tệp trước khi tải lên để tránh ghi đè hoặc xung đột."
+    except Exception as e:
+        logger.debug(f"[DuplicateCheck] Ingested docs JSON check skipped or failed: {e}")
+
+    # 3. Kiểm tra trên hệ thống lưu trữ Central Storage (/data/{dept}/*)
+    try:
+        storage_files = list_central_storage_files()
+        for sf in storage_files:
+            sf_name = sf.get("name", "").strip()
+            if sf_name.lower() == clean_name_lower:
+                sf_dept = sf.get("dept_name") or sf.get("dept_key") or "Central Storage"
+                return True, f"Tên tài liệu '{safe_name}' đã tồn tại trên phân vùng lưu trữ Central Storage ({sf_dept}). Vui lòng đổi tên tệp trước khi tải lên."
+    except Exception as e:
+        logger.debug(f"[DuplicateCheck] Storage files check skipped: {e}")
+
+    # 4. Kiểm tra trong hàng đợi phê duyệt PostgreSQL (nếu có db session)
+    if db is not None:
+        try:
+            from app.modules.m6_admin_security.document_approval_model import KnowledgeUploadApproval
+            from sqlalchemy import select, func
+
+            stmt = select(KnowledgeUploadApproval).where(
+                func.lower(KnowledgeUploadApproval.file_name) == clean_name_lower,
+                KnowledgeUploadApproval.status.in_(["PENDING", "APPROVED"]),
+            )
+            if exclude_request_id:
+                stmt = stmt.where(KnowledgeUploadApproval.id != exclude_request_id)
+            res_db = (await db.execute(stmt)).scalars().first()
+            if res_db:
+                if res_db.status == "PENDING":
+                    return True, f"Tài liệu '{safe_name}' hiện đang nằm trong hàng đợi chờ Quản trị viên phê duyệt. Không thể nạp trùng lặp."
+                elif res_db.status == "APPROVED":
+                    return True, f"Tài liệu '{safe_name}' đã được phê duyệt và lưu trữ trong hệ thống."
+        except Exception as e:
+            logger.debug(f"[DuplicateCheck] DB approvals check skipped or failed: {e}")
+
+    return False, None

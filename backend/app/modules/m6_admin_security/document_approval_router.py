@@ -11,6 +11,7 @@ import os
 import re
 import uuid
 import logging
+import tempfile
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Header, status
@@ -32,6 +33,7 @@ try:
         save_file_to_storage,
         sanitize_filename,
         resolve_canonical_dept,
+        check_document_duplicate,
     )
     from app.modules.m1_data_sync.pipeline import (
         process_document_ingestion,
@@ -42,6 +44,7 @@ except ImportError:
         save_file_to_storage,
         sanitize_filename,
         resolve_canonical_dept,
+        check_document_duplicate,
     )
     from modules.m1_data_sync.pipeline import (
         process_document_ingestion,
@@ -54,7 +57,10 @@ router = APIRouter(tags=["Document Upload Approvals (PB48, PB50, PB02)"])
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB
 DATA_ROOT = os.getenv("GRAPH_MIND_DATA_DIR", "/data")
-PENDING_STAGING_DIR = os.path.join(DATA_ROOT, ".pending_uploads")
+if os.name == "nt":
+    PENDING_STAGING_DIR = os.path.join(tempfile.gettempdir(), "graphmind_pending_uploads")
+else:
+    PENDING_STAGING_DIR = os.path.join(DATA_ROOT, ".pending_uploads")
 
 # Map standard resource types to canonical department keys if needed
 RESOURCE_TO_DEPT_MAP = {
@@ -217,6 +223,19 @@ async def submit_document_upload(
 
     # Normalize resource_type
     clean_res = (resource_type or norm_dept).strip().upper()
+
+    # Kiểm tra trùng lặp tên hoặc nội dung trong kho tài liệu
+    is_duplicate, refusal_reason = await check_document_duplicate(
+        filename=safe_name,
+        content_bytes=content_bytes,
+        target_dept=norm_dept,
+        db=db,
+    )
+    if is_duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=refusal_reason,
+        )
 
     # RBAC Permission Check
     is_admin = (role_code == "ADMIN")
@@ -504,6 +523,20 @@ async def approve_upload_request(
         content_bytes = f.read()
 
     canonical_dept = resolve_canonical_dept(item.department_code)
+
+    # Kiểm tra trùng lặp trước khi lưu và nạp vào Kho tri thức chính thức
+    is_duplicate, refusal_reason = await check_document_duplicate(
+        filename=item.file_name,
+        content_bytes=content_bytes,
+        target_dept=canonical_dept,
+        db=db,
+        exclude_request_id=request_id,
+    )
+    if is_duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=refusal_reason,
+        )
 
     # 1. Save to Central Storage
     storage_res = save_file_to_storage(content_bytes, item.file_name, canonical_dept)

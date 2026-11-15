@@ -122,6 +122,7 @@ try:
         rename_file_in_storage,
         sanitize_filename,
         resolve_canonical_dept,
+        check_document_duplicate,
     )
 except ImportError:
     from core.central_storage import (
@@ -130,6 +131,7 @@ except ImportError:
         rename_file_in_storage,
         sanitize_filename,
         resolve_canonical_dept,
+        check_document_duplicate,
     )
 
 
@@ -185,6 +187,19 @@ async def upload_document_to_central_storage(
     content_bytes = b"".join(chunks)
 
     canonical_dept = resolve_canonical_dept(department)
+
+    # Kiểm tra trùng lặp tên hoặc nội dung trong kho tài liệu
+    is_duplicate, refusal_reason = await check_document_duplicate(
+        filename=safe_name,
+        content_bytes=content_bytes,
+        target_dept=canonical_dept,
+    )
+    if is_duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=refusal_reason,
+        )
+
     file_hash = hashlib.sha256(content_bytes).hexdigest()
     storage_path = f"/data/{canonical_dept}/{safe_name}"
     doc_id = f"DOC_{file_hash[:8].upper()}"
