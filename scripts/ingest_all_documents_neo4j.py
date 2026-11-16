@@ -61,7 +61,7 @@ neo4j_client.run_cypher("MATCH (e:Employee) DETACH DELETE e")
 
 # 2. Constraints & Canonical Departments
 print("\n[2/5] Ensuring Constraints & Canonical Departments...")
-neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (d:Document) REQUIRE d.name IS UNIQUE")
+neo4j_client.run_cypher("CREATE CONSTRAINT document_id_unique IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE")
 neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (dept:Department) REQUIRE dept.name IS UNIQUE")
 neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (comp:Company) REQUIRE comp.name IS UNIQUE")
 neo4j_client.run_cypher("CREATE CONSTRAINT IF NOT EXISTS FOR (cl:Clause) REQUIRE cl.id IS UNIQUE")

@@ -1845,7 +1845,8 @@ def get_repository_documents(
         inventory = get_central_storage_inventory()
 
         # Query Neo4j for real Document nodes
-        neo_map = {}
+        neo_by_path = {}
+        neo_by_name = {}
         total_neo4j_nodes = 0
         total_neo4j_rels = 0
         try:
@@ -1858,7 +1859,8 @@ def get_repository_documents(
                            d.ingestedAt as ingestedAt, d.lastModified as lastModified,
                            d.qdrantIndexed as qdrantIndexed, d.neo4jSynced as neo4jSynced
                 """)
-                neo_map = {r["name"]: r for r in neo_docs if r.get("name")}
+                neo_by_path = {r["storagePath"]: r for r in neo_docs if r.get("storagePath")}
+                neo_by_name = {r["name"]: r for r in neo_docs if r.get("name") and not r.get("storagePath")}
                 total_neo4j_nodes = neo4j_client.get_node_count()
                 rel_res = neo4j_client.run_cypher("MATCH ()-[r]->() RETURN count(r) as cnt")
                 total_neo4j_rels = rel_res[0]["cnt"] if rel_res else 0
@@ -1887,7 +1889,7 @@ def get_repository_documents(
         all_items = []
         for inv in inventory:
             fname = inv["name"]
-            neo_info = neo_map.get(fname)
+            neo_info = neo_by_path.get(inv["storage_path"]) or neo_by_name.get(fname)
             w_info = watcher_map.get(fname, {})
 
             is_in_neo4j = (neo_info is not None)
@@ -1960,7 +1962,8 @@ def get_repository_documents(
         # Also include any newly ingested watcher/connector documents (e.g. Google Drive sync) not yet in raw inventory scan
         inv_names = {inv["name"] for inv in inventory}
         for w_name, w_info in watcher_map.items():
-            if w_name not in inv_names and (w_name in neo_map or w_info.get("source") == "google_drive"):
+            w_path = w_info.get("storage_path")
+            if w_name not in inv_names and ((w_path and w_path in neo_by_path) or w_name in neo_by_name or w_info.get("source") == "google_drive"):
                 all_items.append({
                     "id": w_info.get("id") or f"DOC_{hashlib.md5(w_name.encode()).hexdigest()[:8].upper()}",
                     "raw_id": w_name,
@@ -2000,9 +2003,12 @@ def get_repository_documents(
                 })
 
         # Ensure any document node in Neo4j is included even if directory scan missed it
+        current_paths = {it.get("storage_path") for it in all_items if it.get("storage_path")}
         current_names = {it["name"] for it in all_items}
-        for n_name, n_info in neo_map.items():
-            if n_name not in current_names:
+        for n_info in list(neo_by_path.values()) + list(neo_by_name.values()):
+            n_name = n_info.get("name") or ""
+            n_path = n_info.get("storagePath") or ""
+            if n_name and not ((n_path and n_path in current_paths) or (not n_path and n_name in current_names)):
                 ext = os.path.splitext(n_name)[1].lower()
                 dept_name = n_info.get("dept") or "Pháp chế (Legal)"
                 dept_key = n_info.get("deptKey") or "legal"

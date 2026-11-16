@@ -714,12 +714,12 @@ def process_document_ingestion(
 
     computed_hash = hashlib.sha256(content_bytes).hexdigest()
     final_hash = computed_hash
-    doc_id = f"DOC_{final_hash[:8].upper()}"
 
     dept_def = resolve_department(department or filename)
     dept_name = dept_def["displayName"]
     dept_key = dept_def["key"]
     storage_path = f"/data/{dept_key}/{filename}"
+    doc_id = f"DOC_{hashlib.sha256(f'{storage_path}:{final_hash}'.encode('utf-8')).hexdigest()[:8].upper()}"
 
     timestamp_str = datetime.now().isoformat()
     clean_date_str = datetime.now().strftime("%d/%m/%Y")
@@ -735,8 +735,8 @@ def process_document_ingestion(
                 try:
                     if neo4j_client.is_connected or neo4j_client.connect():
                         check = neo4j_client.run_cypher(
-                            "MATCH (d:Document) WHERE (d.name = $name OR d.storagePath = $path) AND d.status = 'SYNCED' RETURN d.id as id LIMIT 1",
-                            {"name": filename, "path": storage_path}
+                            "MATCH (d:Document) WHERE (d.storagePath = $path OR (d.name = $name AND (d.deptKey = $dept_key OR d.department = $dept_name) AND (d.storagePath IS NULL OR trim(d.storagePath) = ''))) AND d.status = 'SYNCED' RETURN d.id as id LIMIT 1",
+                            {"name": filename, "path": storage_path, "dept_key": dept_key, "dept_name": dept_name}
                         )
                         if check:
                             doc_in_neo = True
@@ -744,7 +744,7 @@ def process_document_ingestion(
                     pass
 
                 if doc_in_neo:
-                    existing_doc = next((d for d in _WATCHER_INGESTED_DOCS if d.get("hash") == final_hash and d.get("name") == filename), None)
+                    existing_doc = next((d for d in _WATCHER_INGESTED_DOCS if d.get("hash") == final_hash and (d.get("storage_path") == storage_path or (d.get("name") == filename and d.get("deptKey") == dept_key))), None)
                     return {
                         "success": True,
                         "status": "skipped",
@@ -1229,7 +1229,13 @@ def process_document_ingestion(
             "lastModified": timestamp_str
         }
 
-        _WATCHER_INGESTED_DOCS = [d for d in _WATCHER_INGESTED_DOCS if d.get("name") != filename and d.get("name") != old_name]
+        _WATCHER_INGESTED_DOCS = [
+            d for d in _WATCHER_INGESTED_DOCS
+            if not (
+                d.get("storage_path") == storage_path
+                or ((d.get("name") == filename or (old_name and d.get("name") == old_name)) and d.get("deptKey") in (None, dept_key))
+            )
+        ]
         _WATCHER_INGESTED_DOCS.insert(0, doc_entry)
         _save_json(_DOCS_FILE, _WATCHER_INGESTED_DOCS)
 
