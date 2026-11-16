@@ -627,6 +627,12 @@ class SemanticQueryPlanner:
         return any(k in q_lower for k in out_of_scope_keywords)
 
     def _detect_unsupported_metric(self, q_lower: str) -> Optional[str]:
+        # Exclude specific entity queries (orders, customers, products) and analytical/risk requests from unsupported rejection
+        has_specific_entity = bool(re.search(r"(?:order|đơn\s+hàng|salesorder)[\s#:]*\d+", q_lower)) or "cust-" in q_lower or bool(re.search(r"#\d{4,6}", q_lower))
+        is_analytical_or_risk = any(k in q_lower for k in ["phân tích", "đề xuất", "giải pháp", "kiểm soát", "rủi ro", "đánh giá", "lỗ hổng", "thiệt hại", "lỗ"])
+        if has_specific_entity or is_analytical_or_risk:
+            return None
+
         # 1. Inventory / Stock quantity
         if any(k in q_lower for k in ["tồn kho", "hàng tồn", "trong kho còn", "số lượng tồn", "inventory", "stock level", "out of stock", "hết hàng"]):
             return "inventory_stock"
@@ -2039,18 +2045,28 @@ class CypherQueryBuilder:
         if mode == "order_detail":
             oid = plan.filters.get("order_id", 43659)
             return (
-                f"MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder {{SalesOrderID: {oid}}}) "
+                f"MATCH (c:Customer)-[:PLACED_ORDER]->(o:SalesOrder) "
+                f"WHERE (o.id = {oid} OR o.salesOrderId = {oid} OR o.SalesOrderID = {oid}) "
                 "OPTIONAL MATCH (o)-[r:CONTAINS_PRODUCT]->(p:Product) "
-                "WITH c, o, collect({ProductID: coalesce(p.id, p.ProductID), ProductName: p.name, OrderQty: r.OrderQty, UnitPrice: r.UnitPrice, lineTotal: coalesce(r.LineTotal, r.lineTotal, 0.0)}) AS items, "
-                "     SUM(toInteger(coalesce(r.OrderQty, 0))) AS totalUnits "
-                "RETURN coalesce(o.SalesOrderID, o.id) AS SalesOrderID, "
+                "WITH c, o, collect({ "
+                "    ProductID: coalesce(p.id, p.ProductID), "
+                "    ProductName: coalesce(p.name, p.title), "
+                "    OrderQty: coalesce(r.OrderQty, r.orderQty, 1), "
+                "    UnitPrice: round(toFloat(coalesce(r.UnitPrice, r.unitPrice, 0.0)), 2), "
+                "    Discount: round(toFloat(coalesce(r.unitPriceDiscount, 0.0)) * 100, 1), "
+                "    StandardCost: round(toFloat(coalesce(p.standardCost, 0.0)), 2), "
+                "    lineTotal: round(toFloat(coalesce(r.LineTotal, r.lineTotal, 0.0)), 2), "
+                "    Loss: round(toFloat(coalesce(p.standardCost, 0.0) * coalesce(r.OrderQty, r.orderQty, 1) - coalesce(r.LineTotal, r.lineTotal, 0.0)), 2) "
+                "}) AS items, "
+                "     SUM(toInteger(coalesce(r.OrderQty, r.orderQty, 0))) AS totalUnits "
+                "RETURN coalesce(o.SalesOrderID, o.salesOrderId, o.id) AS SalesOrderID, "
                 "       coalesce(o.orderDate, o.OrderDate) AS OrderDate, "
                 "       coalesce(c.id, c.CustomerID) AS CustomerID, "
                 "       (CASE WHEN coalesce(c.id, c.CustomerID) = 29818 THEN 'Roger Harui (Brakes and Gears)' WHEN coalesce(c.id, c.CustomerID) = 29722 THEN \"Reuben D'sa (Vigorous Exercise Company)\" WHEN coalesce(c.id, c.CustomerID) = 30078 THEN 'Tony Ting (Mobile Outlet)' WHEN c.FirstName IS NOT NULL AND c.LastName IS NOT NULL THEN c.FirstName + ' ' + c.LastName WHEN c.name IS NOT NULL THEN c.name ELSE 'Customer #' + toString(coalesce(c.id, c.CustomerID)) END) AS CustomerName, "
                 "       coalesce(c.accountNumber, 'AW' + toString(coalesce(c.id, c.CustomerID))) AS AccountNumber, "
                 "       ROUND(toFloat(coalesce(o.subTotal, o.SubTotal, o.totalDue, o.TotalDue, 0.0)) * 100) / 100 AS SubTotal, "
-                "       ROUND(toFloat(o.TaxAmt) * 100) / 100 AS TaxAmt, "
-                "       ROUND(toFloat(o.Freight) * 100) / 100 AS Freight, "
+                "       ROUND(toFloat(coalesce(o.TaxAmt, 0.0)) * 100) / 100 AS TaxAmt, "
+                "       ROUND(toFloat(coalesce(o.Freight, 0.0)) * 100) / 100 AS Freight, "
                 "       ROUND(toFloat(coalesce(o.totalDue, o.TotalDue, 0.0)) * 100) / 100 AS TotalDue, "
                 "       totalUnits, items"
             )
@@ -3749,7 +3765,7 @@ class AnalyticsExecutionEngine:
             units = int(r0.get("totalUnits") or 0)
             items = [i for i in (r0.get("items") or []) if i.get("ProductID") is not None]
             item_lines = [
-                f"  + **{it.get('ProductName')} (#{it.get('ProductID')})**: Số lượng `{it.get('OrderQty')}` x Đơn giá `{_fmt_money(it.get('UnitPrice'))}` = `{_fmt_money(it.get('lineTotal'))} USD`"
+                f"  + **{it.get('ProductName')} (#{it.get('ProductID')})**: Số lượng `{it.get('OrderQty')}` x Đơn giá `{_fmt_money(it.get('UnitPrice'))}` (Chiết khấu: `{it.get('Discount', 0)}%`) = `{_fmt_money(it.get('lineTotal'))} USD` | Giá vốn: `{_fmt_money(it.get('StandardCost'))} USD`"
                 for it in items[:10]
             ]
             ans = (
@@ -3759,6 +3775,15 @@ class AnalyticsExecutionEngine:
                 f"- **Tổng số lượng sản phẩm**: **`{_fmt_int(units)}` sản phẩm** ({len(items)} dòng mặt hàng)\n"
                 f"- **Giá trị thanh toán**: Doanh thu thuần (`SubTotal`): **`{_fmt_money(sub)} USD`** | Thuế (`TaxAmt`): **`{_fmt_money(tax)} USD`** | Vận chuyển (`Freight`): **`{_fmt_money(fr)} USD`** | **Tổng cộng (`TotalDue`): `{_fmt_money(due)} USD`**"
             )
+            loss_items = [it for it in items if float(it.get("Loss") or 0.0) > 0]
+            if loss_items:
+                ans += (
+                    f"\n- **Phát hiện mặt hàng bán dưới giá vốn (Negative Margin):** Có {len(loss_items)} sản phẩm có giá bán sau chiết khấu thấp hơn Giá vốn tiêu chuẩn (`StandardCost`):\n"
+                    + "\n".join([
+                        f"  + **{it.get('ProductName')}**: Bán `{it.get('OrderQty')}` chiếc x `{_fmt_money(it.get('UnitPrice'))} USD` (CK `{it.get('Discount')}%`). Giá vốn `{_fmt_money(it.get('StandardCost'))} USD` -> **Thâm hụt: -{_fmt_money(it.get('Loss'))} USD**"
+                        for it in sorted(loss_items, key=lambda x: float(x.get("Loss") or 0.0), reverse=True)[:5]
+                    ])
+                )
             if item_lines:
                 ans += "\n- **Danh sách sản phẩm trong đơn hàng**:\n" + "\n".join(item_lines)
             entities.append({

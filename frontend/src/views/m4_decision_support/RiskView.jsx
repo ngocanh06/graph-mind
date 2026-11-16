@@ -557,10 +557,11 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                         size="sm"
                         icon={Bot}
                         onClick={() => {
-                          const query = (alert.category === "legal_risk" || alert.contractId || alert.docId?.endsWith(".pdf") || alert.docId?.endsWith(".PDF"))
+                          const targetFile = alert.docId || alert.contractId;
+                          const query = (alert.category === "legal_risk" || alert.contractId || (targetFile && (targetFile.includes(".") || alert.aliasId)))
                             ? (isVi
-                                ? `Phân tích rủi ro pháp lý của hợp đồng ${alert.docId || alert.contractId} (${alert.title}) và đề xuất phương án bổ sung điều khoản bảo vệ dựa trên đồ thị tri thức`
-                                : `Analyze legal risk for contract ${alert.docId || alert.contractId} (${alert.title}) and recommend protective clause amendments based on knowledge graph`)
+                                ? `Đọc nội dung và phân tích rủi ro thực tế của tài liệu ${targetFile}, chỉ ra các lỗ hổng và đề xuất phương án bảo vệ`
+                                : `Read content and analyze real risks of document ${targetFile}, identify vulnerabilities and suggest mitigations`)
                             : alert.orderId
                             ? (() => {
                                 const cust = alert.meta?.find(m => m.label?.includes("Khách hàng") || m.label?.includes("Customer"))?.value || "";

@@ -116,7 +116,7 @@ def _is_serving_eligible(d_meta: Optional[Dict[str, Any]]) -> bool:
 
     if op_stage == "TERMINAL_SYNCED":
         # PR1 V3 Terminal Committed: requires committed_op_id and valid committed_generation
-        if not (status in ["SYNCED", "Hoạt động (Synced)"]):
+        if not (status in ["SYNCED", "Hoạt động (Synced)", "active", "INDEXED"]):
             return False
         if not has_valid_committed_op or not has_valid_committed_gen:
             return False
@@ -1157,7 +1157,7 @@ async def ask_copilot(
         "chính sách", "hợp đồng", "contract", "điều khoản", "clause", "tuân thủ", "compliance",
         "trách nhiệm", "liability", "bồi hoàn", "indemnif", "chấm dứt", "termination",
         "luật áp dụng", "governing law", "bảo mật", "confidential", "sop", "pháp lý", "hàm mục tiêu",
-        "ràng buộc", "biến quyết định"
+        "ràng buộc", "biến quyết định", "rủi ro", "nguy cơ", "lỗ hổng", "thẩm định"
     ])
     
     is_business_semantic_query = any(k in q_lower for k in [
@@ -1177,6 +1177,12 @@ async def ask_copilot(
         "thông tin file", "thông tin tài liệu", "tổng quan"
     ])
 
+    is_doc_risk_query = any(k in q_lower for k in [
+        "rủi ro", "nguy cơ", "phân tích rủi ro", "đánh giá rủi ro", "điểm bất lợi",
+        "thiếu sót", "lỗ hổng", "bảo vệ pháp lý", "phương án bổ sung", "risk",
+        "thẩm định", "khiếm khuyết", "điều khoản bảo vệ", "biện pháp giảm thiểu", "biện pháp bảo vệ"
+    ])
+
     is_doc_metadata_query = any(k in q_lower for k in [
         "mã hồ sơ", "mã tài liệu", "phòng ban nào", "ai tải lên", "khi nào", "bao nhiêu chunk",
         "bao nhiêu đoạn", "lập chỉ mục", "indexing", "metadata", "dung lượng", "hash"
@@ -1194,7 +1200,7 @@ async def ask_copilot(
         "điều khoản", "clause", "bồi thường", "indemnif", "chấm dứt", "termination",
         "trách nhiệm", "liability", "luật áp dụng", "governing law", "bảo mật", "confidential",
         "chuyển nhượng", "transfer", "cổ phần", "share purchase", "thời hạn", "term"
-    ]) and not is_doc_metadata_query and not is_doc_expiry_query
+    ]) and not is_doc_metadata_query and not is_doc_expiry_query and not is_doc_risk_query
 
     is_recent_doc_query = (
         bool(re.search(r"(?:mới|vừa|gần đây|latest|recent)\s*(?:[0-9a-zA-Z_\.\-]+\s+)?(?:tải lên|upload|nạp|thêm|đưa lên|tải)", q_lower)) or
@@ -1204,6 +1210,13 @@ async def ask_copilot(
             "tài liệu mới", "văn bản mới", "hợp đồng mới", "tài liệu gần đây", "văn bản gần đây", "mới thêm"
         ])
     ) and any(w in q_lower for w in ["tài liệu", "văn bản", "hợp đồng", "file", "tệp", "document", "upload", "tải", "tên", "hồ sơ"])
+
+    # Disambiguate ERP SalesOrder queries vs Document repository queries
+    order_num_match = re.search(r"(?:order|đơn\s*hàng|salesorder)[\s#:]*(\d{4,6})", clean_query, re.IGNORECASE)
+    has_explicit_doc = any(k in q_lower for k in ["tài liệu", "file", "hợp đồng", "văn bản", ".pdf", ".docx", ".xlsx", "cuad"])
+    if order_num_match and not has_explicit_doc:
+        is_business_semantic_query = True
+        is_doc_repo_query = False
 
     # 2.0 Document Identity & Provenance Gate: Check if query specifically targets a known document
     active_target_doc = None
@@ -1242,11 +1255,12 @@ async def ask_copilot(
                 MATCH (d:Document)
                 WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
                    OR toLower($q) CONTAINS toLower(d.name)
+                   OR (d.name CONTAINS '.' AND size(split(d.name, '.')[0]) >= 3 AND toLower($q) CONTAINS toLower(split(d.name, '.')[0]))
                 RETURN d.name as name, d.id as id
                 LIMIT 1
             """, {"q": clean_query})
             if not doc_matches:
-                raw_tokens = re.findall(r"[a-zA-Z0-9_\.-]{4,}", clean_query)
+                raw_tokens = re.findall(r"[\w\.-]{4,}", clean_query, re.UNICODE)
                 candidate_tokens = [
                     t for t in raw_tokens
                     if not t.isdigit() and t.lower() not in GENERIC_STOP and (any(c.isupper() or c.isdigit() or c in "_." for c in t) or len(t) >= 6)
@@ -1255,6 +1269,7 @@ async def ask_copilot(
                     doc_matches = neo4j_client.run_cypher("""
                         MATCH (d:Document)
                         WHERE toLower(d.name) CONTAINS toLower($t)
+                           OR (d.name CONTAINS '.' AND toLower(split(d.name, '.')[0]) CONTAINS toLower($t))
                         RETURN d.name as name, d.id as id
                         LIMIT 2
                     """, {"t": t})
@@ -1403,7 +1418,7 @@ async def ask_copilot(
                 "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
             ])
             if not is_inventory_early and not is_agg_query and not is_recent_doc_query:
-                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
+                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([\w\.-]{3,})", clean_query, re.IGNORECASE | re.UNICODE)
                 if t_match:
                     cand = t_match.group(1).strip()
                     if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
@@ -1496,6 +1511,40 @@ async def ask_copilot(
             for ch in cuad_hits:
                 if not any(h.get("id") == ch.get("id") for h in vector_hits):
                     vector_hits.append(ch)
+        elif is_doc_risk_query:
+            ordered_chunks = qdrant_client.get_document_chunks(
+                doc_id=target_doc_id,
+                contract_name=active_target_doc,
+                collection_name="cuad_contracts",
+                limit=50
+            )
+            if ordered_chunks:
+                selected = []
+                # Preamble / Header chunks (chunk 0, 1) are mandatory for context
+                for ch in ordered_chunks[:2]:
+                    selected.append(ch)
+                # Find key structural chunks: risks, obligations, termination, liability, penalties, guidelines, rules
+                risk_keywords = [
+                    "rủi ro", "trách nhiệm", "nghĩa vụ", "chấm dứt", "phạt", "bồi thường",
+                    "bảo mật", "không được", "nghiêm cấm", "lưu ý", "liability", "breach",
+                    "penalty", "termination", "indemn", "cấm", "dos", "don'ts", "guideline", "yêu cầu", "vi phạm"
+                ]
+                for ch in ordered_chunks[2:]:
+                    txt = (ch.get("text") or "").lower()
+                    if any(term in txt for term in risk_keywords):
+                        if ch not in selected:
+                            selected.append(ch)
+                    if len(selected) >= 4:
+                        break
+                for ch in ordered_chunks:
+                    if len(selected) >= 4:
+                        break
+                    if ch not in selected:
+                        selected.append(ch)
+                vector_hits = selected
+            else:
+                cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
+                vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.01]
         elif is_doc_content_query:
             ordered_chunks = qdrant_client.get_document_chunks(
                 doc_id=target_doc_id,
@@ -1540,7 +1589,7 @@ async def ask_copilot(
                     vector_hits.append(ch)
         else:
             search_query = active_target_doc if any(k in q_lower for k in ["nội dung", "trình bày", "tóm tắt", "toàn văn", "đọc file", "xem nội dung", "file này", "chứa những gì", "gồm những gì"]) else clean_query
-            cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=12, query_filter=doc_filter)
+            cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=12 if doc_filter else 8, query_filter=doc_filter)
             min_score = 0.01 if doc_filter else 0.25
             vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
     elif is_doc_repo_query and is_business_semantic_query:
@@ -1561,7 +1610,7 @@ async def ask_copilot(
         # User is querying specifically about ERP operations, sales, products, orders
         aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=5)
         vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
-        if not vector_hits:
+        if not vector_hits and not order_num_match:
             cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
             vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.35]
     else:
@@ -1602,6 +1651,11 @@ async def ask_copilot(
             should_lock = True
             if candidate_tokens:
                 should_lock = any(tok.lower() in top_name.lower() or tok.lower() in (top_hit.get("text") or "").lower() for tok in candidate_tokens)
+            elif is_doc_repo_query and any(w in q_lower for w in ["file", "tài liệu", "hợp đồng", "văn bản"]):
+                clean_top_stem = top_name.split('.')[0].lower() if '.' in top_name else top_name.lower()
+                stem_words = [w for w in re.findall(r"[\w]{3,}", clean_top_stem, re.UNICODE) if w.lower() not in GENERIC_STOP]
+                if stem_words and not any(w in q_lower for w in stem_words):
+                    should_lock = False
             if should_lock:
                 active_target_doc = top_name
                 target_doc_id = top_doc_id
@@ -1613,10 +1667,10 @@ async def ask_copilot(
                         {"key": "document_id", "match": {"value": target_doc_id}},
                     ]
                 }
-                if is_doc_content_query:
+                if is_doc_content_query or is_doc_risk_query:
                     ordered_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=50)
                     if ordered_chunks:
-                        vector_hits = ordered_chunks[:5]
+                        vector_hits = ordered_chunks[:4]
                 else:
                     # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
                     deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
@@ -1647,7 +1701,7 @@ async def ask_copilot(
 
         if doc_nodes and len(doc_nodes) == 1:
             d0 = doc_nodes[0]
-            if is_doc_content_query:
+            if is_doc_content_query or is_doc_risk_query:
                 doc_snippet = f"Tài liệu / Hợp đồng: {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}."
             else:
                 doc_snippet = f"Tài liệu {d0.get('name')} (Mã hồ sơ: {d0.get('id')}) thuộc phòng ban {d0.get('dept')}, gồm {d0.get('chunksCount')} đoạn vector đã lập chỉ mục vào Neo4j và Qdrant."
@@ -1661,7 +1715,7 @@ async def ask_copilot(
                 "source_file": d0.get("name"),
                 "department": d0.get("dept"),
                 "snippet": doc_snippet,
-                "is_content_query": is_doc_content_query,
+                "is_content_query": (is_doc_content_query or is_doc_risk_query),
             })
     else:
         # Structured or general query: execute text-to-cypher (with multi-turn session context)
@@ -1686,7 +1740,7 @@ async def ask_copilot(
         # If query is a system inventory summary or a verified NL2Cypher analytical query,
         # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
         if any(
-            gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+            gh.get("_id") in ["total-documents-summary", "cuad-contracts-summary", "portfolio-breakdown", "compliance-stats"]
             or "DocumentSummary" in (gh.get("_labels") or [])
             or gh.get("grounded_answer")
             for gh in graph_hits
@@ -1808,7 +1862,7 @@ async def ask_copilot(
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):
             labels = gh.get("_labels") or []
-            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+            if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport"] for l in labels) or gh.get("_id") in ["total-documents-summary", "cuad-contracts-summary", "portfolio-breakdown", "compliance-stats"]:
                 return True
             if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
                 return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
@@ -2004,7 +2058,7 @@ async def ask_copilot(
             answer_text = gen_result.get("answer") or ""
             latency = gen_result.get("latency", 1.25)
             model_display = gen_result.get("model", f"{llm_client.model} (Ollama Local)")
-            confidence_score = 90 if (is_doc_content_query and verified_chunks) else (80 if fused_results else 60)
+            confidence_score = 90 if ((is_doc_content_query or is_doc_risk_query) and verified_chunks) else (80 if fused_results else 60)
             used_chunks = gen_result.get("used_chunks", verified_chunks)
             used_entities = gen_result.get("used_entities", verified_entities)
 

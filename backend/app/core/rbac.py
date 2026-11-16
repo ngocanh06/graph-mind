@@ -608,7 +608,7 @@ async def get_request_user(
         try:
             await db.commit()
         except Exception:
-            pass
+            await db.rollback()
 
     return u
 
@@ -673,6 +673,10 @@ async def get_user_scope(
 
         allowed_resources = {p.resource_type for p in policies if p.can_query}
     except Exception as e:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
         # Fallback to standard defaults
         if is_unrestricted:
             allowed_resources = set(CANONICAL_RESOURCE_TYPES)

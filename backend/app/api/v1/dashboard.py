@@ -69,21 +69,24 @@ def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
         WITH count(s) AS totalOrders, sum(coalesce(s.totalDue, s.TotalDue, 0.0)) AS totalRevenue, avg(coalesce(s.totalDue, s.TotalDue, 0.0)) AS avgOrder
         MATCH (c:Customer)
         WITH totalOrders, totalRevenue, avgOrder, count(c) AS totalCustomers
+        MATCH (all_d:Document)
+        WITH totalOrders, totalRevenue, avgOrder, totalCustomers, count(all_d) AS totalDocuments
         MATCH (ct:Document)
-        WITH totalOrders, totalRevenue, avgOrder, totalCustomers, count(ct) AS totalContracts
+        WHERE (ct.deptKey = 'legal' OR ct.department CONTAINS 'Legal' OR ct.department CONTAINS 'Pháp chế') AND toLower(ct.name) ENDS WITH '.pdf'
+        WITH totalOrders, totalRevenue, avgOrder, totalCustomers, totalDocuments, count(ct) AS totalContracts
         OPTIONAL MATCH (cl:Clause)
-        RETURN totalOrders, totalRevenue, avgOrder, totalCustomers, totalContracts, count(cl) AS totalClauses
+        RETURN totalOrders, totalRevenue, avgOrder, totalCustomers, totalDocuments, totalContracts, count(cl) AS totalClauses
         """
         records = neo4j_client.run_cypher(cypher)
         data = records[0] if records else {
-            "totalOrders": 31465, "totalRevenue": 123216786.12, "avgOrder": 3916.0,
-            "totalCustomers": 19820, "totalContracts": 610, "totalClauses": 1805
+            "totalOrders": 0, "totalRevenue": 0, "avgOrder": 0,
+            "totalCustomers": 0, "totalDocuments": 0, "totalContracts": 0, "totalClauses": 0
         }
-        total_contracts = max(int(data.get("totalContracts") or 0), 610)
 
         # Compliance rate: % of legal documents that contain critical risk protection clauses
         compliance_cypher = """
         MATCH (ct:Document)
+        WHERE (ct.deptKey = 'legal' OR ct.department CONTAINS 'Legal' OR ct.department CONTAINS 'Pháp chế') AND toLower(ct.name) ENDS WITH '.pdf'
         OPTIONAL MATCH (ct)-[:CONTAINS_CLAUSE]->(cl:Clause)
         WITH ct, collect(cl.type) AS clauses
         WITH count(ct) AS total,
@@ -97,12 +100,13 @@ def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
         return {
             "success": True,
             "data": {
-                "totalRevenue": round(float(data.get("totalRevenue") or 123216786.12), 2),
-                "totalOrders": int(data.get("totalOrders") or 31465),
-                "avgOrderValue": round(float(data.get("avgOrder") or 3916.0), 2),
-                "totalCustomers": int(data.get("totalCustomers") or 19820),
-                "totalContracts": total_contracts,
-                "totalClauses": int(data.get("totalClauses") or 1805),
+                "totalRevenue": round(float(data.get("totalRevenue") or 0.0), 2),
+                "totalOrders": int(data.get("totalOrders") or 0),
+                "avgOrderValue": round(float(data.get("avgOrder") or 0.0), 2),
+                "totalCustomers": int(data.get("totalCustomers") or 0),
+                "totalDocuments": int(data.get("totalDocuments") or 0),
+                "totalContracts": int(data.get("totalContracts") or 0),
+                "totalClauses": int(data.get("totalClauses") or 0),
                 "complianceRate": compliance_rate,
                 "timestamp": datetime.utcnow().isoformat()
             }
