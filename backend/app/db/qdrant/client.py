@@ -138,10 +138,14 @@ class QdrantClientWrapper:
                         if col_names:
                             self._collection = col_names[0]
                             print(f"[Qdrant] Collection notice: {col_err}")
-            # Ensure keyword indexes on critical lookup fields for sub-second retrieval
+            # Ensure keyword/bool indexes on critical lookup and RBAC filter fields
             try:
                 self._client.create_payload_index(collection_name=self._collection, field_name="contract_name", field_schema="keyword")
                 self._client.create_payload_index(collection_name=self._collection, field_name="doc_id", field_schema="keyword")
+                self._client.create_payload_index(collection_name=self._collection, field_name="document_id", field_schema="keyword")
+                self._client.create_payload_index(collection_name=self._collection, field_name="department", field_schema="keyword")
+                self._client.create_payload_index(collection_name=self._collection, field_name="entity_type", field_schema="keyword")
+                self._client.create_payload_index(collection_name=self._collection, field_name="is_active", field_schema="bool")
             except Exception:
                 pass
             self._connected = True

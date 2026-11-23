@@ -10,6 +10,7 @@ Triển khai PB48, PB50, PB02:
 import os
 import re
 import uuid
+import hashlib
 import logging
 import tempfile
 from datetime import datetime, timezone
@@ -102,6 +103,7 @@ async def ensure_approval_table(db: AsyncSession) -> None:
         file_type VARCHAR(50) NOT NULL,
         file_size INTEGER NOT NULL DEFAULT 0,
         file_path VARCHAR(500) NOT NULL,
+        sha256_hash VARCHAR(64) NULL,
         resource_type VARCHAR(50) NOT NULL,
         department_code VARCHAR(50) NOT NULL DEFAULT 'SALES',
         uploaded_by_id UUID NULL,
@@ -116,7 +118,9 @@ async def ensure_approval_table(db: AsyncSession) -> None:
     );
     """
     await db.execute(text(create_sql))
+    await db.execute(text("ALTER TABLE knowledge_upload_approvals ADD COLUMN IF NOT EXISTS sha256_hash VARCHAR(64) NULL;"))
     await db.execute(text("CREATE INDEX IF NOT EXISTS ix_kua_status ON knowledge_upload_approvals(status);"))
+    await db.execute(text("CREATE INDEX IF NOT EXISTS ix_kua_sha256 ON knowledge_upload_approvals(sha256_hash);"))
     await db.execute(text("CREATE INDEX IF NOT EXISTS ix_kua_resource ON knowledge_upload_approvals(resource_type);"))
     await db.execute(text("CREATE INDEX IF NOT EXISTS ix_kua_dept ON knowledge_upload_approvals(department_code);"))
     await db.commit()
@@ -151,6 +155,7 @@ def _serialize_approval(item: KnowledgeUploadApproval) -> Dict[str, Any]:
         "file_type": item.file_type,
         "file_size": item.file_size,
         "file_path": item.file_path,
+        "sha256_hash": getattr(item, "sha256_hash", None),
         "resource_type": item.resource_type,
         "department_code": item.department_code,
         "uploaded_by_id": str(item.uploaded_by_id) if item.uploaded_by_id else None,
@@ -311,6 +316,7 @@ async def submit_document_upload(
             file_type=ext.upper(),
             file_size=file_size,
             file_path=storage_res.get("storage_path", staging_file_path),
+            sha256_hash=hashlib.sha256(content_bytes).hexdigest(),
             resource_type=clean_res,
             department_code=norm_dept,
             uploaded_by_id=user.user_id,
@@ -353,6 +359,7 @@ async def submit_document_upload(
         file_type=ext.upper(),
         file_size=file_size,
         file_path=staging_file_path,
+        sha256_hash=hashlib.sha256(content_bytes).hexdigest(),
         resource_type=clean_res,
         department_code=norm_dept,
         uploaded_by_id=user.user_id,
