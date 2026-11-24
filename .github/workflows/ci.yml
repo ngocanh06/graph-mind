@@ -1,7 +1,95 @@
-name: CI
-on: [pull_request]
+name: GraphMind Sprint 1 Automation CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
 jobs:
-  build:
+  docker-compose-validate:
+    name: Docker Compose Validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate docker-compose.yml syntax & services
+        run: docker compose -f docker-compose.yml config -q
+
+  sprint1-backend-and-deepeval:
+    name: Sprint 1 API, Ingestion, DB & DeepEval (pytest-html)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python test dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest httpx pytest-asyncio pytest-html deepeval
+      - name: Run Sprint 1 API, Ingestion, DB & DeepEval tests
+        run: |
+          mkdir -p tests/sprint1/reports
+          pytest tests/sprint1/test_s1_auth_db_ingestion.py tests/sprint1/test_s1_deepeval_dataset.py \
+            -v --html=tests/sprint1/reports/sprint1_pytest_report.html --self-contained-html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sprint1-pytest-html-report
+          path: tests/sprint1/reports/sprint1_pytest_report.html
+
+  sprint1-playwright-ui:
+    name: Sprint 1 UI E2E (pytest-playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Frontend & Playwright
+        run: |
+          cd frontend && npm ci
+          pip install pytest pytest-playwright pytest-html
+          playwright install chromium
+      - name: Start Vite & Run Playwright Sprint 1 Suite
+        run: |
+          mkdir -p tests/sprint1/reports
+          (cd frontend && npm run dev -- --port 5173 --host 127.0.0.1 &)
+          npx wait-on http://127.0.0.1:5173 -t 30000
+          GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint1/test_s1_ui_playwright.py \
+            -v --html=tests/sprint1/reports/sprint1_playwright_report.html --self-contained-html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sprint1-playwright-report
+          path: tests/sprint1/reports/sprint1_playwright_report.html
+
+  sprint1-locust-headless:
+    name: Sprint 1 Load Test (Locust --headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Locust & Backend deps
+        run: |
+          pip install -r backend/requirements.txt locust
+      - name: Run Locust Headless against Sprint 1 Target
+        run: |
+          mkdir -p tests/sprint1/reports
+          python tests/sprint1/run_locust_target.py &
+          sleep 3
+          python -m locust -f tests/sprint1/locustfile_sprint1.py --headless -u 20 -r 5 -t 10s \
+            --host http://127.0.0.1:5055 \
+            --csv tests/sprint1/reports/locust_sprint1 \
+            --html tests/sprint1/reports/locust_sprint1.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sprint1-locust-report
+          path: tests/sprint1/reports/locust_sprint1*
