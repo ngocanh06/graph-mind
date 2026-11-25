@@ -359,40 +359,24 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                 ))}
               </select>
             </div>
-            {(addForm.role === "knowledge_manager" || addForm.role === "standard") ? (
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 5 }}>
-                  Phòng ban (Department)
-                </label>
-                <select
-                  value={addForm.department_code || "SALES"}
-                  onChange={e => setAddForm(f => ({ ...f, department_code: e.target.value }))}
-                  style={{
-                    width: "100%", padding: "9px 12px", background: "var(--surface-2)",
-                    border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
-                    color: "var(--text-1)", fontSize: 13
-                  }}
-                >
-                  {DEPARTMENT_OPTIONS.map(({ value, label }) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 5 }}>
-                  Phòng ban (Department)
-                </label>
-                <div style={{
-                  padding: "9px 12px", background: "var(--surface-2)", border: "1px solid var(--border)",
-                  borderRadius: "var(--r-sm)", color: "#2563eb", fontSize: 13, display: "flex", alignItems: "center", gap: 8,
-                  fontWeight: 600
-                }}>
-                  <span>🌐 Toàn công ty (Global)</span>
-                  <span style={{ fontSize: 11, color: "var(--text-4)", fontWeight: 400 }}>(Quyền xuyên suốt toàn hệ thống)</span>
-                </div>
-              </div>
-            )}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 5 }}>
+                Phòng ban (Department)
+              </label>
+              <select
+                value={addForm.department_code || "SALES"}
+                onChange={e => setAddForm(f => ({ ...f, department_code: e.target.value }))}
+                style={{
+                  width: "100%", padding: "9px 12px", background: "var(--surface-2)",
+                  border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
+                  color: "var(--text-1)", fontSize: 13
+                }}
+              >
+                {DEPARTMENT_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <Button variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>Hủy</Button>
               <Button variant="primary" size="sm" onClick={handleAddUser}>Tạo tài khoản</Button>
@@ -626,54 +610,34 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                             {u.email}
                           </td>
                           <td style={{ padding: "12px 16px" }}>
-                            {(role === "it_admin" || role === "executive") ? (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                  padding: "4px 10px",
-                                  borderRadius: "12px",
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  background: "rgba(59, 130, 246, 0.1)",
-                                  color: "#2563eb",
-                                  border: "1px solid rgba(59, 130, 246, 0.25)",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                🌐 Toàn công ty (Global)
-                              </span>
-                            ) : (
-                              <select
-                                disabled={isLocked}
-                                value={
-                                  u.department_code || (
-                                    u.department_name && u.department_name.toLowerCase().includes("legal") ? "LEGAL" :
-                                    u.department_name && u.department_name.toLowerCase().includes("pháp chế") ? "LEGAL" :
-                                    u.department_name && (u.department_name.toLowerCase().includes("accounting") || u.department_name.toLowerCase().includes("kế toán")) ? "FINANCE" :
-                                    u.department_name && (u.department_name.toLowerCase().includes("it") || u.department_name.toLowerCase().includes("công nghệ")) ? "IT" :
-                                    u.department_name && (u.department_name.toLowerCase().includes("r&d") || u.department_name.toLowerCase().includes("rnd")) ? "RND" :
-                                    "SALES"
-                                  )
-                                }
-                                onChange={(e) => handleDepartmentChange(u, e.target.value)}
-                                style={{
-                                  padding: "5px 8px",
-                                  borderRadius: "var(--r-xs)",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  background: "var(--surface-2)",
-                                  border: "1px solid var(--border)",
-                                  color: "var(--text-1)",
-                                  cursor: isLocked ? "not-allowed" : "pointer",
-                                }}
-                              >
-                                {DEPARTMENT_OPTIONS.map(({ value, label }) => (
-                                  <option key={value} value={value}>{label}</option>
-                                ))}
-                              </select>
-                            )}
+                            <select
+                              disabled={isLocked}
+                              value={
+                                (u.department_code === "FINANCE" ? "ACCOUNTING_PROCUREMENT" : u.department_code) || (
+                                  u.department_name && (u.department_name.toLowerCase().includes("giám đốc") || u.department_name.toLowerCase().includes("board") || u.department_name.toLowerCase().includes("executive")) ? "BOARD" :
+                                  u.department_name && (u.department_name.toLowerCase().includes("legal") || u.department_name.toLowerCase().includes("pháp chế")) ? "LEGAL" :
+                                  u.department_name && (u.department_name.toLowerCase().includes("accounting") || u.department_name.toLowerCase().includes("kế toán") || u.department_name.toLowerCase().includes("thu mua")) ? "ACCOUNTING_PROCUREMENT" :
+                                  u.department_name && (u.department_name.toLowerCase().includes("it") || u.department_name.toLowerCase().includes("công nghệ") || u.department_name.toLowerCase().includes("cntt")) ? "IT" :
+                                  u.department_name && (u.department_name.toLowerCase().includes("r&d") || u.department_name.toLowerCase().includes("rnd")) ? "RND" :
+                                  "SALES"
+                                )
+                              }
+                              onChange={(e) => handleDepartmentChange(u, e.target.value)}
+                              style={{
+                                padding: "5px 8px",
+                                borderRadius: "var(--r-xs)",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                background: "var(--surface-2)",
+                                border: "1px solid var(--border)",
+                                color: "var(--text-1)",
+                                cursor: isLocked ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              {DEPARTMENT_OPTIONS.map(({ value, label }) => (
+                                <option key={value} value={value}>{label}</option>
+                              ))}
+                            </select>
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <select
