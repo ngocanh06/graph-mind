@@ -948,8 +948,8 @@ def knowledge_explorer_search(
                 (r.get("payload") or {}).get("department") or r.get("department") or "legal"
             )
         ]
-        if filtered:
-            qdrant_results = filtered
+        # FAIL-CLOSED: if filtered is empty, qdrant_results must be empty list (never fall back to unfiltered results)
+        qdrant_results = filtered
 
     # 2. Neo4j entity search
     neo4j_nodes = []
