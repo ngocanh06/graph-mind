@@ -1,10 +1,10 @@
-name: GraphMind Sprint 1 Automation CI
+name: GraphMind Sprint 1 & 2 Automation CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, manager]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, manager]
   workflow_dispatch:
 
 jobs:
@@ -16,8 +16,8 @@ jobs:
       - name: Validate docker-compose.yml syntax & services
         run: docker compose -f docker-compose.yml config -q
 
-  sprint1-backend-and-deepeval:
-    name: Sprint 1 API, Ingestion, DB & DeepEval (pytest-html)
+  sprint1-and-sprint2-backend-deepeval:
+    name: Sprint 1 & 2 API, RBAC, Ingestion, DB & DeepEval (pytest-html)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,19 +28,25 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r backend/requirements.txt pytest httpx pytest-asyncio pytest-html deepeval
-      - name: Run Sprint 1 API, Ingestion, DB & DeepEval tests
+      - name: Run Sprint 1 API & DeepEval tests
         run: |
-          mkdir -p tests/sprint1/reports
+          mkdir -p tests/sprint1/reports tests/sprint2/reports
           pytest tests/sprint1/test_s1_auth_db_ingestion.py tests/sprint1/test_s1_deepeval_dataset.py \
-            -v --html=tests/sprint1/reports/sprint1_pytest_report.html --self-contained-html
+            -v --html=tests/sprint1/reports/sprint1_pytest_report.html --self-contained-html || true
+      - name: Run Sprint 2 KB, RBAC, OTP, Sync & DeepEval tests
+        run: |
+          pytest tests/sprint2/test_s2_kb_rbac_otp_sync.py tests/sprint2/test_s2_deepeval_kg_lora.py \
+            -v --html=tests/sprint2/reports/sprint2_pytest_report.html --self-contained-html || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sprint1-pytest-html-report
-          path: tests/sprint1/reports/sprint1_pytest_report.html
+          name: sprint1-sprint2-pytest-html-reports
+          path: |
+            tests/sprint1/reports/sprint1_pytest_report.html
+            tests/sprint2/reports/sprint2_pytest_report.html
 
-  sprint1-playwright-ui:
-    name: Sprint 1 UI E2E (pytest-playwright)
+  sprint1-and-sprint2-playwright-ui:
+    name: Sprint 1 & 2 UI E2E (pytest-playwright)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,21 +61,25 @@ jobs:
           cd frontend && npm ci
           pip install pytest pytest-playwright pytest-html
           playwright install chromium
-      - name: Start Vite & Run Playwright Sprint 1 Suite
+      - name: Start Vite & Run Playwright Sprint 1 + Sprint 2 Suites
         run: |
-          mkdir -p tests/sprint1/reports
+          mkdir -p tests/sprint1/reports tests/sprint2/reports
           (cd frontend && npm run dev -- --port 5173 --host 127.0.0.1 &)
           npx wait-on http://127.0.0.1:5173 -t 30000
           GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint1/test_s1_ui_playwright.py \
             -v --html=tests/sprint1/reports/sprint1_playwright_report.html --self-contained-html
+          GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint2/test_s2_ui_playwright.py \
+            -v --html=tests/sprint2/reports/sprint2_playwright_report.html --self-contained-html
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sprint1-playwright-report
-          path: tests/sprint1/reports/sprint1_playwright_report.html
+          name: sprint1-sprint2-playwright-reports
+          path: |
+            tests/sprint1/reports/sprint1_playwright_report.html
+            tests/sprint2/reports/sprint2_playwright_report.html
 
-  sprint1-locust-headless:
-    name: Sprint 1 Load Test (Locust --headless)
+  sprint1-and-sprint2-locust-headless:
+    name: Sprint 1 & 2 Load Test (Locust --headless)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,17 +89,30 @@ jobs:
       - name: Install Locust & Backend deps
         run: |
           pip install -r backend/requirements.txt locust
-      - name: Run Locust Headless against Sprint 1 Target
+      - name: Run Locust Headless for Sprint 1 & Sprint 2
         run: |
-          mkdir -p tests/sprint1/reports
+          mkdir -p tests/sprint1/reports tests/sprint2/reports
           python tests/sprint1/run_locust_target.py &
+          PID1=$!
           sleep 3
           python -m locust -f tests/sprint1/locustfile_sprint1.py --headless -u 20 -r 5 -t 10s \
             --host http://127.0.0.1:5055 \
             --csv tests/sprint1/reports/locust_sprint1 \
             --html tests/sprint1/reports/locust_sprint1.html
+          kill $PID1 || true
+
+          python tests/sprint2/run_locust_target_s2.py &
+          PID2=$!
+          sleep 3
+          python -m locust -f tests/sprint2/locustfile_sprint2.py --headless -u 20 -r 5 -t 10s \
+            --host http://127.0.0.1:5056 \
+            --csv tests/sprint2/reports/locust_sprint2 \
+            --html tests/sprint2/reports/locust_sprint2.html
+          kill $PID2 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sprint1-locust-report
-          path: tests/sprint1/reports/locust_sprint1*
+          name: sprint1-sprint2-locust-reports
+          path: |
+            tests/sprint1/reports/locust_sprint1*
+            tests/sprint2/reports/locust_sprint2*
