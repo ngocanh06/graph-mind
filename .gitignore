@@ -51,9 +51,16 @@ frontend/node_modules/
 # Test & scratch caches
 .pytest_cache/
 *.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.deepeval/
+coverage/
 scratch/
 .cache_adv_csv/
 .demo_seed_cache/
+
+# Backup files
+*.bak
 
 # Root package-lock (empty/unused)
 /package-lock.json
@@ -77,6 +84,8 @@ legal/
 rnd/
 sales/
 
-# Google Drive OAuth credentials & local runtime configs
+# Google Drive OAuth credentials & local runtime configs/state
 backend/app/modules/m1_data_sync/data/google_credentials.json
 backend/app/modules/m1_data_sync/data/google_oauth_config.json
+backend/app/modules/m1_data_sync/data/watcher_ingested_docs.json
+backend/app/modules/m1_data_sync/data/watcher_sync_logs.json
