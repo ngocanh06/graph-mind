@@ -18,10 +18,10 @@ from app.db.postgres.models.otp import PasswordResetOtp
 
 logger = logging.getLogger(__name__)
 
-OTP_TTL_MINUTES = 1
+OTP_TTL_MINUTES = 5
 RATE_LIMIT_COUNT = 5
 RATE_LIMIT_WINDOW_MINUTES = 15
-MAX_ATTEMPTS = 5
+MAX_ATTEMPTS = 3
 
 
 def _now_utc() -> datetime:
@@ -141,7 +141,7 @@ async def verify_otp(db: AsyncSession, email: str, plain_otp: str) -> tuple[bool
             return False, "OTP đã hết hạn. Vui lòng yêu cầu gửi lại mã mới."
         return False, "Không tìm thấy mã OTP hợp lệ. Vui lòng yêu cầu gửi mã mới."
 
-    if row.otp_hash != PasswordResetOtp.hash_otp(plain_otp):
+    if not PasswordResetOtp.verify_otp_hash(row.otp_hash, plain_otp, email):
         row.attempt_count += 1
         if row.attempt_count >= MAX_ATTEMPTS:
             row.is_used = True  # vô hiệu hoá ngay

@@ -1194,7 +1194,7 @@ async def ask_copilot(
         "điều khoản", "clause", "bồi thường", "indemnif", "chấm dứt", "termination",
         "trách nhiệm", "liability", "luật áp dụng", "governing law", "bảo mật", "confidential",
         "chuyển nhượng", "transfer", "cổ phần", "share purchase", "thời hạn", "term"
-    ]) and not is_doc_metadata_query and not is_doc_expiry_query
+    ]) and not is_doc_metadata_query and not is_doc_expiry_query and not is_doc_risk_query
 
     is_recent_doc_query = (
         bool(re.search(r"(?:mới|vừa|gần đây|latest|recent)\s*(?:[0-9a-zA-Z_\.\-]+\s+)?(?:tải lên|upload|nạp|thêm|đưa lên|tải)", q_lower)) or
@@ -1403,7 +1403,7 @@ async def ask_copilot(
                 "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
             ])
             if not is_inventory_early and not is_agg_query and not is_recent_doc_query:
-                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([a-zA-Z0-9_\.-]{3,})", clean_query, re.IGNORECASE)
+                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([\w\.-]{3,})", clean_query, re.IGNORECASE | re.UNICODE)
                 if t_match:
                     cand = t_match.group(1).strip()
                     if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
@@ -1496,6 +1496,40 @@ async def ask_copilot(
             for ch in cuad_hits:
                 if not any(h.get("id") == ch.get("id") for h in vector_hits):
                     vector_hits.append(ch)
+        elif is_doc_risk_query:
+            ordered_chunks = qdrant_client.get_document_chunks(
+                doc_id=target_doc_id,
+                contract_name=active_target_doc,
+                collection_name="cuad_contracts",
+                limit=50
+            )
+            if ordered_chunks:
+                selected = []
+                # Preamble / Header chunks (chunk 0, 1) are mandatory for context
+                for ch in ordered_chunks[:2]:
+                    selected.append(ch)
+                # Find key structural chunks: risks, obligations, termination, liability, penalties, guidelines, rules
+                risk_keywords = [
+                    "rủi ro", "trách nhiệm", "nghĩa vụ", "chấm dứt", "phạt", "bồi thường",
+                    "bảo mật", "không được", "nghiêm cấm", "lưu ý", "liability", "breach",
+                    "penalty", "termination", "indemn", "cấm", "dos", "don'ts", "guideline", "yêu cầu", "vi phạm"
+                ]
+                for ch in ordered_chunks[2:]:
+                    txt = (ch.get("text") or "").lower()
+                    if any(term in txt for term in risk_keywords):
+                        if ch not in selected:
+                            selected.append(ch)
+                    if len(selected) >= 4:
+                        break
+                for ch in ordered_chunks:
+                    if len(selected) >= 4:
+                        break
+                    if ch not in selected:
+                        selected.append(ch)
+                vector_hits = selected
+            else:
+                cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
+                vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.01]
         elif is_doc_content_query:
             ordered_chunks = qdrant_client.get_document_chunks(
                 doc_id=target_doc_id,
@@ -1686,7 +1720,7 @@ async def ask_copilot(
         # If query is a system inventory summary or a verified NL2Cypher analytical query,
         # suppress unrelated semantic vector chunks so random contract clauses do not pollute the answer.
         if any(
-            gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]
+            gh.get("_id") in ["total-documents-summary", "cuad-contracts-summary", "portfolio-breakdown", "compliance-stats"]
             or "DocumentSummary" in (gh.get("_labels") or [])
             or gh.get("grounded_answer")
             for gh in graph_hits

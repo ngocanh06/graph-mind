@@ -2848,4 +2848,31 @@ def test_ut92_backward_compat_erp_entities_exclude_document_citations():
     assert len(citations_detail) == 0
 
 
+def test_same_content_different_department_gets_distinct_doc_id(monkeypatch):
+    """Same file content & filename in different departments must produce distinct doc_ids and not be skipped."""
+    fake_neo = FakeNeo4jClient()
+    fake_qdrant_inner = FakeQdrantClientInner()
+    fake_qdrant_wrapper = MagicMock(is_connected=True, _client=fake_qdrant_inner, _collection="cuad_contracts")
+
+    monkeypatch.setattr("modules.m1_data_sync.pipeline.neo4j_client", fake_neo)
+    monkeypatch.setattr("modules.m1_data_sync.pipeline.qdrant_client", fake_qdrant_wrapper)
+    monkeypatch.setattr("modules.m1_data_sync.pipeline.get_verified_indexed_hashes", lambda: set())
+
+    fake_neo.register_response("CREATE (d:Document", [{"elem_id": "4:doc:1", "gen": 1}])
+    fake_neo.register_response("op_stage = 'STAGED'", [{"elem_id": "4:doc:1"}])
+    fake_neo.register_response("op_stage = 'GRAPH_INDEXED'", [{"elem_id": "4:doc:1"}])
+    fake_neo.register_response("op_stage = 'PREPARING_ACTIVATION'", [{"elem_id": "4:doc:1"}])
+    fake_neo.register_response("op_stage = 'PURGING_OLD'", [{"elem_id": "4:doc:1"}])
+    fake_neo.register_response("op_stage = 'TERMINAL_SYNCED'", [{"elem_id": "4:doc:1"}])
+
+    payload = b"Identical agreement content across departments."
+    r1 = process_document_ingestion(payload, "shared.txt", "sales", allow_skip_known=True)
+    r2 = process_document_ingestion(payload, "shared.txt", "it", allow_skip_known=True)
+
+    assert r1["success"] is True and r2["success"] is True
+    assert r1["status"] == "ingested" and r2["status"] == "ingested"
+    assert r1["data"]["doc_id"] != r2["data"]["doc_id"]
+
+
+
 

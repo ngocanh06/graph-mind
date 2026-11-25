@@ -1,7 +1,159 @@
-name: CI
-on: [pull_request]
+name: GraphMind Sprint 1-4 Automation CI
+
+on:
+  push:
+    branches: [main, develop, manager]
+  pull_request:
+    branches: [main, develop, manager]
+  workflow_dispatch:
+
 jobs:
-  build:
+  docker-compose-validate:
+    name: Docker Compose Validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate docker-compose.yml syntax & services
+        run: docker compose -f docker-compose.yml config -q
+
+  sprint1-and-sprint2-backend-deepeval:
+    name: Sprint 1 & 2 API, RBAC, Ingestion, DB & DeepEval (pytest-html)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python test dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest httpx pytest-asyncio pytest-html deepeval
+      - name: Run Sprint 1 API & DeepEval tests
+        run: |
+          mkdir -p tests/sprint1/reports tests/sprint2/reports
+          pytest tests/sprint1/test_s1_auth_db_ingestion.py tests/sprint1/test_s1_deepeval_dataset.py \
+            -v --html=tests/sprint1/reports/sprint1_pytest_report.html --self-contained-html || true
+      - name: Run Sprint 2 KB, RBAC, OTP, Sync & DeepEval tests
+        run: |
+          pytest tests/sprint2/test_s2_kb_rbac_otp_sync.py tests/sprint2/test_s2_deepeval_kg_lora.py \
+            -v --html=tests/sprint2/reports/sprint2_pytest_report.html --self-contained-html || true
+      - name: Run Sprint 3 Hybrid Query, Cypher Guard, Governance & DeepEval tests
+        run: |
+          mkdir -p tests/sprint3/reports
+          pytest tests/sprint3/test_s3_hybrid_cypher_governance.py \
+            -v --html=tests/sprint3/reports/sprint3_pytest_report.html --self-contained-html || true
+      - name: Run Sprint 4 PB56, Executive Dashboard, 100-Q Benchmark & DeepEval tests
+        run: |
+          mkdir -p tests/sprint4/reports
+          pytest tests/sprint4/test_s4_pb56_dashboard_benchmark.py \
+            -v --html=tests/sprint4/reports/sprint4_pytest_report.html --self-contained-html || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sprint1-4-pytest-html-reports
+          path: |
+            tests/sprint1/reports/sprint1_pytest_report.html
+            tests/sprint2/reports/sprint2_pytest_report.html
+            tests/sprint3/reports/sprint3_pytest_report.html
+            tests/sprint4/reports/sprint4_pytest_report.html
+
+  sprint1-and-sprint2-playwright-ui:
+    name: Sprint 1 & 2 UI E2E (pytest-playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Frontend & Playwright
+        run: |
+          cd frontend && npm ci
+          pip install pytest pytest-playwright pytest-html
+          playwright install chromium
+      - name: Start Vite & Run Playwright Sprint 1 + Sprint 2 Suites
+        run: |
+          mkdir -p tests/sprint1/reports tests/sprint2/reports
+          (cd frontend && npm run dev -- --port 5173 --host 127.0.0.1 &)
+          npx wait-on http://127.0.0.1:5173 -t 30000
+          GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint1/test_s1_ui_playwright.py \
+            -v --html=tests/sprint1/reports/sprint1_playwright_report.html --self-contained-html
+          GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint2/test_s2_ui_playwright.py \
+            -v --html=tests/sprint2/reports/sprint2_playwright_report.html --self-contained-html
+          mkdir -p tests/sprint3/reports tests/sprint4/reports
+          GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint3/test_s3_ui_playwright.py \
+            -v --html=tests/sprint3/reports/sprint3_playwright_report.html --self-contained-html
+          GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint4/test_s4_ui_playwright.py \
+            -v --html=tests/sprint4/reports/sprint4_playwright_report.html --self-contained-html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sprint1-4-playwright-reports
+          path: |
+            tests/sprint1/reports/sprint1_playwright_report.html
+            tests/sprint2/reports/sprint2_playwright_report.html
+            tests/sprint3/reports/sprint3_playwright_report.html
+            tests/sprint4/reports/sprint4_playwright_report.html
+
+  sprint1-and-sprint2-locust-headless:
+    name: Sprint 1 & 2 Load Test (Locust --headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Locust & Backend deps
+        run: |
+          pip install -r backend/requirements.txt locust
+      - name: Run Locust Headless for Sprint 1 & Sprint 2
+        run: |
+          mkdir -p tests/sprint1/reports tests/sprint2/reports
+          python tests/sprint1/run_locust_target.py &
+          PID1=$!
+          sleep 3
+          python -m locust -f tests/sprint1/locustfile_sprint1.py --headless -u 20 -r 5 -t 10s \
+            --host http://127.0.0.1:5055 \
+            --csv tests/sprint1/reports/locust_sprint1 \
+            --html tests/sprint1/reports/locust_sprint1.html
+          kill $PID1 || true
+
+          python tests/sprint2/run_locust_target_s2.py &
+          PID2=$!
+          sleep 3
+          python -m locust -f tests/sprint2/locustfile_sprint2.py --headless -u 20 -r 5 -t 10s \
+            --host http://127.0.0.1:5056 \
+            --csv tests/sprint2/reports/locust_sprint2 \
+            --html tests/sprint2/reports/locust_sprint2.html
+          kill $PID2 || true
+
+          mkdir -p tests/sprint3/reports
+          python tests/sprint3/run_locust_target_s3.py &
+          PID3=$!
+          sleep 3
+          python -m locust -f tests/sprint3/locustfile_sprint3.py --headless -u 20 -r 5 -t 10s \
+            --host http://127.0.0.1:5057 \
+            --csv tests/sprint3/reports/locust_sprint3 \
+            --html tests/sprint3/reports/locust_sprint3.html
+          kill $PID3 || true
+
+          mkdir -p tests/sprint4/reports
+          python tests/sprint4/run_locust_target_s4.py &
+          PID4=$!
+          sleep 3
+          python -m locust -f tests/sprint4/locustfile_sprint4.py --headless -u 150 -r 30 -t 10s \
+            --host http://127.0.0.1:5058 \
+            --csv tests/sprint4/reports/locust_sprint4 \
+            --html tests/sprint4/reports/locust_sprint4.html
+          kill $PID4 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sprint1-4-locust-reports
+          path: |
+            tests/sprint1/reports/locust_sprint1*
+            tests/sprint2/reports/locust_sprint2*
+            tests/sprint3/reports/locust_sprint3*
+            tests/sprint4/reports/locust_sprint4*

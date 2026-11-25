@@ -25,17 +25,26 @@ adv_dir = Path(args.data_dir).resolve()
 if not adv_dir.exists():
     cache_dir = REPO_ROOT / ".cache_adv_csv"
     cache_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[*] Local path '{adv_dir}' not found on host. Checking Docker Central Storage container...")
-    try:
-        import subprocess
-        chk = subprocess.run(["docker", "exec", "aegis_file_watcher", "sh", "-c", "test -f /data/rnd/Production_ProductCategory.csv"], capture_output=True)
-        if chk.returncode == 0:
-            print(f"[*] Extracting AdventureWorks CSVs from aegis_file_watcher:/data into {cache_dir}...")
-            subprocess.run(["docker", "cp", "aegis_file_watcher:/data/sales/.", str(cache_dir)], capture_output=True)
-            subprocess.run(["docker", "cp", "aegis_file_watcher:/data/rnd/.", str(cache_dir)], capture_output=True)
-            adv_dir = cache_dir
-    except Exception as e:
-        print(f"[*] Note: Could not auto-extract from container: {e}")
+    if (REPO_ROOT / "rnd" / "Production_ProductCategory.csv").exists():
+        import shutil
+        for d in ["sales", "rnd", "accounting_procurement", "it"]:
+            d_path = REPO_ROOT / d
+            if d_path.exists():
+                for f in d_path.glob("*.csv"):
+                    shutil.copy(f, cache_dir / f.name)
+        adv_dir = cache_dir
+    else:
+        print(f"[*] Local path '{adv_dir}' not found on host. Checking Docker Central Storage container...")
+        try:
+            import subprocess
+            chk = subprocess.run(["docker", "exec", "aegis_file_watcher", "sh", "-c", "test -f /data/rnd/Production_ProductCategory.csv"], capture_output=True)
+            if chk.returncode == 0:
+                print(f"[*] Extracting AdventureWorks CSVs from aegis_file_watcher:/data into {cache_dir}...")
+                subprocess.run(["docker", "cp", "aegis_file_watcher:/data/sales/.", str(cache_dir)], capture_output=True)
+                subprocess.run(["docker", "cp", "aegis_file_watcher:/data/rnd/.", str(cache_dir)], capture_output=True)
+                adv_dir = cache_dir
+        except Exception as e:
+            print(f"[*] Note: Could not auto-extract from container: {e}")
 
 if not adv_dir.exists() or not (adv_dir / "Production_ProductCategory.csv").exists():
     print(f"[Error] AdventureWorks data directory does not exist or missing required CSVs: {adv_dir}")

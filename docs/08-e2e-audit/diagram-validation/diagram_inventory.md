@@ -1,0 +1,43 @@
+# Diagram Inventory — GraphMind SRS Document (Ver 1.2)
+
+**Source Document**: `docs/05-srs/C1SE18-SRS-Document-Ver1.2.docx`  
+**Final Output Document**: `final_document/Original_Document_With_Diagrams.docx`  
+**Total Figures in Document**: **66 Technical Diagrams** (plus 1 university cover logo = 67 embedded images)  
+- **22 Missing / Placeholder / Outdated v1.1 Diagrams**: Generated from scratch for v1.2, verified 100% English, and inserted at their exact document positions.
+- **44 Pre-existing v1.2 Diagrams** (`Figure 6.3.1`–`6.3.22` Activity Diagrams and `Figure 6.4.1`–`6.4.22` Sequence Diagrams): Verified intact, 100% English, and visually consistent with the newly generated diagrams.
+
+---
+
+## 1. Complete Inventory of All 22 Generated & Inserted Diagrams
+
+| # | Figure Number | Original Document Caption(s) | SRS Section | Diagram Type | Installed Skill(s) Used | Output File Path (`/diagram_output/`) | Status |
+|---|---|---|---|---|---|---|---|
+| 1 | **Figure 2.1** (`Hình 2.1`) | `Figure 2.1 — GraphMind System Context Diagram` / `Hình 2.1 — Sơ đồ Ngữ cảnh Hệ thống GraphMind (System Context Diagram)` | Section 2.2 (System Context) | System Context / Architecture Diagram | `d2-architect` + PlantUML Architecture | `architecture/Figure_2.1_System_Context_Diagram.{png,svg,puml,d2}` | Verified & Inserted |
+| 2 | **Figure 6.1** (`Hình 6.1`) | `Figure 6.1 — GraphMind System Business Function Diagram (BFD)` / `Hình 6.1 — Sơ đồ Phân rã Chức năng Nghiệp vụ (Business Function Diagram - BFD)` | Section 6.1 (Business Function Diagram) | Business Function Decomposition (WBS/BFD) | `d2-architect` + PlantUML WBS | `architecture/Figure_6.1_Business_Function_Diagram_BFD.{png,svg,puml,d2}` | Verified & Inserted |
+| 3 | **Figure 6.2.1** (`Hình 6.2.1`) | `Hình 6.2.1 — Sơ đồ Use Case Tổng quan Toàn Hệ thống (System Use Case Overview Diagram)` | Section 6.2.2 (Use Case Diagram Overview) | UML Use Case Diagram (Full System: UC.01–UC.27) | `usecase-diagram` | `uml/Figure_6.2.1_System_Use_Case_Overview.{png,svg,puml}` | Verified & Inserted |
+| 4 | **Figure 6.2.2** (`Hình 6.2.2`) | `Hình 6.2.2 — Sơ đồ Use Case Phân hệ Quản trị & An ninh (Administration & Security UC Diagram)` | Section 6.2.2 (Subsystem 1 Use Cases) | UML Use Case Diagram (Subsystem 1) | `usecase-diagram` | `uml/Figure_6.2.2_Admin_Security_UC.{png,svg,puml}` | Verified & Inserted |
+| 5 | **Figure 6.2.3** (`Hình 6.2.3`) | `Hình 6.2.3 — Sơ đồ Use Case Phân hệ Thu thập & Phê duyệt Dữ liệu Tri thức (Data Pipeline & Ingestion UC Diagram)` | Section 6.2.2 (Subsystem 2 Use Cases) | UML Use Case Diagram (Subsystem 2) | `usecase-diagram` | `uml/Figure_6.2.3_Data_Pipeline_Ingestion_UC.{png,svg,puml}` | Verified & Inserted |
+| 6 | **Figure 6.2.4** (`Hình 6.2.4`) | `Hình 6.2.4 — Sơ đồ Use Case Phân hệ Đồ thị Tri thức & Hybrid AI Copilot (Knowledge Graph & GraphRAG UC Diagram)` | Section 6.2.2 (Subsystem 3 Use Cases) | UML Use Case Diagram (Subsystem 3) | `usecase-diagram` | `uml/Figure_6.2.4_Knowledge_Graph_Copilot_UC.{png,svg,puml}` | Verified & Inserted |
+| 7 | **Figure 6.2.5** (`Hình 6.2.5`) | `Hình 6.2.5 — Sơ đồ Use Case Phân hệ Báo cáo Giao ca & Phân tích Điều hành (Shift Handover & Executive Analytics UC Diagram)` | Section 6.2.2 (Subsystem 4 Use Cases) | UML Use Case Diagram (Subsystem 4) | `usecase-diagram` | `uml/Figure_6.2.5_Shift_Handover_Executive_UC.{png,svg,puml}` | Verified & Inserted |
+| 8 | **Figure 6.3.23** (`Hình 6.3.23`) | `Hình 6.3.23 — Activity Diagram: UC.23 — Internal Document Upload & Approval Workflow` | Section 6.3 (Activity Diagrams) | UML Activity Swimlane Diagram | `activity-swimlane` + `activity` | `workflow/Figure_6.3.23_Activity_UC23_Document_Upload_Approval.{png,svg,puml}` | Verified & Inserted |
+| 9 | **Figure 6.3.24** (`Hình 6.3.24`) | `Hình 6.3.24 — Activity Diagram: UC.24 — Departmental Shift Handover Reporting & Sign-off` | Section 6.3 (Activity Diagrams) | UML Activity Swimlane Diagram | `activity-swimlane` + `activity` | `workflow/Figure_6.3.24_Activity_UC24_Shift_Handover_Signoff.{png,svg,puml}` | Verified & Inserted |
+| 10 | **Figure 6.3.25** (`Hình 6.3.25`) | `Hình 6.3.25 — Activity Diagram: UC.25 — Daily Automated Shift Consolidation via Local LLM` | Section 6.3 (Activity Diagrams) | UML Activity Swimlane Diagram | `activity-swimlane` + `activity` | `workflow/Figure_6.3.25_Activity_UC25_Daily_Shift_Consolidation.{png,svg,puml}` | Verified & Inserted |
+| 11 | **Figure 6.3.26** (`Hình 6.3.26`) | `Hình 6.3.26 — Activity Diagram: UC.26 — Security & Access Enforcement (RBAC Matrix, Session JTI & Email OTP)` | Section 6.3 (Activity Diagrams) | UML Activity Swimlane Diagram | `activity-swimlane` + `activity` | `workflow/Figure_6.3.26_Activity_UC26_Security_Access_Enforcement.{png,svg,puml}` | Verified & Inserted |
+| 12 | **Figure 6.3.27** (`Hình 6.3.27`) | `Hình 6.3.27 — Activity Diagram: UC.27 — Threat Mitigation & Workstation Remote Containment` | Section 6.3 (Activity Diagrams) | UML Activity Swimlane Diagram | `activity-swimlane` + `activity` | `workflow/Figure_6.3.27_Activity_UC27_Threat_Mitigation_KillSwitch.{png,svg,puml}` | Verified & Inserted |
+| 13 | **Figure 6.4.23** (`Hình 6.4.23`) | `Hình 6.4.23 — Sequence Diagram: UC.23 — Internal Document Upload & Approval Workflow` | Section 6.4 (Sequence Diagrams) | UML Sequence Diagram | `sequence` | `uml/Figure_6.4.23_Sequence_UC23_Document_Upload_Approval.{png,svg,puml}` | Verified & Inserted |
+| 14 | **Figure 6.4.24** (`Hình 6.4.24`) | `Hình 6.4.24 — Sequence Diagram: UC.24 — Departmental Shift Handover Reporting & Sign-off` | Section 6.4 (Sequence Diagrams) | UML Sequence Diagram | `sequence` | `uml/Figure_6.4.24_Sequence_UC24_Shift_Handover_Signoff.{png,svg,puml}` | Verified & Inserted |
+| 15 | **Figure 6.4.25** (`Hình 6.4.25`) | `Hình 6.4.25 — Sequence Diagram: UC.25 — Daily Automated Shift Consolidation via Local LLM` | Section 6.4 (Sequence Diagrams) | UML Sequence Diagram | `sequence` | `uml/Figure_6.4.25_Sequence_UC25_Daily_Shift_Consolidation.{png,svg,puml}` | Verified & Inserted |
+| 16 | **Figure 6.4.26** (`Hình 6.4.26`) | `Hình 6.4.26 — Sequence Diagram: UC.26 — Security & Access Enforcement (Single Session Revocation)` | Section 6.4 (Sequence Diagrams) | UML Sequence Diagram | `sequence` | `uml/Figure_6.4.26_Sequence_UC26_Single_Session_Revocation.{png,svg,puml}` | Verified & Inserted |
+| 17 | **Figure 6.4.27** (`Hình 6.4.27`) | `Hình 6.4.27 — Sequence Diagram: UC.27 — Threat Mitigation (Cypher Guard AST & Emergency Kill Switch)` | Section 6.4 (Sequence Diagrams) | UML Sequence Diagram | `sequence` | `uml/Figure_6.4.27_Sequence_UC27_Threat_Mitigation_KillSwitch.{png,svg,puml}` | Verified & Inserted |
+| 18 | **Figure 6.5** (`Hình 6.5`) | `Figure 6.5 — GraphMind (EKAI) System Class Diagram` / `Hình 6.5 — Sơ đồ Lớp Hệ thống GraphMind (System Class Diagram)` | Section 6.5 (Class Diagram) | UML Domain & Service Class Diagram | `erd` + UML Class (`usecase-diagram` PlantUML engine) | `uml/Figure_6.5_System_Class_Diagram.{png,svg,puml}` | Verified & Inserted |
+| 19 | **Figure 6.6** (`Hình 6.6`) | `Hình 6.6 — Sơ đồ Quan hệ Thực thể Cơ sở Dữ liệu (PostgreSQL Relational ERD)` | Section 6.6 (Data Architecture Models) | Entity-Relationship Diagram (PostgreSQL 10 Core Tables) | `erd` + `dbdiagram` + `d2-erd` | `erd/Figure_6.6_PostgreSQL_Relational_ERD.{png,svg,puml,dbml,sql}` | Verified & Inserted |
+| 20 | **Figure 6.7** (`Hình 6.7`) | `Hình 6.7 — Sơ đồ Cấu trúc Bản thể học Đồ thị Tri thức (Neo4j Graph Ontology Schema)` | Section 6.6 (Data Architecture Models) | Property Graph Ontology Schema Diagram (Neo4j) | `erd` + `d2-erd` | `erd/Figure_6.7_Neo4j_Graph_Ontology_Schema.{png,svg,puml}` | Verified & Inserted |
+| 21 | **Figure 6.8** (`Hình 6.8`) | `Hình 6.8 — Sơ đồ Trạng thái Phê duyệt Tài liệu (Document Approval State Machine Diagram)` | Section 6.7 (State Machine Diagrams) | UML State Machine Diagram | `state` | `uml/Figure_6.8_Document_Approval_State_Machine.{png,svg,puml}` | Verified & Inserted |
+| 22 | **Figure 6.9** (`Hình 6.9`) | `Hình 6.9 — Sơ đồ Trạng thái Biên bản Giao ca (Shift Handover State Machine Diagram)` | Section 6.7 (State Machine Diagrams) | UML State Machine Diagram | `state` | `uml/Figure_6.9_Shift_Handover_State_Machine.{png,svg,puml}` | Verified & Inserted |
+
+---
+
+## 2. Inventory of Pre-Existing v1.2 Diagrams Verified Intact (44 Figures)
+
+- **Figures 6.3.1 to 6.3.22** (`UC.01` to `UC.22` Activity Swimlane Diagrams, Section 6.3): Present, English-verified, centered with preserved captions.
+- **Figures 6.4.1 to 6.4.22** (`UC.01` to `UC.22` Sequence Diagrams, Section 6.4): Present, English-verified, centered with preserved captions.

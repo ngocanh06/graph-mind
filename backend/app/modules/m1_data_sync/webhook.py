@@ -228,7 +228,7 @@ async def upload_document_to_central_storage(
 
     file_hash = hashlib.sha256(content_bytes).hexdigest()
     storage_path = f"/data/{canonical_dept}/{safe_name}"
-    doc_id = f"DOC_{file_hash[:8].upper()}"
+    doc_id = f"DOC_{hashlib.sha256(f'{storage_path}:{file_hash}'.encode('utf-8')).hexdigest()[:8].upper()}"
 
     # Acquire lock before identity verification and hold through physical storage write and ingestion
     with acquire_ingestion_transaction_locks(storage_path, doc_id):

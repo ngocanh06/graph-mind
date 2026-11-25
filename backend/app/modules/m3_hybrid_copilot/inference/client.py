@@ -210,8 +210,8 @@ class OllamaClient:
 
         is_doc_content_query = any(k in q_lower for k in [
             "trình bày", "nội dung", "tóm tắt", "giải thích", "nói về", "cho tôi biết nội dung",
-            "nội dung chính", "các điều khoản chính", "nội dung file", "nội dung tài liệu", "hợp đồng này",
-            "chi tiết hợp đồng", "văn bản này", "nói về điều gì", "ý nghĩa", "review", "đọc file",
+            "nội dung chính", "các điều khoản chính", "nội dung file", "nội dung tài liệu",
+            "chi tiết hợp đồng", "nói về điều gì", "ý nghĩa", "review", "đọc file",
             "thông tin file", "thông tin tài liệu", "tổng quan"
         ])
         is_doc_metadata_query = any(k in q_lower for k in [
@@ -368,8 +368,7 @@ class OllamaClient:
             ) if (asks_case1 or asks_case2 or "sheet" in q_lower or "case" in q_lower) else ""
 
             doc_rules = (
-                "4. XỬ LÝ YÊU CẦU TRÌNH BÀY NỘI DUNG / TÓM TẮT HỢP ĐỒNG & VĂN BẢN:\n"
-                "   - Khi người dùng yêu cầu trình bày nội dung, tóm tắt hợp đồng hoặc hỏi hợp đồng nói về điều gì:\n"
+                "   - XỬ LÝ YÊU CẦU TRÌNH BÀY NỘI DUNG / TÓM TẮT HỢP ĐỒNG & VĂN BẢN:\n"
                 "     * BẮT BUỘC đọc trực tiếp các đoạn văn bản trong [CHỨNG CỨ VĂN BẢN (QDRANT VECTOR DB)].\n"
                 "     * Trình bày cấu trúc rõ ràng:\n"
                 "       1. Tiêu đề hợp đồng, các bên tham gia (Parties), và ngày ký kết/hiệu lực (Effective Date).\n"
@@ -613,7 +612,7 @@ class OllamaClient:
             else:
                 fallback_msg = f"Đã tra cứu dữ liệu cho truy vấn '{query}' nhưng chưa đủ thông tin để kết luận chi tiết."
         else:
-            if is_cuad_document and (is_doc_content_query or not is_doc_metadata_query):
+            if is_cuad_document and is_doc_content_query:
                 c0 = evidence_chunks[0]
                 doc_name = c0.get("source_file") or c0.get("contract_name") or "System Document"
                 doc_id = c0.get("document_id") or c0.get("doc_id") or ""

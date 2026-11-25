@@ -1,0 +1,176 @@
+@startuml
+
+skinparam dpi 155
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam linetype ortho
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassHeaderBackgroundColor #EAF2FF
+skinparam ClassBorderColor #1F3A5F
+skinparam ClassBorderThickness 1.3
+skinparam ClassFontColor #1F3A5F
+skinparam ClassFontSize 12
+skinparam ClassAttributeFontColor #1E293B
+skinparam ClassAttributeFontSize 11
+
+hide circle
+title GraphMind PostgreSQL Relational Schema — Entity-Relationship Diagram (10 Core Tables)
+
+entity "departments" as departments {
+    * **id** : UUID <<PK>>
+    --
+    * name : VARCHAR(120)
+    * code : VARCHAR(32) <<UNIQUE>>
+    description : TEXT
+    manager_id : UUID <<FK>>
+    * created_at : TIMESTAMP
+}
+
+entity "users" as users {
+    * **id** : UUID <<PK>>
+    --
+    * username : VARCHAR(64) <<UNIQUE>>
+    * email : VARCHAR(255) <<UNIQUE>>
+    * password_hash : VARCHAR(255)
+    * role_id : VARCHAR(32)
+    * department_id : UUID <<FK>>
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+}
+
+entity "rbac_permissions_matrix" as rbac {
+    * **id** : UUID <<PK>>
+    --
+    * role_id : VARCHAR(32) <<INDEX>>
+    * resource_name : VARCHAR(64)
+    * permission_type : VARCHAR(32)
+    * is_granted : BOOLEAN
+    * updated_at : TIMESTAMP
+}
+
+entity "user_active_sessions" as sessions {
+    * **id** : UUID <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * jti : VARCHAR(128) <<UNIQUE, INDEX>>
+    ip_address : VARCHAR(45)
+    user_agent : TEXT
+    * status : VARCHAR(16) [ACTIVE | REVOKED]
+    * created_at : TIMESTAMP
+    * expires_at : TIMESTAMP
+}
+
+entity "password_reset_tokens" as otps {
+    * **id** : UUID <<PK>>
+    --
+    * email : VARCHAR(255) <<FK, INDEX>>
+    * otp_hash : VARCHAR(255)
+    reset_token : VARCHAR(255)
+    * attempts_count : INT [default: 0]
+    * is_used : BOOLEAN
+    * expires_at : TIMESTAMP
+}
+
+entity "documents" as documents {
+    * **id** : UUID <<PK>>
+    --
+    * title : VARCHAR(255)
+    * file_path : TEXT
+    * file_size : BIGINT
+    * mime_type : VARCHAR(100)
+    * sha256_hash : VARCHAR(64) <<UNIQUE, INDEX>>
+    * status : VARCHAR(24) [PENDING_APPROVAL | APPROVED | REJECTED]
+    * department_id : UUID <<FK>>
+    * uploaded_by : UUID <<FK>>
+    * created_at : TIMESTAMP
+}
+
+entity "document_approvals" as approvals {
+    * **id** : UUID <<PK>>
+    --
+    * document_id : UUID <<FK, UNIQUE>>
+    * action : VARCHAR(16) [APPROVE | REJECT]
+    rejection_reason : TEXT
+    * approved_by : UUID <<FK>>
+    * created_at : TIMESTAMP
+}
+
+entity "shift_reports" as shifts {
+    * **id** : UUID <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * department_id : UUID <<FK>>
+    * shift_name : VARCHAR(64)
+    * report_date : DATE <<INDEX>>
+    * completed_tasks : TEXT
+    issues_encountered : TEXT
+    * handover_notes : TEXT
+    * status : VARCHAR(20) [DRAFT | SUBMITTED | APPROVED | REJECTED]
+    signed_by_manager_id : UUID <<FK>>
+    approved_at : TIMESTAMP
+}
+
+entity "shift_daily_summaries" as summaries {
+    * **id** : UUID <<PK>>
+    --
+    department_id : UUID <<FK, NULLABLE>>
+    * summary_date : DATE <<INDEX>>
+    * content_markdown : TEXT
+    * total_shifts : INT
+    * total_issues : INT
+    * is_fallback_generated : BOOLEAN
+    * created_at : TIMESTAMP
+}
+
+entity "audit_logs" as audit {
+    * **id** : UUID <<PK>>
+    --
+    user_id : UUID <<FK, NULLABLE>>
+    * event_type : VARCHAR(64)
+    * resource_affected : VARCHAR(128)
+    ip_address : VARCHAR(45)
+    * severity_level : VARCHAR(16) [INFO | WARN | CRITICAL]
+    details_json : JSONB
+    * created_at : TIMESTAMP <<INDEX>>
+}
+
+departments ||--o{ users : "department_id (ON DELETE RESTRICT)"
+users |o--o| departments : "manager_id"
+users }o--o{ rbac : "role_id"
+users ||--o{ sessions : "user_id (ON DELETE CASCADE)"
+users ||--o{ otps : "email (ON DELETE CASCADE)"
+users |o--o{ audit : "user_id (ON DELETE SET NULL)"
+
+departments ||--o{ documents : "department_id"
+users ||--o{ documents : "uploaded_by"
+documents ||--o| approvals : "document_id (ON DELETE CASCADE)"
+users ||--o{ approvals : "approved_by"
+
+departments ||--o{ shifts : "department_id"
+users ||--o{ shifts : "user_id (author)"
+users |o--o{ shifts : "signed_by_manager_id"
+departments |o--o{ summaries : "department_id"
+shifts }o..o| summaries : "consolidated by (report_date, department_id)"
+@enduml

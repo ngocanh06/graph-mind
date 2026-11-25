@@ -1,0 +1,81 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam sequence {
+    ArrowColor #1F3A5F
+    LifeLineBorderColor #64748B
+    LifeLineBackgroundColor #EAF2FF
+    ParticipantBorderColor #1F3A5F
+    ParticipantBackgroundColor #EAF2FF
+    ParticipantFontColor #1F3A5F
+    ParticipantFontSize 12
+    ActorBorderColor #1F3A5F
+    ActorBackgroundColor #EAF2FF
+    ActorFontColor #1F3A5F
+    BoxBorderColor #64748B
+    BoxBackgroundColor #F8FAFC
+    GroupBorderColor #1F3A5F
+    GroupBackgroundColor #F1F5F9
+    GroupHeaderFontColor #1F3A5F
+}
+
+title UC.26 - Security & Access Enforcement (Single Session Revocation, RBAC & OTP)
+
+boundary "Browser\n(Device A)" as DevA
+boundary "Browser\n(Device B)" as DevB
+control "AuthRouter &\nRBACRouter" as Auth
+control "SessionService" as Sess
+database "RedisCache" as Redis
+database "PostgreSQL" as DB
+control "AuthMiddleware" as MW
+
+== Flow 1: Single Active Session Enforcement via JTI Revocation (FR59) ==
+DevB -> Auth : 1. POST /api/v1/auth/login (username, password)
+Auth -> DB : 2. Verify user credentials & bcrypt password_hash
+DB --> Auth : Valid user record (user_id, role_id)
+Auth -> Sess : 3. register_active_session(user_id, ip_B, user_agent_B)
+Sess -> DB : 4. SELECT jti FROM user_active_sessions WHERE user_id=user_id AND status='ACTIVE'
+DB --> Sess : Existing active session (jti_A on Device A)
+Sess -> DB : 5. UPDATE user_active_sessions SET status='REVOKED' WHERE jti=jti_A
+Sess -> Redis : 6. SET blacklist:jti_A = true (EX 604800)
+Sess -> DB : 7. INSERT INTO user_active_sessions (jti_B, user_id, ip_B, status='ACTIVE')
+Sess --> Auth : Issued JWT token with jti_B
+Auth --> DevB : 8. 200 OK (Access Token jti_B)
+
+DevA -> MW : 9. Subsequent API Request with Authorization: Bearer <JWT jti_A>
+MW -> Redis : 10. GET blacklist:jti_A
+Redis --> MW : 11. true (Session jti_A is revoked)
+MW --> DevA : 12. HTTP 401 Unauthorized (error='CONCURRENT_LOGIN_KICKED')
+DevA -> DevA : 13. Clear LocalStorage JWT & redirect to /login
+
+== Flow 2: Dynamic 2D RBAC Matrix Update (FR58) & Email OTP Recovery (FR60) ==
+DevB -> Auth : 14. POST /api/v1/rbac/matrix (role_permissions_grid)
+Auth -> Auth : 15. Verify Self-Lockout guard (preserve core it_admin rights)
+Auth -> DB : 16. UPSERT rbac_permissions_matrix & INSERT audit_logs
+Auth -> Redis : 17. DEL rbac:permissions:* (Invalidate cache immediately)
+Auth --> DevB : 18. 200 OK (Permissions enforced immediately)
+@enduml

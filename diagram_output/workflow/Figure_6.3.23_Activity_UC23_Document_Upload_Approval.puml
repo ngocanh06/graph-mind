@@ -1,0 +1,90 @@
+@startuml
+
+skinparam dpi 155
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam ActivityBackgroundColor #F1F5F9
+skinparam ActivityBorderColor #1F3A5F
+skinparam ActivityBorderThickness 1.3
+skinparam ActivityFontColor #1E293B
+skinparam ActivityFontSize 12
+skinparam ActivityDiamondBackgroundColor #EAF2FF
+skinparam ActivityDiamondBorderColor #3B82F6
+skinparam ActivityDiamondFontColor #1F3A5F
+skinparam ActivityStartColor #1F3A5F
+skinparam ActivityEndColor #1F3A5F
+skinparam SwimlaneTitleFontColor #1F3A5F
+skinparam SwimlaneTitleFontSize 13
+skinparam SwimlaneBorderColor #64748B
+skinparam SwimlaneBorderThickness 1.5
+
+title UC.23 - Internal Document Upload & Approval Workflow
+
+|Standard User / Dept Manager|
+start
+:1. Open Document Upload & select owning department;
+:2. Select file (.pdf/.docx/.xlsx/.txt/.md),\nenter description & click Upload Document;
+
+|GraphMind System (Backend & Ingestion)|
+:3. Validate file extension and file size (<= 50 MB);
+if (Valid file format & size?) then (No)
+  :E1/E2. Return validation error\n(Unsupported format or size > 50 MB);
+  |Standard User / Dept Manager|
+  :Display error & prompt re-selection;
+  stop
+else (Yes)
+  |GraphMind System (Backend & Ingestion)|
+  :4. Compute SHA-256 cryptographic hash of file content;
+  :Query PostgreSQL documents table by sha256_hash;
+  if (SHA-256 hash already exists?) then (Yes)
+    :E3. Reject duplicate upload (BR-06)\nand reference existing document record;
+    |Standard User / Dept Manager|
+    :Display duplicate warning message;
+    stop
+  else (No)
+    |GraphMind System (Backend & Ingestion)|
+    :5. Save file to staging storage & insert record\nwith status = PENDING_APPROVAL (FR53);
+    :6. Send approval notification to Knowledge Administrator;
+  endif
+endif
+
+|Knowledge Administrator|
+:7. Open Document Approval Queue & preview document;
+if (Review decision?) then (Reject [A1])
+  :8a. Enter mandatory rejection_reason;
+  |GraphMind System (Backend & Ingestion)|
+  :9a. Update status = REJECTED & save document_approvals;
+  :10a. Write Audit Log & notify uploader (not ingested);
+  stop
+else (Approve [Main Flow])
+  |Knowledge Administrator|
+  :8b. Click Approve Document (FR54);
+  |GraphMind System (Backend & Ingestion)|
+  :9b. Update status = APPROVED & save document_approvals;
+  :10b. Trigger async Celery Ingestion Pipeline\n(Chunking -> Qdrant Embedding -> Neo4j NER/RE);
+  :11b. Update status = INDEXED_READY & write Audit Log;
+  stop
+endif
+@enduml

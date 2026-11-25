@@ -1,0 +1,114 @@
+// GraphMind (EKAI v1.2) PostgreSQL Relational Schema (10 Core Tables - Section 6.6.1)
+// Generated with /dbdiagram skill
+
+Table departments {
+  id uuid [pk]
+  name varchar(120) [not null]
+  code varchar(32) [unique, not null]
+  description text
+  manager_id uuid [ref: > users.id]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table users {
+  id uuid [pk]
+  username varchar(64) [unique, not null]
+  email varchar(255) [unique, not null]
+  password_hash varchar(255) [not null]
+  role_id varchar(32) [not null, note: 'it_admin | knowledge_manager | executive | manager | staff']
+  department_id uuid [not null, ref: > departments.id]
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table rbac_permissions_matrix {
+  id uuid [pk]
+  role_id varchar(32) [not null]
+  resource_name varchar(64) [not null]
+  permission_type varchar(32) [not null, note: 'VIEW | CREATE | EDIT | DELETE | APPROVE | EXECUTE']
+  is_granted boolean [not null, default: false]
+  updated_at timestamp [not null, default: `now()`]
+
+  indexes {
+    (role_id, resource_name, permission_type) [unique]
+  }
+}
+
+Table user_active_sessions {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  jti varchar(128) [unique, not null, note: 'Single Active Session JWT ID (FR59)']
+  ip_address varchar(45)
+  user_agent text
+  status varchar(16) [not null, default: 'ACTIVE', note: 'ACTIVE | REVOKED']
+  created_at timestamp [not null, default: `now()`]
+  expires_at timestamp [not null]
+}
+
+Table password_reset_tokens {
+  id uuid [pk]
+  email varchar(255) [not null, ref: > users.email]
+  otp_hash varchar(255) [not null, note: 'Bcrypt hash of 6-digit OTP (FR60)']
+  reset_token varchar(255)
+  attempts_count int [not null, default: 0, note: 'Max 5 attempts']
+  is_used boolean [not null, default: false]
+  expires_at timestamp [not null, note: 'TTL 300 seconds']
+}
+
+Table documents {
+  id uuid [pk]
+  title varchar(255) [not null]
+  file_path text [not null]
+  file_size bigint [not null]
+  mime_type varchar(100) [not null]
+  sha256_hash varchar(64) [unique, not null, note: 'Cryptographic deduplication guard (FR53, BR-06)']
+  status varchar(24) [not null, default: 'PENDING_APPROVAL', note: 'PENDING_APPROVAL | APPROVED | REJECTED | INDEXED_READY']
+  department_id uuid [not null, ref: > departments.id]
+  uploaded_by uuid [not null, ref: > users.id]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table document_approvals {
+  id uuid [pk]
+  document_id uuid [unique, not null, ref: - documents.id]
+  action varchar(16) [not null, note: 'APPROVE | REJECT (FR54)']
+  rejection_reason text
+  approved_by uuid [not null, ref: > users.id]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table shift_reports {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  department_id uuid [not null, ref: > departments.id]
+  shift_name varchar(64) [not null, note: 'MORNING | AFTERNOON | NIGHT']
+  report_date date [not null]
+  completed_tasks text [not null]
+  issues_encountered text
+  handover_notes text [not null]
+  status varchar(20) [not null, default: 'DRAFT', note: 'DRAFT | SUBMITTED | APPROVED | REJECTED (FR55-FR56)']
+  signed_by_manager_id uuid [ref: > users.id]
+  approved_at timestamp
+}
+
+Table shift_daily_summaries {
+  id uuid [pk]
+  department_id uuid [ref: > departments.id]
+  summary_date date [not null]
+  content_markdown text [not null, note: 'Consolidated via Ollama LLM or Rule-Based Fallback (FR57)']
+  total_shifts int [not null, default: 0]
+  total_issues int [not null, default: 0]
+  is_fallback_generated boolean [not null, default: false]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table audit_logs {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  event_type varchar(64) [not null]
+  resource_affected varchar(128) [not null]
+  ip_address varchar(45)
+  severity_level varchar(16) [not null, note: 'INFO | WARN | CRITICAL']
+  details_json jsonb
+  created_at timestamp [not null, default: `now()`]
+}

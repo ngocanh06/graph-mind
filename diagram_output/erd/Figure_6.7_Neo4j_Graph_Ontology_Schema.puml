@@ -1,0 +1,127 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+title GraphMind Neo4j Knowledge Graph — Property Graph Ontology Schema
+left to right direction
+
+package "Enterprise Knowledge & Governance Nodes" {
+    class ":Department" as Dept << (N,#3B82F6) Node Label >> #EAF2FF {
+        + dept_id : UUID <<Unique>>
+        + name : String
+        + code : String
+    }
+
+    class ":Employee" as Emp << (N,#3B82F6) Node Label >> #EAF2FF {
+        + emp_id : UUID <<Unique>>
+        + full_name : String
+        + email : String
+        + position : String
+    }
+
+    class ":Document" as Doc << (N,#3B82F6) Node Label >> #EAF2FF {
+        + doc_id : UUID <<Unique>>
+        + title : String
+        + sha256 : String
+        + doc_type : String
+        + status : String = "APPROVED"
+    }
+
+    class ":SOP" as Sop << (N,#3B82F6) Node Label >> #EAF2FF {
+        + sop_id : UUID <<Unique>>
+        + title : String
+        + category : String
+        + version : String
+    }
+
+    class ":Entity" as Ent << (N,#16A34A) Node Label >> #DCFCE7 {
+        + entity_id : String <<Unique>>
+        + name : String
+        + entity_type : String [Product | Vendor | Metric]
+        + confidence : Float
+    }
+
+    class ":RiskEvent" as Risk << (N,#DC2626) Node Label >> #FEE2E2 {
+        + risk_id : UUID <<Unique>>
+        + risk_type : String [NegativeMargin | AbnormalDiscount]
+        + severity : String [HIGH | CRITICAL]
+        + detected_at : DateTime
+    }
+}
+
+package "CRM & Legal Contract Domain Nodes (AdventureWorks + CUAD)" {
+    class ":Customer" as Cust << (N,#F59E0B) Node Label >> #FEF3C7 {
+        + customer_id : String <<Unique>>
+        + name : String
+        + territory : String
+    }
+
+    class ":SalesOrder" as Order << (N,#F59E0B) Node Label >> #FEF3C7 {
+        + order_id : String <<Unique>>
+        + order_date : Date
+        + total_amount : Decimal
+        + discount_pct : Float
+        + margin_pct : Float
+    }
+
+    class ":Product" as Prod << (N,#F59E0B) Node Label >> #FEF3C7 {
+        + product_id : String <<Unique>>
+        + name : String
+        + standard_cost : Decimal
+        + list_price : Decimal
+    }
+
+    class ":Contract" as Ctr << (N,#64748B) Node Label >> #F1F5F9 {
+        + contract_id : String <<Unique>>
+        + title : String
+        + effective_date : Date
+        + governing_law : String
+    }
+
+    class ":Clause" as Cls << (N,#64748B) Node Label >> #F1F5F9 {
+        + clause_id : String <<Unique>>
+        + clause_type : String [41 CUAD Types]
+        + text_excerpt : String
+        + risk_flag : Boolean
+    }
+}
+
+Emp --> Dept : "[:BELONGS_TO]"
+Emp --> Doc : "[:AUTHORED]"
+Doc --> Ent : "[:MENTIONS {confidence: float}]"
+Sop --> Dept : "[:GOVERNED_BY]"
+Risk --> Dept : "[:IMPACTS]"
+Ent --> Ent : "[:RELATED_TO {weight: float}]"
+
+Cust --> Order : "[:PLACED]"
+Order --> Prod : "[:CONTAINS {qty: int, unit_price: float}]"
+Cust --> Ctr : "[:BOUND_BY {synthetic_link: 'BR-01 (1..3)'}]"
+Ctr --> Cls : "[:HAS_CLAUSE]"
+Risk --> Order : "[:TRIGGERED_BY_ORDER]"
+Risk --> Cls : "[:TRIGGERED_BY_CLAUSE]"
+Doc ..> Ctr : "[:REPRESENTS_CONTRACT]"
+Ent ..> Prod : "[:MAPS_TO_PRODUCT]"
+@enduml

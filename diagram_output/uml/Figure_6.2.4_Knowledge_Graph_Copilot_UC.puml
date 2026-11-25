@@ -1,0 +1,90 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam ActorBackgroundColor #EAF2FF
+skinparam ActorBorderColor #1F3A5F
+skinparam ActorFontColor #1F3A5F
+skinparam ActorFontSize 12
+skinparam UsecaseBackgroundColor #EAF2FF
+skinparam UsecaseBorderColor #3B82F6
+skinparam UsecaseBorderThickness 1.3
+skinparam UsecaseFontColor #1E293B
+skinparam UsecaseFontSize 11
+
+title Figure 6.2.4 — Knowledge Graph & Hybrid AI Copilot Subsystem Use Case Diagram
+left to right direction
+
+actor "Knowledge\nAdministrator" as KAdmin
+actor "Department\nManager" as Mgr
+actor "Executive" as Exec
+actor "Standard User" as User
+
+actor "Neo4j Graph\nDatabase Driver" as Neo4j
+actor "Qdrant Vector\nSearch Engine" as Qdrant
+actor "Ollama Local LLM\n(Qwen2.5-7B)" as Ollama
+
+rectangle "Subsystem: Knowledge Graph & Hybrid AI Copilot (GraphMind)" {
+    usecase "UC.13 Human-Involved\nKnowledge Graph Editing" as UC13
+    usecase "UC.14 SOP Drafting &\nInternal Knowledge Wiki" as UC14
+    usecase "UC.15 Q&A with Hybrid AI\nCopilot (Hybrid GraphRAG)" as UC15
+    usecase "UC.16 View Knowledge Graphs\n& Inference Lines" as UC16
+    usecase "UC.17 See Verifiable\nSource Citations" as UC17
+    usecase "UC.18 Chat Session Management\n& Shared Team Notes" as UC18
+    usecase "UC.27 Threat Mitigation:\nRead-Only Cypher Guard (FR61)" as UC27
+
+    usecase "Fallback to Vector RAG\non Unsafe Cypher" as SubFallback
+}
+
+KAdmin -- UC13
+KAdmin -- UC14
+KAdmin -- UC16
+Mgr -- UC14
+Mgr -- UC15
+Mgr -- UC18
+Exec -- UC15
+Exec -- UC16
+Exec -- UC17
+Exec -- UC18
+User -- UC15
+User -- UC16
+User -- UC17
+User -- UC18
+
+UC13 -- Neo4j
+UC15 -- Neo4j
+UC15 -- Qdrant
+UC15 -- Ollama
+UC16 -- Neo4j
+UC27 -- Neo4j
+
+UC15 ..> UC16 : <<include>>
+UC15 ..> UC17 : <<include>>
+UC15 ..> UC27 : <<include>>\n(Validate AST)
+SubFallback ..> UC27 : <<extend>>\n(Mutation Blocked)
+@enduml

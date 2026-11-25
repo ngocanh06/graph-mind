@@ -75,8 +75,8 @@ class GraphMindUser(HttpUser):
 
     def _do_login(self):
         for creds in [
-            {"username": "admin", "password": "admin123"},
-            {"username": "user",  "password": "user123"},
+            {"identifier": "admin", "password": "123456"},
+            {"identifier": "exec",  "password": "123456"},
         ]:
             resp = self.client.post("/api/v1/auth/login", json=creds, name="POST /auth/login")
             if resp.status_code == 200:

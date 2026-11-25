@@ -153,8 +153,14 @@ DEFAULT_SEED_SOPS = [
 ]
 
 
+_SOPS_SEEDED = False
+
+
 async def ensure_initial_seed_sops(db: AsyncSession):
     """Tự động nạp dữ liệu SOP mẫu ban đầu nếu bảng còn trống"""
+    global _SOPS_SEEDED
+    if _SOPS_SEEDED:
+        return
     try:
         res = await db.execute(select(func.count(SopDocument.id)))
         count = res.scalar() or 0
@@ -176,6 +182,7 @@ async def ensure_initial_seed_sops(db: AsyncSession):
                 db.add(sop)
             await db.commit()
             logger.info("Đã khởi tạo 4 SOP mẫu vào PostgreSQL")
+        _SOPS_SEEDED = True
     except Exception as e:
         logger.warning(f"Lỗi khởi tạo SOP seed: {e}")
         await db.rollback()

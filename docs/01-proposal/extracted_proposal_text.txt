@@ -1,0 +1,717 @@
+International School
+Capstone Project 1
+PROPOSAL DOCUMENT
+Student-Level Scientific Research Project 2026
+Project Title:
+GraphRAG-based Enterprise Knowledge Management Platform for SME Decision Support
+Version: 1.1
+Date: 06 Sep 2026
+Submitted by C1SE.18
+Anh, Tran Thi Ngoc
+Minh, Huynh Ngoc
+Anh, Ha Hoang
+Vu, Tran Viet Anh
+Bao, Phan Anh
+Approved by
+T. Sanh, Kim Tran
+Proposal Review Panel Representative:
+NameSignatureDate
+Capstone Project 1 - Mentor:
+Name PhD. Sanh, Kim TranSignatureDate
+Project Acronym
+GraphMind
+Project Title
+GraphRAG-based Enterprise Knowledge Management Platform for SME Decision Support
+Start Date
+01 Sep
+2026
+End Date
+01 Dec
+ 2026
+Lead Institution
+International School, Duy Tan University
+Role
+Name
+Email
+Phone
+Project Mentor
+Tran Kim Sanh
+sanhtk@gmail.com
+0987409464
+Tran Thi Ngoc Anh
+tranthingocanh136@gmail.com
+0971946725
+Ha Hoang Anh
+hahoanganh1082005@gmail.com
+0978910948
+Phan Anh Bao
+phananhbao123456789@gmail.com
+0347148847
+Huynh Ngoc Minh
+minhhuynhngoc99@gmail.com
+0399794995
+Tran Viet Anh Vu
+tranvietanhvu2005@gmail.com
+0931998532
+DOCUMENT NAME
+Document Title
+ Proposal Document
+Author(s)
+Anh, Tran Thi Ngoc
+Role
+Scrum Master, Team Leader, Developer
+Date
+September 2026
+File name 
+C1SE18-Proposal-Document-Version1.1-FINAL.docx
+DOCUMENT APPROVALS
+The following signatures are required for approval of this document.
+Role
+Name
+Signature
+Date
+Supervisor
+Tran Kim Sanh
+Team Member
+Tran Thi Ngoc Anh
+Team Member
+Huynh Ngoc Minh
+Team Member
+Ha Hoang Anh
+Team Member
+Tran Viet Anh Vu
+Team Member
+Phan Anh Bao
+1. Introduction5
+1.1 Purpose of the document5
+1.2 Scope of materials5
+1.3 Definition, acronym5
+1.4 References7
+1.5 Overview7
+2. Problem Statement8
+2.1 Research context8
+2.2 Business motivation9
+2.3 Core research issues9
+3. Literature Review9
+3.1 Vector RAG (Traditional RAG)9
+3.2 GraphRAG10
+3.3 Research gaps10
+4. Research Objectives11
+4.1 General objectives11
+4.2 Specific objectives12
+Research Track12
+Track System (MVP)12
+5. Scientific Contributions and Novelty13
+6. Research Methodology and System Architecture14
+6.1 Overall system architecture14
+6.1a User Roles and Web Functions16
+6.2 Business Function Diagram (BFD)18
+6.3 System Context Diagram19
+6.4 Schema Mapping Design19
+6.5 Hybrid Query Mechanism20
+6.6 Deployment Architecture20
+6.7 Technology Stack21
+7. MVP Scope22
+Assumptions and Constraints23
+8. Experimental Data24
+8.1 Structured Data: AdventureWorks24
+8.2 Unstructured Data: CUAD25
+8.3 Fine-tuning Data Construction (Q&A Pairs)25
+8.4 Fine-tuning Environment on Kaggle27
+8.5 Data Integration: Controlled Synthetic Linking28
+9. Evaluation Methodology and Metrics28
+9.1 Benchmark Builder29
+9.2 Rating Indicators29
+9.3 Compare Baseline30
+10. Security and Privacy30
+Authentication30
+Data Protection31
+11. Scrum Process31
+12. Project Plan and Milestones32
+13. Expected Outcomes and Significance35
+Scientific significance35
+Practical significance36
+Independent Reviewer Assessment36
+14. Risks and Mitigation Strategies38
+15. Estimated Resources and Cost (for Educational Purposes)41
+16. References42
+1. Introduction
+1.1 Purpose of the document
+This document presents the Proposal Document for the GraphMind (Enterprise Knowledge AI Platform) system — an enterprise knowledge management platform that applies GraphRAG technology to support decision-making for small and medium-sized enterprises (SMEs). The document establishes the research context, problem statement, research objectives, methodology, proposed system architecture, and scope of development, and serves as the primary reference for consensus among the implementing student team, instructors/review panels, and stakeholders prior to the implementation of detailed design documents (SRS).
+The main readers of the document include: instructors and the Capstone project evaluation board, the project development student group (C1SE.18 group), and stakeholders who play the role of hypothetical SMEs in case studies.
+1.2 Scope of materials
+This document covers the following contents: the context of research and analysis of fragmented data in SMEs; a literature overview of existing RAG methods; research objectives and expected scientific contributions; research methodology and proposed system architecture; the scope of the Minimum Viable Product (MVP); detailed description of the experimental dataset; evaluation methods and benchmarks; security measures; project implementation plan in each Sprint; and risks and mitigation strategies.
+This document does not include: detailed use-case level software requirements specification (described in a separate SRS document), actual implementation source code, commercial deployment/operation agreements, or any contractual/financial terms — all of which are considered simulations for educational and research purposes.
+1.3 Definition, acronym
+Acronyms
+Definition
+SME
+Small and Medium Enterprise
+LLM
+Large Language Model
+RAG
+Retrieval-Augmented Generation
+GraphRAG
+The RAG method is based on the Knowledge Graph that combines relational queries between entities
+Hybrid GraphRAG
+Hybrid query engine that combines knowledge graphs (Graphs), vector semantic search (Vector) and large language models (LLMs)
+KG
+Knowledge Graph — A knowledge graph that represents business entities and their relationships
+CRM/ERP
+Customer Relationship Management / Enterprise Resource Planning
+CUAD
+Contract Understanding Atticus Dataset — Commercial contract datasets that are in-depth labeled by legal experts
+API
+Application Programming Interface
+OAuth 2.0
+Open authorization protocol standard, allowing limited access to be granted without password sharing
+JWT
+JSON Web Token — A compressed, signed token used to validate API requests
+RBAC
+Role-Based Access Control
+MVP
+Minimum Viable Product
+AEGIS Local Agent
+GraphMind system's local File Watcher agent name
+LoRA
+Low-Rank Adaptation — Parameter-efficient fine-tuning technique by inserting low-rank matrices into the original model, without the need to update the entire weight.
+PEFT
+Parameter-Efficient Fine-Tuning — A technique that fine-tunes the model by updating only a fraction of the parameters, saving memory and training time (including LoRA)
+Q&A Pairs
+Question-Answer Pairs — Question-answer pairs built from AdventureWorks and CUAD data, used as fine-tuning training data
+Kaggle
+The online platform provides a free Kaggle Notebook with GPU (NVIDIA T4), which is used as the model fine-tuning environment in the project
+Hugging Face
+The open-source platform and library (Transformers) provides a pre-trained language model and fine-tuning tools (PEFT), which are used to load and fine-tune Qwen2.5-7B-Instruct
+1.4 References
+A complete list of references used in the development of the project's theoretical basis, methodological selection, and dataset is detailed in Section 16—References, which follows the IEEE citation standard.
+1.5 Overview
+The rest of the document is organized as follows: Section 2 states the research issue and business motivation; Section 3 provides an overview of related works and identification of research gaps; Section 4 presents research objectives; Section 5 states scientific and novelty contributions; Section 6 presents the research methodology and system architecture; Section 7 defines the scope of MVP; Section 8 describes the experimental data; Section 9 presents the assessment method; Section 10 deals with security and privacy; Section 11 outlines the Scrum process; Section 12 states the project plan and milestones; Section 13 presents expected outcomes and significance; Section 14 presents risk analysis; Section 15 estimates resources and cost; and Section 16 lists references. 
+2. Problem Statement
+2.1 Research context
+Small and medium-sized enterprises (SMEs) are now operating with an increasing volume of internal knowledge but are severely fragmented across multiple data sources that differ in nature: on the one hand, structured data is housed in CRM/ERP systems — order recognition,  customers, products, suppliers and personnel; on the other hand, unstructured data is scattered in contracts, legal documents, and internal documents. This fragmentation makes it difficult for SME administrators to answer decision-making questions that require the simultaneous linking of both types of data, e.g., "Which customers have a cap on liability clause and at the same time have a decrease in sales in the most recent quarter?"
+To study this issue in a controlled and reproducible manner, the team used two real-world datasets, publicly available, and explicitly licensed for educational/research purposes, without altering their original content or fabricating business data: (1) Microsoft's AdventureWorks, which serves as the structured CRM/ERP data of an SME that manufactures and distributes international bicycle manufacturing and distribution; and (2) CUAD (Contract Understanding Atticus Dataset) — which serves as an SME's unstructured contract repository, consisting of 510 actual commercial contracts labeled by legal experts under 41 types of clauses. The use of two published and verified benchmark datasets helps to ensure the objectivity, reproducibility and academic reliability of the research results, while avoiding biases that may arise from fabricated business data. The only synthetic element is the Controlled Synthetic Linking process (Section 8.5), which merely constructs cross-source relationships between independent AdventureWorks entities and CUAD contracts for experimental evaluation, and leaves the original data of both datasets unchanged.
+Regarding the choice of the answer generation model, instead of calling the API of a closed-source commercial large language model, the project advocates self-fine-tuning an open-source language model (Qwen2.5-7B-Instruct) on SME-specific data. This choice stems from three main reasons: (1) Data security — because SME data includes both contractual information and customer transactions is sensitive, model autonomy and inference infrastructure help prevent data from being sent externally via third-party APIs; (2) Cost — calling commercial APIs according to the number of tokens incurring long-term operating costs is not suitable for SMEs' limited resources, while the open-source model after fine-tuning can be self-hosted with almost zero marginal costs; (3) Customization — fine-tuning using LoRA/PEFT techniques on the AdventureWorks and CUAD datasets itself allows the model to learn the style, business terminology, and question structure specific to the SME business management field, which is difficult for a general base model to optimize well.
+2.2 Business motivation
+In actual operations, SME administrators often have to manually synthesize information from multiple discrete systems, leading to delays in decision-making, increasing the risk of missing hidden legal risks in contracts, and limiting the ability to extract value from available data. A knowledge management platform with unified query capabilities on both relational data (CRM/ERP) and text data (contracts) will help SMEs shorten decision-making time, reduce compliance risks, and improve competitiveness without requiring large infrastructure investments like large-scale enterprises.
+2.3 Core research issues
+The core question of the project is stated as follows: Whether a Hybrid GraphRAG query mechanism — combining knowledge graphs (Graphs), vector semantic search (Vectors) and large language models (LLMs) — will deliver higher answer accuracy, source citation accuracy, and the ability to reduce hallucinations than the Vector RAG and Pure GraphRAG baselines, especially for governance questions that require multi-hop inference on cross-source data between structured CRM/ERP data and unstructured contract data?
+3. Literature Review
+3.1 Vector RAG (Traditional RAG)
+Retrieval-Augmented Generation (RAG) is a technique that combines a retriever model with a large language model (LLM) to provide relevant context before the answer is generated, help reduce hallucination, and allow the LLM to respond based on up-to-date knowledge beyond the scope of training. The most common Vector RAG approach uses semantic embedding to represent text as a vector and search for the closest pieces of text semantically in a vector database. The advantages of this method are simple, easy to implement and effective with single-hop event lookup questions; However, it is markedly limited when the question requires aggregating information from multiple interrelated entities, due to the nature of the search based on local similarity without capturing the relational structure between entities.
+3.2 GraphRAG
+GraphRAG extends RAG by building a knowledge graph that represents business entities (customers, products, orders, contracts, employees, etc.) and the relationships between them, and then performs retrievals through graph traversals instead of relying solely on vector similarity. This approach allows the model to answer multi-hop questions that require inference across multiple linked entities, while improving the ability to cite sources explicitly thanks to the graph's clear relational structure. However, Pure GraphRAG may be limited when dealing with free-form semantic queries, without a clear relational structure in the graph, or when the graph schema does not fully cover the concepts that appear in the unstructured text.
+From the above two observations, the Hybrid GraphRAG approach—which combines knowledge graphs in tandem, semantic vector search, and the natural language synthesis capabilities of LLMs—is expected to take advantage of the advantages of both methods: the relational inference accuracy of graphs and the semantic flexibility of vector search.
+3.3 Research gaps
+#
+Research Gap
+Description
+1
+Lack of cross-source assessment on real data
+The majority of GraphRAG research currently evaluates on a single type of data (either plain text, or pure relation), lacking a benchmark that combines structured CRM/ERP data and an unstructured contract repository as the actual operating context of SMEs.
+2
+Lack of fair comparison of three methods on the same benchmark
+Current publications typically only compare GraphRAG with Vector RAG, rarely evaluating both Vector RAG, Pure GraphRAG and Hybrid GraphRAG simultaneously on the same set of questions divided by difficulty (single-hop, 2-hop, cross-source).
+3
+Lack of transparent, reproducible data linkage process
+When combining multiple independent benchmark datasets (without native link keys), most studies do not clearly disclose the pairing process, making it difficult to replicate the results.
+4
+Lack of contextual assessment of small-scale SMEs
+Current GraphRAG research is primarily aimed at large enterprises or technology corporations; there is a lack of feasibility and implementation cost assessment studies in the context of SMEs with limited resources.
+4. Research Objectives
+4.1 General objectives
+The overall objective of the project is to design, build and empirically evaluate a Hybrid GraphRAG query mechanism for SME enterprise knowledge management problems, and at the same time develop a Minimum Viable Product (MVP) software platform that illustrates the practical applicability of this mechanism on CRM/ERP data combined with contract warehouses.
+4.2 Specific objectives
+Research Track
+Build a controlled synthetic linking process between AdventureWorks structured datasets and CUAD unstructured datasets, ensuring transparency and reproducibility.
+Built a dataset of Q&A pairs (2,000–3,000 pairs) from AdventureWorks and CUAD, as the basis for fine-tuning the Qwen2.5-7B-Instruct open-source language model using LoRA/PEFT techniques via Unsloth on Kaggle (GPU T4, ~51s/step hardware ceiling).
+Build three query baselines: Vector RAG, Pure GraphRAG, and Hybrid GraphRAG (using a fine-tuned model), on the same data infrastructure and the same set of question benchmarks.
+Develop a benchmark set of 100–200 management questions, divided into three levels of inference: single-hop, 2-hop, and cross-source.
+Measure and quantitatively compare three baselines across five indicators: Answer Correctness, Retrieval/Citation Precision, Hallucination Rate, AI Response Time, and Fine-tuning Effectiveness (compared to the non-fine-tuned platform model).
+Draw empirical conclusions about the effectiveness of Hybrid GraphRAG compared to the other two methods, with a qualitative analysis according to each level of question complexity.
+Track System (MVP)
+Design and build a Web Dashboard with multi-role access control (System & Knowledge Administrator, Executive, Department Manager, Standard User), supporting specific interfaces such as Executive Decision Dashboard, Smart Risk & Alert Center, Knowledge Graph Visualizer, SOP & Knowledge Editor, and AI Copilot Hub.
+Build a local file monitoring agent (AEGIS Local Agent) capable of automatically detecting data changes and incremental sync to the backend system.
+Optional integration with the Google Drive API and Google Sheets API to illustrate the scalability of data sources.
+Implement authentication and decentralization security mechanisms based on JWT, OAuth 2.0, and RBAC.
+Implement the fine-tuned Qwen2.5-7B-Instruct model as a self-hosted inference service (on-premise or private cloud), integrating directly into the Backend FastAPI.
+Deploy a hybrid deployment architecture consisting of a local agent connected to the backend on the cloud platform.
+5. Scientific Contributions and Novelty
+#
+Scientific Contribution / Novelty
+1.1
+Proposing and realizing a Hybrid GraphRAG mechanism that combines knowledge graphs, vector searches, and a self-fine-tuned open-source language model, which is empirically evaluated quantitatively against the other two baselines.
+1.2
+Build a fine-tuning process of the Qwen2.5-7B-Instruct model using LoRA/PEFT technology via Unsloth on the Kaggle platform (free GPU T4, ~51s/step hardware ceiling), using a set of Q&A pairs built by the team from the AdventureWorks and CUAD datasets, making the model autonomous, secure, and independent of third-party APIs.
+2
+Build a public, transparent, and reproducible controlled synthetic linking process between two independent benchmark datasets (AdventureWorks and CUAD) that do not have native linking keys.
+3
+Developed the first cross-source governance question benchmark that combines structured CRM/ERP data and unstructured legal contract data, divided into three levels of inference.
+4
+Establish a five-indicator evaluation framework (Answer Correctness, Retrieval/Citation Precision, Hallucination Rate, AI Response Time, and Fine-tuning Effectiveness) that combines LLM-as-judge and manual verification (human validation).
+5
+Schema mapping design unifies business entities (Customer, Product, Order, Contract, Employee) between relational data sources and text data sources in the same knowledge graph.
+6
+Proposing a hybrid deployment architecture (Local Agent + Backend Cloud) that allows SMEs to monitor and synchronize data internally locally without uploading all sensitive data to the cloud.
+7
+Providing empirical evidence of the feasibility of the application of Hybrid GraphRAG in the context of SMEs with limited resources, unlike the majority of existing research focused on large-scale enterprises.
+8
+Build a complete MVP platform that illustrates the practical applicability of research results, bridging the gap between academic research and available products.
+6. Research Methodology and System Architecture
+6.1 Overall system architecture
+The GraphMind system is designed according to 6 main modules, closely coordinating to realize both the research track and the system track:
+Module 1 — Data Source & Sync Management: manages connection channels and synchronization for all data sources.
+– Connection management: configure and authenticate Google Drive / Google Sheets accounts via OAuth 2.0.
+– AEGIS Local Agent Panel: manage the list of workstations with the Agent installed, monitor Online/Offline status and watched folders (File Watcher).
+– Sync orchestration & scheduling: configure real-time or periodic sync mode, trigger Incremental Sync.
+– Data Sync & Audit Log: track ingestion history (files ingested, records successfully extracted, error messages) with system metadata stored securely in PostgreSQL. 
+Module 2 — Knowledge Management & Editor: lets business users browse and curate the extracted knowledge.
+– Document & Data Explorer: browse ingested documents (contract PDFs, order/customer Excel files) with File Preview.
+– Human-in-the-loop Knowledge Editor: view AI-extracted entities (Customer, Product, Contract) and relationships; allow users to manually edit nodes and add/remove links when the AI extraction is inaccurate.
+– SOP & Internal Knowledge Base: a built-in text editor for managers to author internal process guides and policies directly on the Web.
+Module 3 — Hybrid AI Copilot & Search: the core query and reasoning experience, combining graph traversal, vector search and the fine-tuned Qwen2.5-7B-Instruct model.
+– Multi-turn Chat Copilot: natural-language Q&A over the enterprise's full business and legal data.
+– Knowledge Graph Visualizer: display the network of nodes/edges directly relevant to a question so users can verify the AI's reasoning.
+– Source & Citation Viewer: click a citation to open the underlying Sheets row or the original contract PDF passage.
+– Session & Workspace Management: manage chat history and pin important Q&A sessions as shared team documents.
+Module 4 — Decision Support & Alerts: turns the underlying knowledge graph into executive-ready insight.
+– Executive Decision Dashboard: visual charts of aggregated business data (revenue over time, top high-value customers), contract-type distribution and clause-compliance rate.
+– Smart Risk & Alert Center: list of contracts expiring in the next 15–30 days; alerts for VIP customers showing declining order frequency.
+– Executive Briefing Generator: a one-click button for the AI to automatically summarize the week's/month's business, receivables and contract status into a PDF/Word file.
+Module 5 — Enterprise Multi-facet Search: fast, unified lookup across all business entities.
+– Unified search bar: a single keyword search across Customers, Products, Contracts and documents simultaneously.
+– Multi-facet Filters: filter by responsible department, creation date, transaction value, and document validity status.
+Module 6 — System Admin & Security: centralizes user administration, access control and AI operations monitoring.
+– User & Organization Management: manage staff records, grouped by department (Sales, Accounting, Board of Directors, IT). All user accounts and organizational structures are managed via a PostgreSQL relational database.
+– Granular RBAC: configure the scope of knowledge each role may query (e.g., Sales staff may only query Orders/Customers; Directors have full query access).
+– LLMOps & Cost Dashboard: track fine-tuning training runs, GPU usage and training time (Kaggle GPU sessions), model checkpoints (Hugging Face Hub and Unsloth), and inference latency (average response time), alongside estimated compute usage.
+6.1a User Roles and Web Functions
+To complement the module-based view above, the table below restates the same architecture from an end-user perspective, mapping each of the four Web Dashboard roles to its typical post-deployment activities and the specific Web functions it relies on.
+Role
+Key Post-Deployment Activities
+Web Functions Used
+System & Knowledge Administrator
+Install and monitor the AEGIS Local Agent on workstations to sync internal documents; configure Google Drive/Google Sheets API connections; assign staff accounts by department (RBAC); review AI-extracted entities and relationships from contracts for accuracy.
+Data Connectors & Agents; System Settings & RBAC; Human-in-the-loop Knowledge Editor; Document & Data Explorer; LLMOps Dashboard.
+Executive
+Track core business indicators without manual compilation; check legal risks such as contracts nearing expiration or shifts in customer behavior; ask the AI to auto-summarize weekly/monthly receivables and contract status into a report file; ask strategic questions that cross-link CRM and legal contract data.
+Executive Decision Dashboard; Smart Risk & Alert Center; Executive Briefing Generator; AI Copilot & Graph View (unrestricted, full-access RBAC scope).
+Department Manager
+Look up aggregated activity reports for their own department; draft and publish new department regulations or procedures directly on the Web for staff to follow.
+SOP & Internal Knowledge Base Editor; AI Copilot Hub (scoped to the manager's own department).
+Standard User (Sales, Accounting, Customer Service, HR, etc.)
+Type natural-language questions to find leave policy, company policy, or customer/product information instead of searching manually across scattered files; click a source citation to open the original contract PDF passage or Excel data row before dealing with a customer.
+Multi-turn Chat Copilot (RBAC-secured); Source & Citation Viewer; Knowledge Graph Visualizer; Smart Search Bar & Multi-facet Filters.
+6.2 Business Function Diagram (BFD)
+Figure 6.1 — GraphMind system business function diagram
+6.3 System Context Diagram
+Figure 6.2—GraphMind system context diagram and external actors
+6.4 Schema Mapping Design
+The table below describes how entities from two independent data sources (AdventureWorks and CUAD) are mapped to a unified knowledge graph schema:
+Entity
+Data Sources
+Key Properties
+Roles in the Knowledge Graph
+Customer
+AdventureWorks
+CustomerID, Name, Territory
+Order and Contract linking center nodes (via synthetic linking)
+Product
+AdventureWorks
+ProductID, Name, Category, Vendor
+Link to Order and Vendor
+Order
+AdventureWorks (SalesOrderHeader/Detail)
+OrderID, Date, Amount, CustomerID
+Customer-Product Linking by Transaction
+Employee
+AdventureWorks
+EmployeeID, Name, Role
+Affiliation with Orders (handlers) and internal organizations
+Vendor
+AdventureWorks
+VendorID, Name
+Linking to Products and Indirectly to Supply Contracts
+Contract
+CUAD
+ContractID, ClauseType (41 types), PartyName, EffectiveDate
+Linking with customers via controlled synthetic linking
+Clause
+CUAD (extracted)
+ClauseType, ClauseText, ContractID
+Contract child node, used to retrieve the details of the terms
+6.5 Hybrid Query Mechanism
+When receiving a question from a user, the hybrid query engine follows the following process: (1) analyzing the question to identify related business entities (Customer, Product, Contract, etc.); (2) implementing graph traversal on Neo4j to retrieve directly related entities and relationships, especially effective with multi-step queries; (3) in parallel perform a vector semantic search on Qdrant to retrieve contractual texts that are semantically related but not necessarily explicit in the graph; (4) consolidate (fuse) results from the two channels of retrieval, ranking according to relevance; (5) Feed the consolidated context into a fine-tuned Qwen2.5-7B-Instruct model to generate a final answer with a clear source citation to both the CRM/ERP data sheet and the relevant contractual clause. In summary, the query flow is: User Query → Question Analysis → Neo4j Graph Traversal → Qdrant Vector Search → Result Fusion → Fine-tuned Qwen2.5-7B-Instruct → Answer + Source Citations. Neo4j (graph database, used for relationship/entity traversal) and Qdrant (vector database, used for semantic similarity retrieval) are retrieval components rather than AI models; the fine-tuned Qwen2.5-7B-Instruct is the sole generative model, responsible for answer generation and reasoning.
+6.6 Deployment Architecture
+The system applies a hybrid deployment architecture: AEGIS Local Agent (File Watcher) is installed locally on the SME's internal server, which is responsible for monitoring the local files/folders, detecting changes, and performing incremental synchronization by sending the changes over a secure connection to the Backend Cloud (FastAPI), which is located on the cloud infrastructure, receives the synchronized data, and manages knowledge processing and retrieval. This approach allows SMEs to keep sensitive data (such as original contracts) in their internal systems while leveraging the computing power and scalability of the cloud platform for AI query tasks.
+6.7 Technology Stack
+Ingredients
+Technology used
+Role
+Graph Database
+Neo4j
+Store and query knowledge graphs, perform graph traversal for multi-step inference
+Vector Database
+Qdrant
+Archive embedding and perform semantic searches
+Large Language Model
+Qwen2.5-7B-Instruct (fine-tuned with LoRA/PEFT via Unsloth)
+Generate natural answers based on retrieval context (graph + vector), self-hosted on-premise/private cloud, independent of third-party APIs
+Fine-tuning Framework
+Hugging Face Transformers, PEFT/LoRA, Unsloth
+Download the platform model, perform parameter-efficient tuning on SME Q&A data
+Training Platform (Train)
+Kaggle Notebook (Free GPU)
+Provides a free NVIDIA T4 GPU (limited to 30 hours/week) to perform model fine-tuning
+Backend
+Python FastAPI
+Build REST APIs that orchestrate queries, validate, synchronize data, and call fine-tuned models for inference
+Frontend
+React / Next.js
+Build Web Dashboard (Chat UI, Source Viewer, KG Viewer, Admin Panel)
+Authentication & Decentralization
+JWT, OAuth 2.0, RBAC
+Manage login sessions, authorization, and access control by role
+Local synchronization agent
+AEGIS Local Agent (File Watcher)
+Monitor local data directories and perform incremental synchronization to the backend
+Data Preprocessing & Cleaning
+Python (Pandas)
+Clean missing values, normalize text formatting, and structure raw AdventureWorks and CUAD data before synthetic linking and ingestion into Neo4j/Qdrant.
+Relational Database 
+PostgreSQL 
+Store user accounts, RBAC policies, system metadata, and synchronization audit logs 
+7. MVP Scope
+In-Scope
+Out-of-Scope
+Web Dashboard: Chat UI, Source Viewer, Knowledge Graph Viewer, Admin Panel
+Native mobile app
+AEGIS Local Agent (File Watcher) monitors the local data folder
+Large-scale production hosting
+Incremental Sync between Local Agents and Backend Clouds
+Integration with commercial ERP systems (SAP, Oracle...)
+Neo4j (Graph DB), Qdrant (Vector DB), and PostgreSQL (Relational DB) integration 
+Pretraining from scratch
+Fine-tune the Qwen2.5-7B-Instruct model using LoRA/PEFT via Unsloth on Kaggle (GPU T4, ~51s/step hardware ceiling) and self-host (on-premise/private cloud) for inference
+Full multilingual support in addition to English for all data
+JWT authentication, OAuth 2.0, and RBAC decentralization
+Payment integration or commerce module
+Optional Google Drive API / Google Sheets API integration
+Official security/compliance certifications (SOC2, ISO 27001...)
+3-baseline experimental benchmark on AdventureWorks + CUAD data
+Supports multiple organizations/customers at the same time (commercial multi-tenant)
+Assumptions and Constraints
+Type
+Contents
+Assumptions
+The AdventureWorks and CUAD datasets are duly downloaded from Kaggle/Microsoft Learn and are licensed for educational/research purposes.
+Assumptions
+Kaggle Notebook provides enough free GPU allowance (30 hours/week, NVIDIA T4 GPU) to complete fine-tuning within the project timeframe.
+Assumptions
+The instructor and the committee approved the controlled use of synthetic linking data between two independent datasets.
+Binding
+The project implementation time is limited to 01/09/2026 – 01/12/2026 (about 13 weeks, Sprint 1–4).
+Binding
+Development resources are limited to 5 student members, there is no commercial infrastructure budget.
+Binding
+The MVP system is deployed on a demo/experimental scale, not targeting the actual production load.
+8. Experimental Data
+The project is committed to using only real-world, publicly available benchmark datasets that are clearly licensed for educational and research purposes: AdventureWorks (structured data) and CUAD (unstructured data). The original content of both datasets is neither modified nor fabricated, and no artificial business data is created to replace real data. The only synthetic component is the Controlled Synthetic Linking process (Section 8.5), which is used solely to construct cross-source relationships between independent AdventureWorks entities and CUAD contracts for experimental evaluation. In addition to serving as a source of knowledge for queries, these two datasets are also used to build Q&A datasets for fine-tuning open source language models, as described in Sections 8.3 and 8.4.
+8.1 Structured Data: AdventureWorks
+Attributes
+Details
+Dataset Name
+AdventureWorks (Microsoft)
+Source
+Microsoft Learn/Kaggle — official Microsoft sample dataset, publicly available for educational and research purposes
+Data type
+Structured data — relational databases
+Roles in research
+Playing the role of CRM/ERP data of an SME manufacturing and distributing bicycles internationally
+Main Tables Used
+SalesOrderHeader, SalesOrderDetail, Customer, Product, Vendor, Employee
+Estimated size
+Tens of thousands of order records, hundreds of customers, and products (under the standard AdventureWorks edition)
+License to use
+Publicly licensed by Microsoft for non-commercial learning, coaching, and research purposes
+8.2 Unstructured Data: CUAD
+Attributes
+Details
+Dataset Name
+CUAD — Contract Understanding Atticus Dataset
+Source
+The Atticus Project — publicly available on Kaggle/Hugging Face for academic research purposes
+Data type
+Unstructured data — PDF/text contract text
+Roles in research
+Acting as a contract repository of SMEs
+Scale
+510 actual commercial contracts
+Labeling
+Labeled by legal experts under 41 types of terms, e.g. Cap on Liability, Audit Rights, Renewal Term, Uncapped Liability
+License to use
+Public disclosure (CC BY 4.0) for academic and educational research purposes
+8.3 Fine-tuning Data Construction (Q&A Pairs)
+In order to fine-tune the Qwen2.5-7B-Instruct model for SMEs, the team build a dataset of Q&A pairs based entirely on the actual content of AdventureWorks and CUAD (after performing controlled synthetic linking — see Section 8.5). The process of generating Q&A pairs was carried out in three groups corresponding to the three levels of inference of the benchmark:
+Single-hop: a question that looks up an entity directly from AdventureWorks (e.g., order quantity, product information) or a specific term from CUAD.
+2-hop: a question that requires linking two directly related entities in the same data source (e.g., Customer → Order → Product, or Contract → Clause).
+Cross-source: a question that requires combining information from both AdventureWorks and CUAD via synthetic linking (e.g., a relationship between the transaction history and the terms of the same customer's contract).
+The table below illustrates some examples specific to each type of question:
+Question type
+Data Sources
+Example Q&A
+Single-hop
+AdventureWorks
+Q: "How many orders did Adventure Works Cycles customers place in total in 2013?" A: [direct lookup answer from SalesOrderHeader]
+Single-hop
+CUAD
+Q: "Does Contract #087 contain a Cap on Liability clause?" A: [answer quoted from the ClauseType label of the contract]
+2-hop
+AdventureWorks
+Q: "Which supplier provides highest order volume products products to customer X?" A: [inferred via Product → Vendor]
+Cross-source
+AdventureWorks + CUAD
+Q: "Which customer has a contract that contains an Uncapped Liability clause and at the same time has a decrease in sales in the most recent quarter?" A: [inference via Customer link Order and Contract]
+The Q&A dataset is expected to consist of 2,000–3,000 pairs of questions-and-answers, which are generated semi-automatically (combining data schema templates and prompt engineering to increase language diversity), and then divided into 80/10/10 ratios for training, validation, and test sets, ensuring an even distribution between the three levels of single-hop, 2-hop and cross-source in all three volumes.
+8.4 Fine-tuning Environment on Kaggle
+The fine-tuning of the model is done on Kaggle Notebook, taking advantage of the free GPU quota that the platform offers for personal accounts. The expected configuration and hyperparameters are presented in the following table:
+Parameters
+Expected value
+GPU Usage
+NVIDIA T4 (provided for free by Kaggle Notebook)
+Framework
+Hugging Face Transformers, PEFT/LoRA, Unsloth (optimized fine-tuning speed and memory usage)
+Base Model
+Qwen2.5-7B-Instruct (open-weight, via Unsloth)
+Learning rate
+2e-4
+Batch size
+4 (combine gradient accumulation if needed)
+Epoch Number
+3
+LoRA rank (r)
+16
+Resource limits
+Kaggle limits ~30 GPU hours/week for free accounts
+Checkpoint strategy
+Save periodic checkpoints (per epoch or each N step) to the Kaggle Dataset/Hugging Face Hub so that you can continue training through multiple sessions, avoiding losing progress when the GPU quota expires during the week
+Due to the limit of about 30 free GPU hours per week on Kaggle, the team applied a session-based training strategy that combined with periodic checkpoints, allowing the fine-tuning process to be broken down into multiple sessions during the week without interrupting the overall progress. Once completed, the fine-tuned model (unified LoRA weighting or separate adapter) is exported and loaded into the Backend (FastAPI) to serve inference for the Hybrid Query Engine.
+8.5 Data Integration: Controlled Synthetic Linking
+Since AdventureWorks and CUAD are two independent benchmark datasets with no natural join keys between them, the team implemented a controlled synthetic linking process to simulate the actual operational context of an SME, in which each customer has both a transaction history (AdventureWorks) and a corresponding commercial contract (CUAD). The process is carried out as follows:
+Each Customer in AdventureWorks is randomly and controllably assigned to 1–3 contracts from CUAD, based on sound business logic (e.g., a customer whose component/product purchase is assigned to a supply contract or a service contract of a corresponding nature).
+Linking mapping is fully documented as a standalone lookup table, separate from the original data of both datasets, ensuring that the original data is not altered.
+All source code, random parameters (seeds) and assignment rules are published with the project to ensure full transparency and reproducibility of the linking process.
+The linking is only for the purpose of facilitating cross-source queries in the Q&A fine-tuning data generation and evaluation benchmark; The contents of each data set (AdventureWorks transactions, CUAD contract terms) themselves remain completely authentic and unaltered.
+This approach allowed the team to build a controlled inter-source benchmark while retaining the academic integrity and reliability of both original datasets.
+9. Evaluation Methodology and Metrics
+9.1 Benchmark Builder
+The benchmark consists of 100–200 management questions built entirely on real-world data from AdventureWorks and CUAD after implementing controlled synthetic linking, divided into three levels of inference:
+Level
+Description
+Estimated number of questions
+Single-hop
+Questions that directly look up a single entity (e.g., "How many Y products did Customer X purchase in the most recent quarter?")
+~40–60
+2-hop
+The question requires linking two directly related entities (e.g., "Which vendor offers the product that customer X buys the most?")
+~30–60
+Cross-source
+The question requires inference across multiple entities and cross-sources between AdventureWorks and CUAD (e.g., "Which customers have contracts containing Uncapped Liability clauses and sales decreased in the most recent quarter?")
+~30–80
+9.2 Rating Indicators
+Indices
+Measurement method
+Answer Correctness
+Combined LLM-as-judge (automatic scoring based on reference answers) and manual verification (human validation) by the research team
+Retrieval / Citation Precision
+Manually verify the source citation rate (data sheet/contract terms) is accurate and directly related to the answer
+Hallucination Rate
+Fact-checking compares answers with original data to determine the proportion of fabricated or unsubstantiated information
+AI Response Time
+Automatically measure the average response time (latency) from receiving a question to returning a complete answer
+Fine-tuning Effectiveness
+Compare the quality of answers (Answer Correctness) between the base model (not fine-tuned) and the fine-tuned model using LoRA/PEFT on the same set of benchmark questions, in order to quantify the level of improvement brought by fine-tuning
+9.3 Compare Baseline
+The following three baselines are built on the same data infrastructure and the same set of benchmarks to ensure fair comparisons:
+Baseline
+Description of the query mechanism
+Vector RAG (Baseline 1)
+Only uses vector semantic search on Qdrant, no knowledge graph
+Pure GraphRAG (Baseline 2)
+Only use graph traversal on Neo4j, do not combine vector search
+Hybrid GraphRAG (Proposed Method)
+Combining graph traversal (Neo4j) and vector search (Qdrant) in parallel, consolidating the results before inclusion in the LLM
+10. Security and Privacy
+Authentication
+Mechanism
+Description
+JWT (JSON Web Token)
+Use a signed token to validate API requests between the Frontend, Backend, and AEGIS Local Agent after login
+OAuth 2.0
+Applies to user authentication flows and delegates optional access to the Google Drive/Sheets API
+RBAC (Role-Based Access Control)
+Assign access to functions and data by role (System & Knowledge Administrator, Executive, Department Manager, Standard User).
+Data Protection
+Measures
+Description
+Encrypt data in transit
+All communication between AEGIS Local Agent and Backend Cloud is done via HTTPS/TLS connection
+Keep sensitive data locally
+Original contract data can be kept in the SME's internal infrastructure, synchronizing only the necessary metadata/embedding to the Cloud
+Role-based access control
+Apply RBAC to limit viewing/editing sensitive data (e.g. contractual terms) according to user roles
+Audit Log
+Record query history and administrative operations for tracing when necessary
+Scrum Process
+Scrum is an iterative and incremental agile software development framework for 
+managing software projects and product or application development.
+Scrum focuses on project management institutions where it is difficult to plan ahead.
+Mechanisms of empirical process control, where feedback loops that constitute 
+the core management technique is used as opposed to traditional command-and
+-control management.
+Its approach to planning and managing projects is by bringing decision-making
+ authority to the level of operation properties and certainties.
+Benefit of the methodology:
+Project can respond easily to change.
+Problems are identified early.
+Customers get the most beneficial work first.
+Work done will better meet the customer’s needs.
+Improved productivity.
+Ability to maintain a predictable schedule for delivery.
+Project Plan and Milestones
+Stage
+Time
+Main Content
+Product Deliveries
+Sprint 1 — Kickoff & Planning
+01/09 – 22/09/2026
+Project registration and proposal finalization; project management plan and Sprint plan; initial data collection and preprocessing of AdventureWorks & CUAD; controlled synthetic linking design; Q&A pairs construction; Authentication Module and Database Architecture design (Module 6); Home & Dashboard (Module 4); Data Ingestion Pipeline (Module 1); Sprint 1 Test Plan.
+Proposal Document, Project Management Plan, preprocessed/linked datasets, initial Q&A pairs, Authentication Module, Home & Dashboard, Database Architecture, Test Plan
+Sprint 2 — Knowledge Foundation & Fine-tuning
+22/09 – 20/10/2026
+SRS, User Stories, Product Backlog and Architecture Design Document (SAD), BFD and Context Diagram; Schema Mapping design; UI/UX design for the Web Dashboard; Knowledge Base module, Document Ingestion API, File Watcher API (Module 1); Settings & RBAC (Module 6); GraphRAG AI Copilot & Knowledge Graph Viewer (Module 3); Kaggle fine-tuning environment setup; LoRA/PEFT fine-tuning pipeline via Unsloth; NER/RE and Entity Resolution quality evaluation; code standards & guidelines.
+SRS, SAD, UI/UX wireframes, Schema Mapping design, Knowledge Base, Settings & RBAC, GraphRAG AI Copilot & Knowledge Graph Viewer, fine-tuning environment and initial checkpoints
+Sprint 3 — Hybrid Query Engine & Explainable Answers
+20/10 – 10/11/2026
+Hybrid Query Engine & Pipeline (Module 5, Module 3): question-intent analysis, Text-to-Cypher, vector search, Context Fusion, multi-hop/cross-source retrieval; AEGIS Local Agent & Sync API (Module 1); Knowledge Editor and Graph Editor & AI Copilot Integration API (Module 2, Module 3); Software Test Plan and Advanced AI Test Cases.
+Hybrid Query Engine, AEGIS Local Agent & Sync API, Knowledge Editor, Graph Editor Integration, Advanced AI Test Cases
+Sprint 4 — Packaging, Benchmarking & Closing
+10/11 – 01/12/2026
+AEGIS Local Agent Panel (Module 1); Admin Analytics Dashboard (Module 6, Module 4); Additional RBAC & Settings Test Cases; completion of the Web Dashboard (chat UI, source citation viewer); frontend/backend integration and test execution; bug fixing; benchmark construction (100–200 questions); experiments and evaluation across the five indicators (Answer Correctness, Retrieval/Citation Precision, Hallucination Rate, AI Response Time, Fine-tuning Effectiveness) on the three baselines; End-to-End Test; Technical Report writing; AI Usage Disclosure Statement; 360-degree peer evaluation; final documentation package; project closing, handover and retrospective.
+AEGIS Local Agent Panel, Admin Analytics Dashboard, integrated MVP, Test Report & Bug Report, Benchmark results, Technical Report, AI Usage Disclosure Statement, Reflection & Peer Evaluation, final Management Documents
+13. Expected Outcomes and Significance
+Scientific significance
+The project hopes to provide quantitative, reproducible empirical evidence of the efficacy of Hybrid GraphRAG compared to Vector RAG and Pure GraphRAG on a new cross-source benchmark that combines structured and unstructured data in an SME context. The findings contribute to closing the gaps identified in Section 3.3, while providing a transparent controlled synthetic linking process that can be reused by future researchers who want to combine multiple independent benchmark datasets.
+Practical significance
+The MVP GraphMind platform illustrates the feasibility of applying Hybrid GraphRAG in the context of SMEs with limited resources, through a hybrid deployment architecture (Local Agent + Cloud) that balances internal data security and the ability to leverage AI capabilities in the cloud. The product has the potential to serve as a reference platform for practical enterprise knowledge management solutions, helping SME administrators shorten the time to retrieve inter-source information and minimize the risk of missing important contractual clauses when making decisions.
+Independent Reviewer Assessment
+To support the team’s own critical review process, the assessment below was produced with AI assistance, adopting the perspective of an independent capstone reviewer. It is included as a self-critique to strengthen the proposal rather than as an endorsement from a named external expert, and its use should be reflected in the project’s AI Usage Disclosure Statement (Sprint 4 deliverable, Section 12).
+Criteria
+Assessment
+Practical / Commercial Value
+Addresses a genuine, well-documented SME pain point (siloed structured and unstructured knowledge) and grounds it in two independently licensed, verifiable public datasets rather than fabricated business data, which supports academic credibility. Commercial readiness is nonetheless limited: (a) the “controlled synthetic linking” between AdventureWorks and CUAD is an artificial construct with no equivalent in a real SME’s data, so cross-source findings cannot be generalized to a paying customer without re-validation; (b) a self-hosted 7B fine-tuned model is unlikely to match frontier closed models on ambiguous natural-language queries; and (c) go-to-market concerns (pricing, onboarding, compliance certifications) are explicitly out of scope. As positioned, the project’s strongest value is as a research prototype and technical proof-of-concept, not yet as a deployable commercial product.
+Scope Assessment (breadth)
+The proposal combines a full empirical research track (dataset linking, Q&A generation, LoRA fine-tuning, three-baseline benchmarking, a five-metric evaluation framework) with a full system track (six modules, including a chat copilot, knowledge-graph viewer, local file-watcher agent, RBAC, optional Google Drive/Sheets integration, and an LLMOps cost dashboard) for five students within roughly 13 weeks (01/09/2026 – 01/12/2026). Relative to that team size and timeline, the scope is too broad rather than too narrow. Section 7 already trims several items (mobile app, multi-tenant support, commercial ERP integration), which is a sound instinct, but could go further: Google Drive/Sheets integration, the Executive Briefing Generator, and the LLMOps & Cost Dashboard could be deferred to a “stretch” backlog without weakening the core scientific contribution, freeing time to harden the Hybrid Query Engine and the evaluation pipeline that the research claims actually depend on.
+Methodology Assessment
+The design is generally sound: using two independently published, license-cleared datasets instead of fabricated business data avoids a common validity threat in GraphRAG literature, and comparing three baselines on an identical, difficulty-stratified benchmark directly targets the gaps the team itself identified in Section 3.3. Combining LLM-as-judge with human validation is an appropriate way to reduce automated-scoring bias. Two risks stand out — both already flagged by the team in Section 14 rather than overlooked: (i) the synthetic customer–contract linking is a threat to external validity that no amount of documentation fully removes, since it can only be checked internally; and (ii) a 100–200-question benchmark, evaluated in part by the same five-person team that built the system, is a fairly small, potentially non-blinded sample for the confidence-level claims the Technical Report will likely want to make — an independent or blinded validation pass on a subsample would strengthen the evidentiary basis of the results.
+Overall Feasibility Score
+7.5 / 10 — strong problem framing, a defensible dataset choice, and a methodologically fair three-baseline design, held back by an overloaded scope for the team size and timeline and by validity limits inherent to the synthetic data-linking approach.
+Table 13.1 — Independent reviewer assessment of practical value, project scope, and methodology.
+14. Risks and Mitigation Strategies
+#
+Risks
+Level
+Mitigation strategies
+1
+The controlled synthetic linking process creates links that lack actual representation, affecting benchmark reliability
+High
+Design assignment rules based on reasonable business logic, transparently publish the entire process and parameters, and consult with instructors before official implementation
+2
+Extracting text from PDF CUAD contract (PDF parsing) encounters formatting errors, loss of clause information
+Medium
+Use a proven PDF extraction tool, which incorporates random sample manual checking to verify the extraction quality
+3
+Auto-generated Q&A pairs from AdventureWorks and CUAD may lack variation in wording or contain errors/mislabels, affecting fine-tuning quality
+High
+Manual testing on a random sample of Q&A kits, applying prompt engineering to increase the diversity of question generation, additional comparisons with other public Q&A benchmarks for calibration
+4
+Kaggle fine-tuning time exceeds the limit of 30 free GPU hours/week, slowing down model training progress
+Medium
+Optimize LoRA configuration (reduce rank/batch size when needed), save checkpoints periodically to continue training through multiple sessions, split the train schedule by week instead of running continuously once
+5
+The time to build two tracks (research and system) simultaneously within the 13-week timeframe (Sprint 1–4) may not be enough
+High
+Clear division of parallel work into 4 Sprints (Sprint 1–4), prioritizing the completion of the core MVP before expanding features
+6
+Knowledge graphs built from two other data sources can inherently generate schema conflicts
+Medium
+Uniform schema mapping design from scratch (Section 6.4), early integration testing in Sprint 2
+7
+LLM-as-judge for Answer Correctness assessments can be biased compared to human assessments
+Medium
+Incorporates manual verification (human validation) on the representative sample to calibrate and contrast with LLM-as-judge results
+8
+Leakage of sensitive information when syncing contract data from Local Agents to the Backend Cloud
+High
+Encryption of data in transit (TLS/HTTPS), synchronization of only necessary metadata/embedding, application of strict RBAC
+9
+Inexperienced team member deploying Graph DB, Vector DB, and fine-tuning the LLM simultaneously in the same architecture
+Medium
+Assign clear roles according to each member's strengths, refer to official documents (Hugging Face, Kaggle) and ask for support from instructors
+10
+The baseline comparison results can be affected by the selection bias of benchmark questions.
+Low
+Develop a set of questions according to the process with clear criteria for each level (single-hop/2-hop/cross-source), with cross-review between members
+11
+Delays due to dependence on instructor feedback/approval at milestones
+Low
+Schedule periodic exchanges with instructors, proactively send progress reports before key milestones
+15. Estimated Resources and Cost (for Educational Purposes)
+As this project is developed strictly for educational and academic research purposes, all software tools, platforms and libraries used are free or open-source. No real monetary costs are incurred; the table below lists the main tools together with their purpose and cost status.
+Tool
+Purpose
+Cost
+Neo4j (Community Edition)
+Graph Database
+Free
+Qdrant (Open Source)
+Vector Database
+Free
+Kaggle Notebook (NVIDIA T4 GPU)
+Fine-tuning environment
+Free (30 hours/week)
+Hugging Face Transformers / PEFT / Unsloth
+Fine-tuning library
+Free
+Python / FastAPI
+Backend framework
+Free / Open Source
+React / Next.js
+Frontend framework
+Free / Open Source
+Jira (Free Plan)
+Project management
+Free
+GitHub (Free Plan)
+Source code management
+Free
+Qwen2.5-7B-Instruct (Open-weight, via Unsloth)
+Base LLM
+Free / Open Source
+PostgreSQL 
+Relational Database 
+Free / Open Source 
+16. References
+The list of references is presented according to the IEEE citation standard:
+[1] P. Lewis et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks," in Proc. NeurIPS, 2020.
+[2] D. Edge et al., "From Local to Global: A Graph RAG Approach to Query-Focused Summarization," arXiv:2404.16130, 2024.
+[3] Microsoft, "AdventureWorks Sample Databases," Microsoft Learn. [Online]. Available: https://learn.microsoft.com/en-us/sql/samples/adventureworks-install-configure
+[4] D. Hendrycks et al. (The Atticus Project), "CUAD: An Expert-Annotated NLP Dataset for Legal Contract Review," in Proc. NeurIPS Datasets and Benchmarks Track, 2021.
+[5] Neo4j, Inc., "Neo4j Graph Database Documentation." [Online]. Available: https://neo4j.com/docs/
+[6] Qdrant, "Qdrant Vector Database Documentation." [Online]. Available: https://qdrant.tech/documentation/
+[7] E. J. Hu et al., "LoRA: Low-Rank Adaptation of Large Language Models," in Proc. ICLR, 2022.
+[8] Hugging Face, "PEFT: Parameter-Efficient Fine-Tuning Documentation." [Online]. Available: https://huggingface.co/docs/peft
+[9] Kaggle, "GPU and TPU Documentation for Kaggle Notebooks." [Online]. Available: https://www.kaggle.com/docs/notebooks
+[10] Y. Gao et al., "Retrieval-Augmented Generation for Large Language Models: A Survey," arXiv:2312.10997, 2023.
+[11] IETF, "RFC 7519: JSON Web Token (JWT)," 2015. [Online]. Available: https://www.rfc-editor.org/rfc/rfc7519
+[12] IETF, "RFC 6749: The OAuth 2.0 Authorization Framework," 2012. [Online]. Available: https://www.rfc-editor.org/rfc/rfc6749
