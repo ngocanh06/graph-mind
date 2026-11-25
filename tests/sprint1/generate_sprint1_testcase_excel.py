@@ -379,6 +379,8 @@ def build_workbook():
                     ("S1_AUTH_07", "Single Active Session JTI revocation on concurrent login (PB73)", "1. Login on Device A -> token_1\n2. Login same user on Device B -> token_2\n3. Call /auth/me with token_2 and token_1", "Device B receives HTTP 200; Device A revoked with HTTP 401 CONCURRENT_LOGIN_KICKED.", "token_1 != token_2; Device B HTTP 200; Device A rejected with HTTP 401.", "Pass"),
                     ("S1_AUTH_08", "Enterprise 5 standard departments canonical mapping (PB43)", "1. Inspect DEPT_CANONICAL in backend/app/core/rbac.py\n2. Verify sales, legal, accounting, it, rnd keys exist", "All 5 canonical enterprise departments (sales, legal, accounting, it, rnd) mapped.", "All 5 canonical department keys verified in DEPT_CANONICAL.", "Pass"),
                     ("S1_AUTH_09", "OTP hash HMAC-SHA256 security check (PB74 / C1SE18-10)", "1. Inspect PasswordResetOtp.hash_otp implementation\n2. Verify salted HMAC hashing is used", "Uses HMAC-SHA256 rather than unsalted SHA-256.", "HMAC usage verified in PasswordResetOtp.hash_otp.", "Pass"),
+                    ("S1_BB_02", "[Black-Box — ECP] Login identifier equivalence partitions (empty, SQLi, uppercase valid email)", "1. Test invalid partitions ('', '   ', \"' OR '1'='1\")\n2. Test valid case-insensitive partition ('  EXECUTIVE@GRAPHMIND.AI  ')", "Invalid partitions return 401/422; valid email returns 200.", "All invalid partitions rejected (401/422); uppercase email accepted (200).", "Pass"),
+                    ("S1_WB_01", "[White-Box — Branch Coverage] All 4 if/return branches in auth.resolve_user_role()", "1. Execute resolve_user_role() with ceo, executive@corp, secops, lead, intern inputs", "100% branch coverage: executive, it_admin, knowledge_manager, standard.", "All 4 branches executed and verified accurately.", "Pass"),
                 ],
             ),
             (
@@ -438,6 +440,7 @@ def build_workbook():
                     ("S1_ING_05", "CUAD PDF preprocessing & extraction script compiles (PB46)", "1. Verify research/src/ner_re/extract_cuad_kg.py exists and compiles", "Script exists and compiles cleanly.", "extract_cuad_kg.py verified and compiled with 0 errors.", "Pass"),
                     ("S1_ING_06", "In-memory FakeNeo4j & FakeQdrant harness isolation (PR0)", "1. Instantiate FakeNeo4jClient and FakeQdrantClientWrapper\n2. Call reset() under blocked-socket sandbox", "Both fakes initialize and reset with zero external network sockets.", "FakeNeo4jClient and FakeQdrantClientWrapper operated in full isolation.", "Pass"),
                     ("S1_ING_07", "Graceful handling of image-only scanned PDF without crash", "1. Pass a 1-page image-only scanned PDF without text stream to extract_text_from_bytes()", "Handles scanned PDF gracefully without unhandled exception.", "Handled cleanly without crash (fallback metadata returned).", "Pass"),
+                    ("S1_BB_01", "[Black-Box — BVA] TXT parser 10MB boundary values (10MB-1B, 10MB, 10MB+1B)", "1. Test extract_text_from_bytes() with 10MB-1B, 10MB exact, and 10MB+1B payloads", "10MB-1B & 10MB accepted; 10MB+1B raises ValueError.", "Exact boundary verified: 10MB-1B & 10MB passed; 10MB+1B raised ValueError.", "Pass"),
                 ],
             ),
         ],

@@ -379,6 +379,8 @@ def build_workbook():
                     ("S1_AUTH_07", "Thu hồi phiên cũ (JTI) khi đăng nhập trên thiết bị mới (PB73)", "1. Đăng nhập trên Thiết bị A -> token_1\n2. Đăng nhập cùng tài khoản trên Thiết bị B -> token_2\n3. Gọi /auth/me lần lượt bằng token_2 và token_1", "Thiết bị B nhận HTTP 200; Thiết bị A bị thu hồi phiên và nhận HTTP 401 CONCURRENT_LOGIN_KICKED.", "token_1 khác token_2; Thiết bị B nhận HTTP 200; Thiết bị A bị từ chối với HTTP 401.", "Đạt"),
                     ("S1_AUTH_08", "Kiểm tra ánh xạ chuẩn 5 phòng ban doanh nghiệp (PB43)", "1. Kiểm tra từ điển DEPT_CANONICAL trong backend/app/core/rbac.py\n2. Xác minh đủ 5 phòng ban: sales, legal, accounting, it, rnd", "Đủ 5 khóa phòng ban chuẩn (sales, legal, accounting, it, rnd) được ánh xạ.", "Xác minh đủ cả 5 khóa phòng ban chuẩn trong DEPT_CANONICAL.", "Đạt"),
                     ("S1_AUTH_09", "Kiểm tra bảo mật băm OTP bằng HMAC-SHA256 (PB74 / C1SE18-10)", "1. Kiểm tra mã nguồn hàm PasswordResetOtp.hash_otp\n2. Xác minh có sử dụng băm HMAC có khóa bí mật", "Sử dụng HMAC-SHA256 thay vì SHA-256 thuần không muối.", "Đã xác minh sử dụng HMAC trong PasswordResetOtp.hash_otp.", "Đạt"),
+                    ("S1_BB_02", "[Black-Box — Phân vùng tương đương ECP] Kiểm thử đầu vào Login (rỗng, SQLi, email chữ hoa)", "1. Thử lớp không hợp lệ ('', '   ', \"' OR '1'='1\")\n2. Thử lớp hợp lệ không phân biệt hoa thường ('  EXECUTIVE@GRAPHMIND.AI  ')", "Lớp không hợp lệ trả 401/422; email hợp lệ trả 200.", "Chặn toàn bộ lớp không hợp lệ (401/422); email chữ hoa đăng nhập thành công (200).", "Đạt"),
+                    ("S1_WB_01", "[White-Box — Phủ nhánh Branch Coverage] Kiểm thử đủ 4 nhánh if/return hàm resolve_user_role()", "1. Gọi resolve_user_role() với các đầu vào ceo, executive@corp, secops, lead, intern", "Phủ 100% nhánh: executive, it_admin, knowledge_manager, standard.", "Cả 4 nhánh điều kiện trả về chính xác 100%.", "Đạt"),
                 ],
             ),
             (
@@ -438,6 +440,7 @@ def build_workbook():
                     ("S1_ING_05", "Script tiền xử lý & trích xuất hợp đồng CUAD hợp lệ (PB46)", "1. Kiểm tra tồn tại và biên dịch research/src/ner_re/extract_cuad_kg.py", "Script tồn tại và biên dịch sạch không lỗi.", "Đã xác minh và biên dịch thành công extract_cuad_kg.py.", "Đạt"),
                     ("S1_ING_06", "Môi trường giả lập FakeNeo4j & FakeQdrant chạy cô lập không dùng mạng (PR0)", "1. Khởi tạo FakeNeo4jClient và FakeQdrantClientWrapper\n2. Gọi reset() trong sandbox khóa socket", "Khởi tạo và reset thành công mà không mở kết nối mạng ra ngoài.", "FakeNeo4jClient và FakeQdrantClientWrapper hoạt động cô lập hoàn toàn.", "Đạt"),
                     ("S1_ING_07", "Xử lý an toàn tệp PDF dạng ảnh scan không làm sập pipeline", "1. Truyền tệp PDF 1 trang dạng ảnh scan không có text stream vào extract_text_from_bytes()", "Xử lý an toàn, không gây lỗi crash hệ thống.", "Xử lý ổn định không crash (trả về chuỗi fallback hợp lệ).", "Đạt"),
+                    ("S1_BB_01", "[Black-Box — Phân tích giá trị biên BVA] Ngưỡng dung lượng 10MB trình đọc TXT (10MB-1B, 10MB, 10MB+1B)", "1. Gọi extract_text_from_bytes() với 3 mốc biên: 10MB-1B, 10MB đúng và 10MB+1B", "Chấp nhận 10MB-1B & 10MB; từ chối 10MB+1B (ValueError).", "Đạt chính xác tại cả 3 giá trị biên.", "Đạt"),
                 ],
             ),
         ],

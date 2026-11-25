@@ -148,8 +148,8 @@ def _build_workbook(vi: bool):
         c = ws_rep.cell(6, idx, h)
         c.font, c.fill, c.border, c.alignment = FONT_HEADER, FILL_HEADER, BORDER_ALL, ALIGN_CENTER
 
-    # Sprint 1 historical (36 Pass / 0 Fail), Sprint 2 dynamically linked to Overview!E38:I38
-    ws_rep.cell(7, 3, 1); ws_rep.cell(7, 4, "Sprint 1"); ws_rep.cell(7, 5, 36); ws_rep.cell(7, 6, 0)
+    # Sprint 1 historical (39 Pass / 0 Fail), Sprint 2 dynamically linked to Overview!E38:I38
+    ws_rep.cell(7, 3, 1); ws_rep.cell(7, 4, "Sprint 1"); ws_rep.cell(7, 5, 39); ws_rep.cell(7, 6, 0)
     for col_i in (7, 8, 9): ws_rep.cell(7, col_i, 0)
     ws_rep.cell(7, 10, "=SUM(E7:I7)")
 
@@ -388,6 +388,8 @@ def _build_workbook(vi: bool):
                 ("S2_RBAC_03", "GET /api/admin/rbac-matrix chặn truy cập chưa xác thực" if vi else "GET /api/admin/rbac-matrix blocks unauthenticated access", "1. Gửi GET /api/admin/rbac-matrix không kèm JWT Admin" if vi else "1. Call GET /api/admin/rbac-matrix without Admin JWT", "Trả về HTTP 401 hoặc 403." if vi else "Returns HTTP 401 or 403.", "Đã chặn truy cập trái phép với mã 401/403." if vi else "Blocked unauthorized access with HTTP 401/403.", P),
                 ("S2_RBAC_04", "Audit Log đảm bảo bất biến — không có API sửa/xóa (BR-03)" if vi else "Audit Log immutability — no PUT/DELETE endpoints (BR-03)", "1. Rà soát user_admin_api.py tìm route DELETE/PUT trên /audit" if vi else "1. Audit user_admin_api.py for PUT/DELETE routes on /audit", "Không tồn tại API sửa hay xóa nhật ký kiểm toán." if vi else "No update/delete endpoints exist for audit_logs.", "Đã xác nhận không có API sửa/xóa audit_logs." if vi else "Confirmed no PUT/DELETE routes for audit_logs.", P),
                 ("S2_RBAC_05", "Cấu trúc ROLES của Ma trận RBAC 2D chứa đủ 4 vai trò chuẩn" if vi else "2D RBAC Matrix ROLES schema defines 4 canonical roles", "1. Kiểm tra danh sách MATRIX_ROLES trong rbac_matrix_schema.py" if vi else "1. Inspect MATRIX_ROLES in rbac_matrix_schema.py", "Chứa đủ ADMIN, EXECUTIVE, DEPARTMENT_MANAGER, STANDARD_USER." if vi else "Contains ADMIN, EXECUTIVE, DEPARTMENT_MANAGER, STANDARD_USER.", "Đủ 4 mã vai trò chuẩn trong MATRIX_ROLES." if vi else "All 4 canonical role codes verified.", P),
+                ("S2_BB_01", "[Black-Box — Bảng quyết định Decision Table] Ma trận 4 vai trò x 2 phòng ban (sales, it)" if vi else "[Black-Box — Decision Table] 4 roles x 2 departments (sales, it) access matrix", "1. Kiểm thử đủ 8 tổ hợp (executive/admin/manager/standard x sales/it) trên is_department_allowed()" if vi else "1. Execute all 8 combinations (4 roles x sales/it) on is_department_allowed()", "Executive/Admin = T/T; Manager = T/F; Standard = T/F." if vi else "Executive/Admin = T/T; Manager = T/F; Standard = T/F.", "Khớp 8/8 ô trong bảng quyết định phân quyền." if vi else "All 8/8 decision table cells verified.", P),
+                ("S2_WB_01", "[White-Box — Phủ đường dẫn Path Coverage] Phủ toàn bộ nhánh normalize_dept_code() & normalize_role_code()" if vi else "[White-Box — Path Coverage] All branches in normalize_dept_code() & normalize_role_code()", "1. Truyền None, Toàn công ty, tiếng Việt không dấu, và chuỗi lạ (fallback)" if vi else "1. Pass None, full-company, unaccented Vietnamese, and unknown passthrough strings", "Phủ 100% nhánh điều kiện và nhánh fallback." if vi else "100% branch/path coverage including passthrough fallback.", "Đạt 100% độ phủ đường dẫn trên cả 2 hàm chuẩn hóa." if vi else "All paths verified accurately.", P),
             ],
         )],
     )

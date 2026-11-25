@@ -442,7 +442,7 @@ def execute_text_to_cypher(
     cypher = generate_cypher_from_query(query)
     
     # Security check: Read-only enforcement
-    for word in re.findall(r"\b[A-Z]+\b", cypher):
+    for word in re.findall(r"\b[A-Z]+\b", cypher.upper()):
         if word in FORBIDDEN_KEYWORDS:
             raise ValueError(f"Security Alert: Disallowed mutation keyword '{word}' in generated Cypher.")
 

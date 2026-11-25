@@ -306,3 +306,48 @@ def test_s1_ing_07_scanned_image_pdf_no_ocr_limitation():
     assert len(extracted.strip()) > 10, (
         "Real Software Limitation: extract_text_from_bytes() returned empty text for image-only scanned PDF (no OCR engine integrated)."
     )
+
+
+# =============================================================================
+# 4. BLACK-BOX (BVA, ECP) & WHITE-BOX (BRANCH COVERAGE) TESTS
+# =============================================================================
+
+def test_s1_bb_01_bva_txt_parser_10mb_boundary():
+    """S1_BB_01 [Black-Box — BVA]: Boundary Value Analysis around 10MB ceiling (10MB-1B pass, 10MB pass, 10MB+1B fail)."""
+    limit = 10 * 1024 * 1024
+    assert len(extract_text_from_bytes("bva_minus1.txt", b"a" * (limit - 1))) == limit - 1
+    assert len(extract_text_from_bytes("bva_exact.txt", b"a" * limit)) == limit
+    with pytest.raises(ValueError):
+        extract_text_from_bytes("bva_plus1.txt", b"a" * (limit + 1))
+
+
+@pytest.mark.asyncio
+async def test_s1_bb_02_ecp_login_input_partitions():
+    """S1_BB_02 [Black-Box — ECP]: Equivalence Class Partitioning on login identifier (empty, SQLi, uppercase valid email)."""
+    user = _make_fake_user(email="executive@graphmind.ai")
+    app_none = create_test_app(db_session_override=_mock_db_returning(None))
+    async with AsyncClient(transport=ASGITransport(app=app_none), base_url="http://test") as client:
+        for bad_ident in ("", "   ", "' OR '1'='1"):
+            r = await client.post("/api/v1/auth/login", json={"identifier": bad_ident, "password": "123456"})
+            assert r.status_code in (401, 422)
+
+    app_ok = create_test_app(db_session_override=_mock_db_returning(user))
+    with (
+        patch("app.api.v1.auth.ensure_sessions_table", new=AsyncMock()),
+        patch("app.api.v1.auth.upsert_active_session", new=AsyncMock(return_value=False)),
+        patch("app.api.v1.auth.log_action", new=AsyncMock()),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app_ok), base_url="http://test") as client:
+            r_ok = await client.post("/api/v1/auth/login", json={"identifier": "  EXECUTIVE@GRAPHMIND.AI  ", "password": "123456"})
+            assert r_ok.status_code == 200
+
+
+def test_s1_wb_01_branch_coverage_resolve_user_role():
+    """S1_WB_01 [White-Box — Branch Coverage]: Exercises all 4 if/return branches in auth.resolve_user_role()."""
+    from app.api.v1.auth import resolve_user_role
+
+    assert resolve_user_role("ceo", "a@b.com", False) == "executive"
+    assert resolve_user_role("u", "executive@corp.com", False) == "executive"
+    assert resolve_user_role("secops", "a@b.com", False) == "it_admin"
+    assert resolve_user_role("lead", "a@b.com", False) == "knowledge_manager"
+    assert resolve_user_role("intern", "intern@corp.com", False) == "standard"

@@ -247,3 +247,26 @@ def test_s3_hyb_06_complex_slang_3hop_nl2cypher_without_llm():
     assert has_all_3_hops, (
         f"Real AI Limitation: Rule-based NL2Cypher could not translate complex 3-hop Vietnamese slang without live GPU LLM (got: {cypher[:120]!r})."
     )
+
+
+# =============================================================================
+# 5. BLACK-BOX (ECP OBFUSCATED INPUT) & WHITE-BOX (LOOP/EDGE COVERAGE) TESTS
+# =============================================================================
+
+def test_s3_bb_01_ecp_case_insensitive_cypher_injection_guard():
+    """S3_BB_01 [Black-Box — ECP]: Mixed-case obfuscated Cypher mutations (dElEtE, mErGe, dRoP) are rejected."""
+    for payload in ("MATCH (n) dElEtE n", "MATCH (n) mErGe (x:Evil)", "MATCH (n) dRoP INDEX idx_1"):
+        with patch("app.modules.m3_hybrid_copilot.query_engine.text_to_cypher.generate_cypher_from_query", return_value=payload):
+            with pytest.raises(ValueError, match="Security Alert"):
+                execute_text_to_cypher("obfuscated attack")
+
+
+def test_s3_wb_01_loop_and_edge_path_coverage_rrf_fusion():
+    """S3_WB_01 [White-Box — Loop & Edge Coverage]: Covers 0-iteration, 1-source, disjoint, and overlap paths in reciprocal_rank_fusion()."""
+    assert reciprocal_rank_fusion([], [], k=60) == []
+    only_vec = reciprocal_rank_fusion([{"id": "v1"}], [], k=60)
+    assert len(only_vec) == 1 and only_vec[0]["id"] == "v1"
+    only_graph = reciprocal_rank_fusion([], [{"id": "g1"}], k=60)
+    assert len(only_graph) == 1 and only_graph[0]["id"] == "g1"
+    disjoint = reciprocal_rank_fusion([{"id": "v1"}], [{"id": "g1"}], k=60)
+    assert {d["id"] for d in disjoint} == {"v1", "g1"}

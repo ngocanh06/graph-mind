@@ -192,3 +192,51 @@ def test_s4_bm_04_quantized_7b_model_85pct_accuracy_ceiling():
     assert acc >= 85.0, (
         f"Real AI Model Ceiling: Hybrid GraphRAG with 4-bit Qwen2.5-7B (Kaggle T4 16GB) achieves {acc}% accuracy (< 85.0% ideal target; requires >=32B/70B model)."
     )
+
+
+# =============================================================================
+# 4. BLACK-BOX (BVA) & WHITE-BOX (BRANCH COVERAGE) TESTS
+# =============================================================================
+
+def test_s4_bb_01_bva_pb56_heartbeat_90s_boundaries():
+    """S4_BB_01 [Black-Box — BVA]: Boundary Value Analysis on PB56 heartbeat timeout (89s ONLINE, 91s OFFLINE)."""
+    from app.modules.m1_data_sync.pb56_workstation_service import is_workstation_online
+
+    now = datetime.now(timezone.utc)
+    assert is_workstation_online(now - timedelta(seconds=89)) is True
+    assert is_workstation_online(now - timedelta(seconds=91)) is False
+    assert is_workstation_online(None) is False
+
+
+def test_s4_wb_01_branch_coverage_executive_and_citation_filters():
+    """S4_WB_01 [White-Box — Branch Coverage]: Covers all branches of ScopeContext.assert_executive_access() & filter_citations()."""
+    from app.core.rbac import ROLE_EXECUTIVE
+
+    exec_scope = ScopeContext(
+        user=SimpleNamespace(user_id="e1", username="ceo", role=ROLE_EXECUTIVE),
+        role=ROLE_EXECUTIVE,
+        is_unrestricted=True,
+        department_name="ALL",
+        canonical_dept="all",
+        allowed_depts={"*"},
+    )
+    # Branch 1: unrestricted bypass
+    exec_scope.assert_executive_access("Executive Dashboard")
+    cits = [{"title": "IT_Policy.pdf", "department": "it"}]
+    assert exec_scope.filter_citations(cits) == cits
+
+    # Branch 2: restricted user raises 403 + redacts citation
+    std_scope = ScopeContext(
+        user=SimpleNamespace(user_id="s1", username="ops", role=ROLE_STANDARD),
+        role=ROLE_STANDARD,
+        is_unrestricted=False,
+        department_name="Sales",
+        canonical_dept="sales",
+        allowed_depts={"sales"},
+        allowed_resources={"SALES"},
+    )
+    with pytest.raises(HTTPException) as exc:
+        std_scope.assert_executive_access("Executive Dashboard")
+    assert exc.value.status_code == 403
+    redacted = std_scope.filter_citations(cits)
+    assert redacted[0].get("restricted") is True

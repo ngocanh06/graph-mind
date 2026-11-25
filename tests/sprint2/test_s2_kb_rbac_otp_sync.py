@@ -235,6 +235,39 @@ def test_s2_otp_06_live_smtp_delivery_without_credentials():
 
 
 # =============================================================================
+# 5. BLACK-BOX (DECISION TABLE) & WHITE-BOX (PATH COVERAGE) TESTS
+# =============================================================================
+
+def test_s2_bb_01_decision_table_rbac_department_matrix():
+    """S2_BB_01 [Black-Box — Decision Table]: 4 roles x 2 departments (sales, it) access decision matrix."""
+    cases = [
+        (ROLE_EXECUTIVE, True, {"*"}, "sales", True),
+        (ROLE_EXECUTIVE, True, {"*"}, "it", True),
+        (ROLE_ADMIN, True, {"*"}, "sales", True),
+        (ROLE_ADMIN, True, {"*"}, "it", True),
+        (ROLE_MANAGER, False, {"sales", "legal", "accounting", "rnd"}, "sales", True),
+        (ROLE_MANAGER, False, {"sales", "legal", "accounting", "rnd"}, "it", False),
+        (ROLE_STANDARD, False, {"sales"}, "sales", True),
+        (ROLE_STANDARD, False, {"sales"}, "it", False),
+    ]
+    for role, unres, depts, target, expected in cases:
+        sc = ScopeContext(user=_fake_user(role=role), role=role, is_unrestricted=unres, department_name="Sales", canonical_dept="sales", allowed_depts=depts)
+        assert sc.is_department_allowed(target) is expected, f"Decision table mismatch for {role} -> {target}"
+
+
+def test_s2_wb_01_path_coverage_normalize_dept_and_role():
+    """S2_WB_01 [White-Box — Path Coverage]: Exercises all branches of normalize_dept_code() & normalize_role_code() including fallback."""
+    assert normalize_dept_code(None) == "ALL"
+    assert normalize_dept_code("Toàn công ty") == "ALL"
+    assert normalize_dept_code("Ke toan") == "ACCOUNTING_PROCUREMENT"
+    assert normalize_dept_code("Phap ly") == "LEGAL"
+    assert normalize_dept_code("Nghien cuu") == "RND"
+    assert normalize_dept_code("Cong nghe") == "IT"
+    assert normalize_dept_code("FINANCE_OPS") == "FINANCE_OPS"
+    assert normalize_role_code("unknown_guest") == "STANDARD_USER"
+
+
+# =============================================================================
 # 4. 3-STEP EMAIL OTP PASSWORD RECOVERY & SESSION ENFORCEMENT (PB73, PB74)
 # =============================================================================
 
