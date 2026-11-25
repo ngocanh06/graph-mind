@@ -262,7 +262,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               }}
             >
               <i className="fa-solid fa-chart-line" style={{ fontSize: 12 }} />
-              <span>{isVi ? "Điểm Tin Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}</span>
+              <span>{isVi ? "Báo Cáo Ban Giám Đốc" : "Executive Report"}</span>
             </button>
           )}
 
@@ -424,7 +424,7 @@ if (isSalesRole && reportMode === "shift") {
             disabled={isGenerating}
             className="btn primary sm"
           >
-            {isGenerating ? (isVi ? "Đang tổng hợp..." : "Synthesizing...") : (isVi ? "Làm mới Điểm tin AI" : "Refresh AI Briefing")}
+            {isGenerating ? (isVi ? "Đang tổng hợp..." : "Synthesizing...") : (isVi ? "Cập nhật Báo cáo" : "Update Report")}
           </button>
         </div>
       </div>
@@ -537,7 +537,7 @@ if (isSalesRole && reportMode === "shift") {
           <h2 className="text-2xl font-bold text-on-surface mt-space-2xs">
             {isAdminRole
               ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện — Tháng 09/2026" : "Strategic Briefing & Global System Telemetry — September 2026")
-              : (isVi ? "Bản Điểm Tin Chiến Lược Ban Giám Đốc — Tháng 09/2026" : "Executive Strategic Briefing — September 2026")}
+              : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc — Tháng 09/2026" : "Executive Strategic Report — September 2026")}
           </h2>
           <div className="doc-date text-caption text-outline mt-space-2xs">
             {isVi ? "AI tổng hợp lúc:" : "Synthesized by AI:"} {generatedDate} · Model: Hybrid GraphRAG · <b className="text-green-500">89.4% average confidence score</b>
@@ -553,7 +553,7 @@ if (isSalesRole && reportMode === "shift") {
             value={liveBriefing}
             onChange={(e) => setLiveBriefing(e.target.value)}
             rows={8}
-            placeholder={isVi ? "Bản tin điều hành được AI tự động tổng hợp từ đồ thị tri thức và báo cáo các phòng ban." : "AI executive briefing generated from knowledge graph and department telemetry."}
+            placeholder={isVi ? "Báo cáo điều hành được AI tự động tổng hợp từ đồ thị tri thức và báo cáo các phòng ban." : "Executive report generated from knowledge graph and department telemetry."}
             style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-1)", fontSize: 13.5, lineHeight: 1.6, resize: "vertical" }}
           />
         </div>
