@@ -403,12 +403,12 @@ if (isSalesRole && reportMode === "shift") {
           <div className="section-label">
             {isAdminRole
               ? (isVi ? "Giám Sát Kiểm Toán & Đối Soát Đa Cấp" : "Audit Reconciliation & Global Telemetry")
-              : (isVi ? "Điểm Tin Chiến Lược & Phê Duyệt Cấp Lãnh Đạo" : "Executive Briefing & Decision Observatory")}
+              : (isVi ? "Báo Cáo Điều Hành & Ra Quyết Định" : "Executive Decision & Governance Reports")}
           </div>
           <div className="section-sub">
             {isAdminRole
               ? (isVi ? "Giám sát chất lượng tri thức, độ trễ hệ thống, log kiểm duyệt HITL, an toàn SecOps & đối soát đa cấp" : "Cross-level audit reconciliation, knowledge graph quality, system latency, and SecOps telemetry")
-              : (isVi ? "Bản tin do AI GraphMind tự động tổng hợp từ dữ liệu phòng ban, hỗ trợ Ban Giám Đốc nắm bắt tình hình và phê duyệt đề xuất" : "AI-synthesized strategic brief aggregating multi-department telemetry for C-Suite decisions and action approvals")}
+              : (isVi ? "Báo cáo tổng hợp do AI tự động kết xuất từ các phòng ban, hỗ trợ Ban Giám Đốc phê duyệt các đề xuất chiến lược" : "AI-synthesized executive reports aggregating department telemetry for C-Suite approvals and strategic decisions")}
           </div>
         </div>
 
