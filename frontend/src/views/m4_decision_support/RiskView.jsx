@@ -209,8 +209,9 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
   const isVi = lang === "vi";
   
   // 3-Tier Enterprise Role Matrix (SRS BR-02, BR-05, UC.20, US34, US23)
-  const isExecOrAdmin = role === "executive" || role === "it_admin" || currentUser?.id === "executive" || currentUser?.id === "it_admin";
-  const isManager = role === "knowledge_manager" || currentUser?.id === "knowledge_manager";
+  const normRole = String(role || currentUser?.role || currentUser?.id || "executive").toLowerCase();
+  const isExecOrAdmin = normRole === "executive" || normRole === "it_admin" || normRole === "admin" || normRole === "ceo" || normRole === "cfo" || currentUser?.id === "executive" || currentUser?.id === "it_admin" || currentUser?.id === "admin";
+  const isManager = normRole === "knowledge_manager" || normRole === "manager" || normRole === "lead" || currentUser?.id === "knowledge_manager";
   const isStandardSales = !isExecOrAdmin && !isManager;
 
   const userDept = currentUser?.department || (isVi ? "Kinh doanh & Bán hàng" : "Sales & BD");
@@ -242,17 +243,18 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
   }, [role, currentUser]);
 
   // US23, US34, UC.20: PHÂN QUYỀN DATA SCOPE THEO ĐẶC TẢ
-  // - Executive/Admin: Toàn quyền truy cập tất cả cảnh báo vĩ mô toàn doanh nghiệp (BR-05)
-  // - Department Manager: Giám sát toàn diện trong phạm vi phòng ban quản lý (BR-02 / BR-04)
-  // - Standard User: Giới hạn nghiêm ngặt theo ca việc phòng ban được giao (US23 / FR43 / E2)
   const sourceAlerts = liveAlerts.length > 0 ? liveAlerts : ALL_ALERTS_DATA(isVi);
   const rawAlerts = isExecOrAdmin
     ? sourceAlerts
     : isManager
     ? (isLegalDept
         ? sourceAlerts.filter((a) => a.dept === "legal" || a.category === "legal_risk")
-        : sourceAlerts.filter((a) => a.dept === "sales" || a.category === "financial_risk"))
-    : sourceAlerts.filter((a) => a.category === "financial_risk");
+        : (sourceAlerts.filter((a) => a.dept === "sales" || a.category === "financial_risk").length > 0
+            ? sourceAlerts.filter((a) => a.dept === "sales" || a.category === "financial_risk")
+            : sourceAlerts))
+    : (sourceAlerts.filter((a) => a.category === "financial_risk").length > 0
+        ? sourceAlerts.filter((a) => a.category === "financial_risk")
+        : sourceAlerts);
 
   const countFinancial = rawAlerts.filter((a) => a.category === "financial_risk" || a.category === "order_drop").length;
   const countLegal = rawAlerts.filter((a) => a.category === "legal_risk" || a.category === "legal_anomaly" || a.category === "LEGAL_COMPLIANCE").length;

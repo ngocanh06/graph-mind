@@ -1,42 +1,55 @@
 import React from "react";
 
-const NAV_SECTIONS = (role, isVi) => [
-  {
-    id: "overview",
-    label: isVi ? "TỔNG QUAN" : "OVERVIEW",
-    items: [
-      { id: "home", icon: "fa-solid fa-house", label: isVi ? "Trang chủ" : "Home", roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "executive", icon: "fa-solid fa-chart-line", label: isVi ? "Chỉ số Kinh doanh" : "Business Intel", roles: ["executive","it_admin"] },
-    ],
-  },
-  {
-    id: "intelligence",
-    label: isVi ? "TRỢ LÝ TRI THỨC" : "AI & SEARCH",
-    items: [
-      { id: "copilot", icon: "fa-solid fa-brain", label: isVi ? "AI Copilot" : "AI Copilot", roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "search", icon: "fa-solid fa-magnifying-glass", label: isVi ? "Tìm kiếm thông minh" : "Smart Search", roles: ["executive","knowledge_manager","it_admin","standard"] },
-    ],
-  },
-  {
-    id: "knowledge_base",
-    label: isVi ? "HỒ SƠ & DỮ LIỆU" : "FILES & DATA",
-    items: [
-      { id: "documents", icon: "fa-solid fa-folder-open", label: isVi ? "Kho hợp đồng & File" : "Contracts & Docs", roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "knowledge", icon: "fa-solid fa-circle-nodes", label: isVi ? "Đồ thị Tri thức Graph" : "Knowledge Graph", roles: ["executive","knowledge_manager","it_admin"] },
-      { id: "sop", icon: "fa-solid fa-clipboard-list", label: isVi ? "Quy trình SOP" : "Internal SOP", roles: ["executive","knowledge_manager","it_admin"] },
-    ],
-  },
-  {
-    id: "governance",
-    label: isVi ? "GIÁM SÁT & BÁO CÁO" : "GOVERNANCE",
-    items: [
-      { id: "risk", icon: "fa-solid fa-triangle-exclamation", label: isVi ? "Cảnh báo rủi ro" : "Risk Alerts", alert: true, roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "reports", icon: "fa-solid fa-file-invoice", label: role === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : (isVi ? "Báo cáo điều hành" : "Executive Reports"), roles: ["executive","knowledge_manager","it_admin","standard"] },
-      { id: "connectors", icon: "fa-solid fa-database", label: isVi ? "Kết nối dữ liệu" : "Data Connectors", roles: ["it_admin"] },
-      { id: "admin", icon: "fa-solid fa-gear", label: isVi ? "Quản trị hệ thống" : "System Admin", roles: ["it_admin"] },
-    ],
-  },
-];
+function normalizeNavRole(r) {
+  if (!r) return "executive";
+  const s = String(r).toLowerCase().trim();
+  if (s === "admin" || s === "secops" || s === "itadmin" || s === "it_admin") return "it_admin";
+  if (s === "manager" || s === "lead" || s === "knowledge_manager") return "knowledge_manager";
+  if (s === "ceo" || s === "cfo" || s === "lanhdao" || s === "executive") return "executive";
+  if (s === "sales" || s === "ops" || s === "user" || s === "standard") return "standard";
+  return s;
+}
+
+const NAV_SECTIONS = (role, isVi) => {
+  const normRole = normalizeNavRole(role);
+  return [
+    {
+      id: "overview",
+      label: isVi ? "TỔNG QUAN" : "OVERVIEW",
+      items: [
+        { id: "home", icon: "fa-solid fa-house", label: isVi ? "Trang chủ" : "Home", roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
+        { id: "executive", icon: "fa-solid fa-chart-line", label: isVi ? "Chỉ số Kinh doanh" : "Business Intel", roles: ["executive","it_admin","admin"] },
+      ],
+    },
+    {
+      id: "intelligence",
+      label: isVi ? "TRỢ LÝ TRI THỨC" : "AI & SEARCH",
+      items: [
+        { id: "copilot", icon: "fa-solid fa-brain", label: isVi ? "AI Copilot" : "AI Copilot", roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
+        { id: "search", icon: "fa-solid fa-magnifying-glass", label: isVi ? "Tìm kiếm thông minh" : "Smart Search", roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
+      ],
+    },
+    {
+      id: "knowledge_base",
+      label: isVi ? "HỒ SƠ & DỮ LIỆU" : "FILES & DATA",
+      items: [
+        { id: "documents", icon: "fa-solid fa-folder-open", label: isVi ? "Kho hợp đồng & File" : "Contracts & Docs", roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
+        { id: "knowledge", icon: "fa-solid fa-circle-nodes", label: isVi ? "Đồ thị Tri thức Graph" : "Knowledge Graph", roles: ["executive","knowledge_manager","it_admin","admin"] },
+        { id: "sop", icon: "fa-solid fa-clipboard-list", label: isVi ? "Quy trình SOP" : "Internal SOP", roles: ["executive","knowledge_manager","it_admin","admin"] },
+      ],
+    },
+    {
+      id: "governance",
+      label: isVi ? "GIÁM SÁT & BÁO CÁO" : "GOVERNANCE",
+      items: [
+        { id: "risk", icon: "fa-solid fa-triangle-exclamation", label: isVi ? "Cảnh báo rủi ro" : "Risk Alerts", alert: true, roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
+        { id: "reports", icon: "fa-solid fa-file-invoice", label: normRole === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : (isVi ? "Báo cáo điều hành" : "Executive Reports"), roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
+        { id: "connectors", icon: "fa-solid fa-database", label: isVi ? "Kết nối dữ liệu" : "Data Connectors", roles: ["it_admin","admin"] },
+        { id: "admin", icon: "fa-solid fa-gear", label: isVi ? "Quản trị hệ thống" : "System Admin", roles: ["it_admin","admin"] },
+      ],
+    },
+  ];
+};
 
 export default function NavRail({
   currentView,
@@ -52,7 +65,8 @@ export default function NavRail({
   onRoleChange,
 }) {
   const isVi = lang === "vi";
-  const sections = NAV_SECTIONS(role, isVi);
+  const normRole = normalizeNavRole(role || currentUser?.role || currentUser?.id);
+  const sections = NAV_SECTIONS(normRole, isVi);
 
   return (
     <aside
@@ -151,7 +165,7 @@ export default function NavRail({
       <nav style={{ flex: 1, overflowY: "auto", padding: "10px 0 8px", scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {sections.map((section) => {
           const visibleItems = section.items.filter(item =>
-            !item.roles || item.roles.includes(role)
+            !item.roles || item.roles.includes(normRole) || normRole === "it_admin" || normRole === "admin"
           );
           if (!visibleItems.length) return null;
 

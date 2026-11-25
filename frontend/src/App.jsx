@@ -125,7 +125,14 @@ export default function App() {
   const [role, setRole] = useState(() => {
     try {
       const saved = localStorage.getItem("aegis_user");
-      if (saved) return JSON.parse(saved).id || "executive";
+      if (saved) {
+        const u = JSON.parse(saved);
+        const raw = u.role || u.id || "executive";
+        if (raw === "admin" || raw === "secops") return "it_admin";
+        if (raw === "manager" || raw === "lead") return "knowledge_manager";
+        if (raw === "ceo" || raw === "cfo") return "executive";
+        return raw;
+      }
     } catch (e) { }
     return "executive";
   });
@@ -134,7 +141,14 @@ export default function App() {
       const saved = localStorage.getItem("aegis_user");
       if (saved) {
         const u = JSON.parse(saved);
-        if (ENTERPRISE_ROLES[u?.id]) return ENTERPRISE_ROLES[u.id];
+        const canonId = (u?.id === "admin" || u?.role === "it_admin" || u?.id === "secops") ? "it_admin"
+          : (u?.id === "manager" || u?.id === "lead") ? "knowledge_manager"
+          : (u?.id === "ceo" || u?.id === "cfo") ? "executive"
+          : (u?.id === "sales" || u?.id === "ops") ? "standard"
+          : (u?.id || "executive");
+        if (ENTERPRISE_ROLES[canonId]) {
+          return { ...ENTERPRISE_ROLES[canonId], ...u, id: canonId };
+        }
         return u;
       }
     } catch (e) { }

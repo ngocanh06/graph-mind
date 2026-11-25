@@ -24,7 +24,11 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
     isSalesRole ? "" : "Hôm nay, thời gian thực"
   );
   const [toastMsg, setToastMsg] = useState("");
-  const [liveBriefing, setLiveBriefing] = useState("");
+  const [liveBriefing, setLiveBriefing] = useState(
+    isVi
+      ? "Hệ thống GraphMind AI ghi nhận doanh thu toàn doanh nghiệp đạt $123.2M USD trên 31,465 đơn hàng. Mô hình đồ thị tri thức phát hiện 2 tài khoản VIP có tín hiệu sụt giảm đặt hàng (Brakes and Gears -32%, Excellent Riding Supplies -44%). Về mặt pháp lý, có 74 hợp đồng thiếu điều khoản trần bồi thường và 52 hợp đồng thiếu điều khoản chấm dứt, cần rà soát khẩn cấp trước kỳ quyết toán Q3."
+      : "GraphMind platform recorded total enterprise revenue of $123.2M USD across 31,465 orders. The knowledge graph identified 2 VIP accounts with churn signals (Brakes and Gears -32%, Excellent Riding Supplies -44%). In legal governance, 74 contracts lack indemnification caps and 52 lack termination clauses, requiring immediate C-Suite review."
+  );
 
   // Executive C-Suite Actions State (Spec Row 4)
   const [csuiteDiscountApproved, setCsuiteDiscountApproved] = useState(false);

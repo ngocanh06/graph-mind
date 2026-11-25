@@ -953,15 +953,27 @@ def build_document():
 
     # ── SAVE DOCUMENT ─────────────────────────────────────────────────────────
     print(f"[+] Saving document to: {OUT_DOCS}...")
-    doc.save(OUT_DOCS)
+    saved_docs = OUT_DOCS
+    try:
+        doc.save(OUT_DOCS)
+    except PermissionError:
+        saved_docs = OUT_DOCS.replace(".docx", "_v1.1.docx")
+        print(f"    [!] {OUT_DOCS} is currently open in MS Word. Saving to {saved_docs} instead.")
+        doc.save(saved_docs)
 
     print(f"[+] Saving duplicate copy to: {OUT_FINAL}...")
     os.makedirs(os.path.dirname(OUT_FINAL), exist_ok=True)
-    doc.save(OUT_FINAL)
+    saved_final = OUT_FINAL
+    try:
+        doc.save(OUT_FINAL)
+    except PermissionError:
+        saved_final = OUT_FINAL.replace(".docx", "_v1.1.docx")
+        print(f"    [!] {OUT_FINAL} is currently open in MS Word. Saving to {saved_final} instead.")
+        doc.save(saved_final)
 
     print("[+] UI Design Document successfully created!")
-    print(f"    - File 1: {OUT_DOCS} ({os.path.getsize(OUT_DOCS)} bytes)")
-    print(f"    - File 2: {OUT_FINAL} ({os.path.getsize(OUT_FINAL)} bytes)")
+    print(f"    - File 1: {saved_docs} ({os.path.getsize(saved_docs)} bytes)")
+    print(f"    - File 2: {saved_final} ({os.path.getsize(saved_final)} bytes)")
 
 if __name__ == "__main__":
     build_document()

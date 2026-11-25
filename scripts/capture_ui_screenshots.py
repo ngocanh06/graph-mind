@@ -46,15 +46,20 @@ def run():
         page.evaluate("""() => {
             localStorage.setItem('aegis_token', 'mock_admin_jwt_token_for_ui_doc');
             localStorage.setItem('aegis_user', JSON.stringify({
-                id: 'admin',
+                id: 'it_admin',
                 name: 'Trần Thị Ngọc Ánh',
                 role: 'it_admin',
                 roleKey: 'it_admin',
+                badge: 'QUẢN TRỊ VIÊN & BAN GIÁM ĐỐC',
+                badgeEn: 'SYS ADMIN & EXECUTIVE',
                 email: 'admin@graphmind.ai',
-                department: 'Ban Giám Đốc',
+                department: 'Ban Giám Đốc & Khối Công Nghệ',
+                avatar: 'NA',
+                color: '#0891b2',
+                accentColor: '#06b6d4',
                 permissions: ['all']
             }));
-            localStorage.setItem('aegis_role', 'admin');
+            localStorage.setItem('aegis_role', 'it_admin');
             localStorage.setItem('aegis_lang', 'vi');
             localStorage.setItem('aegis_theme', 'light');
         }""")
