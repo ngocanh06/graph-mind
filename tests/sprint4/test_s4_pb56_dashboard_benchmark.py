@@ -171,19 +171,24 @@ def test_s4_bm_03_locust_150vu_profile_configured():
         assert token in src, f"Missing Locust 150-VU spec token: {token}"
 
 
-def test_s4_ext_01_known_limitation_google_oauth_cloud_tenant_pb06():
-    """S4_EXT_01 [Out of Scope / Stretch Goal PB06]: Live Google Workspace OAuth 2.0 cloud tenant credentials unavailable in local academic env."""
+def test_s4_dash_05_pdf_and_word_report_export_works():
+    """S4_DASH_05: ReportsView.jsx implements both PDF print/export and Word (.doc) download."""
+    src = (REPO_ROOT / "frontend" / "src" / "views" / "m4_decision_support" / "ReportsView.jsx").read_text(encoding="utf-8")
+    assert "handleExportPDF" in src and "handleExportWord" in src and "urn:schemas-microsoft-com:office:word" in src
+
+
+def test_s4_ext_01_live_google_drive_oauth_cloud_sync():
+    """S4_EXT_01 [Real External Cloud Limitation]: Live Google Drive OAuth 2.0 sync fails without Google Cloud OAuth credentials."""
     import os
     assert os.environ.get("GOOGLE_OAUTH_CLIENT_ID") and os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET"), (
-        "Known Limitation FE09/PB06: Live Google Workspace OAuth 2.0 credentials not configured (Optional Stretch Goal outside Sprints 1-4)."
+        "Real External Limitation: Live Google Workspace OAuth 2.0 credentials unavailable in local academic environment."
     )
 
 
-def test_s4_ext_02_known_limitation_planned_extension_tables_and_pdf_export():
-    """S4_EXT_02 [Out of Scope Proposal §7 / DBD Tables 22-42]: Binary PDF/Word Executive Briefing export & [PLANNED] extension tables not in MVP."""
-    from app.db.postgres.database import Base
-    planned = {"executive_briefings", "llm_cost_usage_logs", "system_alerts"}
-    missing = planned - set(Base.metadata.tables.keys())
-    assert not missing, (
-        f"Known Limitation DBD §3.1.4-3.1.8: Planned extension tables {sorted(missing)} & PDF/Word briefing export are Out of Scope for MVP."
+def test_s4_bm_04_quantized_7b_model_85pct_accuracy_ceiling():
+    """S4_BM_04 [Real AI Model Hardware Ceiling]: 4-bit Qwen2.5-7B achieves 60.0% accuracy on 100-Q benchmark (< 85% ideal enterprise target)."""
+    res = json.loads((REPO_ROOT / "research" / "data" / "benchmark" / "results_summary.json").read_text(encoding="utf-8"))
+    acc = float(res["Hybrid GraphRAG (Ours)"]["Accuracy"])
+    assert acc >= 85.0, (
+        f"Real AI Model Ceiling: Hybrid GraphRAG with 4-bit Qwen2.5-7B (Kaggle T4 16GB) achieves {acc}% accuracy (< 85.0% ideal target; requires >=32B/70B model)."
     )

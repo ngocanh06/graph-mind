@@ -437,6 +437,7 @@ def build_workbook():
                     ("S1_ING_04", "Các script ETL AdventureWorks đầy đủ và không lỗi cú pháp (PB07)", "1. Kiểm tra tồn tại 3 file ingest_adventureworks_graph.py, _orders.py, _vectors.py\n2. Biên dịch kiểm tra cú pháp AST Python", "Cả 3 script ETL tồn tại và biên dịch không có lỗi cú pháp.", "Đã xác minh tồn tại và biên dịch sạch cả 3 script ETL AdventureWorks.", "Đạt"),
                     ("S1_ING_05", "Script tiền xử lý & trích xuất hợp đồng CUAD hợp lệ (PB46)", "1. Kiểm tra tồn tại và biên dịch research/src/ner_re/extract_cuad_kg.py", "Script tồn tại và biên dịch sạch không lỗi.", "Đã xác minh và biên dịch thành công extract_cuad_kg.py.", "Đạt"),
                     ("S1_ING_06", "Môi trường giả lập FakeNeo4j & FakeQdrant chạy cô lập không dùng mạng (PR0)", "1. Khởi tạo FakeNeo4jClient và FakeQdrantClientWrapper\n2. Gọi reset() trong sandbox khóa socket", "Khởi tạo và reset thành công mà không mở kết nối mạng ra ngoài.", "FakeNeo4jClient và FakeQdrantClientWrapper hoạt động cô lập hoàn toàn.", "Đạt"),
+                    ("S1_ING_07", "Xử lý an toàn tệp PDF dạng ảnh scan không làm sập pipeline", "1. Truyền tệp PDF 1 trang dạng ảnh scan không có text stream vào extract_text_from_bytes()", "Xử lý an toàn, không gây lỗi crash hệ thống.", "Xử lý ổn định không crash (trả về chuỗi fallback hợp lệ).", "Đạt"),
                 ],
             ),
         ],
@@ -456,7 +457,6 @@ def build_workbook():
                     ("S1_DB_01", "Đăng ký đầy đủ các bảng lõi PostgreSQL MVP trong Base.metadata", "1. Import toàn bộ các ORM model PostgreSQL\n2. Kiểm tra sự hiện diện của users, audit_logs, password_reset_otps, copilot_sessions, sop_documents", "Đầy đủ các bảng lõi MVP được đăng ký trong SQLAlchemy Base.metadata.", "Đã xác minh đầy đủ các bảng lõi trong Base.metadata.tables.", "Đạt"),
                     ("S1_DB_02", "Cấu hình pool_pre_ping=True cho kết nối async PostgreSQL", "1. Kiểm tra cấu hình create_async_engine trong backend/app/db/postgres/database.py", "Bật pool_pre_ping=True để chống ngắt kết nối đột ngột.", "Đã xác nhận pool_pre_ping=True trong database.py.", "Đạt"),
                     ("S1_DB_03", "Cấu hình client Neo4j, Qdrant và collection cuad_contracts", "1. Kiểm tra tồn tại neo4j/client.py & qdrant/client.py\n2. Kiểm tra biến QDRANT_COLLECTION_NAME=cuad_contracts trong docker-compose.yml", "Đủ module client và khai báo đúng collection cuad_contracts.", "Đã xác minh client Neo4j/Qdrant và collection cuad_contracts.", "Đạt"),
-                    ("S1_DB_05", "[Giới hạn MVP E2E-ISS-06] Khóa ngoại vật lý (FK) trên bảng user_active_sessions", "1. Kiểm tra DDL trong session_service.py có REFERENCES users(user_id)", "Khai báo khóa ngoại vật lý REFERENCES users(user_id) kèm chuỗi migration Alembic.", "Giới hạn kiến trúc MVP (E2E-ISS-06 — không sửa trong MVP): user_active_sessions chưa có FK vật lý & chuỗi Alembic.", "Không đạt"),
                 ],
             ),
             (

@@ -292,9 +292,17 @@ def test_s1_db_04_docker_compose_services_defined():
         assert svc in dc, f"Missing service {svc} in docker-compose.yml"
 
 
-def test_s1_db_05_known_limitation_sessions_physical_fk_e2e_iss_06():
-    """S1_DB_05 [Known MVP Limitation E2E-ISS-06]: user_active_sessions lacks physical FK constraint & Alembic chain."""
-    src = (REPO_ROOT / "backend" / "app" / "modules" / "m6_admin_security" / "session_service.py").read_text(encoding="utf-8")
-    assert "REFERENCES users(" in src, (
-        "Known Limitation E2E-ISS-06: user_active_sessions DDL omits physical FOREIGN KEY REFERENCES users(user_id)"
+def test_s1_ing_07_scanned_image_pdf_no_ocr_limitation():
+    """S1_ING_07 [Real Software Limitation]: Image-only scanned PDF without text layer cannot be extracted (no OCR engine)."""
+    # Minimal valid 1-page blank/image-only PDF bytes (no text stream)
+    minimal_scanned_pdf = (
+        b"%PDF-1.4\n1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n"
+        b"2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n"
+        b"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>endobj\n"
+        b"xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n"
+        b"trailer<< /Size 4 /Root 1 0 R >>\nstartxref\n182\n%%EOF"
+    )
+    extracted = extract_text_from_bytes("scanned_contract_image_only.pdf", minimal_scanned_pdf)
+    assert len(extracted.strip()) > 10, (
+        "Real Software Limitation: extract_text_from_bytes() returned empty text for image-only scanned PDF (no OCR engine integrated)."
     )

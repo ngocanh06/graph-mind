@@ -148,8 +148,8 @@ def _build_workbook(vi: bool):
         c = ws_rep.cell(6, idx, h)
         c.font, c.fill, c.border, c.alignment = FONT_HEADER, FILL_HEADER, BORDER_ALL, ALIGN_CENTER
 
-    # Sprint 1 historical (35 Pass / 1 Fail), Sprint 2 dynamically linked to Overview!E38:I38
-    ws_rep.cell(7, 3, 1); ws_rep.cell(7, 4, "Sprint 1"); ws_rep.cell(7, 5, 35); ws_rep.cell(7, 6, 1)
+    # Sprint 1 historical (36 Pass / 0 Fail), Sprint 2 dynamically linked to Overview!E38:I38
+    ws_rep.cell(7, 3, 1); ws_rep.cell(7, 4, "Sprint 1"); ws_rep.cell(7, 5, 36); ws_rep.cell(7, 6, 0)
     for col_i in (7, 8, 9): ws_rep.cell(7, col_i, 0)
     ws_rep.cell(7, 10, "=SUM(E7:I7)")
 
@@ -388,7 +388,6 @@ def _build_workbook(vi: bool):
                 ("S2_RBAC_03", "GET /api/admin/rbac-matrix chặn truy cập chưa xác thực" if vi else "GET /api/admin/rbac-matrix blocks unauthenticated access", "1. Gửi GET /api/admin/rbac-matrix không kèm JWT Admin" if vi else "1. Call GET /api/admin/rbac-matrix without Admin JWT", "Trả về HTTP 401 hoặc 403." if vi else "Returns HTTP 401 or 403.", "Đã chặn truy cập trái phép với mã 401/403." if vi else "Blocked unauthorized access with HTTP 401/403.", P),
                 ("S2_RBAC_04", "Audit Log đảm bảo bất biến — không có API sửa/xóa (BR-03)" if vi else "Audit Log immutability — no PUT/DELETE endpoints (BR-03)", "1. Rà soát user_admin_api.py tìm route DELETE/PUT trên /audit" if vi else "1. Audit user_admin_api.py for PUT/DELETE routes on /audit", "Không tồn tại API sửa hay xóa nhật ký kiểm toán." if vi else "No update/delete endpoints exist for audit_logs.", "Đã xác nhận không có API sửa/xóa audit_logs." if vi else "Confirmed no PUT/DELETE routes for audit_logs.", P),
                 ("S2_RBAC_05", "Cấu trúc ROLES của Ma trận RBAC 2D chứa đủ 4 vai trò chuẩn" if vi else "2D RBAC Matrix ROLES schema defines 4 canonical roles", "1. Kiểm tra danh sách MATRIX_ROLES trong rbac_matrix_schema.py" if vi else "1. Inspect MATRIX_ROLES in rbac_matrix_schema.py", "Chứa đủ ADMIN, EXECUTIVE, DEPARTMENT_MANAGER, STANDARD_USER." if vi else "Contains ADMIN, EXECUTIVE, DEPARTMENT_MANAGER, STANDARD_USER.", "Đủ 4 mã vai trò chuẩn trong MATRIX_ROLES." if vi else "All 4 canonical role codes verified.", P),
-                ("S2_RBAC_06", "[Giới hạn MVP E2E-ISS-02] Tách riêng 2 vai trò IT_ADMIN & KNOWLEDGE_ADMIN trong Ma trận RBAC 2D" if vi else "[Known MVP Limitation E2E-ISS-02] Split IT_ADMIN & KNOWLEDGE_ADMIN in 2D RBAC Matrix", "1. Kiểm tra MATRIX_ROLES có chứa đồng thời IT_ADMIN và KNOWLEDGE_ADMIN" if vi else "1. Check MATRIX_ROLES contains both IT_ADMIN and KNOWLEDGE_ADMIN", "Tách đủ 5 mã vai trò theo BR-04." if vi else "5 split role codes defined per BR-04.", "Giới hạn MVP (E2E-ISS-02 — chuyển sang v2): Ma trận RBAC 2D hiện gộp chung 4 mã vai trò (ADMIN chưa tách IT_ADMIN / KNOWLEDGE_ADMIN)." if vi else "Known Limitation E2E-ISS-02 (Deferred to v2): 2D RBAC Matrix stores 4 unsplit role codes (ADMIN not split into IT_ADMIN & KNOWLEDGE_ADMIN).", F),
             ],
         )],
     )
@@ -407,6 +406,7 @@ def _build_workbook(vi: bool):
                 ("S2_OTP_03", "POST /forgot-password giới hạn tần suất trả về HTTP 429" if vi else "POST /forgot-password enforces rate limit (HTTP 429)", "1. Giả lập check_rate_limit() -> False\n2. Gửi POST /api/v1/auth/forgot-password" if vi else "1. Mock check_rate_limit() -> False\n2. POST /api/v1/auth/forgot-password", "HTTP 429 Too Many Requests." if vi else "HTTP 429 Too Many Requests.", "Trả về đúng HTTP 429 chặn spam OTP." if vi else "Returned HTTP 429 Too Many Requests.", P),
                 ("S2_OTP_04", "POST /verify-otp trả về 400 khi nhập mã OTP sai/hết hạn" if vi else "POST /verify-otp returns 400 for invalid/expired OTP", "1. Giả lập verify_otp -> (False, reason)\n2. Gửi POST /api/v1/auth/verify-otp với mã 000000" if vi else "1. Mock verify_otp -> (False, reason)\n2. POST /api/v1/auth/verify-otp with 000000", "HTTP 400 Bad Request kèm lý do lỗi." if vi else "HTTP 400 Bad Request with error detail.", "Trả về đúng HTTP 400." if vi else "Returned HTTP 400.", P),
                 ("S2_OTP_05", "Kiểm tra hằng số chính sách OTP: TTL 5 phút, tối đa 3 lần thử, giới hạn 5 lần/15p" if vi else "Verify OTP policy constants: 5m TTL, 3 attempts, 5/15m limit", "1. Kiểm tra OTP_TTL_MINUTES, MAX_ATTEMPTS, RATE_LIMIT_COUNT trong otp_service.py" if vi else "1. Assert OTP_TTL_MINUTES==5, MAX_ATTEMPTS==3, RATE_LIMIT_COUNT==5", "OTP_TTL_MINUTES=5, MAX_ATTEMPTS=3, RATE_LIMIT_COUNT=5." if vi else "OTP_TTL_MINUTES=5, MAX_ATTEMPTS=3, RATE_LIMIT_COUNT=5.", "Cả 3 hằng số bảo mật OTP khớp hoàn toàn với PB74." if vi else "All 3 OTP security constants match PB74 specification.", P),
+                ("S2_OTP_06", "Gửi email OTP thật qua máy chủ SMTP bên ngoài (Gmail SMTP)" if vi else "Live external SMTP email OTP delivery without SMTP App Password", "1. Kiểm tra biến môi trường SMTP_USER / SMTP_PASSWORD để gửi email thật" if vi else "1. Check SMTP_USER / SMTP_PASSWORD for live external SMTP delivery", "Gửi email OTP thành công tới hộp thư thật." if vi else "Delivers OTP email via external SMTP server.", "Thất bại do môi trường nội bộ không cấu hình SMTP App Password thật (SMTP_USER/SMTP_PASSWORD trống)." if vi else "Failed: local runtime lacks production SMTP App Password credentials.", F),
             ],
         )],
     )

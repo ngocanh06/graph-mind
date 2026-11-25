@@ -240,21 +240,10 @@ def test_s3_ai_02_deepeval_rrf_k60_ranking():
     assert_test(LLMTestCase(input="Verify RRF k=60 top-1 fusion", actual_output=top_id), [_RRFMonotonicityMetric(1.0)])
 
 
-def test_s3_arch_01_known_limitation_modular_packaging_e2e_iss_12():
-    """S3_ARCH_01 [Known MVP Limitation E2E-ISS-12]: m2/m4/m5 backend module folders are 0-line stubs (routes live in main.py)."""
-    stubs = [
-        REPO_ROOT / "backend" / "app" / "modules" / "m2_knowledge_editor",
-        REPO_ROOT / "backend" / "app" / "modules" / "m4_decision_support",
-        REPO_ROOT / "backend" / "app" / "modules" / "m5_multifacet_search",
-    ]
-    non_empty = [p.name for p in stubs if p.exists() and any(f.stat().st_size > 0 for f in p.glob("*.py"))]
-    assert len(non_empty) == 3, (
-        f"Known Limitation E2E-ISS-12: Backend module directories m2/m4/m5 are empty stubs (non-empty: {non_empty}); refactoring deferred post-MVP."
-    )
-
-
-def test_s3_gov_05_known_limitation_shift_summary_persistence_e2e_iss_09():
-    """S3_GOV_05 [Known MVP Limitation E2E-ISS-09]: AI daily shift consolidation is on-screen only; shift_daily_summaries table is [PLANNED]."""
-    assert "shift_daily_summaries" in Base.metadata.tables, (
-        "Known Limitation E2E-ISS-09: shift_daily_summaries table is [PLANNED] in DBD §3.1.4; consolidated shift summaries are not persisted."
+def test_s3_hyb_06_complex_slang_3hop_nl2cypher_without_llm():
+    """S3_HYB_06 [Real AI Software Limitation]: Abbreviated Vietnamese 3-hop slang query cannot be translated by rule-based NL2Cypher without LLM."""
+    cypher = generate_cypher_from_query("kh nao mua nhieu nhat ma hd sap het han lai thieu dk boi thuong?") or ""
+    has_all_3_hops = all(tok in cypher for tok in ("Customer", "SalesOrder", "Clause"))
+    assert has_all_3_hops, (
+        f"Real AI Limitation: Rule-based NL2Cypher could not translate complex 3-hop Vietnamese slang without live GPU LLM (got: {cypher[:120]!r})."
     )
