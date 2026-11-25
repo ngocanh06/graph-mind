@@ -43,7 +43,7 @@ const NAV_SECTIONS = (role, isVi) => {
       label: isVi ? "GIÁM SÁT & BÁO CÁO" : "GOVERNANCE",
       items: [
         { id: "risk", icon: "fa-solid fa-triangle-exclamation", label: isVi ? "Cảnh báo rủi ro" : "Risk Alerts", alert: true, roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
-        { id: "reports", icon: "fa-solid fa-file-invoice", label: normRole === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : normRole === "standard" ? (isVi ? "Báo cáo công việc" : "Shift Report") : (isVi ? "Báo cáo điều hành" : "Executive Reports"), roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
+        { id: "reports", icon: "fa-solid fa-file-invoice", label: normRole === "knowledge_manager" ? (isVi ? "Báo cáo phòng ban" : "Dept Reports") : normRole === "standard" ? (isVi ? "Báo cáo công việc" : "Shift Report") : (isVi ? "Phê duyệt báo cáo" : "Approve Reports"), roles: ["executive","knowledge_manager","it_admin","standard","admin"] },
         { id: "connectors", icon: "fa-solid fa-database", label: isVi ? "Kết nối dữ liệu" : "Data Connectors", roles: ["it_admin","admin"] },
         { id: "admin", icon: "fa-solid fa-gear", label: isVi ? "Quản trị hệ thống" : "System Admin", roles: ["it_admin","admin"] },
       ],

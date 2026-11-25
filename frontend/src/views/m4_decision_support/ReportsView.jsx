@@ -262,7 +262,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               }}
             >
               <i className="fa-solid fa-chart-line" style={{ fontSize: 12 }} />
-              <span>{isVi ? "Báo Cáo Ban Giám Đốc" : "Executive Report"}</span>
+              <span>{isVi ? "Báo Cáo Tổng Hợp Chiến Lược" : "Strategic Executive Report"}</span>
             </button>
           )}
 
@@ -403,12 +403,12 @@ if (isSalesRole && reportMode === "shift") {
           <div className="section-label">
             {isAdminRole
               ? (isVi ? "Giám Sát Kiểm Toán & Đối Soát Đa Cấp" : "Audit Reconciliation & Global Telemetry")
-              : (isVi ? "Báo Cáo Điều Hành & Ra Quyết Định" : "Executive Decision & Governance Reports")}
+              : (isVi ? "Phê Duyệt Báo Cáo & Quyết Định Chiến Lược" : "Report Approvals & Strategic Decisions")}
           </div>
           <div className="section-sub">
             {isAdminRole
               ? (isVi ? "Giám sát chất lượng tri thức, độ trễ hệ thống, log kiểm duyệt HITL, an toàn SecOps & đối soát đa cấp" : "Cross-level audit reconciliation, knowledge graph quality, system latency, and SecOps telemetry")
-              : (isVi ? "Báo cáo tổng hợp do AI tự động kết xuất từ các phòng ban, hỗ trợ Ban Giám Đốc phê duyệt các đề xuất chiến lược" : "AI-synthesized executive reports aggregating department telemetry for C-Suite approvals and strategic decisions")}
+              : (isVi ? "Xem xét các báo cáo do AI và các phòng ban trình lên; thực hiện quyền phê duyệt ngân sách và chỉ đạo điều hành" : "Review department and AI synthesis reports; execute budget approvals and strategic directives")}
           </div>
         </div>
 
@@ -537,7 +537,7 @@ if (isSalesRole && reportMode === "shift") {
           <h2 className="text-2xl font-bold text-on-surface mt-space-2xs">
             {isAdminRole
               ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện — Tháng 09/2026" : "Strategic Briefing & Global System Telemetry — September 2026")
-              : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc — Tháng 09/2026" : "Executive Strategic Report — September 2026")}
+              : (isVi ? "Báo Cáo Tổng Hợp Trình Ban Giám Đốc — Tháng 09/2026" : "Consolidated Executive Report — September 2026")}
           </h2>
           <div className="doc-date text-caption text-outline mt-space-2xs">
             {isVi ? "AI tổng hợp lúc:" : "Synthesized by AI:"} {generatedDate} · Model: Hybrid GraphRAG · <b className="text-green-500">89.4% average confidence score</b>
