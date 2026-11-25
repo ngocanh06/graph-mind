@@ -1,4 +1,4 @@
-name: GraphMind Sprint 1-3 Automation CI
+name: GraphMind Sprint 1-4 Automation CI
 
 on:
   push:
@@ -42,14 +42,20 @@ jobs:
           mkdir -p tests/sprint3/reports
           pytest tests/sprint3/test_s3_hybrid_cypher_governance.py \
             -v --html=tests/sprint3/reports/sprint3_pytest_report.html --self-contained-html || true
+      - name: Run Sprint 4 PB56, Executive Dashboard, 100-Q Benchmark & DeepEval tests
+        run: |
+          mkdir -p tests/sprint4/reports
+          pytest tests/sprint4/test_s4_pb56_dashboard_benchmark.py \
+            -v --html=tests/sprint4/reports/sprint4_pytest_report.html --self-contained-html || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sprint1-3-pytest-html-reports
+          name: sprint1-4-pytest-html-reports
           path: |
             tests/sprint1/reports/sprint1_pytest_report.html
             tests/sprint2/reports/sprint2_pytest_report.html
             tests/sprint3/reports/sprint3_pytest_report.html
+            tests/sprint4/reports/sprint4_pytest_report.html
 
   sprint1-and-sprint2-playwright-ui:
     name: Sprint 1 & 2 UI E2E (pytest-playwright)
@@ -76,17 +82,20 @@ jobs:
             -v --html=tests/sprint1/reports/sprint1_playwright_report.html --self-contained-html
           GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint2/test_s2_ui_playwright.py \
             -v --html=tests/sprint2/reports/sprint2_playwright_report.html --self-contained-html
-          mkdir -p tests/sprint3/reports
+          mkdir -p tests/sprint3/reports tests/sprint4/reports
           GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint3/test_s3_ui_playwright.py \
             -v --html=tests/sprint3/reports/sprint3_playwright_report.html --self-contained-html
+          GRAPHMIND_UI_URL=http://127.0.0.1:5173 pytest tests/sprint4/test_s4_ui_playwright.py \
+            -v --html=tests/sprint4/reports/sprint4_playwright_report.html --self-contained-html
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sprint1-3-playwright-reports
+          name: sprint1-4-playwright-reports
           path: |
             tests/sprint1/reports/sprint1_playwright_report.html
             tests/sprint2/reports/sprint2_playwright_report.html
             tests/sprint3/reports/sprint3_playwright_report.html
+            tests/sprint4/reports/sprint4_playwright_report.html
 
   sprint1-and-sprint2-locust-headless:
     name: Sprint 1 & 2 Load Test (Locust --headless)
@@ -129,11 +138,22 @@ jobs:
             --csv tests/sprint3/reports/locust_sprint3 \
             --html tests/sprint3/reports/locust_sprint3.html
           kill $PID3 || true
+
+          mkdir -p tests/sprint4/reports
+          python tests/sprint4/run_locust_target_s4.py &
+          PID4=$!
+          sleep 3
+          python -m locust -f tests/sprint4/locustfile_sprint4.py --headless -u 150 -r 30 -t 10s \
+            --host http://127.0.0.1:5058 \
+            --csv tests/sprint4/reports/locust_sprint4 \
+            --html tests/sprint4/reports/locust_sprint4.html
+          kill $PID4 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sprint1-3-locust-reports
+          name: sprint1-4-locust-reports
           path: |
             tests/sprint1/reports/locust_sprint1*
             tests/sprint2/reports/locust_sprint2*
             tests/sprint3/reports/locust_sprint3*
+            tests/sprint4/reports/locust_sprint4*
