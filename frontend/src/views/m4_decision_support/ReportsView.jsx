@@ -262,7 +262,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
               }}
             >
               <i className="fa-solid fa-chart-line" style={{ fontSize: 12 }} />
-              <span>{isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}</span>
+              <span>{isVi ? "Điểm Tin Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"}</span>
             </button>
           )}
 
@@ -285,7 +285,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
             }}
           >
             <i className="fa-solid fa-building-user" style={{ fontSize: 12 }} />
-            <span>{isVi ? "Báo Cáo Cấp Phòng Ban" : "Department Report"}</span>
+            <span>{isVi ? "Báo Cáo Tiếp Nhận Từ Phòng Ban" : "Department Reports"}</span>
           </button>
         </div>
       </div>
@@ -402,13 +402,13 @@ if (isSalesRole && reportMode === "shift") {
         <div>
           <div className="section-label">
             {isAdminRole
-              ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện" : "Strategic Briefing & Global Telemetry")
-              : (t.reports_title || (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc" : "Executive Strategic Briefing"))}
+              ? (isVi ? "Giám Sát Kiểm Toán & Đối Soát Đa Cấp" : "Audit Reconciliation & Global Telemetry")
+              : (isVi ? "Điểm Tin Chiến Lược & Phê Duyệt Cấp Lãnh Đạo" : "Executive Briefing & Decision Observatory")}
           </div>
           <div className="section-sub">
             {isAdminRole
               ? (isVi ? "Giám sát chất lượng tri thức, độ trễ hệ thống, log kiểm duyệt HITL, an toàn SecOps & đối soát đa cấp" : "Cross-level audit reconciliation, knowledge graph quality, system latency, and SecOps telemetry")
-              : (t.reports_sub || (isVi ? "Bức tranh tài chính vĩ mô, rủi ro pháp lý CUAD toàn diện và các hành động ưu tiên cấp C-Suite" : "Automated executive synthesis, multi-hop risk correlation, and strategic decision briefs"))}
+              : (isVi ? "Bản tin do AI GraphMind tự động tổng hợp từ dữ liệu phòng ban, hỗ trợ Ban Giám Đốc nắm bắt tình hình và phê duyệt đề xuất" : "AI-synthesized strategic brief aggregating multi-department telemetry for C-Suite decisions and action approvals")}
           </div>
         </div>
 
@@ -424,7 +424,7 @@ if (isSalesRole && reportMode === "shift") {
             disabled={isGenerating}
             className="btn primary sm"
           >
-            {isGenerating ? (isVi ? "Đang tổng hợp..." : "Synthesizing...") : (isVi ? "Tái tạo Báo cáo" : "Generate Briefing")}
+            {isGenerating ? (isVi ? "Đang tổng hợp..." : "Synthesizing...") : (isVi ? "Làm mới Điểm tin AI" : "Refresh AI Briefing")}
           </button>
         </div>
       </div>
@@ -537,23 +537,23 @@ if (isSalesRole && reportMode === "shift") {
           <h2 className="text-2xl font-bold text-on-surface mt-space-2xs">
             {isAdminRole
               ? (isVi ? "Báo Cáo Chiến Lược & Giám Sát Toàn Diện — Tháng 09/2026" : "Strategic Briefing & Global System Telemetry — September 2026")
-              : (isVi ? "Báo Cáo Chiến Lược Ban Giám Đốc — Tháng 09/2026" : "Executive Strategic Briefing — September 2026")}
+              : (isVi ? "Bản Điểm Tin Chiến Lược Ban Giám Đốc — Tháng 09/2026" : "Executive Strategic Briefing — September 2026")}
           </h2>
           <div className="doc-date text-caption text-outline mt-space-2xs">
-            {isVi ? "Tạo lúc:" : "Synthesized:"} {generatedDate} · Model: Hybrid GraphRAG · <b className="text-green-500">89.4% average confidence score</b>
+            {isVi ? "AI tổng hợp lúc:" : "Synthesized by AI:"} {generatedDate} · Model: Hybrid GraphRAG · <b className="text-green-500">89.4% average confidence score</b>
           </div>
         </div>
 
         {/* 1. EXECUTIVE SUMMARY */}
         <div>
           <h3 className="text-sm font-bold text-primary uppercase tracking-wider mb-space-xs">
-            1. {isVi ? "TÓM TẮT ĐIỀU HÀNH" : "EXECUTIVE SUMMARY"}
+            1. {isVi ? "TÓM TẮT ĐIỀU HÀNH (DO AI GRAPH-RAG TỰ ĐỘNG TỔNG HỢP)" : "EXECUTIVE SUMMARY (AI SYNTHESIZED)"}
           </h3>
           <textarea
             value={liveBriefing}
             onChange={(e) => setLiveBriefing(e.target.value)}
             rows={8}
-            placeholder={isVi ? "Bấm nút tạo báo cáo để AI tổng hợp từ dữ liệu thực, sau đó chỉnh sửa nội dung tại đây trước khi xuất file." : "Generate the briefing, then edit it here before exporting."}
+            placeholder={isVi ? "Bản tin điều hành được AI tự động tổng hợp từ đồ thị tri thức và báo cáo các phòng ban." : "AI executive briefing generated from knowledge graph and department telemetry."}
             style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-1)", fontSize: 13.5, lineHeight: 1.6, resize: "vertical" }}
           />
         </div>
