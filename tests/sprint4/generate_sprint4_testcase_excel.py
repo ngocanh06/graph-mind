@@ -38,11 +38,11 @@ def _build_s4(vi: bool):
         c = ws.cell(6, idx, h)
         c.font, c.fill, c.border, c.alignment = s2.FONT_HEADER, s2.FILL_HEADER, s2.BORDER_ALL, s2.ALIGN_CENTER
 
-    # Sprint 1 (33/2), Sprint 2 (29/0), Sprint 3 (19/0), Sprint 4 dynamic from Overview!E36:I36
-    for r_i, s_no, p_val, f_val in [(7, 1, 33, 2), (8, 2, 29, 0), (9, 3, 19, 0), (10, 4, f"={ov_ref}!E36", f"={ov_ref}!F36")]:
+    # Sprint 1 (33/2), Sprint 2 (29/0), Sprint 3 (19/0), Sprint 4 dynamic from Overview!E37:I37
+    for r_i, s_no, p_val, f_val in [(7, 1, 33, 2), (8, 2, 29, 0), (9, 3, 19, 0), (10, 4, f"={ov_ref}!E37", f"={ov_ref}!F37")]:
         ws.cell(r_i, 3, s_no); ws.cell(r_i, 4, f"Sprint {s_no}")
         ws.cell(r_i, 5, p_val); ws.cell(r_i, 6, f_val)
-        for c_i in (7, 8, 9): ws.cell(r_i, c_i, f"={ov_ref}!{'GHI'[c_i-7]}36" if s_no == 4 else 0)
+        for c_i in (7, 8, 9): ws.cell(r_i, c_i, f"={ov_ref}!{'GHI'[c_i-7]}37" if s_no == 4 else 0)
         ws.cell(r_i, 10, f"=SUM(E{r_i}:I{r_i})")
 
     ws.merge_cells("C11:D11"); ws.cell(11, 3, "Tổng cộng" if vi else "Total")
@@ -122,6 +122,7 @@ def _build_s4(vi: bool):
             ("2. Executive & Risk Center", "Ban lãnh đạo / Quản lý"),
             ("3. Benchmark 100Q DeepEval", "Nhóm Nghiên cứu AI"),
             ("4. UI Sprint 4 & Tai 150VU", "Ban lãnh đạo / QA"),
+            ("5. Live Full-Stack Docker", "Toàn hệ thống (DB & API thật)"),
         ]
         if vi
         else [
@@ -129,6 +130,7 @@ def _build_s4(vi: bool):
             ("2. Executive & Risk Center", "Executive / Manager"),
             ("3. 100Q Benchmark DeepEval", "AI Research Team"),
             ("4. Sprint 4 UI & 150VU Load", "Executive / QA"),
+            ("5. Live Full-Stack Docker", "Full System (Live DBs & API)"),
         ]
     )
     for idx, (sname, actor) in enumerate(sheets, 1):
@@ -137,17 +139,17 @@ def _build_s4(vi: bool):
         ov.cell(r_i, 1, idx); ov.cell(r_i, 2, sname); ov.cell(r_i, 4, actor)
         ov.cell(r_i, 5, f"='{sname}'!A5"); ov.cell(r_i, 6, f"='{sname}'!B5")
         ov.cell(r_i, 7, 0); ov.cell(r_i, 8, 0); ov.cell(r_i, 9, 0); ov.cell(r_i, 10, f"=SUM(E{r_i}:I{r_i})")
-    s2._style_range(ov, 32, 1, 35, 10, font=s2.FONT_BODY, alignment=s2.ALIGN_CENTER)
-    for r_i in range(32, 36):
+    s2._style_range(ov, 32, 1, 36, 10, font=s2.FONT_BODY, alignment=s2.ALIGN_CENTER)
+    for r_i in range(32, 37):
         ov.cell(r_i, 2).alignment = s2.ALIGN_LEFT
         for c_i in range(5, 11): ov.cell(r_i, c_i).number_format = "#,##0"
 
-    ov.merge_cells("B36:D36"); ov.cell(36, 2, "Tổng cộng" if vi else "Total")
+    ov.merge_cells("B37:D37"); ov.cell(37, 2, "Tổng cộng" if vi else "Total")
     for c_i, col_l in [(5, "E"), (6, "F"), (7, "G"), (8, "H"), (9, "I")]:
-        ov.cell(36, c_i, f"=SUM({col_l}32:{col_l}35)")
-    ov.cell(36, 10, "=SUM(E36:I36)")
-    s2._style_range(ov, 36, 1, 36, 10, font=s2.FONT_BOLD, fill=s2.FILL_HEADER, alignment=s2.ALIGN_CENTER)
-    for c_i in range(5, 11): ov.cell(36, c_i).number_format = "#,##0"
+        ov.cell(37, c_i, f"=SUM({col_l}32:{col_l}36)")
+    ov.cell(37, 10, "=SUM(E37:I37)")
+    s2._style_range(ov, 37, 1, 37, 10, font=s2.FONT_BOLD, fill=s2.FILL_HEADER, alignment=s2.ALIGN_CENTER)
+    for c_i in range(5, 11): ov.cell(37, c_i).number_format = "#,##0"
 
     # ── Sheets 3-6 ───────────────────────────────────────────────────────────
     s2._build_module_sheet(
@@ -219,6 +221,23 @@ def _build_s4(vi: bool):
                 ],
             ),
         ],
+    )
+
+    s2._build_module_sheet(
+        wb, vi=vi, sheet_name=sheets[4][0],
+        module_code="System E2E — Kiểm thử Live Full-Stack trên Docker thật (PostgreSQL, Neo4j, Qdrant, Ollama, FastAPI :5000)" if vi else "System E2E — Live Full-Stack Docker Verification (PostgreSQL, Neo4j, Qdrant, Ollama, FastAPI :5000)",
+        tester="Nhóm QA C1SE18" if vi else "C1SE18 QA Team",
+        precondition="Docker Compose UP (neo4j_db, qdrant_db, aegis_file_watcher) + Host PostgreSQL :5432 + Ollama :11434 + FastAPI :5000",
+        sections=[(
+            "Live Full-Stack E2E không Mock (tests/test_live_fullstack_e2e.py)" if vi else "Live Full-Stack E2E without Mocks (tests/test_live_fullstack_e2e.py)",
+            [
+                ("LIVE_01", "Kiểm tra sức khỏe Backend, Neo4j & Qdrant thật" if vi else "Live Backend, Neo4j & Qdrant health status", "1. Gọi GET /api/health, /api/neo4j/status, /api/qdrant/status trên :5000 thật" if vi else "1. GET /api/health, /api/neo4j/status, /api/qdrant/status on live :5000", "Tất cả trả về HTTP 200 OK." if vi else "All return HTTP 200 OK.", "Cả 3 dịch vụ thật trả về HTTP 200 OK." if vi else "All 3 live endpoints returned HTTP 200 OK.", P),
+                ("LIVE_02", "Đăng nhập JWT PostgreSQL thật & đá phiên cũ (Single Active Session)" if vi else "Live PostgreSQL JWT login & Single Active Session kick", "1. Login thiết bị A -> token_1\n2. Login thiết bị B -> token_2\n3. Gọi /api/v1/auth/me bằng token_1" if vi else "1. Login Device A -> tok1\n2. Login Device B -> tok2\n3. Call /auth/me with tok1", "Thiết bị B đạt 200; thiết bị A bị đá với HTTP 401." if vi else "Device B returns 200; Device A kicked with HTTP 401.", "Xác minh thành công trên PostgreSQL thật: tok1 bị từ chối 401." if vi else "Verified on live PostgreSQL: tok1 kicked with 401.", P),
+                ("LIVE_03", "Truy vấn Executive Dashboard KPIs, Revenue, Top Customers & Risk Alerts trên Neo4j thật" if vi else "Live Neo4j Executive KPIs, Revenue, Top Customers & Risk Alerts", "1. Login Executive\n2. Gọi 4 API /api/v1/dashboard/{kpis,revenue-trend,top-customers,risk-alerts}" if vi else "1. Login as Executive\n2. Call all 4 /api/v1/dashboard endpoints", "Cả 4 endpoint trả về HTTP 200 kèm dữ liệu Neo4j thật." if vi else "All 4 endpoints return HTTP 200 with live Neo4j data.", "Cả 4 API truy vấn Neo4j thật thành công (HTTP 200)." if vi else "All 4 live Neo4j endpoints returned HTTP 200.", P),
+                ("LIVE_04", "Kiểm tra Ma trận RBAC 2D, SOP Wiki, File Watcher & Search trên DB thật" if vi else "Live 2D RBAC Matrix, SOP Wiki, File Watcher & Search", "1. Login Admin\n2. Gọi /api/admin/rbac-matrix, /api/v1/sop, /api/v1/sync/file-watcher/status, /api/search" if vi else "1. Login as Admin\n2. Call rbac-matrix, sop, file-watcher/status, and search", "Tất cả phản hồi HTTP 200 trong < 15s." if vi else "All respond HTTP 200 within < 15s.", "rbac-matrix trả 200, nhưng GET /api/v1/sop bị httpx.ReadTimeout (> 15s) trên DB thật." if vi else "rbac-matrix returned 200, but GET /api/v1/sop hit httpx.ReadTimeout (>15s) on live DB.", F),
+                ("LIVE_05", "Kiểm tra LLMOps & kết nối Ollama thật (:11434)" if vi else "Live LLMOps & Ollama (:11434) telemetry check", "1. Gọi GET /api/llmops trên :5000 thật" if vi else "1. GET /api/llmops on live :5000", "HTTP 200 OK." if vi else "HTTP 200 OK.", "Trả về HTTP 200 OK." if vi else "Returned HTTP 200 OK.", P),
+            ],
+        )],
     )
 
     out = REPO_ROOT / "9. TEST CASE" / ("C1SE18_TestCase_Sprint4_ver1.0_VI.xlsx" if vi else "C1SE18_TestCase_Sprint4_ver1.0.xlsx")
