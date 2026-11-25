@@ -1,0 +1,83 @@
+direction: down
+
+classes: {
+  root_node: {
+    style: {
+      fill: "#1F3A5F"
+      stroke: "#1F3A5F"
+      font-color: "#FFFFFF"
+      bold: true
+      border-radius: 6
+    }
+  }
+  pillar: {
+    style: {
+      fill: "#3B82F6"
+      stroke: "#1F3A5F"
+      font-color: "#FFFFFF"
+      bold: true
+      border-radius: 6
+    }
+  }
+  func_node: {
+    style: {
+      fill: "#EAF2FF"
+      stroke: "#3B82F6"
+      font-color: "#1F3A5F"
+      border-radius: 4
+    }
+  }
+}
+
+ROOT: "GraphMind Enterprise Knowledge & Operational Intelligence Platform (EKAI v1.2)" {class: root_node}
+
+P1: "1. Identity, Access &\nSecurity Governance" {class: pillar}
+P2: "2. Data Ingestion &\nApproval Pipeline" {class: pillar}
+P3: "3. Knowledge Graph\nManagement & Visualization" {class: pillar}
+P4: "4. Hybrid GraphRAG &\nAI Copilot Engine" {class: pillar}
+P5: "5. Operational Intelligence &\nShift Handover" {class: pillar}
+
+ROOT -> P1
+ROOT -> P2
+ROOT -> P3
+ROOT -> P4
+ROOT -> P5
+
+F1_1: "1.1 Authentication &\nJWT Session Mgmt (UC.01, UC.02)" {class: func_node}
+F1_2: "1.2 Password Recovery &\nProfile Mgmt (UC.03, UC.04)" {class: func_node}
+F1_3: "1.3 User & 4-Tier RBAC\nAdministration (UC.05, UC.06)" {class: func_node}
+F1_4: "1.4 Immutable Audit Logging\n& Security Monitoring (UC.22)" {class: func_node}
+F1_5: "1.5 System Parameters, AI/LLM\nConfig & Backup/Restore (UC.21, UC.23)" {class: func_node}
+
+P1 -> F1_1 -> F1_2 -> F1_3 -> F1_4 -> F1_5
+
+F2_1: "2.1 Multi-Format Document Upload\n& SHA-256 Deduplication (UC.07)" {class: func_node}
+F2_2: "2.2 Document Approval Gate\n(Approve / Reject Queue) (UC.25)" {class: func_node}
+F2_3: "2.3 Automated OCR, Text Chunking\n& Metadata Extraction (UC.08)" {class: func_node}
+F2_4: "2.4 External Data Source Connectors\n& Sync Scheduling (UC.19, UC.20)" {class: func_node}
+F2_5: "2.5 Knowledge Document Lifecycle\n& Version Control (UC.09)" {class: func_node}
+
+P2 -> F2_1 -> F2_2 -> F2_3 -> F2_4 -> F2_5
+
+F3_1: "3.1 Automated Entity & Relation\nExtraction to Neo4j (UC.10)" {class: func_node}
+F3_2: "3.2 Interactive Graph Explorer\n(Zoom, Filter, K-Hop) (UC.11)" {class: func_node}
+F3_3: "3.3 Entity & Relationship CRUD\n& Ontology Curation (UC.12)" {class: func_node}
+F3_4: "3.4 Duplicate Entity Resolution\n& Graph Merging (UC.13)" {class: func_node}
+F3_5: "3.5 Cross-Source Synthetic Linking\n(CRM Sales <-> Legal Contracts)" {class: func_node}
+
+P3 -> F3_1 -> F3_2 -> F3_3 -> F3_4 -> F3_5
+
+F4_1: "4.1 Natural Language Q&A &\nConversation Management (UC.14, UC.16)" {class: func_node}
+F4_2: "4.2 Hybrid Retrieval Orchestration\n(Qdrant Vector + Neo4j Graph)" {class: func_node}
+F4_3: "4.3 Schema-Validated Read-Only\nText-to-Cypher Generation" {class: func_node}
+F4_4: "4.4 Verifiable Source Citations &\nReasoning Subgraph Inspection (UC.15)" {class: func_node}
+F4_5: "4.5 Answer Quality Feedback\n& Hallucination Guardrails (UC.24)" {class: func_node}
+
+P4 -> F4_1 -> F4_2 -> F4_3 -> F4_4 -> F4_5
+
+F5_1: "5.1 Executive KPI Dashboard &\nKnowledge Coverage Analytics (UC.17)" {class: func_node}
+F5_2: "5.2 Early Warning Detection &\nCross-Source Risk Analysis (UC.26)" {class: func_node}
+F5_3: "5.3 AI-Assisted Shift Handover\nReport Generation & Sign-Off (UC.27)" {class: func_node}
+F5_4: "5.4 Analytical Report Export\n(PDF / DOCX / CSV / PNG) (UC.18)" {class: func_node}
+
+P5 -> F5_1 -> F5_2 -> F5_3 -> F5_4

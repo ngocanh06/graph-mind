@@ -1,0 +1,90 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam ActorBackgroundColor #EAF2FF
+skinparam ActorBorderColor #1F3A5F
+skinparam ActorFontColor #1F3A5F
+skinparam ActorFontSize 12
+skinparam UsecaseBackgroundColor #EAF2FF
+skinparam UsecaseBorderColor #3B82F6
+skinparam UsecaseBorderThickness 1.3
+skinparam UsecaseFontColor #1E293B
+skinparam UsecaseFontSize 11
+
+title Figure 6.2.5 — Shift Handover & Executive Analytics Subsystem Use Case Diagram
+left to right direction
+
+actor "Standard User\n(Employee)" as User
+actor "Department\nManager" as Mgr
+actor "Executive" as Exec
+actor "System Cron\nScheduler" as Cron
+
+actor "Ollama Local LLM\n(Qwen2.5-7B)" as Ollama
+actor "PostgreSQL &\nNeo4j Analytics" as DB
+
+rectangle "Subsystem: Shift Handover & Executive Analytics (GraphMind)" {
+    usecase "UC.19 View Executive KPIs\n& Revenue Metrics" as UC19
+    usecase "UC.20 Intelligent Financial &\nContract Risk Alert Tracking" as UC20
+    usecase "UC.21 Automatic Executive\nSummary Report Generation" as UC21
+    usecase "UC.22 Multifaceted Unified\nSearch & Filtering" as UC22
+    usecase "UC.24 Departmental Shift Handover\nReporting & Manager Sign-Off" as UC24
+    usecase "UC.25 Daily Automated Shift\nConsolidation via Local LLM" as UC25
+
+    usecase "Draft & Submit Shift\nHandover Report (FR55)" as SubDraft
+    usecase "Review, Remark & Sign-Off\nShift Report (FR56)" as SubSign
+    usecase "Execute Rule-Based Deterministic\nConsolidation Fallback (FR57)" as SubFallback
+}
+
+User -- UC22
+User -- UC24
+User -- SubDraft
+Mgr -- UC20
+Mgr -- UC22
+Mgr -- UC24
+Mgr -- SubSign
+Mgr -- UC25
+Exec -- UC19
+Exec -- UC20
+Exec -- UC21
+Exec -- UC22
+Exec -- UC25
+Cron -- UC25
+
+UC19 -- DB
+UC20 -- DB
+UC21 -- Ollama
+UC25 -- Ollama
+UC25 -- DB
+
+UC24 ..> SubDraft : <<include>>
+UC24 ..> SubSign : <<include>>
+UC25 ..> UC24 : <<include>>\n(Approved Reports)
+SubFallback ..> UC25 : <<extend>>\n(Ollama Timeout > 30s)
+SubFallback ..> UC21 : <<extend>>\n(Ollama Timeout > 30s)
+@enduml

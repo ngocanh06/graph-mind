@@ -1,0 +1,98 @@
+@startwbs
+
+skinparam dpi 155
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+<style>
+wbsDiagram {
+  LineColor #1F3A5F
+  LineThickness 1.4
+  node {
+    BackgroundColor #FFFFFF
+    BorderColor #1F3A5F
+    BorderThickness 1.3
+    FontName "Segoe UI"
+    FontSize 11
+    FontColor #1E293B
+    RoundCorner 8
+    Padding 8
+  }
+  :depth(0) {
+    BackgroundColor #1F3A5F
+    FontColor #FFFFFF
+    FontSize 13
+    FontStyle bold
+  }
+  :depth(1) {
+    BackgroundColor #EAF2FF
+    BorderColor #3B82F6
+    FontColor #1F3A5F
+    FontSize 11
+    FontStyle bold
+  }
+}
+</style>
+* **GRAPHMIND ENTERPRISE KNOWLEDGE MANAGEMENT & DECISION SUPPORT PLATFORM (BFD)**
+** **1.0 System Admin & Security**
+*** 1.1 User Authentication (JWT & OAuth 2.0)
+*** 1.2 Account, Dept & Identity Mgmt
+*** 1.3 Dynamic 2D RBAC Matrix Mgmt (FR58)
+*** 1.4 Single Active Session via JTI (FR59)
+*** 1.5 Password Recovery via OTP (FR60)
+*** 1.6 Immutable Audit Trail & Privacy
+*** 1.7 LLMOps Token & Cost Monitoring
+*** 1.8 AEGIS Agent & Kill Switch (FR62)
+** **2.0 Data Pipeline & Ingestion**
+*** 2.1 Cloud Sources (Drive / Sheets)
+*** 2.2 AEGIS Agent & Heartbeat Monitor
+*** 2.3 Sync Schedule & Incremental Sync
+*** 2.4 Sync Logs & Data Flow Tracking
+*** 2.5 Doc Upload & SHA-256 Guard (FR53)
+*** 2.6 Doc Approval & ETL Trigger (FR54)
+** **3.0 Knowledge Graph & Curation**
+*** 3.1 Multi-format Doc Preprocessing
+*** 3.2 Entity & Relation Extraction (NER/RE)
+*** 3.3 Document Explorer & File Preview
+*** 3.4 Human-in-the-Loop KG Editor
+*** 3.5 Departmental SOP & Internal Wiki
+*** 3.6 Read-Only Cypher Guard (FR61)
+** **4.0 Hybrid AI Copilot (GraphRAG)**
+*** 4.1 Semantic Vector Search (Qdrant 768-d)
+*** 4.2 Multi-hop KG Traversal (Neo4j)
+*** 4.3 Text-to-Cypher & RRF Fusion
+*** 4.4 KG & Inference Path Visualizer
+*** 4.5 Verifiable Source Citation Viewer
+*** 4.6 Chat Sessions & Shared Notes
+** **5.0 Shift Handover & Consolidation**
+*** 5.1 Dept Shift Report Submission (FR55)
+*** 5.2 Manager Review & Sign-Off (FR56)
+*** 5.3 Daily Shift Consolidation LLM (FR57)
+*** 5.4 Rule-Based Fallback Summary (FR57)
+** **6.0 Executive Analytics & Search**
+*** 6.1 Executive KPI & Revenue Dashboard
+*** 6.2 Financial & Contract Risk Alerts
+*** 6.3 Automated Web Executive Briefing
+*** 6.4 Multifaceted Unified Search & Filter
+@endwbs

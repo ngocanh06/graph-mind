@@ -1,0 +1,123 @@
+direction: right
+
+classes: {
+  actor: {
+    shape: person
+    style: {
+      fill: "#EAF2FF"
+      stroke: "#1F3A5F"
+      stroke-width: 2
+      font-color: "#1F3A5F"
+      bold: true
+    }
+  }
+  core_system: {
+    style: {
+      fill: "#FFFFFF"
+      stroke: "#1F3A5F"
+      stroke-width: 2
+      border-radius: 8
+      font-color: "#1F3A5F"
+      bold: true
+    }
+  }
+  module: {
+    style: {
+      fill: "#EAF2FF"
+      stroke: "#3B82F6"
+      stroke-width: 1
+      border-radius: 6
+      font-color: "#1F3A5F"
+    }
+  }
+  database: {
+    shape: cylinder
+    style: {
+      fill: "#FEF3C7"
+      stroke: "#F59E0B"
+      stroke-width: 2
+      font-color: "#1F3A5F"
+    }
+  }
+  external: {
+    style: {
+      fill: "#F1F5F9"
+      stroke: "#64748B"
+      stroke-width: 2
+      border-radius: 6
+      font-color: "#1F3A5F"
+    }
+  }
+}
+
+actors: "Human Actors (RBAC Roles)" {
+  style.fill: "#F8FAFC"
+  style.stroke: "#64748B"
+  guest: "Guest\n(Unauthenticated User)" {class: actor}
+  emp: "Employee\n(Staff / Analyst / Sales / Legal)" {class: actor}
+  mgr: "Department Manager\n(Shift Supervisor)" {class: actor}
+  kadmin: "Knowledge Administrator\n(Data Curator & Reviewer)" {class: actor}
+  sysadmin: "System Administrator\n(IT / Security / DevOps)" {class: actor}
+}
+
+graphmind: "GraphMind Platform (EKAI v1.2)\nEnterprise Knowledge & Operational Intelligence System" {
+  class: core_system
+
+  web_ui: "Next.js 14 Web Portal\n(React 18, TypeScript, Cytoscape.js, Tailwind CSS)" {class: module}
+  api_gw: "FastAPI Backend Server\n(REST API, JWT Auth, RBAC Guard, Audit Logger)" {class: module}
+
+  core_engines: "Core Intelligence & Ingestion Engines" {
+    style.fill: "#F1F5F9"
+    style.stroke: "#3B82F6"
+    doc_pipe: "Document Ingestion & OCR Pipeline\n(SHA-256 Dedup, Approval Gate, Chunking)" {class: module}
+    hybrid_rag: "Hybrid GraphRAG & Text-to-Cypher Engine\n(Semantic Search + Graph Traversal + Citations)" {class: module}
+    risk_eng: "Operational Intelligence & Risk Engine\n(Early Warning, Margin/Clause Anomaly, Shift Handover)" {class: module}
+  }
+
+  storage: "Tri-Store Persistence Layer" {
+    style.fill: "#FFFBEB"
+    style.stroke: "#F59E0B"
+    pg_db: "PostgreSQL 16\n(10 Relational Tables: Users, Docs, Chats, Handovers, Audit)" {class: database}
+    neo4j_db: "Neo4j 5.x Graph DB\n(Knowledge Graph, CRM/ERP & CUAD Contract Ontology)" {class: database}
+    qdrant_db: "Qdrant Vector DB\n(Dense Chunk Embeddings & Metadata Payload Filters)" {class: database}
+  }
+
+  web_ui -> api_gw: "HTTPS / REST JSON + SSE Stream"
+  api_gw -> core_engines.doc_pipe: "Async Task / Approval Trigger"
+  api_gw -> core_engines.hybrid_rag: "Query Context & RBAC Scope"
+  api_gw -> core_engines.risk_eng: "Analytics & Shift Handover Request"
+
+  core_engines.doc_pipe -> storage.pg_db: "Document Status & Metadata"
+  core_engines.doc_pipe -> storage.neo4j_db: "Extracted Entities & Relations"
+  core_engines.doc_pipe -> storage.qdrant_db: "Upsert Vector Chunks"
+
+  core_engines.hybrid_rag -> storage.neo4j_db: "Read-Only Cypher & K-Hop Subgraph"
+  core_engines.hybrid_rag -> storage.qdrant_db: "Top-K Cosine Similarity Search"
+  core_engines.hybrid_rag -> storage.pg_db: "Save Chat History & Citations"
+
+  core_engines.risk_eng -> storage.pg_db: "Store Handover Reports & Snapshots"
+  core_engines.risk_eng -> storage.neo4j_db: "Cross-Source Risk Graph Queries"
+}
+
+external_systems: "External Systems & Enterprise Datasets" {
+  style.fill: "#F8FAFC"
+  style.stroke: "#64748B"
+  llm_api: "External AI / LLM & Embedding Providers\n(OpenAI / Gemini / Local Ollama + OCR Engine)" {class: external}
+  erp_crm: "Enterprise CRM / ERP Dataset\n(AdventureWorks: Customers, SalesOrders, Products)" {class: external}
+  cuad_repo: "Legal Contract Corpus & SOPs\n(CUAD 510 Commercial Contracts, 41 Clause Types)" {class: external}
+  smtp_svc: "Enterprise SMTP / Notification Service\n(Password Reset & Risk Alert Emails)" {class: external}
+}
+
+actors.guest -> graphmind.web_ui: "Login / Password Reset (UC.01, UC.03)"
+actors.emp -> graphmind.web_ui: "Graph Search, AI Chat, Upload Docs, Draft Handover"
+actors.mgr -> graphmind.web_ui: "Dept Analytics, Risk Warnings, Sign Off Shift Handover"
+actors.kadmin -> graphmind.web_ui: "Approve/Reject Docs, Sync Connectors, Resolve Entities"
+actors.sysadmin -> graphmind.web_ui: "Manage Users/RBAC, System Config, Audit Logs, Backup"
+
+graphmind.core_engines.doc_pipe -> external_systems.llm_api: "Entity/Relation Extraction & Embeddings"
+graphmind.core_engines.hybrid_rag -> external_systems.llm_api: "Grounded Answer Synthesis & Cypher Gen"
+graphmind.core_engines.risk_eng -> external_systems.llm_api: "Executive Insight & Handover Summarization"
+
+external_systems.erp_crm -> graphmind.core_engines.doc_pipe: "Structured CSV/SQL Ingestion (BR-01)"
+external_systems.cuad_repo -> graphmind.core_engines.doc_pipe: "PDF/DOCX Contract & SOP Ingestion"
+graphmind.api_gw -> external_systems.smtp_svc: "Send Security & Operational Alerts"

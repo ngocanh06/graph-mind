@@ -1,0 +1,91 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam ActorBackgroundColor #EAF2FF
+skinparam ActorBorderColor #1F3A5F
+skinparam ActorFontColor #1F3A5F
+skinparam ActorFontSize 12
+skinparam UsecaseBackgroundColor #EAF2FF
+skinparam UsecaseBorderColor #3B82F6
+skinparam UsecaseBorderThickness 1.3
+skinparam UsecaseFontColor #1E293B
+skinparam UsecaseFontSize 11
+
+title Figure 6.2.3 — Data Pipeline & Ingestion Subsystem Use Case Diagram
+left to right direction
+
+actor "Standard User" as User
+actor "Department\nManager" as Mgr
+actor "Knowledge\nAdministrator" as KAdmin
+actor "System & IT\nAdministrator" as ITAdmin
+
+actor "AEGIS Local Agent\n(Workstation)" as Aegis
+actor "Cloud Storage API\n(Google Drive/Sheets)" as Cloud
+actor "Ingestion Pipeline\nService (Celery)" as Pipeline
+
+rectangle "Subsystem: Data Pipeline & Knowledge Ingestion (GraphMind)" {
+    usecase "UC.06 Cloud Data Source\nConnection Management" as UC06
+    usecase "UC.07 Workstation Monitoring &\nAEGIS Local Agent Status" as UC07
+    usecase "UC.08 Sync Calendar Configuration\n& Incremental Sync" as UC08
+    usecase "UC.09 Sync Log & Data Flow\nMonitoring" as UC09
+    usecase "UC.10 Data Loading &\nMulti-Format Preprocessing" as UC10
+    usecase "UC.11 Automatic Entity &\nRelational Extraction (NER/RE)" as UC11
+    usecase "UC.12 Document Browsing &\nFile Preview" as UC12
+    usecase "UC.23 Internal Document Upload\n& Approval Workflow" as UC23
+
+    usecase "Verify SHA-256 Hash\nDeduplication Guard (FR53/BR-06)" as SubSHA
+    usecase "Review Pending Queue &\nApprove/Reject Document (FR54)" as SubApprove
+}
+
+User -- UC12
+User -- UC23
+Mgr -- UC12
+Mgr -- UC23
+KAdmin -- UC06
+KAdmin -- UC08
+KAdmin -- UC09
+KAdmin -- UC10
+KAdmin -- UC11
+KAdmin -- UC12
+KAdmin -- UC23
+ITAdmin -- UC07
+ITAdmin -- UC09
+
+UC06 -- Cloud
+UC08 -- Cloud
+UC07 -- Aegis
+UC08 -- Aegis
+UC10 -- Pipeline
+UC11 -- Pipeline
+
+UC23 ..> SubSHA : <<include>>
+UC23 ..> SubApprove : <<include>>
+SubApprove ..> UC10 : <<include>>\n(when Approved)
+UC10 ..> UC11 : <<include>>
+@enduml

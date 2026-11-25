@@ -1,0 +1,158 @@
+@startuml
+
+skinparam dpi 110
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam ActorBackgroundColor #EAF2FF
+skinparam ActorBorderColor #1F3A5F
+skinparam ActorFontColor #1F3A5F
+skinparam ActorFontSize 12
+skinparam UsecaseBackgroundColor #EAF2FF
+skinparam UsecaseBorderColor #3B82F6
+skinparam UsecaseBorderThickness 1.3
+skinparam UsecaseFontColor #1E293B
+skinparam UsecaseFontSize 11
+
+title System Use Case Overview Diagram — GraphMind Platform (UC.01 to UC.27)
+left to right direction
+
+actor "System & IT\nAdministrator" as ITAdmin
+actor "Knowledge\nAdministrator" as KAdmin
+actor "Executive" as Exec
+actor "Department\nManager" as Mgr
+actor "Standard User" as User
+
+actor "AEGIS Local Agent\n<<System>>" as Aegis
+actor "Ollama Local LLM\n<<System>>" as Ollama
+actor "SMTP Email Server\n<<System>>" as Smtp
+
+rectangle "GraphMind Enterprise Knowledge Management Platform" {
+    package "1. Administration & Security Subsystem" as P1 {
+        usecase "UC.01 System Login" as UC01
+        usecase "UC.02 Manage Accounts, Departments & Identities" as UC02
+        usecase "UC.03 Granular Access Authorization (RBAC)" as UC03
+        usecase "UC.04 Audit Log View & Data Protection" as UC04
+        usecase "UC.05 LLMOps Token & Cost Monitoring" as UC05
+        usecase "UC.26 Dynamic RBAC, Session JTI & Email OTP" as UC26
+        usecase "UC.27 Threat Mitigation & Workstation Kill Switch" as UC27
+    }
+
+    package "2. Data Pipeline & Ingestion Subsystem" as P2 {
+        usecase "UC.06 Cloud Data Source Connection Management" as UC06
+        usecase "UC.07 Workstation Monitoring & AEGIS Agent" as UC07
+        usecase "UC.08 Sync Calendar & Incremental Sync" as UC08
+        usecase "UC.09 Sync Log & Data Flow Monitoring" as UC09
+        usecase "UC.10 Data Loading & Preprocessing" as UC10
+        usecase "UC.11 Automatic Entity & Relational Extraction" as UC11
+        usecase "UC.12 Document Browsing & File Preview" as UC12
+        usecase "UC.23 Internal Document Upload & Approval Workflow" as UC23
+    }
+
+    package "3. Knowledge Graph & Hybrid AI Copilot Subsystem" as P3 {
+        usecase "UC.13 Human-Involved Knowledge Editing" as UC13
+        usecase "UC.14 SOP Drafting & Internal Knowledge Wiki" as UC14
+        usecase "UC.15 Q&A with Hybrid AI Copilot (GraphRAG)" as UC15
+        usecase "UC.16 View Knowledge Graphs & Inference Lines" as UC16
+        usecase "UC.17 See Source Citations" as UC17
+        usecase "UC.18 Chat Session Management & Shared Notes" as UC18
+    }
+
+    package "4. Shift Handover & Executive Analytics Subsystem" as P4 {
+        usecase "UC.19 View Executive KPIs" as UC19
+        usecase "UC.20 Intelligent Risk Alert Tracking" as UC20
+        usecase "UC.21 Automatic Executive Summary Report" as UC21
+        usecase "UC.22 Multifaceted Unified Search & Filtering" as UC22
+        usecase "UC.24 Departmental Shift Handover & Sign-Off" as UC24
+        usecase "UC.25 Daily Automated Shift Consolidation" as UC25
+    }
+}
+
+P1 -[hidden]right-> P3
+P2 -[hidden]right-> P4
+
+ITAdmin -- UC01
+ITAdmin -- UC02
+ITAdmin -- UC03
+ITAdmin -- UC04
+ITAdmin -- UC05
+ITAdmin -- UC07
+ITAdmin -- UC26
+ITAdmin -- UC27
+
+KAdmin -- UC01
+KAdmin -- UC06
+KAdmin -- UC08
+KAdmin -- UC09
+KAdmin -- UC10
+KAdmin -- UC11
+KAdmin -- UC12
+KAdmin -- UC13
+KAdmin -- UC14
+KAdmin -- UC23
+
+Exec -- UC01
+Exec -- UC04
+Exec -- UC15
+Exec -- UC19
+Exec -- UC20
+Exec -- UC21
+Exec -- UC22
+Exec -- UC25
+
+Mgr -- UC01
+Mgr -- UC14
+Mgr -- UC15
+Mgr -- UC20
+Mgr -- UC22
+Mgr -- UC23
+Mgr -- UC24
+Mgr -- UC25
+
+User -- UC01
+User -- UC12
+User -- UC15
+User -- UC18
+User -- UC22
+User -- UC23
+User -- UC24
+User -- UC26
+
+UC07 -- Aegis
+UC27 -- Aegis
+UC11 -- Ollama
+UC15 -- Ollama
+UC21 -- Ollama
+UC25 -- Ollama
+UC26 -- Smtp
+
+UC23 ..> UC10 : <<include>>
+UC10 ..> UC11 : <<include>>
+UC15 ..> UC16 : <<include>>
+UC15 ..> UC17 : <<include>>
+UC15 ..> UC27 : <<include>>
+UC25 ..> UC24 : <<include>>
+@enduml

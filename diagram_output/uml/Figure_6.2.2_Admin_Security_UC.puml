@@ -1,0 +1,89 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam ActorBackgroundColor #EAF2FF
+skinparam ActorBorderColor #1F3A5F
+skinparam ActorFontColor #1F3A5F
+skinparam ActorFontSize 12
+skinparam UsecaseBackgroundColor #EAF2FF
+skinparam UsecaseBorderColor #3B82F6
+skinparam UsecaseBorderThickness 1.3
+skinparam UsecaseFontColor #1E293B
+skinparam UsecaseFontSize 11
+
+title Figure 6.2.2 — Administration & Security Subsystem Use Case Diagram
+left to right direction
+
+actor "System & IT\nAdministrator" as ITAdmin
+actor "Standard User\n(All Roles)" as User
+actor "Executive" as Exec
+
+actor "Authentication &\nSession Service" as AuthSvc
+actor "SMTP Mail\nServer" as Smtp
+actor "AEGIS Local\nAgent" as Aegis
+
+rectangle "Subsystem: Administration & Security (GraphMind)" {
+    usecase "UC.01 System Login\n(JWT / OAuth 2.0)" as UC01
+    usecase "UC.02 Manage Accounts,\nDepartments & User Identities" as UC02
+    usecase "UC.03 Granular Access\nAuthorization (RBAC)" as UC03
+    usecase "UC.04 Audit Log View &\nImmutable Data Protection" as UC04
+    usecase "UC.05 LLMOps Token Usage &\nCost Monitoring" as UC05
+    usecase "UC.26 Security & Access Enforcement\n(Dynamic RBAC, Session JTI & OTP)" as UC26
+    usecase "UC.27 Threat Mitigation &\nWorkstation Remote Containment" as UC27
+
+    usecase "Configure 2D RBAC Matrix &\nSelf-Lockout Guard (FR58)" as SubRBAC
+    usecase "Enforce Single Active Session &\nRevoke Previous JTI (FR59)" as SubJTI
+    usecase "Recover Password via 6-Digit\nEmail OTP (300s TTL) (FR60)" as SubOTP
+    usecase "Trigger Emergency Kill Switch\n(Terminate Agent <= 3s) (FR62)" as SubKill
+}
+
+User -- UC01
+User -- UC26
+ITAdmin -- UC01
+ITAdmin -- UC02
+ITAdmin -- UC03
+ITAdmin -- UC04
+ITAdmin -- UC05
+ITAdmin -- UC26
+ITAdmin -- UC27
+Exec -- UC04
+
+UC01 -- AuthSvc
+UC26 -- AuthSvc
+SubOTP -- Smtp
+SubKill -- Aegis
+
+UC01 ..> SubJTI : <<include>>
+UC03 ..> SubRBAC : <<include>>
+UC26 ..> SubRBAC : <<include>>
+UC26 ..> SubJTI : <<include>>
+UC26 ..> SubOTP : <<include>>
+SubOTP ..> UC01 : <<extend>>\n(Forgot Password)
+UC27 ..> SubKill : <<include>>
+@enduml

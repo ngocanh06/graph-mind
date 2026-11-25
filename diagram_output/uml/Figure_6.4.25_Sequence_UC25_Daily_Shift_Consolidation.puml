@@ -1,0 +1,83 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam sequence {
+    ArrowColor #1F3A5F
+    LifeLineBorderColor #64748B
+    LifeLineBackgroundColor #EAF2FF
+    ParticipantBorderColor #1F3A5F
+    ParticipantBackgroundColor #EAF2FF
+    ParticipantFontColor #1F3A5F
+    ParticipantFontSize 12
+    ActorBorderColor #1F3A5F
+    ActorBackgroundColor #EAF2FF
+    ActorFontColor #1F3A5F
+    BoxBorderColor #64748B
+    BoxBackgroundColor #F8FAFC
+    GroupBorderColor #1F3A5F
+    GroupBackgroundColor #F1F5F9
+    GroupHeaderFontColor #1F3A5F
+}
+
+title UC.25 - Daily Automated Shift Consolidation via Local LLM
+
+actor "CronScheduler /\nDept Manager" as Trigger
+control "ConsolidationService" as Service
+database "PostgreSQL" as DB
+control "OllamaClient\n(Qwen2.5-7B)" as Ollama
+control "FallbackHandler\n(Rule-Based)" as Fallback
+boundary "Executive Dashboard" as UI
+
+Trigger -> Service : 1. Trigger daily consolidation (target_date = today)
+Service -> DB : 2. SELECT * FROM shift_reports WHERE report_date = today AND status = 'APPROVED'
+DB --> Service : 3. Return approved shift reports list
+
+alt [E1: No Approved Shift Reports Found]
+    Service -> DB : 4a. INSERT INTO audit_logs (level='INFO', event='CONSOLIDATION_SKIPPED_EMPTY')
+    Service --> Trigger : Return status: No approved reports to consolidate
+else [Approved Shift Reports Exist]
+    Service -> Service : 4b. Aggregate tasks, incidents & build ChatML prompt
+    Service -> Ollama : 5. POST /api/generate (model='qwen2.5-7b', prompt, timeout=30s)
+
+    alt [Main Flow: Ollama Responds 200 OK within 30s]
+        Ollama --> Service : 6a. Return Markdown summary (highlights, risks, recommendations)
+        Service -> DB : 7a. INSERT INTO shift_daily_summaries\n(content_markdown, total_shifts, total_issues, is_fallback_generated=false)
+        DB --> Service : summary_id
+        Service -> DB : 8a. INSERT INTO audit_logs (level='INFO', event='SHIFT_CONSOLIDATED_LLM')
+    else [E2: Ollama Timeout (> 30s) or Service Unreachable]
+        Ollama --> Service : 6b. TimeoutError / ConnectionRefusedError
+        Service -> Fallback : 7b. generate_rule_based_summary(approved_shifts)
+        Fallback --> Service : 8b. Deterministic Markdown table & aggregated counters
+        Service -> DB : 9b. INSERT INTO shift_daily_summaries\n(content_markdown, total_shifts, total_issues, is_fallback_generated=true)
+        DB --> Service : summary_id
+        Service -> DB : 10b. INSERT INTO audit_logs (level='WARN', event='OLLAMA_FALLBACK_TRIGGERED')
+    end
+
+    Service -> UI : 11. Publish consolidated daily summary to Dashboard
+    UI --> Trigger : 12. Display Daily Shift Summary Report
+end
+@enduml

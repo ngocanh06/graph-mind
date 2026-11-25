@@ -1,0 +1,100 @@
+@startuml
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam sequence {
+    ArrowColor #1F3A5F
+    LifeLineBorderColor #64748B
+    LifeLineBackgroundColor #EAF2FF
+    ParticipantBorderColor #1F3A5F
+    ParticipantBackgroundColor #EAF2FF
+    ParticipantFontColor #1F3A5F
+    ParticipantFontSize 12
+    ActorBorderColor #1F3A5F
+    ActorBackgroundColor #EAF2FF
+    ActorFontColor #1F3A5F
+    BoxBorderColor #64748B
+    BoxBackgroundColor #F8FAFC
+    GroupBorderColor #1F3A5F
+    GroupBackgroundColor #F1F5F9
+    GroupHeaderFontColor #1F3A5F
+}
+
+title UC.23 - Internal Document Upload & Approval Workflow
+
+actor "Standard User" as User
+boundary "Web Dashboard / UI" as UI
+control "DocumentRouter" as Router
+control "StorageService" as Storage
+database "PostgreSQL" as DB
+actor "Knowledge Admin" as KAdmin
+control "CeleryWorker" as Celery
+database "Neo4j & Qdrant" as KG
+
+User -> UI : 1. Select file (.pdf/.docx), department & description
+UI -> Router : 2. POST /api/v1/documents/upload (multipart/form-data)
+Router -> Router : 3. Validate format/size (<=50MB) & compute SHA-256 hash
+Router -> DB : 4. SELECT id FROM documents WHERE sha256_hash = :hash
+DB --> Router : 5. Lookup result
+
+alt [E1/E2/E3: Invalid Format/Size or Duplicate SHA-256 Hash]
+    Router --> UI : 400 Bad Request / 409 Conflict (Duplicate SHA-256)
+    UI --> User : Display validation or duplicate warning message
+else [Valid & Unique Document]
+    Router -> Storage : 6. Save file to staging directory
+    Storage --> Router : file_path
+    Router -> DB : 7. INSERT INTO documents (status='PENDING_APPROVAL', sha256_hash)
+    DB --> Router : document_id
+    Router --> UI : 8. 201 Created (status='PENDING_APPROVAL')
+    UI --> User : Display upload confirmation (awaiting review)
+
+    KAdmin -> UI : 9. Open Document Approval Queue
+    UI -> Router : 10. GET /api/v1/documents/pending-approvals
+    Router -> DB : 11. SELECT * FROM documents WHERE status='PENDING_APPROVAL'
+    DB --> Router : Pending documents list
+    Router --> UI : 12. Return pending list & preview URL
+    UI --> KAdmin : Display document preview & metadata
+
+    alt [Main Flow: Knowledge Admin Approves Document (FR54)]
+        KAdmin -> UI : 13a. Click Approve
+        UI -> Router : 14a. POST /api/v1/documents/{id}/approve
+        Router -> DB : 15a. UPDATE documents SET status='APPROVED';\nINSERT INTO document_approvals (action='APPROVE')
+        Router -> Celery : 16a. publish_task("process_document_ingestion", doc_id)
+        Celery -> KG : 17a. Chunk text, index 768-d vectors in Qdrant\n& extract entities/relations into Neo4j
+        KG --> Celery : Ingestion complete (INDEXED_READY)
+        Router -> DB : 18a. INSERT INTO audit_logs (event='DOC_APPROVED')
+        Router --> UI : 19a. 200 OK (Approved & Ingestion Triggered)
+        UI --> KAdmin : Show approval & ingestion status
+    else [A1: Knowledge Admin Rejects Document]
+        KAdmin -> UI : 13b. Click Reject & enter rejection_reason
+        UI -> Router : 14b. POST /api/v1/documents/{id}/reject (reason)
+        Router -> DB : 15b. UPDATE documents SET status='REJECTED';\nINSERT INTO document_approvals (action='REJECT', reason)
+        Router -> DB : 16b. INSERT INTO audit_logs (event='DOC_REJECTED')
+        Router --> UI : 17b. 200 OK (Status = REJECTED)
+        UI --> User : Notify uploader with rejection reason
+    end
+end
+@enduml

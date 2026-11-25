@@ -1,0 +1,84 @@
+@startuml
+
+skinparam dpi 155
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1E293B
+skinparam ArrowColor #1F3A5F
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #1E293B
+skinparam ArrowFontSize 11
+skinparam TitleFontColor #1F3A5F
+skinparam TitleFontSize 15
+skinparam PackageBorderColor #1F3A5F
+skinparam PackageBackgroundColor #F8FAFC
+skinparam PackageFontColor #1F3A5F
+skinparam PackageFontSize 12
+skinparam RectangleBorderColor #1F3A5F
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam RectangleFontColor #1F3A5F
+skinparam NoteBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F59E0B
+skinparam NoteFontColor #1E293B
+skinparam NoteFontSize 11
+
+skinparam sequence {
+    ArrowColor #1F3A5F
+    LifeLineBorderColor #64748B
+    LifeLineBackgroundColor #EAF2FF
+    ParticipantBorderColor #1F3A5F
+    ParticipantBackgroundColor #EAF2FF
+    ParticipantFontColor #1F3A5F
+    ParticipantFontSize 12
+    ActorBorderColor #1F3A5F
+    ActorBackgroundColor #EAF2FF
+    ActorFontColor #1F3A5F
+    BoxBorderColor #64748B
+    BoxBackgroundColor #F8FAFC
+    GroupBorderColor #1F3A5F
+    GroupBackgroundColor #F1F5F9
+    GroupHeaderFontColor #1F3A5F
+}
+
+title UC.27 - Threat Mitigation (Cypher Guard AST & Emergency Kill Switch)
+
+actor "User / IT Admin" as Actor
+boundary "Web Dashboard / UI" as UI
+control "CopilotEngine &\nTextToCypher" as Copilot
+control "CypherGuard\n(AST Interceptor)" as Guard
+control "WorkstationRouter\n& WSS Manager" as WSS
+control "AEGIS_Agent\n(Windows Host)" as Agent
+database "PostgreSQL &\nNeo4j" as DB
+
+== Part 1: Read-Only Cypher Guard & Mutation Interceptor (FR61) ==
+Actor -> UI : 1. Submit natural language query to Hybrid AI Copilot
+UI -> Copilot : 2. POST /api/v1/copilot/query
+Copilot -> Copilot : 3. Generate candidate Cypher query via LLM
+Copilot -> Guard : 4. validate_read_only_cypher(cypher_query)
+Guard -> Guard : 5. Parse AST tokens & scan for forbidden keywords\n(CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, CALL dbms)
+
+alt [E1: Forbidden Mutation Keyword Detected]
+    Guard -> DB : 6a. INSERT INTO audit_logs (severity='CRITICAL', event='BLOCKED_CYPHER_MUTATION')
+    Guard --> Copilot : 7a. Raise UnsafeCypherQueryException
+    Copilot -> Copilot : 8a. Fallback to safe Qdrant Vector RAG search
+    Copilot --> UI : 9a. Return read-only safety refusal warning + safe vector response
+else [Safe Read-Only Cypher (MATCH ... RETURN)]
+    Guard --> Copilot : 6b. Validation PASSED
+    Copilot -> DB : 7b. Execute read-only Cypher on Neo4j Driver
+    DB --> Copilot : 8b. Return graph nodes & relationships
+    Copilot --> UI : 9b. 200 OK (Answer + Graph & Source Citations)
+end
+
+== Part 2: AEGIS Workstation Emergency Kill Switch (<= 3s) (FR62) ==
+Actor -> UI : 10. Click Emergency Kill Switch on Workstation WS01 & confirm password
+UI -> WSS : 11. POST /api/v1/workstations/WS01/kill-switch (admin_password)
+WSS -> DB : 12. Verify IT Admin password hash
+WSS -> Agent : 13. WSS push: {"action": "EMERGENCY_KILL", "priority": "IMMEDIATE"}
+Agent -> Agent : 14. Close file watcher streams, terminate worker threads & exit (<= 3s)
+Agent --> WSS : 15. WSS ACK: {"status": "TERMINATING"}
+WSS -> DB : 16. UPDATE workstations SET status='TERMINATED';\nINSERT INTO audit_logs (severity='CRITICAL', event='KILL_SWITCH_EXECUTED')
+WSS --> UI : 17. 200 OK (Workstation WS01 isolated in 1.8s)
+@enduml
