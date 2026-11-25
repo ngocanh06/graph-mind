@@ -53,7 +53,7 @@ try:
 except ImportError:
     from sqlalchemy.ext.asyncio import create_async_engine as real_create_engine
 
-TEST_DB_URL = "postgresql+asyncpg://postgres:123123@localhost:5432/graphmind_pb56_test"
+TEST_DB_URL = "postgresql+asyncpg://postgres:123456@localhost:5432/graphmind_pb56_test"
 
 @pytest.fixture
 async def test_db_session():

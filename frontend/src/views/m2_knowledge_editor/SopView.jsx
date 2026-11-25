@@ -284,7 +284,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
   return (
     <div
       className="space-y-6 font-sans text-on-surface min-h-screen"
-      style={{ padding: "24px 32px 64px", boxSizing: "border-box" }}
+      style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}
     >
       {/* Toast Notification */}
       {toastMsg && (
@@ -307,7 +307,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                   <i className="fa-solid fa-clipboard-list" />
                 </div>
                 <h1 className="text-xl font-bold text-on-surface tracking-tight">
-                  {isVi ? "Quy trình & Quy chuẩn Vận hành (SOP)" : "Standard Operating Procedures (SOP)"}
+                  {isVi ? "Quy trình & Quy chuẩn Vận hành" : "Standard Operating Procedures (SOP)"}
                 </h1>
               </div>
               <p className="text-xs text-on-surface-variant leading-relaxed">
@@ -320,24 +320,52 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
             <div className="flex items-center gap-2">
               <button
                 onClick={handleNewSop}
-                className="btn-gradient-cyan px-4 py-2 rounded-xl text-white text-xs font-bold shadow flex items-center gap-2 cursor-pointer"
+                className="btn-gradient-cyan px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-xs flex items-center gap-2 cursor-pointer transition-all hover:opacity-95"
               >
-                <i className="fa-solid fa-plus text-[13px]" />
-                <span>{isVi ? "+ Tạo mới SOP" : "+ Compose SOP"}</span>
+                <i className="fa-solid fa-plus text-xs" style={{ fontSize: "13px" }} />
+                <span>{isVi ? "Tạo mới SOP" : "Compose SOP"}</span>
               </button>
             </div>
           </div>
 
           {/* Filter & Search SOP Bar */}
           <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="relative w-full sm:w-96">
-              <Icon name="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-on-surface-variant text-[14px]" size={14} />
+            <div className="relative w-full sm:w-96" style={{ position: "relative" }}>
+              <span
+                style={{
+                  position: "absolute",
+                  left: "14px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "var(--text-3, #64748b)",
+                  display: "flex",
+                  alignItems: "center",
+                  pointerEvents: "none",
+                  zIndex: 2,
+                }}
+              >
+                <i className="fa-solid fa-magnifying-glass" style={{ fontSize: "13px" }} />
+              </span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={isVi ? "Tìm theo tên SOP, mã quy trình, phòng ban..." : "Search by SOP title, code, department..."}
-                className="w-full pl-10 pr-4 py-2 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface placeholder:text-on-surface-variant border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
+                style={{
+                  width: "100%",
+                  paddingLeft: "42px",
+                  paddingRight: "16px",
+                  paddingTop: "9px",
+                  paddingBottom: "9px",
+                  borderRadius: "12px",
+                  fontSize: "13px",
+                  background: "var(--surface-2, #ffffff)",
+                  border: "1px solid var(--border, #e2e8f0)",
+                  color: "var(--text-1, #0f172a)",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+                className="!pl-11 focus:ring-2 focus:ring-primary/20 shadow-2xs"
               />
             </div>
 
@@ -529,7 +557,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                   onChange={(e) => setComposerData({ ...composerData, dept: e.target.value })}
                   className="w-full px-3 py-2.5 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border border-outline-variant/30 focus:outline-none"
                 >
-                  <option value="Pháp chế">{isVi ? "Pháp chế (Legal)" : "Legal"}</option>
+                  <option value="Pháp chế">{isVi ? "Pháp chế" : "Legal"}</option>
                   <option value="Kinh doanh">{isVi ? "Kinh doanh" : "Sales"}</option>
                   <option value="Công nghệ / IT">{isVi ? "Công nghệ / IT" : "Technology / IT"}</option>
                   <option value="R&D">{isVi ? "R&D" : "R&D"}</option>
@@ -710,14 +738,14 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
                   onClick={handleSaveDraft}
                   className="px-5 py-2.5 rounded-xl bg-surface-container-lowest text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold shadow-2xs transition-colors"
                 >
-                  {isVi ? "Lưu bản nháp (Draft)" : "Save Draft"}
+                  {isVi ? "Lưu bản nháp" : "Save Draft"}
                 </button>
                 <button
                   onClick={handlePublishSop}
                   className="btn-gradient-cyan px-6 py-2.5 rounded-xl text-white text-xs font-bold shadow flex items-center gap-2 cursor-pointer"
                 >
                   <Icon name="fa-solid fa-cloud-arrow-up text-[15px]" size={15} />
-                  <span>{isVi ? "Xuất bản SOP cho phòng ban (Publish)" : "Publish SOP"}</span>
+                  <span>{isVi ? "Xuất bản quy trình" : "Publish SOP"}</span>
                 </button>
               </div>
             </div>
@@ -729,7 +757,7 @@ export default function SopView({ onNavigate, t, lang = "vi", initialMode = "lis
       {/* QUICK SOP PREVIEW MODAL */}
       {/* ========================================================================= */}
       {activePreviewSop && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/40 shadow-2xl w-full max-w-2xl p-6 space-y-4 animate-scaleUp">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container">
               <div>

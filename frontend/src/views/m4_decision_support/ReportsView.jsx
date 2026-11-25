@@ -100,7 +100,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
       ? (isVi ? "BÁO CÁO CÔNG VIỆC CA LÀM VIỆC — CHUYÊN VIÊN NGHIỆP VỤ" : "SPECIALIST SHIFT OPERATIONS REPORT")
       : (isAdminRole
           ? (isVi ? "BÁO CÁO CHIẾN LƯỢC & GIÁM SÁT TOÀN DIỆN" : "STRATEGIC BRIEFING & GLOBAL TELEMETRY")
-          : (isVi ? "BÁO CÁO CHIẾN LƯỢC BAN GIÁM ĐỐC (EXECUTIVE BRIEFING)" : "EXECUTIVE STRATEGIC BRIEFING"));
+          : (isVi ? "BÁO CÁO CHIẾN LƯỢC BAN GIÁM ĐỐC" : "EXECUTIVE STRATEGIC BRIEFING"));
 
     const dateStr = generatedDate || new Date().toLocaleDateString(isVi ? "vi-VN" : "en-US");
     const authorStr = currentUser?.name || (isShift ? "Chuyên viên nghiệp vụ" : "Hệ thống GraphMind AI");
@@ -305,7 +305,7 @@ export default function ReportsView({ onNavigate, t, lang, role = "executive", c
   // ----------------------------------------------------------------------
   if (reportMode === "department") {
     return (
-      <div style={{ minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}>
+      <div style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}>
         {renderScopeSwitcher()}
         <DepartmentReportView
           onNavigate={onNavigate}
@@ -329,7 +329,7 @@ if (isSalesRole && reportMode === "shift") {
   // RENDER FOR EXECUTIVE / C-LEVEL / IT ADMIN (STRATEGIC REPORT)
   // ----------------------------------------------------------------------
   return (
-    <section className="text-on-surface flex flex-col gap-6" style={{ minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}>
+    <section className="text-on-surface flex flex-col gap-6" style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}>
       {/* Scoped Print Styles for Executive Briefing (FR44 PDF Export) */}
       <style>{`
         @media print {
@@ -456,9 +456,9 @@ if (isSalesRole && reportMode === "shift") {
             className="bg-surface-container text-on-surface p-space-xs rounded-DEFAULT border border-outline-variant/30 text-body-sm"
           >
             <option value="all">{isVi ? "Vĩ mô toàn doanh nghiệp (5 Phòng ban · $123.22M USD)" : "Full Spectrum (5 Depts · $123.22M USD)"}</option>
-            <option value="sales">{isVi ? "Phòng Kinh Doanh & Khách Hàng (Sales)" : "Sales & Customer Accounts"}</option>
-            <option value="legal">{isVi ? "Phòng Pháp Chế & Tuân Thủ (Legal)" : "Legal & Compliance"}</option>
-            <option value="operations">{isVi ? "Phòng Vận Hành & Kho Vận (Ops)" : "Operations & Supply"}</option>
+            <option value="sales">{isVi ? "Phòng Kinh Doanh & Khách Hàng" : "Sales & Customer Accounts"}</option>
+            <option value="legal">{isVi ? "Phòng Pháp Chế & Tuân Thủ" : "Legal & Compliance"}</option>
+            <option value="operations">{isVi ? "Phòng Vận Hành & Kho Vận" : "Operations & Supply"}</option>
             <option value="it">{isVi ? "Phòng Công Nghệ & An Toàn TT (IT)" : "IT & SecOps"}</option>
             <option value="hr">{isVi ? "Phòng Nhân Sự & Đào Tạo (HR)" : "Human Resources"}</option>
           </select>
@@ -480,7 +480,7 @@ if (isSalesRole && reportMode === "shift") {
         <div className="cfg-box flex flex-col gap-space-2xs">
           <label className="font-label-caps text-label-caps text-outline uppercase font-bold">{isVi ? "TIÊU CHUẨN XÁC THỰC" : "VERIFICATION TARGET"}</label>
           <select className="bg-surface-container text-on-surface p-space-xs rounded-DEFAULT border border-outline-variant/30 text-body-sm">
-            <option>{isVi ? "Chỉ nguồn đã xác thực (Human Verified)" : "Human Verified Only"}</option>
+            <option>{isVi ? "Chỉ nguồn đã xác thực" : "Human Verified Only"}</option>
             <option>{isVi ? "Bao gồm trích xuất AI (Confidence > 80%)" : "AI Extracted (Confidence > 80%)"}</option>
           </select>
         </div>
@@ -543,7 +543,7 @@ if (isSalesRole && reportMode === "shift") {
         {/* 1. EXECUTIVE SUMMARY */}
         <div>
           <h3 className="text-sm font-bold text-primary uppercase tracking-wider mb-space-xs">
-            1. {isVi ? "TÓM TẮT ĐIỀU HÀNH (EXECUTIVE SUMMARY)" : "EXECUTIVE SUMMARY"}
+            1. {isVi ? "TÓM TẮT ĐIỀU HÀNH" : "EXECUTIVE SUMMARY"}
           </h3>
           <textarea
             value={liveBriefing}
@@ -688,7 +688,7 @@ if (isSalesRole && reportMode === "shift") {
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border)" }}>
               <Icon name="fa-solid fa-square-check text-primary text-[16px] shrink-0 mt-0.5" size={16} />
               <span>
-                <b>{isVi ? "Ưu tiên 3:" : "Priority 3:"}</b> {isVi ? "Hoàn tất xác thực con người (HITL) cho 12 tài liệu quy trình thiếu phòng ban chủ quản trong tuần này." : "Complete human-in-the-loop verification for 12 pending SOP documents lacking department ownership."}
+                <b>{isVi ? "Ưu tiên 3:" : "Priority 3:"}</b> {isVi ? "Hoàn tất xác thực con người cho 12 tài liệu quy trình thiếu phòng ban chủ quản trong tuần này." : "Complete human-in-the-loop verification for 12 pending SOP documents lacking department ownership."}
               </span>
             </div>
           </div>
@@ -705,7 +705,7 @@ if (isSalesRole && reportMode === "shift") {
                   </div>
                   <div>
                     <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text-1)", margin: 0 }}>
-                      5. {isVi ? "GIÁM SÁT TOÀN DIỆN KỸ THUẬT & AN TOÀN THÔNG TIN (SECOPS TELEMETRY)" : "GLOBAL SYSTEM & SECOPS TELEMETRY"}
+                      5. {isVi ? "GIÁM SÁT TOÀN DIỆN KỸ THUẬT & AN TOÀN THÔNG TIN" : "GLOBAL SYSTEM & SECOPS TELEMETRY"}
                     </h3>
                     <span style={{ fontSize: 11.5, color: "var(--text-4)" }}>
                       {isVi ? "Theo dõi chất lượng tri thức, độ trễ hệ thống, log kiểm duyệt HITL và bảo mật phân quyền RBAC" : "Real-time telemetry on knowledge graph quality, latency, HITL queue, and SecOps compliance"}
@@ -723,7 +723,7 @@ if (isSalesRole && reportMode === "shift") {
                 {/* Metric 1: Knowledge Quality */}
                 <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    {isVi ? "Chất Lượng Tri Thức (Graph Quality)" : "Knowledge Quality"}
+                    {isVi ? "Chất Lượng Tri Thức" : "Knowledge Quality"}
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: "#059669", margin: "6px 0 2px 0" }}>
                     99.4%
@@ -762,7 +762,7 @@ if (isSalesRole && reportMode === "shift") {
                 {/* Metric 4: Security & RBAC Compliance */}
                 <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    {isVi ? "An Toàn Thông Tin (SecOps)" : "Information Security"}
+                    {isVi ? "An Toàn Thông Tin" : "Information Security"}
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: "#0e7490", margin: "6px 0 2px 0" }}>
                     100%
@@ -779,7 +779,7 @@ if (isSalesRole && reportMode === "shift") {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
                 <div>
                   <h4 style={{ fontSize: 14.5, fontWeight: 800, color: "var(--text-1)", margin: "0 0 2px 0" }}>
-                    6. {isVi ? "ĐỐI SOÁT & KIỂM TRA CHÉO TÍNH TOÀN VẸN BÁO CÁO 3 CẤP (AUDIT RECONCILIATION)" : "CROSS-LEVEL SHIFT & REPORT AUDIT RECONCILIATION"}
+                    6. {isVi ? "ĐỐI SOÁT & KIỂM TRA CHÉO TÍNH TOÀN VẸN BÁO CÁO 3 CẤP" : "CROSS-LEVEL SHIFT & REPORT AUDIT RECONCILIATION"}
                   </h4>
                   <span style={{ fontSize: 11.5, color: "var(--text-4)" }}>
                     {isVi ? "Toàn quyền kiểm tra chéo và đối soát báo cáo từ Chuyên viên -> Trưởng phòng -> Ban Giám Đốc" : "Cross-verifying shift reports from Specialist to Department Manager and Executive Board"}
@@ -822,14 +822,14 @@ if (isSalesRole && reportMode === "shift") {
                       <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Cấp Báo Cáo / Vai Trò" : "Level / Role"}</th>
                       <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Cán Bộ Phụ Trách" : "Officer"}</th>
                       <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Mã Chứng Từ & Dữ Liệu Đối Soát" : "Dossier & Doc IDs"}</th>
-                      <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Thẩm Quyền Tác Nghiệp (RBAC)" : "RBAC Authority"}</th>
+                      <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5 }}>{isVi ? "Thẩm Quyền Tác Nghiệp" : "RBAC Authority"}</th>
                       <th style={{ padding: "8px 10px", textTransform: "uppercase", fontSize: 10.5, textAlign: "right" }}>{isVi ? "Kết Quả Đối Soát" : "Audit Result"}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr style={{ borderBottom: "1px solid var(--border-soft)" }}>
                       <td style={{ padding: "10px", fontWeight: 700, color: "#0891b2" }}>
-                        {isVi ? "Cấp 1: Vi mô (Micro)" : "Level 1: Micro Scope"}
+                        {isVi ? "Cấp 1: Vi mô" : "Level 1: Micro Scope"}
                       </td>
                       <td style={{ padding: "10px" }}>
                         <b>Nguyễn V. Nam</b> (@sales)
@@ -869,7 +869,7 @@ if (isSalesRole && reportMode === "shift") {
 
                     <tr>
                       <td style={{ padding: "10px", fontWeight: 700, color: "#0e7490" }}>
-                        {isVi ? "Cấp 3: Vĩ mô (Enterprise)" : "Level 3: Enterprise"}
+                        {isVi ? "Cấp 3: Vĩ mô" : "Level 3: Enterprise"}
                       </td>
                       <td style={{ padding: "10px" }}>
                         <b>Trần Thị Thu Hương</b> (@ceo)

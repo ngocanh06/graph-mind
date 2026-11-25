@@ -200,7 +200,7 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
 
   const pipelineStages = [
     { label: isVi ? "Nguồn dữ liệu" : "Source", Icon: Database },
-    { label: isVi ? "Thu nạp (Agent)" : "Ingestion", Icon: CloudDownload },
+    { label: isVi ? "Tự động Thu nạp" : "Ingestion", Icon: CloudDownload },
     { label: isVi ? "Phân giải tệp" : "Parsing", Icon: FileCode },
     { label: isVi ? "Trích xuất Thực thể" : "Extraction", Icon: Filter },
     { label: isVi ? "Đồ thị Tri thức Neo4j" : "Knowledge Graph", Icon: Share2 },
@@ -335,7 +335,7 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
                 loading={isSimulatingDrop}
                 onClick={handleSimulateDrop}
               >
-                {isVi ? "Mô phỏng Thả tệp (Test Ingest)" : "Simulate File Drop"}
+                {isVi ? "Mô phỏng Thả tệp Kiểm thử" : "Simulate File Drop"}
               </Button>
             </div>
           }
@@ -344,7 +344,7 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
         {/* ── PIPELINE OVERVIEW CARD ──────────────────────────── */}
         <Card padding="20px 24px">
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4, #94A3B8)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>
-            {isVi ? "Quy trình Thu nạp & Trích xuất Tri thức Doanh nghiệp (Ingestion Pipeline)" : "Enterprise Ingestion & Knowledge Extraction Pipeline"}
+            {isVi ? "Quy trình Thu nạp & Trích xuất Tri thức Doanh nghiệp" : "Enterprise Ingestion & Knowledge Extraction Pipeline"}
           </div>
 
           <div style={{
@@ -599,7 +599,7 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
               loading={isSimulatingDrop}
               onClick={handleSimulateDrop}
             >
-              {isVi ? "+ Bắn tệp Thử nghiệm" : "+ Simulate File Drop"}
+              {isVi ? "Bắn tệp Thử nghiệm" : "Simulate File Drop"}
             </Button>
           }
           padding="0"
@@ -796,7 +796,7 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
                     }}
                   >
                     <ShieldCheck size={15} color="#059669" />
-                    <span>{isVi ? "1-Click Nghiên cứu & Chấm điểm (Demo)" : "1-Click Research Demo"}</span>
+                    <span>{isVi ? "1-Click Nghiên cứu & Chấm điểm" : "1-Click Research Demo"}</span>
                   </button>
                   <button
                     onClick={() => setActiveOAuthTab("oauth")}
@@ -818,7 +818,7 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
                     }}
                   >
                     <Key size={15} color="#2563eb" />
-                    <span>{isVi ? "Google Cloud Console (Live OAuth)" : "Google Cloud Console"}</span>
+                    <span>{isVi ? "Google Cloud Console (OAuth Thực tế)" : "Google Cloud Console"}</span>
                   </button>
                 </div>
 

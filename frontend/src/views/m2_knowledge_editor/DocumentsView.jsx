@@ -15,6 +15,56 @@ import {
 } from '../../services/api';
 import { DEPARTMENTS, resolveDepartment, getAllowedDepartmentsForRole } from '../../constants/departments';
 
+// Helper to format CUAD technical filenames into readable company/contract titles
+const formatDocTitle = (name) => {
+  if (!name) return { main: "", sub: null };
+  const clean = name.replace(/\.(pdf|docx|xlsx|csv|txt|json)$/i, "");
+  
+  if (name.includes("Hop_Dong_Cung_Cap_Dich_Vu_Phan_Mem")) {
+    return { main: "Hợp đồng Cung cấp Dịch vụ Phần mềm (IT)", sub: name };
+  }
+
+  // Handle CUAD filenames like MARTINMIDSTREAMPARTNERSLP_01_23_2004-EX-10.3-TRANSPORTATION SERVICES AGREEMENT
+  const m = clean.match(/^([^_\d]+?)(?:,?\s*INC|,?\s*CORP|,?\s*LLC|,?\s*LTD)?_[\d_]+-(?:EX-[\d\.]+-)?(.+)$/i);
+  if (m) {
+    let org = m[1].replace(/[,_]+/g, " ").replace(/\s+/g, " ").trim();
+    if (/martin/i.test(org)) org = "Martin Midstream Partners LP";
+    else if (/aduro/i.test(org)) org = "Aduro Biotech Inc";
+    else if (/bioamber/i.test(org)) org = "Bioamber Inc";
+    else if (/atento/i.test(org)) org = "Atento SA";
+    else {
+      org = org.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    }
+
+    let docType = m[2].replace(/[_-]+/g, " ").replace(/\(\d+\)$/, "").trim();
+    docType = docType.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+
+    const yearMatch = name.match(/_(\d{4})[-_]/);
+    const yearStr = yearMatch ? ` (${yearMatch[1]})` : "";
+    return { main: `${org} — ${docType}${yearStr}`, sub: name };
+  }
+
+  const parts = clean.split("_");
+  if (parts.length >= 2) {
+    let company = parts[0].replace(/[,_]+/g, " ").trim();
+    company = company.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    let contractType = parts[parts.length - 1];
+    if (contractType.includes("-")) {
+      const subParts = contractType.split("-");
+      contractType = subParts[subParts.length - 1] || contractType;
+    }
+    contractType = contractType.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    const yearMatch = clean.match(/(20\d{2}|19\d{2})/);
+    const yearStr = yearMatch ? ` (${yearMatch[1]})` : "";
+    
+    if (contractType && isNaN(contractType) && contractType.length > 2) {
+      return { main: `${company} — ${contractType}${yearStr}`, sub: name };
+    }
+    return { main: `${company}${yearStr}`, sub: name };
+  }
+  return { main: name, sub: null };
+};
+
 export default function DocumentsView({ onNavigate, t, lang, role, currentUser, initialDocId }) {
   const isVi = lang === "vi";
   const isStandard = role === "standard" || role === "sales" || currentUser?.roleKey === "SALES_OPS" || currentUser?.id === "standard";
@@ -555,7 +605,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
 
   return (
-    <section className="view active text-on-surface flex flex-col gap-space-md min-h-screen">
+    <section className="view active text-on-surface flex flex-col gap-space-md min-h-screen" style={{ background: "var(--base)" }}>
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 bg-surface-container-high border border-primary/40 text-on-surface px-space-md py-space-sm rounded-DEFAULT shadow-2xl flex items-center gap-space-sm animate-bounce">
@@ -578,7 +628,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             </span>
           </div>
           <h1 className="text-2xl font-bold text-on-surface tracking-tight">
-            {isVi ? "Kho tài liệu & Dữ liệu Tri thức (Knowledge Base)" : "Knowledge Base (Document & Data Explorer)"}
+            {isVi ? "Kho tài liệu & Dữ liệu Tri thức" : "Knowledge Base (Document & Data Explorer)"}
           </h1>
           <p className="text-sm text-on-surface-variant leading-relaxed">
             {isVi
@@ -589,7 +639,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             id="btn-upload-document-modal"
             onClick={() => {
@@ -598,11 +648,26 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               setUploadSuccessMsg("");
               setUploadFile(null);
             }}
-            className="px-4 py-2.5 rounded-xl text-sm font-bold shadow hover:bg-blue-700 transition-all flex items-center gap-2 cursor-pointer"
-            style={{ backgroundColor: "#2563eb", color: "#ffffff" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "7px 14px",
+              borderRadius: "8px",
+              fontSize: "12.5px",
+              fontWeight: "700",
+              background: "var(--cyan, #0891b2)",
+              color: "#ffffff",
+              border: "none",
+              cursor: "pointer",
+              boxShadow: "0 1px 3px rgba(8, 145, 178, 0.25)",
+              transition: "all 0.15s ease"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "#0e7490"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "var(--cyan, #0891b2)"}
           >
-            <Icon name="fa-solid fa-cloud-arrow-up text-[16px]" size={16} />
-            <span>{isVi ? "+ Upload tài liệu" : "+ Upload Document"}</span>
+            <Icon name="fa-solid fa-cloud-arrow-up" size={14} />
+            <span>{isVi ? "Tải lên tài liệu" : "Upload Document"}</span>
           </button>
 
           <button
@@ -611,12 +676,34 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               setIsMyApprovalsOpen(true);
               loadMyApprovals();
             }}
-            className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2 cursor-pointer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "7px 12px",
+              borderRadius: "8px",
+              fontSize: "12.5px",
+              fontWeight: "600",
+              background: "var(--surface-2, #f8fafc)",
+              color: "var(--text-1, #0f172a)",
+              border: "1px solid var(--border, #e2e8f0)",
+              cursor: "pointer",
+              transition: "all 0.15s ease"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-3, #f1f5f9)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
           >
-            <Icon name="fa-solid fa-clock-rotate-left text-[15px]" size={15} />
+            <Icon name="fa-solid fa-clock-rotate-left" size={13} style={{ color: "var(--text-3, #64748b)" }} />
             <span>{isVi ? "Tài liệu gửi duyệt của tôi" : "My Upload Queue"}</span>
             {myPendingCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+              <span style={{
+                padding: "1px 6px",
+                borderRadius: "10px",
+                background: "#f59e0b",
+                color: "#ffffff",
+                fontSize: "10.5px",
+                fontWeight: "800"
+              }}>
                 {myPendingCount}
               </span>
             )}
@@ -632,23 +719,64 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     showToast(isVi ? "Chuyển tới trình soạn thảo SOP (SCREEN-017a)" : "Navigating to SOP Composer (SCREEN-017a)");
                   }
                 }}
-                className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "7px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  fontWeight: "600",
+                  background: "var(--surface-2, #f8fafc)",
+                  color: "var(--text-1, #0f172a)",
+                  border: "1px solid var(--border, #e2e8f0)",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-3, #f1f5f9)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
               >
-                <Icon name="fa-solid fa-circle-plus text-[16px]" size={16} />
+                <Icon name="fa-solid fa-circle-plus" size={13} style={{ color: "var(--text-3, #64748b)" }} />
                 <span>{isVi ? "Soạn thảo SOP" : "Compose SOP"}</span>
               </button>
               <button
                 onClick={() => showToast(isVi ? "Đang đồng bộ Schema với Neo4j & Qdrant..." : "Synchronizing Schema with Neo4j & Qdrant...")}
-                className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-sm font-semibold border border-outline-variant/40 hover:bg-surface-container transition-all flex items-center gap-2"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "7px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  fontWeight: "600",
+                  background: "var(--surface-2, #f8fafc)",
+                  color: "var(--text-1, #0f172a)",
+                  border: "1px solid var(--border, #e2e8f0)",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-3, #f1f5f9)"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-2, #f8fafc)"}
               >
-                <Icon name="fa-solid fa-rotate text-[16px]" size={16} />
+                <Icon name="fa-solid fa-rotate" size={13} style={{ color: "var(--text-3, #64748b)" }} />
                 <span>{isVi ? "Đồng bộ Schema" : "Sync Schema"}</span>
               </button>
             </>
           ) : (
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/30 text-xs font-semibold text-on-surface-variant">
-              <Icon name="fa-solid fa-shield-halved text-primary text-[14px]" size={14} />
-              <span>{isVi ? "Quyền xem trước & Nạp tệp (Standard Preview Tier)" : "Preview & Upload Tier"}</span>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "6px 12px",
+              borderRadius: "8px",
+              background: "var(--surface-2, #f8fafc)",
+              border: "1px solid var(--border, #e2e8f0)",
+              fontSize: "11.5px",
+              fontWeight: "600",
+              color: "var(--text-3, #64748b)"
+            }}>
+              <Icon name="fa-solid fa-shield-halved text-primary" size={12} />
+              <span>{isVi ? "Quyền xem trước & Nạp tệp" : "Preview & Upload Tier"}</span>
             </div>
           )}
         </div>
@@ -659,44 +787,26 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* ========================================================================= */}
       {summary.cuad_total > 0 && (() => {
         const isCuadPending = summary.cuad_contracts < summary.cuad_total;
-        return (
-          <div className={`p-4 md:p-5 rounded-2xl border transition-all ${
-            isCuadPending
-              ? "bg-primary/5 border-primary/30 shadow-xs"
-              : "bg-emerald-500/10 border-emerald-500/30"
-          }`}>
+        return isCuadPending ? (
+          <div className="p-4 md:p-5 rounded-2xl border transition-all bg-primary/5 border-primary/30 shadow-xs">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-                  isCuadPending
-                    ? "bg-primary text-white animate-pulse"
-                    : "bg-emerald-600 text-white"
-                }`}>
-                  <Icon name={isCuadPending ? "fa-solid fa-arrows-rotate" : "fa-solid fa-check-double"} size={18} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold bg-primary text-white animate-pulse">
+                  <Icon name="fa-solid fa-arrows-rotate" size={18} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-sm text-on-surface">
                       {isVi ? "Tiến trình đồng bộ CUAD Ingestion" : "CUAD Ingestion Pipeline Progress"}
                     </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                      isCuadPending
-                        ? "bg-amber-100 text-amber-800 border border-amber-300"
-                        : "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                    }`}>
-                      {isCuadPending
-                        ? (isVi ? "Đang xử lý / Ingesting" : "Processing")
-                        : (isVi ? "Hoàn tất 100%" : "100% Completed")}
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      {isVi ? "Đang xử lý / Ingesting" : "Processing"}
                     </span>
                   </div>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    {isCuadPending
-                      ? (isVi
-                          ? `Đang trích xuất văn bản & nạp vector Qdrant + đồ thị Neo4j (${summary.cuad_contracts} / ${summary.cuad_total} files)`
-                          : `Extracting text, embedding Qdrant chunks & merging Neo4j graph (${summary.cuad_contracts} / ${summary.cuad_total} files)`)
-                      : (isVi
-                          ? `Toàn bộ ${summary.cuad_contracts}/${summary.cuad_total} Hợp đồng CUAD & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks đã được lập chỉ mục đầy đủ trong Qdrant và Neo4j.`
-                          : `All ${summary.cuad_contracts}/${summary.cuad_total} CUAD contracts & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks fully indexed in Qdrant & Neo4j.`)}
+                    {isVi
+                      ? `Đang trích xuất văn bản & nạp vector Qdrant + đồ thị Neo4j (${summary.cuad_contracts} / ${summary.cuad_total} files)`
+                      : `Extracting text, embedding Qdrant chunks & merging Neo4j graph (${summary.cuad_contracts} / ${summary.cuad_total} files)`}
                   </p>
                 </div>
               </div>
@@ -721,6 +831,33 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        ) : (
+          <div className="px-4 py-2.5 rounded-xl border border-emerald-500/25 bg-emerald-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs flex-shrink-0">
+                <Icon name="fa-solid fa-check" size={12} />
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-on-surface">
+                  {isVi ? "Đồng bộ CUAD Ingestion" : "CUAD Ingestion Pipeline"}:
+                </span>
+                <span className="text-on-surface-variant">
+                  {isVi
+                    ? `Toàn bộ ${summary.cuad_contracts}/${summary.cuad_total} Hợp đồng CUAD & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks đã được lập chỉ mục đầy đủ trong Qdrant & Neo4j.`
+                    : `All ${summary.cuad_contracts}/${summary.cuad_total} CUAD contracts & ${summary.adventureworks_datasets}/${summary.adventureworks_total} AdventureWorks fully indexed in Qdrant & Neo4j.`}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                100% {isVi ? "Hoàn tất" : "Synced"}
+              </span>
+              <span className="font-mono text-emerald-700 font-bold text-[11px]">
+                {summary.cuad_contracts}/{summary.cuad_total}
+              </span>
             </div>
           </div>
         );
@@ -816,7 +953,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
         <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-primary">
-              {isVi ? "Tổng Chunks (Qdrant)" : "Total Chunks"}
+              {isVi ? "Tổng Phân Mảnh Vector" : "Total Chunks"}
             </span>
             <div className="w-7 h-7 rounded-lg bg-primary-fixed/50 text-primary flex items-center justify-center text-xs">
               <Icon name="fa-solid fa-cube" size={13} />
@@ -838,7 +975,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             <span className="text-xs font-semibold text-on-surface-variant">
               {isVi ? "Phòng ban" : "Departments"}
             </span>
-            <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-xs">
+            <div className="w-7 h-7 rounded-lg bg-cyan-50 text-cyan-700 flex items-center justify-center text-xs">
               <Icon name="fa-solid fa-building" size={13} />
             </div>
           </div>
@@ -859,18 +996,47 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       <div className="bg-surface-container-lowest p-4 md:p-5 rounded-2xl border border-outline-variant/30 shadow-xs space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
           {/* Search bar */}
-          <div className="md:col-span-4 relative">
-            <Icon name="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-on-surface-variant text-[15px]" size={15} />
+          <div className="md:col-span-4" style={{ position: "relative" }}>
+            <span style={{
+              position: "absolute",
+              left: "12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--text-3, #64748b)",
+              display: "flex",
+              alignItems: "center",
+              pointerEvents: "none",
+              zIndex: 1
+            }}>
+              <Icon name="fa-solid fa-magnifying-glass" size={14} />
+            </span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-12 py-2 bg-surface-container-low rounded-xl text-sm text-on-surface placeholder:text-on-surface-variant border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
+              style={{
+                width: "100%",
+                padding: "8px 46px 8px 36px",
+                background: "var(--surface-2, #ffffff)",
+                border: "1px solid var(--border, #e2e8f0)",
+                borderRadius: "10px",
+                fontSize: "13px",
+                color: "var(--text-1, #0f172a)",
+                boxSizing: "border-box",
+                outline: "none",
+                transition: "border-color 0.15s, box-shadow 0.15s"
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#0284c7";
+                e.target.style.boxShadow = "0 0 0 3px rgba(2,132,199,0.15)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "var(--border, #e2e8f0)";
+                e.target.style.boxShadow = "none";
+              }}
               placeholder={isVi ? "Tìm kiếm tên tài liệu, điều khoản, mã số hợp đồng, metadata..." : "Search document name, clause, contract ID, metadata..."}
             />
-            <kbd className="absolute right-3 top-2.5 px-2 py-0.5 rounded-md bg-surface-container-lowest border border-outline-variant/40 text-[11px] font-mono text-on-surface-variant shadow-2xs">
-              ⌘K
-            </kbd>
+
           </div>
 
           {/* Filter 1: Type */}
@@ -881,9 +1047,9 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               className="w-full py-2 px-3 bg-surface-container-low rounded-xl text-xs md:text-sm text-on-surface border-0 ring-1 ring-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="ALL">{isVi ? "Loại: Tất cả" : "Type: All"}</option>
-              {isLegalAllowed && <option value="PDF">{isVi ? "Hợp đồng CUAD (PDF)" : "CUAD Contracts (PDF)"}</option>}
-              <option value="Sheets">{isVi ? "Dữ liệu CRM/ERP (XLSX)" : "CRM/ERP Data (XLSX)"}</option>
-              <option value="SOP">{isVi ? "Quy trình SOP (DOCX)" : "SOP Procedures (DOCX)"}</option>
+              {isLegalAllowed && <option value="PDF">{isVi ? "Hợp đồng pháp lý (PDF)" : "CUAD Contracts (PDF)"}</option>}
+              <option value="Sheets">{isVi ? "Dữ liệu doanh nghiệp (XLSX)" : "CRM/ERP Data (XLSX)"}</option>
+              <option value="SOP">{isVi ? "Quy trình nội bộ (DOCX)" : "SOP Procedures (DOCX)"}</option>
               {isLegalAllowed && <option value="NDA">{isVi ? "Thỏa thuận bảo mật (NDA)" : "NDA Agreements"}</option>}
               <option value="JSON">{isVi ? "Dữ liệu JSON Graph" : "JSON Graph Data"}</option>
             </select>
@@ -1118,7 +1284,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
           ) : (
             filteredDocs.map((doc) => {
               const isSelected = selectedDocId === doc.id;
-              const isItemVerified = verifiedDocs[doc.id] || doc.statusState === "active";
+              const formattedTitle = formatDocTitle(doc.name);
 
               // Icon & color styling based on file type
               let iconName = "fa-solid fa-file-pdf";
@@ -1128,7 +1294,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                 iconBoxClass = "text-emerald-600 bg-emerald-50 border-emerald-200";
               } else if (doc.type === "NDA") {
                 iconName = "fa-solid fa-shield-halved";
-                iconBoxClass = "text-purple-600 bg-purple-50 border-purple-200";
+                iconBoxClass = "text-cyan-700 bg-cyan-50 border-cyan-200";
               } else if (doc.type === "SOP") {
                 iconName = "fa-solid fa-file-lines";
                 iconBoxClass = "text-blue-600 bg-blue-50 border-blue-200";
@@ -1141,7 +1307,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                 <div
                   key={doc.id}
                   onClick={() => handleOpenDrawer(doc.id)}
-                  className={`cursor-pointer group relative bg-surface-container-lowest p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md ${
+                  className={`cursor-pointer group relative bg-surface-container-lowest p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
                     doc.risk === "High"
                       ? "border-error/40 hover:border-error"
                       : isSelected
@@ -1151,17 +1317,28 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       : "border-outline-variant/30 hover:border-primary"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shadow-2xs ${iconBoxClass}`}>
-                      <Icon name={iconName} size={20} />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shadow-2xs flex-shrink-0 ${iconBoxClass}`}>
+                      <Icon name={iconName} size={18} />
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[11px] flex items-center gap-1 group-hover:bg-primary group-hover:text-white transition-colors shadow-2xs">
-                      <Icon name="fa-regular fa-eye text-[12px]" size={12} /> {isVi ? "Xem chi tiết" : "View Details"}
-                    </span>
+                    {/* Top Right: Risk & Type Badge instead of duplicate Xem chi tiet button */}
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        doc.risk === "High" ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                        doc.risk === "Medium" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                        "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      }`}>
+                        {doc.riskLabel || (doc.risk === "High" ? (isVi ? "Rủi ro cao" : "High Risk") : doc.risk === "Medium" ? (isVi ? "Cảnh báo" : "Medium Risk") : (isVi ? "An toàn" : "Safe"))}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant font-mono text-[10px] font-semibold border border-outline-variant/20">
+                        {doc.type}
+                      </span>
+                    </div>
                   </div>
+
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-semibold text-primary bg-primary-fixed/50 px-2 py-0.5 rounded-md">
+                      <span className="text-[11px] font-semibold text-primary bg-primary-fixed/50 px-2 py-0.5 rounded-md">
                         {doc.category}
                       </span>
                       {(doc.isNew || doc.source === "aegis_local_file_watcher" || doc.statusBadge?.includes("Mới") || doc.statusBadge?.includes("cập nhật")) && (
@@ -1177,18 +1354,26 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                         </span>
                       )}
                     </div>
-                    <h3 className="text-base font-bold text-on-surface mt-2 group-hover:text-primary transition-colors line-clamp-1" title={doc.name}>
-                      {doc.name}
+
+                    <h3 className="text-sm font-bold text-on-surface mt-2 group-hover:text-primary transition-colors line-clamp-1" title={doc.name}>
+                      {formattedTitle.main}
                     </h3>
-                    <p className="text-xs text-on-surface-variant mt-0.5">
-                      {doc.deptLabel} • {doc.date}
+                    {formattedTitle.sub && (
+                      <p className="text-[11px] font-mono text-outline truncate mt-0.5" title={doc.name}>
+                        {doc.name}
+                      </p>
+                    )}
+                    <p className="text-xs text-on-surface-variant mt-1 flex items-center gap-1.5">
+                      <span>{(doc.deptLabel || "").replace(/\s*\(.*?\)/g, "").trim() || doc.dept}</span>
+                      <span>•</span>
+                      <span>{doc.date}</span>
                     </p>
                   </div>
 
-                  <div className="space-y-2 bg-surface-container-low p-3 rounded-xl border border-outline-variant/20">
+                  <div className="space-y-1.5 bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/20">
                     <div className="flex justify-between items-center text-xs text-on-surface-variant">
                       <span>{isVi ? "Trạng thái:" : "Status:"}</span>
-                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] flex items-center gap-1 ${
+                      <span className={`font-bold px-2 py-0.5 rounded text-[10px] flex items-center gap-1 ${
                         doc.status === "INDEXED"
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
                           : doc.status === "FAILED"
@@ -1198,14 +1383,14 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           doc.status === "INDEXED" ? "bg-emerald-500" : doc.status === "FAILED" ? "bg-rose-500" : "bg-amber-500 animate-pulse"
                         }`}></span>
-                        {doc.status}
+                        {isVi ? (doc.status === "INDEXED" ? "ĐÃ LẬP CHỈ MỤC" : doc.status === "FAILED" ? "THẤT BẠI" : "CHỜ XỬ LÝ") : doc.status}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs text-on-surface-variant">
-                      <span>Vector Chunks:</span>
-                      <span className="font-bold text-on-surface font-mono">{doc.chunks}</span>
+                      <span>{isVi ? "Phân mảnh Vector:" : "Vector Chunks:"}</span>
+                      <span className="font-bold text-on-surface font-mono">{doc.chunks} {isVi ? "phân mảnh" : "chunks"}</span>
                     </div>
-                    <div className="flex justify-between items-center text-[11px] pt-1.5 border-t border-outline-variant/20 text-on-surface-variant">
+                    <div className="flex justify-between items-center text-[11px] pt-1 border-t border-outline-variant/20 text-on-surface-variant">
                       <span className="flex items-center gap-1">
                         <span>Qdrant:</span>
                         <strong className={doc.qdrant_indexed ? "text-emerald-600 font-bold" : "text-slate-400"}>
@@ -1222,9 +1407,9 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-surface-container text-xs">
-                    <span className="text-on-surface-variant font-mono">ID: {doc.id}</span>
-                    <span className="font-semibold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                      {isVi ? "Xem chi tiết" : "View Details"} <Icon name="fa-solid fa-chevron-right text-[11px]" size={15} />
+                    <span className="text-on-surface-variant font-mono text-[11px]">ID: {doc.id}</span>
+                    <span className="font-bold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      {isVi ? "Xem chi tiết" : "View Details"} <Icon name="fa-solid fa-chevron-right text-[11px]" size={12} />
                     </span>
                   </div>
                 </div>
@@ -1299,7 +1484,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                               doc.type === "Sheets"
                                 ? "fa-solid fa-file-excel text-emerald-600"
                                 : doc.type === "NDA"
-                                ? "fa-solid fa-shield-halved text-purple-600"
+                                ? "fa-solid fa-shield-halved text-cyan-700"
                                 : doc.type === "SOP"
                                 ? "fa-solid fa-file-lines text-blue-600"
                                 : doc.type === "JSON"
@@ -1327,7 +1512,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                           </div>
                         </td>
                         <td className="p-3.5 font-mono text-outline text-xs">{doc.id}</td>
-                        <td className="p-3.5 text-on-surface-variant text-xs">{doc.deptLabel}</td>
+                        <td className="p-3.5 text-on-surface-variant text-xs">{(doc.deptLabel || "").replace(/\s*\(.*?\)/g, "").trim() || doc.dept}</td>
                         <td className="p-3.5 font-mono text-outline text-xs">{doc.type}</td>
                         <td className="p-3.5 text-xs text-on-surface-variant">{doc.size} • {doc.chunks}</td>
                         <td className="p-3.5">
@@ -1342,7 +1527,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                               <span className={`w-1.5 h-1.5 rounded-full ${
                                 doc.status === "INDEXED" ? "bg-emerald-500" : doc.status === "FAILED" ? "bg-rose-500" : "bg-amber-500 animate-pulse"
                               }`}></span>
-                              {doc.status}
+                              {isVi ? (doc.status === "INDEXED" ? "ĐÃ LẬP CHỈ MỤC" : doc.status === "FAILED" ? "THẤT BẠI" : "CHỜ XỬ LÝ") : doc.status}
                             </span>
                             <div className="text-[10px] text-on-surface-variant flex items-center gap-2">
                               <span>Qdrant: <strong className={doc.qdrant_indexed ? "text-emerald-600 font-bold" : "text-slate-400"}>{doc.qdrant_indexed ? "✓" : "—"}</strong></span>
@@ -1435,68 +1620,48 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
             onClick={() => setIsDrawerOpen(false)}
           ></div>
 
-          {/* Drawer Panel (60% Width on Desktop or Fullscreen) */}
+          {/* Drawer Panel (Responsive Desktop Width or Fullscreen) */}
           <div
             className={`relative z-10 bg-surface-container-lowest shadow-2xl flex flex-col h-full border-l border-outline-variant/40 transition-all duration-300 animate-slideLeft ${
-              isDrawerFullscreen ? "w-full" : "w-full lg:w-[62vw] max-w-[1300px]"
+              isDrawerFullscreen ? "w-full" : "w-full lg:w-[86vw] xl:w-[82vw] 2xl:w-[78vw] max-w-[1440px]"
             }`}
           >
             {/* Drawer Header Bar */}
             <div className="bg-surface-container-low px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-surface-container">
-              <div className="flex items-center gap-3.5">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-xs ${
-                  activeDoc.type === "Sheets" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : activeDoc.type === "NDA" ? "bg-purple-50 text-secondary border-purple-200" : activeDoc.type === "SOP" ? "bg-blue-50 text-primary border-blue-200" : "bg-rose-50 text-rose-600 border-rose-200"
-                }`}>
-                  <Icon name={activeDoc.icon || (activeDoc.type === "Sheets" ? "fa-solid fa-file-excel" : activeDoc.type === "NDA" ? "fa-solid fa-file-contract" : "fa-solid fa-file-pdf")} size={20} />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-bold text-on-surface line-clamp-1">{activeDoc.name}</h2>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                      {activeDoc.statusBadge}
-                    </span>
-                    {activeDoc.oldName && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs">
-                        <Icon name="fa-solid fa-arrow-right-arrow-left text-[10px]" size={10} />
-                        <span>{isVi ? "Đổi tên từ: " : "Renamed from: "}<span className="line-through font-mono">{activeDoc.oldName}</span> ➔ <strong className="font-mono">{activeDoc.name}</strong></span>
-                      </span>
-                    )}
+              {(() => {
+                const docTitle = formatDocTitle(activeDoc.name);
+                return (
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-xs flex-shrink-0 ${
+                      activeDoc.type === "Sheets" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : activeDoc.type === "NDA" ? "bg-cyan-50 text-cyan-700 border-cyan-200" : activeDoc.type === "SOP" ? "bg-blue-50 text-primary border-blue-200" : "bg-rose-50 text-rose-600 border-rose-200"
+                    }`}>
+                      <Icon name={activeDoc.icon || (activeDoc.type === "Sheets" ? "fa-solid fa-file-excel" : activeDoc.type === "NDA" ? "fa-solid fa-file-contract" : "fa-solid fa-file-pdf")} size={20} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-base sm:text-lg font-bold text-on-surface truncate" title={activeDoc.name}>
+                          {docTitle.main}
+                        </h2>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold flex-shrink-0">
+                          {activeDoc.statusBadge}
+                        </span>
+                        {activeDoc.oldName && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs flex-shrink-0">
+                            <Icon name="fa-solid fa-arrow-right-arrow-left text-[10px]" size={10} />
+                            <span>{isVi ? "Đổi tên từ: " : "Renamed from: "}<span className="line-through font-mono">{activeDoc.oldName}</span></span>
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-outline font-mono mt-0.5 truncate max-w-xl" title={activeDoc.name}>
+                        {activeDoc.name}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-on-surface-variant mt-0.5 font-mono">
-                    {isVi ? "Khóa bảo mật: " : "Security Key: "}{activeDoc.access} • Schema: {activeDoc.schema} • SHA-256: {activeDoc.hash}
-                  </p>
-                </div>
-              </div>
+                );
+              })()}
 
-              {/* Header Right Actions */}
-              <div className="flex items-center gap-2">
-                {/* Back to Home Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDrawerOpen(false);
-                    if (onNavigate) onNavigate("home");
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-primary text-white hover:bg-primary/90 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                  title={isVi ? "Quay lại Trang chủ" : "Back to Home"}
-                >
-                  <Icon name="fa-solid fa-house text-[12px]" size={13} />
-                  <span>{isVi ? "Trang chủ" : "Home"}</span>
-                </button>
-
-                {/* Back to Repository List Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="px-3 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-all border border-outline-variant/30 cursor-pointer shadow-2xs"
-                  title={isVi ? "Quay lại Kho tài liệu" : "Back to Documents"}
-                >
-                  <Icon name="fa-solid fa-arrow-left text-[12px]" size={13} />
-                  <span className="hidden sm:inline">{isVi ? "Kho tài liệu" : "Documents"}</span>
-                </button>
-
-                <div className="h-4 w-px bg-outline-variant/40 mx-1"></div>
-
+              {/* Header Right Actions: Only Fullscreen & Close */}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => setIsDrawerFullscreen(!isDrawerFullscreen)}
                   className={`p-2 rounded-xl transition-colors cursor-pointer ${
@@ -1518,75 +1683,47 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
               </div>
             </div>
 
-            {/* Drawer Body: Split 65% (Left Document Canvas) / 35% (Right Metadata & Graph Inspector) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
+            {/* Drawer Body: Responsive Split Left (Document Canvas) / Right (Metadata & Graph Inspector) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto min-w-0">
               {/* Left Pane (Document Canvas Simulation) */}
-              <div className="lg:col-span-8 bg-surface-container-low/40 p-6 flex flex-col justify-between space-y-4 border-b lg:border-b-0 lg:border-r border-surface-container overflow-y-auto">
+              <div className="lg:col-span-7 xl:col-span-8 min-w-0 bg-surface-container-low/40 p-5 lg:p-6 flex flex-col justify-between space-y-4 border-b lg:border-b-0 lg:border-r border-surface-container overflow-y-auto overflow-x-hidden">
                 {/* Modern View Mode Tabs & Document Toolbar */}
                 <div className="bg-surface-container-lowest px-4 py-2.5 rounded-xl border border-outline-variant/30 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-                  {/* Left: Quick Back Buttons + View Mode Tabs */}
-                  <div className="flex flex-wrap items-center gap-2">
+                  {/* Left: View Mode Tabs (Segmented Control) */}
+                  <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/20">
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsDrawerOpen(false);
-                        if (onNavigate) onNavigate("home");
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                      title={isVi ? "Quay về Trang chủ" : "Back to Home"}
+                      onClick={() => setPreviewTab("original")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        previewTab === "original"
+                          ? "bg-primary text-white shadow-xs"
+                          : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                      }`}
+                      title={isVi ? "Xem văn bản gốc trực quan" : "View original document layout"}
                     >
-                      <Icon name="fa-solid fa-house text-[12px]" size={13} />
-                      <span>{isVi ? "Trang chủ" : "Home"}</span>
+                      <Icon name="fa-regular fa-file-lines text-[13px]" size={14} />
+                      <span>{isVi ? "Văn bản gốc" : "Original View"}</span>
                     </button>
-
                     <button
                       type="button"
-                      onClick={() => setIsDrawerOpen(false)}
-                      className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-all border border-outline-variant/30 cursor-pointer shadow-2xs"
-                      title={isVi ? "Quay lại danh sách kho tài liệu" : "Back to Repository"}
+                      onClick={() => setPreviewTab("chunks")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        previewTab === "chunks"
+                          ? "bg-primary text-white shadow-xs"
+                          : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                      }`}
+                      title={isVi ? "Xem phân mảnh Vector & Graph" : "View Vector Chunks"}
                     >
-                      <Icon name="fa-solid fa-arrow-left text-[12px]" size={13} />
-                      <span>{isVi ? "Kho tài liệu" : "Back"}</span>
+                      <Icon name="fa-solid fa-layer-group text-[13px]" size={14} />
+                      <span>{isVi ? "Phân mảnh AI" : "AI Chunks"}</span>
+                      {activeDocDetail?.chunks_list?.length > 0 && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          previewTab === "chunks" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                        }`}>
+                          {activeDocDetail.chunks_list.length}
+                        </span>
+                      )}
                     </button>
-
-                    <div className="h-4 w-px bg-outline-variant/40 mx-0.5"></div>
-
-                    {/* Segmented Control */}
-                    <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/20">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewTab("original")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          previewTab === "original"
-                            ? "bg-primary text-white shadow-xs"
-                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                        }`}
-                        title={isVi ? "Xem văn bản gốc trực quan" : "View original document layout"}
-                      >
-                        <Icon name="fa-regular fa-file-lines text-[13px]" size={14} />
-                        <span>{isVi ? "Văn bản gốc" : "Original View"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewTab("chunks")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          previewTab === "chunks"
-                            ? "bg-primary text-white shadow-xs"
-                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                        }`}
-                        title={isVi ? "Xem phân mảnh Vector & Graph" : "View Vector Chunks"}
-                      >
-                        <Icon name="fa-solid fa-layer-group text-[13px]" size={14} />
-                        <span>{isVi ? "Phân mảnh AI" : "AI Chunks"}</span>
-                        {activeDocDetail?.chunks_list?.length > 0 && (
-                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                            previewTab === "chunks" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-                          }`}>
-                            {activeDocDetail.chunks_list.length}
-                          </span>
-                        )}
-                      </button>
-                    </div>
                   </div>
 
                   {/* Actions, Badges & Zoom */}
@@ -1651,7 +1788,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     <div className="p-8 text-center text-xs space-y-3 bg-red-50/60 rounded-xl border border-red-200 m-4">
                       <Icon name="fa-solid fa-shield-halved text-2xl text-red-600" size={24} />
                       <div className="text-red-900 font-bold text-sm">
-                        {isVi ? "Giới hạn quyền truy cập theo phòng ban (BR-02)" : "Department Scope Access Restriction (BR-02)"}
+                        {isVi ? "Giới hạn quyền truy cập theo phòng ban" : "Department Scope Access Restriction"}
                       </div>
                       <p className="text-red-800 text-xs max-w-md mx-auto leading-relaxed">{drawerError}</p>
                     </div>
@@ -1662,9 +1799,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-surface-container">
                         <div>
                           <p className="text-[11px] font-bold tracking-widest text-primary uppercase font-mono">
-                            {isVi ? "BẢN XEM TRƯỚC TÀI LIỆU NGUYÊN BẢN (ORIGINAL PREVIEW)" : "ORIGINAL DOCUMENT PREVIEW"}
+                            {isVi ? "BẢN XEM TRƯỚC TÀI LIỆU NGUYÊN BẢN" : "ORIGINAL DOCUMENT PREVIEW"}
                           </p>
-                          <h2 className="text-lg font-bold text-on-surface mt-0.5">{activeDoc.name}</h2>
+                          <h2 className="text-base sm:text-lg font-bold text-on-surface mt-0.5">
+                            {formatDocTitle(activeDoc.name).main}
+                          </h2>
                         </div>
                         <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 text-[11px] font-semibold flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -1730,7 +1869,17 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                               <Icon name="fa-solid fa-file-pdf text-rose-600 text-base" size={16} />
                               {isVi ? "Tệp PDF nguyên bản • Trình xem tích hợp trình duyệt" : "Original PDF • Browser Viewer"}
                             </span>
-                            <span className="text-[11px] font-mono text-rose-700/80">{activeDoc.size || "PDF File"}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-[11px] font-mono text-rose-700/80">{activeDoc.size || "1.2 MB"}</span>
+                              <button
+                                type="button"
+                                onClick={handleDownloadDoc}
+                                className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-semibold text-[11px] hover:bg-rose-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Icon name="fa-solid fa-download text-[10px]" size={10} />
+                                <span>{isVi ? "Tải về" : "Download"}</span>
+                              </button>
+                            </div>
                           </div>
 
                           {isLoadingRaw ? (
@@ -1747,8 +1896,38 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                               />
                             </div>
                           ) : (
-                            <div className="p-8 text-center text-xs text-outline space-y-2">
-                              <p>{isVi ? "Không thể hiển thị PDF." : "Unable to display PDF."}</p>
+                            /* Graceful Rich Text Fallback for PDF when raw blob is unavailable */
+                            <div className="bg-white dark:bg-surface-container-low p-6 rounded-2xl border border-outline-variant/20 shadow-xs space-y-4">
+                              <div className="pb-3 border-b border-outline-variant/20 flex items-center justify-between text-xs text-on-surface-variant font-mono">
+                                <span className="font-bold text-primary flex items-center gap-1.5">
+                                  <Icon name="fa-solid fa-file-lines" size={13} />
+                                  {isVi ? "NỘI DUNG ĐIỀU KHOẢN HỢP ĐỒNG TRÍCH XUẤT" : "EXTRACTED CLAUSES (CUAD OCR)"}
+                                </span>
+                                <span>{activeDocDetail?.chunks_list?.length || activeDoc.chunk_count || 4} Đoạn trích</span>
+                              </div>
+                              <div className="text-sm font-sans leading-relaxed text-on-surface space-y-3.5 select-text">
+                                {activeDocDetail?.chunks_list?.length > 0 ? (
+                                  activeDocDetail.chunks_list.map((c, idx) => (
+                                    <div key={idx} className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline-variant/20">
+                                      <div className="text-[11px] font-mono font-bold text-primary mb-1">
+                                        § Đoạn trích #{idx + 1}
+                                      </div>
+                                      <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
+                                        {c.text}
+                                      </p>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="space-y-3">
+                                    <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/20">
+                                      <div className="text-[11px] font-mono font-bold text-primary mb-1">§ Điều khoản chính (Section 1.1)</div>
+                                      <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+                                        {activeDocDetail?.snippet || activeDocDetail?.text || `Tài liệu hợp đồng ${formatDocTitle(activeDoc.name).main} đã được lập chỉ mục toàn văn trong hệ thống đồ thị tri thức Neo4j và phân mảnh vector Qdrant. Nhấn tab "Phân mảnh AI" để kiểm tra chi tiết các vector embedding và liên kết thực thể pháp lý.`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1812,7 +1991,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     <div className="space-y-4">
                       <div className="text-center pb-4 border-b border-surface-container">
                         <p className="text-xs font-bold tracking-widest text-primary uppercase font-mono">
-                          {isVi ? "PHÂN MẢNH VECTOR & GRAPH (AI EMBEDDING AUDIT)" : "AI VECTOR & GRAPH CHUNKS"}
+                          {isVi ? "PHÂN MẢNH VECTOR & ĐỒ THỊ" : "AI VECTOR & GRAPH CHUNKS"}
                         </p>
                         <h2 className="text-xl font-bold text-on-surface mt-1">{activeDoc.name}</h2>
                         <p className="text-xs text-on-surface-variant font-mono">
@@ -1849,17 +2028,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     </div>
                   )}
                 </div>
-
-                {/* Canvas Footer OCR Info */}
-                <div className="flex flex-wrap items-center justify-between text-on-surface-variant text-xs pt-1">
-                  <span>OCR Engine: Tesseract 5.3 + LayoutLMv3 DeepParser</span>
-                  <span className="font-mono">Chunk Vector Hash: {activeDoc.hash}</span>
-                </div>
               </div>
 
               {/* Right Pane (Metadata & Schema Inspector Pane) */}
-              <div className="lg:col-span-4 bg-surface-container-lowest p-6 flex flex-col justify-between space-y-6 overflow-y-auto">
-                <div className="space-y-5">
+              <div className="lg:col-span-5 xl:col-span-4 min-w-0 bg-surface-container-lowest p-5 lg:p-6 flex flex-col justify-between space-y-6 overflow-y-auto overflow-x-hidden">
+                <div className="space-y-5 min-w-0">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
                       <Icon name="fa-solid fa-circle-nodes text-primary text-[18px]" size={18} />
@@ -1871,27 +2044,43 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                   </div>
 
                   {/* Key Metadata Table (Section 21 Standard) */}
-                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 space-y-2 text-xs">
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 space-y-2 text-xs min-w-0">
                     {activeDoc.oldName && (
-                      <div className="flex justify-between py-1.5 border-b border-surface-container bg-amber-50/70 px-2.5 rounded-lg border border-amber-200">
-                        <span className="text-amber-900 font-semibold">{isVi ? "Tên cũ (Trước đổi):" : "Previous Name:"}</span>
-                        <span className="font-bold text-amber-950 font-mono line-through">{activeDoc.oldName}</span>
+                      <div className="flex justify-between py-1.5 border-b border-surface-container bg-amber-50/70 px-2.5 rounded-lg border border-amber-200 gap-2">
+                        <span className="text-amber-900 font-semibold flex-shrink-0">{isVi ? "Tên cũ (Trước đổi):" : "Previous Name:"}</span>
+                        <span className="font-bold text-amber-950 font-mono line-through truncate text-right">{activeDoc.oldName}</span>
                       </div>
                     )}
-                    <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Tên tài liệu:" : "Document Name:"}</span>
-                      <span className="font-bold text-on-surface max-w-[200px] truncate" title={activeDoc.name}>{activeDoc.name}</span>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Tên tài liệu:" : "Document Name:"}</span>
+                      <span className="font-bold text-on-surface truncate text-right flex-1" title={activeDoc.name}>
+                        {formatDocTitle(activeDoc.name).main}
+                      </span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Phòng ban:" : "Department:"}</span>
-                      <span className="font-bold text-on-surface">{activeDoc.deptLabel || activeDoc.department}</span>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Khóa bảo mật:" : "Security Access:"}</span>
+                      <span className="font-mono text-[11px] font-semibold text-on-surface bg-surface-container-high px-2 py-0.5 rounded">
+                        {activeDoc.access || "RBAC Strict (Level 3)"}
+                      </span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Mã định danh (ID):" : "Document ID:"}</span>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Schema dữ liệu:" : "Data Schema:"}</span>
+                      <span className="font-mono text-[11px] font-semibold text-primary truncate max-w-[180px] text-right" title={activeDoc.schema || "AEGIS Pháp chế Schema"}>
+                        {activeDoc.schema || "AEGIS Pháp chế"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Phòng ban:" : "Department:"}</span>
+                      <span className="font-bold text-on-surface text-right truncate">
+                        {(activeDoc.deptLabel || activeDoc.department || "").replace(/\s*\(.*?\)/g, "").trim()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Mã định danh (ID):" : "Document ID:"}</span>
                       <span className="font-mono font-bold text-on-surface">{activeDoc.id}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Trạng thái:" : "Status:"}</span>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Trạng thái:" : "Status:"}</span>
                       <span className={`font-bold px-2 py-0.5 rounded text-[11px] inline-flex items-center gap-1 ${
                         activeDoc.status === "INDEXED"
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
@@ -1902,74 +2091,78 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           activeDoc.status === "INDEXED" ? "bg-emerald-500" : activeDoc.status === "FAILED" ? "bg-rose-500" : "bg-amber-500 animate-pulse"
                         }`}></span>
-                        {activeDoc.status || "INDEXED"}
+                        {isVi ? (activeDoc.status === "INDEXED" ? "Đã lập chỉ mục" : activeDoc.status === "FAILED" ? "Thất bại" : "Chờ xử lý") : (activeDoc.status || "INDEXED")}
                       </span>
                     </div>
-                    <div className="flex flex-col py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant mb-0.5">{isVi ? "Central Storage:" : "Central Storage:"}</span>
+                    <div className="flex flex-col py-1 border-b border-surface-container min-w-0">
+                      <span className="text-on-surface-variant mb-0.5">{isVi ? "Kho lưu trữ trung tâm:" : "Central Storage:"}</span>
                       <span className="font-mono text-[11px] text-primary bg-primary/5 px-2 py-1 rounded border border-primary/20 break-all select-all">
                         {activeDoc.storage_path || activeDoc.storagePath || `/data/${activeDoc.deptKey || 'legal'}/${activeDoc.name}`}
                       </span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Dung lượng:" : "File Size:"}</span>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Dung lượng:" : "File Size:"}</span>
                       <span className="font-semibold text-on-surface">{activeDoc.size || "1.2 MB"}</span>
                     </div>
-                    <div className="flex flex-col py-1 border-b border-surface-container">
+                    <div className="flex flex-col py-1 border-b border-surface-container min-w-0">
                       <span className="text-on-surface-variant mb-0.5">SHA-256 Hash:</span>
                       <span className="font-mono text-[10px] text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded truncate select-all" title={activeDoc.hash || activeDoc.file_hash}>
                         {activeDoc.hash || activeDoc.file_hash || "SHA-256 Verified"}
                       </span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Thời gian tạo:" : "Created At:"}</span>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Thời gian tạo:" : "Created At:"}</span>
                       <span className="font-semibold text-on-surface">{activeDoc.created_at || activeDoc.lastSynced}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">{isVi ? "Thời gian cập nhật:" : "Updated At:"}</span>
+                    <div className="flex justify-between py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">{isVi ? "Thời gian cập nhật:" : "Updated At:"}</span>
                       <span className="font-semibold text-on-surface">{activeDoc.updated_at || activeDoc.lastSynced}</span>
                     </div>
-                    <div className="flex justify-between items-center py-1 border-b border-surface-container">
-                      <span className="text-on-surface-variant">Qdrant Vector DB:</span>
-                      <span className="flex items-center gap-1 font-bold text-xs text-emerald-600">
-                        <span>✓ Indexed</span>
-                        <span className="text-on-surface font-mono text-[11px]">({activeDoc.chunk_count || activeDoc.chunks || 0} chunks)</span>
+                    <div className="flex justify-between items-center py-1 border-b border-surface-container gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">Qdrant Vector DB:</span>
+                      <span className="flex items-center gap-1 font-bold text-xs text-emerald-600 text-right">
+                        <span>✓ {isVi ? "Đã lập chỉ mục" : "Indexed"}</span>
+                        <span className="text-on-surface font-mono text-[11px]">({activeDoc.chunk_count || activeDoc.chunks || 0} {isVi ? "mảnh" : "chunks"})</span>
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-1">
-                      <span className="text-on-surface-variant">Neo4j Graph DB:</span>
-                      <span className="font-bold text-xs text-emerald-600">
-                        {activeDoc.neo4j_synced !== false ? "✓ Synced" : "Pending"}
+                    <div className="flex justify-between items-center py-1 gap-2">
+                      <span className="text-on-surface-variant flex-shrink-0">Neo4j Graph DB:</span>
+                      <span className="font-bold text-xs text-emerald-600 text-right">
+                        {activeDoc.neo4j_synced !== false ? (isVi ? "✓ Đã đồng bộ" : "✓ Synced") : (isVi ? "Chờ xử lý" : "Pending")}
                       </span>
                     </div>
                   </div>
 
                   {/* Neo4j Graph Relationship Summary */}
-                  <div className="space-y-2">
-                    <p className="text-xs uppercase font-bold tracking-wider text-on-surface-variant">
-                      {isVi ? "Đồ thị quan hệ Neo4j (Graph Triples)" : "Neo4j Relationship Path"}
+                  <div className="space-y-2 min-w-0">
+                    <p className="text-xs uppercase font-bold tracking-wider text-on-surface-variant flex items-center gap-1.5">
+                      <Icon name="fa-solid fa-diagram-project text-primary text-[12px]" size={12} />
+                      <span>{isVi ? "Đồ thị quan hệ tài liệu" : "Document Relationship Graph"}</span>
                     </p>
-                    <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/30 space-y-2.5 text-xs">
-                      {activeDoc.neo4jRel?.map((rel, idx) => (
-                        <div key={idx} className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 font-bold text-[11px]">
-                              {rel.from}
+                    <div className="bg-surface-container-low p-3.5 rounded-xl border border-outline-variant/30 space-y-2.5 text-xs min-w-0">
+                      <div className="flex items-center gap-2 pb-2 border-b border-outline-variant/15 text-xs font-bold text-primary">
+                        <Icon name="fa-solid fa-file-contract" size={13} />
+                        <span className="truncate" title={activeDoc.name}>
+                          {formatDocTitle(activeDoc.name).main || activeDoc.name}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {activeDoc.neo4jRel?.map((rel, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs flex-wrap">
+                            <span className={`font-mono text-[10.5px] font-bold px-2 py-0.5 rounded ${
+                              rel.isRisk ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            }`}>
+                              [{rel.rel}]
                             </span>
-                          </div>
-                          <div className={`pl-4 font-bold flex items-center gap-1 text-[11px] ${rel.isRisk ? "text-error" : "text-secondary"}`}>
-                            <Icon name="fa-solid fa-arrow-turn-down-right" size={15} />
-                            <span>[{rel.rel}]</span>
-                          </div>
-                          <div className="flex items-center gap-2 pl-4">
-                            <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] ${
-                              rel.isRisk ? "bg-rose-100 text-rose-900" : "bg-purple-100 text-purple-900"
+                            <Icon name="fa-solid fa-arrow-right text-[10px] text-outline shrink-0" size={10} />
+                            <span className={`font-semibold px-2 py-0.5 rounded break-all ${
+                              rel.isRisk ? "bg-rose-50 text-rose-900 border border-rose-200" : "bg-cyan-50 text-cyan-900 border border-cyan-200"
                             }`}>
                               {rel.to}
                             </span>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -2003,11 +2196,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
 
                 {/* Bottom Actions & Policy Callout */}
                 <div className="space-y-3 pt-4 border-t border-surface-container">
-                  {/* C4 Security Callout */}
+                  {/* Security Policy Callout */}
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs leading-relaxed flex items-start gap-2">
                     <Icon name="fa-solid fa-shield-halved text-amber-700 text-[16px] shrink-0 mt-0.5" size={16} />
                     <div>
-                      <strong className="font-bold">{isVi ? "Chính sách bảo mật C4: " : "C4 Security Policy: "}</strong>
+                      <strong className="font-bold">{isVi ? "Chính sách bảo mật tài liệu: " : "Document Security Policy: "}</strong>
                       {isVi
                         ? "Tài khoản Standard & Dept Manager chỉ được xem trước (Read-Only). Quyền Tải xuống tài liệu gốc được kiểm soát chặt chẽ theo Audit Log."
                         : "Standard & Dept Manager accounts are restricted to Read-Only preview. Raw file downloads are restricted and audited."}
@@ -2024,11 +2217,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                           : "bg-primary text-on-primary hover:bg-blue-700"
                       }`}
                     >
-                      <Icon name="" size={14} />
+                      <Icon name={isDocVerified ? "fa-solid fa-check" : "fa-solid fa-shield-check"} size={14} />
                       <span>
                         {isDocVerified
-                          ? (isVi ? "✓ Đã xác thực & Đồng bộ vào Neo4j (HITL)" : "✓ Verified & Committed to Neo4j")
-                          : (isVi ? "Xác thực Toàn bộ Thực thể (HITL)" : "Verify All Extractions (HITL)")}
+                          ? (isVi ? "Đã xác thực & Đồng bộ vào Neo4j" : "✓ Verified & Committed to Neo4j")
+                          : (isVi ? "Xác thực Toàn bộ Thực thể" : "Verify All Extractions (HITL)")}
                       </span>
                     </button>
 
@@ -2116,10 +2309,10 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* UPLOAD DOCUMENT MODAL (+ Upload tài liệu) */}
       {/* ========================================================================= */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
+            <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                   <Icon name="fa-solid fa-cloud-arrow-up text-[18px]" size={18} />
@@ -2129,20 +2322,20 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     {isVi ? "Tải lên tài liệu mới" : "Upload New Document"}
                   </h3>
                   <p className="text-xs text-on-surface-variant">
-                    {isVi ? "Lưu vào Central Document Storage (/data) & Tự động Ingest" : "Save to Central Storage (/data) & Auto-Ingest"}
+                    {isVi ? "Lưu vào Kho Lưu Trữ Trung Tâm (/data) & Tự Động Nạp" : "Save to Central Storage (/data) & Auto-Ingest"}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsUploadModalOpen(false)}
-                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all"
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer"
               >
                 <Icon name="fa-solid fa-xmark text-[16px]" size={16} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleUploadSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleUploadSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* Phòng ban / Loại tri thức Selector (Gộp gọn 1 ô chuẩn UX) */}
               <div>
                 <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
@@ -2169,11 +2362,11 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                     ))
                   ) : (
                     <>
-                      <option value="sales">{isVi ? "Kinh doanh (Sales)" : "Sales"}</option>
-                      <option value="legal">{isVi ? "Pháp chế (Legal)" : "Legal"}</option>
-                      <option value="accounting_procurement">{isVi ? "Kế toán / Thu mua (Accounting & Procurement)" : "Accounting & Procurement"}</option>
-                      <option value="it">{isVi ? "Công nghệ / IT (Information Technology)" : "Information Technology (IT)"}</option>
-                      <option value="rnd">{isVi ? "Nghiên cứu & Phát triển (R&D)" : "Research & Development (R&D)"}</option>
+                      <option value="sales">{isVi ? "Kinh doanh" : "Sales"}</option>
+                      <option value="legal">{isVi ? "Pháp chế" : "Legal"}</option>
+                      <option value="accounting_procurement">{isVi ? "Kế toán / Thu mua" : "Accounting & Procurement"}</option>
+                      <option value="it">{isVi ? "Công nghệ / CNTT" : "Information Technology (IT)"}</option>
+                      <option value="rnd">{isVi ? "Nghiên cứu & Phát triển" : "Research & Development (R&D)"}</option>
                     </>
                   )}
                 </select>
@@ -2191,7 +2384,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
                       ? "Bạn đang đăng nhập với quyền Admin hệ thống. Tài liệu tải lên sẽ được tự động phê duyệt và lập chỉ mục trực tiếp vào Kho tri thức AI."
                       : "You are logged in as Admin. Documents will be auto-approved and ingested immediately.")
                     : (isVi
-                      ? "Quy trình kiểm duyệt: Tài liệu sau khi gửi sẽ nằm ở trạng thái 'Chờ phê duyệt' (Pending Approval) để Admin hệ thống kiểm tra tính hợp lệ trước khi đồng bộ vào AI Copilot."
+                      ? "Quy trình kiểm duyệt: Tài liệu sau khi gửi sẽ nằm ở trạng thái 'Chờ phê duyệt' để Admin hệ thống kiểm tra tính hợp lệ trước khi đồng bộ vào AI Copilot."
                       : "Approval Flow: Your document will enter 'Pending Approval' status for Admin review before syncing into the AI Knowledge Base.")}
                 </span>
               </div>
@@ -2311,7 +2504,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* MY UPLOAD APPROVALS QUEUE MODAL (Trạng thái tài liệu đã gửi của tôi) */}
       {/* ========================================================================= */}
       {isMyApprovalsOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
@@ -2434,7 +2627,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* RENAME DOCUMENT MODAL */}
       {/* ========================================================================= */}
       {renameModalDoc && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
               <div className="flex items-center gap-3">
@@ -2525,7 +2718,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* REPLACE DOCUMENT FILE MODAL */}
       {/* ========================================================================= */}
       {replaceModalDoc && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
               <div className="flex items-center gap-3">
@@ -2660,7 +2853,7 @@ export default function DocumentsView({ onNavigate, t, lang, role, currentUser, 
       {/* DELETE CONFIRMATION MODAL */}
       {/* ========================================================================= */}
       {deleteModalDoc && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-error/40 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-error/20 flex items-center justify-between bg-rose-50/60">
               <div className="flex items-center gap-3">

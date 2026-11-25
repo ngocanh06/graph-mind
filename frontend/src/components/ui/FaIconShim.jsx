@@ -92,8 +92,48 @@ export const ArrowLeft = createIcon("ArrowLeft");
 export const ArrowUp = createIcon("ArrowUp");
 export const ArrowDown = createIcon("ArrowDown");
 export const ArrowUpRight = createIcon("ArrowUpRight");
-export const Sparkles = createIcon("Sparkles");
-export const Wand2 = createIcon("Wand2");
+
+// Authentic Modern AI Star Constellation (Gemini / Claude astroid geometry)
+export const Sparkles = React.forwardRef(({
+  size = 16,
+  color = "currentColor",
+  className = "",
+  style = {},
+  strokeWidth = 2,
+  ...props
+}, ref) => {
+  const pxSize = typeof size === "number" ? `${size}px` : size;
+  return (
+    <svg
+      ref={ref}
+      width={pxSize}
+      height={pxSize}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        lineHeight: 1,
+        verticalAlign: "middle",
+        flexShrink: 0,
+        color: color || "currentColor",
+        ...style,
+      }}
+      aria-hidden="true"
+      {...props}
+    >
+      {/* Primary 4-pointed Gemini / Modern AI diamond star */}
+      <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" />
+      {/* Secondary accent satellite spark */}
+      <path d="M19 2C19 4.2 17.2 6 15 6C17.2 6 19 7.8 19 10C19 7.8 20.8 6 23 6C20.8 6 19 4.2 19 2Z" opacity="0.75" />
+    </svg>
+  );
+});
+Sparkles.displayName = "Sparkles";
+
+export const Wand2 = Sparkles;
 export const FileText = createIcon("FileText");
 export const File = createIcon("File");
 export const FileEdit = createIcon("FileEdit");

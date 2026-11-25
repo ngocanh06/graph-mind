@@ -25,6 +25,35 @@ import AdminView from "./views/m6_admin_security/AdminView";
 import KnowledgeExplorerView from "./views/m5_multifacet_search/KnowledgeExplorerView";
 import ForgotPasswordPage from "./components/ForgotPasswordPage";
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("[ErrorBoundary caught]:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: "center", color: "#dc2626", background: "var(--surface, #fff)", margin: 20, borderRadius: 12, border: "1px solid #fca5a5" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Đã xảy ra lỗi khi hiển thị giao diện</h2>
+          <pre style={{ textAlign: "left", background: "#fef2f2", padding: 16, borderRadius: 8, fontSize: 12, overflowX: "auto", color: "#991b1b" }}>
+            {String(this.state.error?.stack || this.state.error?.message || this.state.error)}
+          </pre>
+          <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }} style={{ marginTop: 16, padding: "8px 16px", borderRadius: 8, background: "#0284c7", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700 }}>
+            Tải lại trang
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const VALID_VIEWS = [
   "home",
   "executive",
@@ -158,6 +187,11 @@ export default function App() {
   // Apply theme to document element
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     localStorage.setItem("aegis_theme", theme);
   }, [theme]);
 
@@ -372,7 +406,8 @@ export default function App() {
           onMarkAllNotifRead={markAllNotifRead}
         />
 
-        <main ref={workspaceRef} className="workspace" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", background: "radial-gradient(1200px 500px at 50% 0px, rgba(6, 182, 212, 0.035) 0%, rgba(255, 255, 255, 0) 100%), var(--bg-app)" }}>
+        <ErrorBoundary>
+        <main ref={workspaceRef} className="workspace" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: "auto", overflowX: "hidden", background: "var(--base)" }}>
           {view === "home" && (
             <HomeView
               onNavigate={handleNavigate}
@@ -494,6 +529,7 @@ export default function App() {
             />
           )}
         </main>
+        </ErrorBoundary>
       </div>
     </div>
   );

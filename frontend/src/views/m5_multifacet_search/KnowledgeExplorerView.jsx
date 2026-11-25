@@ -7,11 +7,13 @@ import React, { useState, useEffect } from "react";
 import { searchKnowledgeExplorer, fetchNeo4jNode } from "../../services/api";
 
 const LABEL_COLORS = {
-  Product:     { bg: "#f0fdf4", border: "#0d9488", text: "#115e59" },
-  Category:    { bg: "#ecfeff", border: "#0891b2", text: "#0e7490" },
-  SubCategory: { bg: "#ecfeff", border: "#06b6d4", text: "#0e7490" },
-  Customer:    { bg: "#f0fdfa", border: "#14b8a6", text: "#0f766e" },
-  SalesOrder:  { bg: "#f0fdfa", border: "#2dd4bf", text: "#0f766e" },
+  Category:    { bg: "#eff6ff", border: "#2563eb", text: "#1e40af" },
+  SubCategory: { bg: "#f0f9ff", border: "#0284c7", text: "#075985" },
+  Product:     { bg: "#ecfdf5", border: "#059669", text: "#065f46" },
+  Customer:    { bg: "#fffbeb", border: "#d97706", text: "#b45309" },
+  SalesOrder:  { bg: "#fff7ed", border: "#ea580c", text: "#9a3412" },
+  Contract:    { bg: "#fef2f2", border: "#dc2626", text: "#991b1b" },
+  Clause:      { bg: "#f0fdfa", border: "#0d9488", text: "#115e59" },
   Employee:    { bg: "#f8fafc", border: "#475569", text: "#1e293b" },
   default:     { bg: "#f8fafc", border: "#64748b", text: "#334155" },
 };
@@ -23,10 +25,11 @@ function getLabelColor(labels = []) {
   return LABEL_COLORS.default;
 }
 
-export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mountain Bikes agreement", embedded = false }) {
+export default function KnowledgeExplorerView({ lang = "vi", initialQuery = null, embedded = false, currentUser = null }) {
   const isVi = lang === "vi";
+  const defaultQ = initialQuery || (isVi ? "Hợp đồng dịch vụ bảo trì" : "Mountain Bikes agreement");
 
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState(defaultQ);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [selectedResult, setSelectedResult] = useState(null);
@@ -37,7 +40,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
     if (!searchQ.trim()) return;
     setLoading(true);
     setSearched(true);
-    const res = await searchKnowledgeExplorer(searchQ.trim(), 8);
+    const res = await searchKnowledgeExplorer(searchQ.trim(), 8, currentUser);
     setData(res || null);
     if (res?.vector_results?.length > 0) {
       setSelectedResult(res.vector_results[0]);
@@ -49,7 +52,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
   };
 
   useEffect(() => {
-    handleSearch("Mountain Bikes agreement");
+    handleSearch(defaultQ);
   }, []);
 
   const handleSelectNode = async (node) => {
@@ -68,14 +71,14 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
     <div style={{
       display: "flex",
       flexDirection: "column",
-      height: "100%",
+      height: embedded ? "auto" : "100%",
+      minHeight: embedded ? "600px" : undefined,
       gap: 14,
       padding: embedded ? "0" : "16px 20px 48px",
       boxSizing: "border-box",
       width: "100%",
       maxWidth: "100%",
-      minWidth: 0,
-      overflowX: "hidden"
+      minWidth: 0
     }}>
       {/* ── TOP SEARCH BAR ─────────────────────────────────────────────── */}
       <div style={{
@@ -85,22 +88,29 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-            <span style={{ fontSize: 20, flexShrink: 0 }}>🌐</span>
+            <div style={{
+              width: 34, height: 34, borderRadius: 8,
+              background: "rgba(2, 132, 199, 0.1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#0284c7", flexShrink: 0
+            }}>
+              <i className="fa-solid fa-circle-nodes" style={{ fontSize: 17 }} />
+            </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-1, #0f172a)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {isVi ? "Knowledge Explorer: Hợp nhất Qdrant + Neo4j" : "Knowledge Explorer: Unified Qdrant + Neo4j"}
+                {isVi ? "Hợp Nhất GraphRAG: Đối Chiếu Vector & Đồ Thị" : "GraphRAG Studio: Unified Vector & Graph"}
               </div>
               <div style={{ fontSize: 12, color: "var(--text-3, #64748b)" }}>
-                {isVi ? "Truy vết đa chiều từ Tìm kiếm Ngữ nghĩa (Qdrant) đến Đồ thị Tri thức Thực thể (Neo4j)" : "Multi-modal reasoning from Semantic Vector Search to Relational Knowledge Graph"}
+                {isVi ? "Minh chứng kỹ thuật GraphRAG: Đối chiếu đồng thời Bằng chứng Ngữ nghĩa và Mạng lưới Thực thể" : "Technical verification of GraphRAG: Grounding Semantic Vector Chunks with Knowledge Graph Entities"}
               </div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#ede9fe", color: "#6d28d9", fontWeight: 700 }}>
-              Qdrant: 9,140 vectors
-            </span>
             <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#e0f2fe", color: "#0369a1", fontWeight: 700 }}>
-              Neo4j: 3,484 nodes
+              {isVi ? "Vector: 9,140" : "Qdrant: 9,140 vectors"}
+            </span>
+            <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#f0fdf4", color: "#166534", fontWeight: 700 }}>
+              {isVi ? "Đồ thị: 3,484 nút" : "Neo4j: 3,484 nodes"}
             </span>
           </div>
         </div>
@@ -112,7 +122,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSearch()}
-            placeholder={isVi ? "Nhập câu hỏi hoặc chủ đề (ví dụ: Mountain Bikes agreement, confidentiality, sales orders...)" : "Enter topic or query..."}
+            placeholder={isVi ? "Nhập câu hỏi hoặc chủ đề tra cứu..." : "Enter topic or query..."}
             style={{
               flex: 1, minWidth: "240px", padding: "10px 16px", borderRadius: 10,
               border: "1.5px solid var(--border-soft, #cbd5e1)", fontSize: 13.5,
@@ -124,13 +134,26 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
             onClick={() => handleSearch()}
             disabled={loading}
             style={{
-              padding: "10px 24px", borderRadius: 10, border: "none",
-              background: "linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)",
-              color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer",
-              flexShrink: 0
+              padding: "10px 22px", borderRadius: 10, border: "none",
+              background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+              color: "#fff", fontWeight: 700, fontSize: 13.5, cursor: loading ? "wait" : "pointer",
+              flexShrink: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8
             }}
           >
-            {loading ? "⏳..." : "🔍 Explore"}
+            {loading ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: 13 }} />
+                <span>{isVi ? "Đang tìm..." : "Searching..."}</span>
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-magnifying-glass" style={{ fontSize: 13 }} />
+                <span>{isVi ? "Khám phá" : "Explore"}</span>
+              </>
+            )}
           </button>
         </div>
 
@@ -139,23 +162,29 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
           <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-3)", flexShrink: 0 }}>
             {isVi ? "Gợi ý khám phá:" : "Presets:"}
           </span>
-          {[
-            "Mountain Bikes agreement",
-            "confidentiality agreement",
-            "termination of employment",
-            "Road Bikes supplier warranty",
-            "governing law and jurisdiction"
-          ].map(p => (
+          {(isVi ? [
+            { label: "Hợp đồng dịch vụ bảo trì", query: "Hợp đồng dịch vụ bảo trì" },
+            { label: "Xe đạp thể thao Mountain", query: "Xe đạp thể thao" },
+            { label: "Thỏa thuận bảo mật thông tin", query: "Bảo mật thông tin" },
+            { label: "Điều khoản bồi thường thiệt hại", query: "Bồi thường thiệt hại" },
+            { label: "Khách hàng Roger Harui", query: "Roger Harui" }
+          ] : [
+            { label: "Service Agreement", query: "Service Agreement" },
+            { label: "Mountain Bikes", query: "Mountain Bikes" },
+            { label: "Confidentiality Agreement", query: "Confidentiality Agreement" },
+            { label: "Indemnity & Liability", query: "Indemnity and liability" },
+            { label: "Roger Harui (VIP)", query: "Roger Harui" }
+          ]).map(p => (
             <button
-              key={p}
-              onClick={() => { setQuery(p); handleSearch(p); }}
+              key={p.label}
+              onClick={() => { setQuery(p.query); handleSearch(p.query); }}
               style={{
                 padding: "3px 10px", borderRadius: 12, border: "1px solid var(--border-soft, #cbd5e1)",
                 background: "#fff", fontSize: 11.5, cursor: "pointer", color: "var(--text-2, #334155)",
                 fontWeight: 600
               }}
             >
-              {p}
+              {p.label}
             </button>
           ))}
         </div>
@@ -180,8 +209,9 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
           minWidth: 0, overflow: "hidden", boxSizing: "border-box"
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)" }}>
-              📄 {isVi ? "Kết quả Vector Semantic từ Qdrant" : "Semantic Results from Qdrant"}
+            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 8 }}>
+              <i className="fa-solid fa-file-contract" style={{ color: "#0284c7", fontSize: 14 }} />
+              <span>{isVi ? "Bằng chứng Ngữ nghĩa Vector" : "Semantic Evidence Chunks (Qdrant)"}</span>
             </div>
             <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>
               {vectorResults.length} {isVi ? "đoạn trích" : "chunks"}
@@ -190,8 +220,9 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
 
           <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
             {loading ? (
-              <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>
-                ⏳ {isVi ? "Đang tính toán vector tương đồng..." : "Searching Qdrant vectors..."}
+              <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <i className="fa-solid fa-spinner fa-spin" style={{ color: "var(--blue)" }} />
+                <span>{isVi ? "Đang tính toán vector tương đồng..." : "Searching Qdrant vectors..."}</span>
               </div>
             ) : vectorResults.length === 0 ? (
               <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>
@@ -206,8 +237,8 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
                     onClick={() => setSelectedResult(item)}
                     style={{
                       padding: 10, borderRadius: 8, cursor: "pointer",
-                      border: `1.5px solid ${isSelected ? "#7c3aed" : "var(--border-soft, #e2e8f0)"}`,
-                      background: isSelected ? "#f5f3ff" : "var(--bg-subtle, #f8fafc)",
+                      border: `1.5px solid ${isSelected ? "#0284c7" : "var(--border-soft, #e2e8f0)"}`,
+                      background: isSelected ? "#f0f9ff" : "var(--bg-subtle, #f8fafc)",
                       transition: "all 0.15s",
                       minWidth: 0,
                       overflow: "hidden"
@@ -250,18 +281,20 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
           minWidth: 0, overflow: "hidden", boxSizing: "border-box"
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)" }}>
-              🕸️ {isVi ? "Thực thể Quan hệ từ Neo4j" : "Related Entities from Neo4j"}
+            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 8 }}>
+              <i className="fa-solid fa-circle-nodes" style={{ color: "#059669", fontSize: 14 }} />
+              <span>{isVi ? "Mạng lưới Thực thể từ Đồ thị (Neo4j)" : "Knowledge Graph Entities (Neo4j)"}</span>
             </div>
             <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>
-              {graphNodes.length} nodes · {graphRels.length} rels
+              {graphNodes.length} {isVi ? "nút" : "nodes"} · {graphRels.length} {isVi ? "quan hệ" : "rels"}
             </span>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
             {loading ? (
-              <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>
-                ⏳ {isVi ? "Đang truy vấn đồ thị thực thể Neo4j..." : "Querying Neo4j subgraph..."}
+              <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <i className="fa-solid fa-spinner fa-spin" style={{ color: "var(--blue)" }} />
+                <span>{isVi ? "Đang truy vấn đồ thị thực thể Neo4j..." : "Querying Neo4j subgraph..."}</span>
               </div>
             ) : graphNodes.length === 0 ? (
               <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>
@@ -324,7 +357,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
         {/* Left: Selected Document / Qdrant Chunk Detail */}
         <div style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-3)" }}>
-            {isVi ? "Tài liệu Qdrant đang chọn" : "Selected Qdrant Document"}
+            {isVi ? "Chi tiết Đoạn trích Đang chọn" : "Selected Document Details"}
           </div>
           {selectedResult ? (
             <div style={{ marginTop: 6, minWidth: 0 }}>
@@ -358,7 +391,7 @@ export default function KnowledgeExplorerView({ lang = "vi", initialQuery = "Mou
         {/* Right: Selected Neo4j Entity Detail */}
         <div style={{ minWidth: 0, overflow: "hidden" }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-3)" }}>
-            {isVi ? "Thực thể Neo4j đang chọn" : "Selected Neo4j Entity"}
+            {isVi ? "Chi tiết Thực thể Đang chọn" : "Selected Entity Details"}
           </div>
           {selectedEntity ? (
             <div style={{ marginTop: 6, minWidth: 0 }}>

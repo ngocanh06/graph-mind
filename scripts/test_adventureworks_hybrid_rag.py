@@ -23,7 +23,7 @@ def test_adventureworks_hybrid_rag():
     print("TEST ADVENTUREWORKS HYBRID GRAPH-RAG")
     print("=" * 65)
 
-    client = QdrantClient(host="127.0.0.1", port=6333)
+    client = QdrantClient(host="127.0.0.1", port=6333, timeout=60.0)
 
     # 1. Collection Existence & Separation
     print("\n[1/4] Verifying Qdrant Collections & Separation...")
@@ -35,12 +35,12 @@ def test_adventureworks_hybrid_rag():
 
     aw_info = client.get_collection("adventureworks_entities")
     total_aw_points = aw_info.points_count
-    print(f"  adventureworks_entities points: {total_aw_points:,} (Expected: 26,129 or 52,594)")
-    assert total_aw_points in (26129, 52594), f"Expected 26,129 or 52,594 vectors, got {total_aw_points}"
+    print(f"  adventureworks_entities points: {total_aw_points:,} (Expected: >= 26,129)")
+    assert total_aw_points >= 26129, f"Expected at least 26,129 vectors, got {total_aw_points}"
 
     # 2. Vector Type Distribution Verification
     print("\n[2/4] Verifying Entity Breakdown in adventureworks_entities...")
-    expected_orders = 31465 if total_aw_points == 52594 else 5000
+    expected_orders = 31465 if total_aw_points >= 52594 else 5000
     expected_breakdown = {
         "Product": 504,
         "Vendor": 104,

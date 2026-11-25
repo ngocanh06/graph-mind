@@ -193,9 +193,37 @@ export default function Icon({
 }) {
   if (!name) return null;
 
+  const pxSize = typeof size === "number" ? `${size}px` : size;
+
+  if (name === "Sparkles" || name === "sparkles" || name === "Wand2") {
+    return (
+      <svg
+        width={pxSize}
+        height={pxSize}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className={className}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          lineHeight: 1,
+          verticalAlign: "middle",
+          flexShrink: 0,
+          color: color || "currentColor",
+          ...style,
+        }}
+        aria-hidden="true"
+        {...props}
+      >
+        <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" />
+        <path d="M19 2C19 4.2 17.2 6 15 6C17.2 6 19 7.8 19 10C19 7.8 20.8 6 23 6C20.8 6 19 4.2 19 2Z" opacity="0.75" />
+      </svg>
+    );
+  }
+
   const faClass = resolveFaClass(name);
   const isSpin = typeof name === "string" && (name.includes("fa-spin") || name.includes("spin"));
-  const pxSize = typeof size === "number" ? `${size}px` : size;
 
   return (
     <i

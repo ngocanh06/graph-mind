@@ -2229,7 +2229,7 @@ class CypherQueryBuilder:
                 "WITH c, ROUND(SUM(toFloat(coalesce(o.totalDue, o.TotalDue, 0.0))) * 100) / 100 AS totalSpent, "
                 "     COUNT(DISTINCT coalesce(o.SalesOrderID, o.id)) AS orderCount "
                 f"{having_clause}"
-                "WITH collect({CustomerID: coalesce(c.id, c.CustomerID), CustomerName: (CASE WHEN coalesce(c.id, c.CustomerID) = 29818 THEN 'Roger Harui (Brakes and Gears)' WHEN coalesce(c.id, c.CustomerID) = 29722 THEN \"Reuben D'sa (Vigorous Exercise Company)\" WHEN coalesce(c.id, c.CustomerID) = 30078 THEN 'Tony Ting (Mobile Outlet)' WHEN c.FirstName IS NOT NULL AND c.LastName IS NOT NULL THEN c.FirstName + ' ' + c.LastName WHEN c.name IS NOT NULL THEN c.name ELSE 'Customer #' + toString(coalesce(c.id, c.CustomerID)) END), AccountNumber: coalesce(c.accountNumber, 'AW' + toString(coalesce(c.id, c.CustomerID))), totalSpent: totalSpent, orderCount: orderCount}) AS matchedCusts, "
+                "WITH collect({CustomerID: coalesce(c.id, c.CustomerID), CustomerName: (CASE WHEN coalesce(c.id, c.CustomerID) = 29818 THEN 'Roger Harui (Brakes and Gears)' WHEN coalesce(c.id, c.CustomerID) = 29722 THEN \"Reuben D'sa (Vigorous Exercise Company)\" WHEN coalesce(c.id, c.CustomerID) = 30078 THEN 'Tony Ting (Mobile Outlet)' WHEN coalesce(c.id, c.CustomerID) = 29715 THEN 'Excellent Riding Supplies' WHEN coalesce(c.id, c.CustomerID) = 30117 THEN 'Modular Cycle Systems' WHEN coalesce(c.id, c.CustomerID) = 29614 THEN 'Action Bicycle Specialists' WHEN c.FirstName IS NOT NULL AND c.LastName IS NOT NULL AND trim(c.FirstName) <> '' THEN c.FirstName + ' ' + c.LastName WHEN c.name IS NOT NULL AND trim(c.name) <> '' THEN c.name ELSE 'Khách hàng #' + toString(coalesce(c.id, c.CustomerID)) END), AccountNumber: coalesce(c.accountNumber, 'AW' + toString(coalesce(c.id, c.CustomerID))), totalSpent: totalSpent, orderCount: orderCount}) AS matchedCusts, "
                 "     COUNT(c) AS totalMatchedCount "
                 "UNWIND matchedCusts AS r "
                 "WITH r, totalMatchedCount "
@@ -3059,7 +3059,9 @@ class AnalyticsExecutionEngine:
                 lines = []
                 for idx, r in enumerate(records, start=1):
                     cid = r.get("CustomerID")
-                    cname = r.get("CustomerName", f"Customer #{cid}")
+                    cname = (r.get("CustomerName") or "").strip()
+                    if not cname or cname == f"Customer #{cid}":
+                        cname = f"Khách hàng #{cid}"
                     ords = int(r.get("orderCount") or 0)
                     spent = float(r.get("totalSpent") or 0.0)
                     badge = f"[Xếp hạng #{idx} - {rank_title}]" if idx == 1 else f"[Xếp hạng #{idx}]"
@@ -3074,7 +3076,8 @@ class AnalyticsExecutionEngine:
                         "order_count": ords,
                         "totalSpent": spent,
                     })
-                    lines.append(f"{idx}. **{cname} (#{cid})**: Tổng chi tiêu **{_fmt_money(spent)} USD** ({_fmt_int(ords)} đơn hàng).")
+                    label_str = cname if f"#{cid}" in cname else f"{cname} (#{cid})"
+                    lines.append(f"{idx}. {label_str}: Tổng chi tiêu {_fmt_money(spent)} USD ({_fmt_int(ords)} đơn hàng).")
 
                 if is_asc:
                     tie_note = (

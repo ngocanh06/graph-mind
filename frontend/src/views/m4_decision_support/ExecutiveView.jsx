@@ -37,6 +37,9 @@ export default function ExecutiveView({
   const [revenueTrends, setRevenueTrends] = useState([]);
   const [latestRevenue, setLatestRevenue] = useState(null);
   const [growthRate, setGrowthRate] = useState(null);
+  const [deptChartMode, setDeptChartMode] = useState("donut"); // "donut" | "bars"
+  const [hoveredDept, setHoveredDept] = useState(null);
+  const [hoveredTrendIdx, setHoveredTrendIdx] = useState(null);
 
   const loadData = async () => {
     if (!isExec) return;
@@ -81,75 +84,111 @@ export default function ExecutiveView({
     return `$${Number(val).toLocaleString()}`;
   };
 
-  const topCustomers = liveCustomers.length > 0 ? liveCustomers.map((c, i) => ({
-    name: c.name || `Customer #${c.id}`,
-    id: `CUST-${c.id}`,
-    revenue: `$${Number(c.totalSpent || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-    dept: i === 0 ? (isVi ? "Doanh nghiệp VIP" : "Key Account") : (isVi ? "Phân phối & Bán sỉ" : "Distribution & Wholesale"),
-    deptColor: i === 0 ? "var(--blue)" : i === 1 ? "var(--green)" : "#8b5cf6",
-    deptBg: i === 0 ? "rgba(37, 99, 235, 0.08)" : i === 1 ? "rgba(5, 150, 105, 0.08)" : "rgba(139, 92, 246, 0.08)"
-  })) : [
+  const defaultTopCustomers = [
     {
-      name: "Roger Harui",
+      name: "Brakes and Gears",
       id: "CUST-29818",
       revenue: "$989,184.08",
-      dept: isVi ? "Khách hàng VIP" : "Key Account",
+      dept: isVi ? "Doanh nghiệp VIP" : "Key Account",
       deptColor: "var(--blue)",
       deptBg: "rgba(37, 99, 235, 0.08)"
     },
     {
-      name: "Andrew Dixon",
+      name: "Excellent Riding Supplies",
       id: "CUST-29715",
       revenue: "$961,675.86",
-      dept: isVi ? "Phân phối & Bán sỉ" : "Distribution",
+      dept: isVi ? "Phân phối & Bán sỉ" : "Distribution & Wholesale",
       deptColor: "var(--green)",
       deptBg: "rgba(5, 150, 105, 0.08)"
     },
     {
-      name: "Reuben D'sa",
+      name: "Vigorous Exercise Company",
       id: "CUST-29722",
       revenue: "$954,021.92",
       dept: isVi ? "Đối tác Chiến lược" : "Strategic Partner",
-      deptColor: "#8b5cf6",
-      deptBg: "rgba(139, 92, 246, 0.08)"
+      deptColor: "#0891b2",
+      deptBg: "rgba(8, 145, 178, 0.08)"
     },
+    {
+      name: "Totes & Baskets Company",
+      id: "CUST-30117",
+      revenue: "$919,801.82",
+      dept: isVi ? "Đại lý Cấp 1" : "Tier 1 Dealer",
+      deptColor: "#d97706",
+      deptBg: "rgba(217, 119, 6, 0.08)"
+    },
+    {
+      name: "Retail Mall",
+      id: "CUST-29614",
+      revenue: "$901,346.86",
+      dept: isVi ? "Chuỗi Bán lẻ" : "Retail Chain",
+      deptColor: "#2563EB",
+      deptBg: "rgba(37, 99, 235, 0.08)"
+    }
   ];
 
+  const topCustomers = (liveCustomers && liveCustomers.length > 0) ? liveCustomers.map((c, i) => {
+    const deptInfo = [
+      { labelVi: "Doanh nghiệp VIP", labelEn: "Key Account", color: "var(--blue)", bg: "rgba(37, 99, 235, 0.08)" },
+      { labelVi: "Phân phối & Bán sỉ", labelEn: "Distribution & Wholesale", color: "var(--green)", bg: "rgba(5, 150, 105, 0.08)" },
+      { labelVi: "Đối tác Chiến lược", labelEn: "Strategic Partner", color: "#0891b2", bg: "rgba(8, 145, 178, 0.08)" },
+      { labelVi: "Đại lý Cấp 1", labelEn: "Tier 1 Dealer", color: "#d97706", bg: "rgba(217, 119, 6, 0.08)" },
+      { labelVi: "Chuỗi Bán lẻ", labelEn: "Retail Chain", color: "#2563EB", bg: "rgba(37, 99, 235, 0.08)" }
+    ][i % 5];
+
+    return {
+      name: c.name || `Customer #${c.id}`,
+      id: `CUST-${c.id}`,
+      revenue: `$${Number(c.totalSpent || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      dept: isVi ? deptInfo.labelVi : deptInfo.labelEn,
+      deptColor: deptInfo.color,
+      deptBg: deptInfo.bg
+    };
+  }) : defaultTopCustomers;
+
   const complianceBars = (contractDist?.complianceBars && contractDist.complianceBars.length > 0)
-    ? contractDist.complianceBars.map(b => ({
-        label: isVi ? (b.label || b.name) : (b.labelEn || b.nameEn || b.label),
-        pct: b.pct,
-        color: b.color || "var(--green)",
-        note: isVi ? b.note : (b.noteEn || b.note),
-        noteColor: b.noteColor || b.color || "var(--green)"
-      }))
+    ? contractDist.complianceBars.map(b => {
+        let label = isVi ? (b.label || b.name) : (b.labelEn || b.nameEn || b.label);
+        let note = isVi ? (b.note || "") : (b.noteEn || b.note || "");
+        if (isVi) {
+          label = label.replace(/\s*\([A-Za-z\s&/]+\)/g, "").trim();
+          note = note.replace(/\s*\([A-Za-z\s&/]+\)/g, "").trim();
+        }
+        return {
+          label,
+          pct: b.pct,
+          color: b.color || "var(--green)",
+          note,
+          noteColor: b.noteColor || b.color || "var(--green)"
+        };
+      })
     : [
         {
-          label: isVi ? "Điều khoản Chấm dứt hợp đồng (Termination)" : "Termination Clauses",
+          label: isVi ? "Điều khoản Chấm dứt hợp đồng" : "Termination Clause",
           pct: 88.1,
           color: "var(--green)",
-          note: isVi ? "457/519 Điều khoản bảo vệ hiệu lực (88.1%)" : "457/519 Standard active (88.1%)",
+          note: isVi ? "457/519 điều khoản bảo vệ hiệu lực (88.1%)" : "457/519 active clauses (88.1%)",
           noteColor: "var(--green)"
         },
         {
-          label: isVi ? "Điều khoản Trách nhiệm & Bồi thường (Liability)" : "Liability & Indemnification Clauses",
+          label: isVi ? "Điều khoản Trách nhiệm & Bồi thường" : "Liability & Indemnification",
           pct: 84.0,
           color: "var(--green)",
-          note: isVi ? "436/519 Đạt chuẩn quy định (84.0%)" : "436/519 Standard compliant (84.0%)",
+          note: isVi ? "436/519 đạt chuẩn quy định (84.0%)" : "436/519 standard compliant (84.0%)",
           noteColor: "var(--green)"
         },
         {
-          label: isVi ? "Điều khoản Thanh toán (Payment Terms)" : "Payment Terms Clauses",
+          label: isVi ? "Điều khoản Thanh toán" : "Payment Terms",
           pct: 81.1,
           color: "var(--green)",
-          note: isVi ? "421/519 Đạt chuẩn (81.1%)" : "421/519 Standard compliant (81.1%)",
+          note: isVi ? "421/519 đạt chuẩn (81.1%)" : "421/519 standard compliant (81.1%)",
           noteColor: "var(--green)"
         },
         {
-          label: isVi ? "Điều khoản Bảo mật thông tin (Confidentiality)" : "Confidentiality Clauses",
+          label: isVi ? "Điều khoản Bảo mật thông tin" : "Confidentiality",
           pct: 73.0,
           color: "var(--amber)",
-          note: isVi ? "379/519 Hợp đồng có điều khoản (73.0%)" : "379/519 Contracts protected (73.0%)",
+          note: isVi ? "379/519 hợp đồng có điều khoản (73.0%)" : "379/519 contracts covered (73.0%)",
           noteColor: "var(--amber)"
         }
       ];
@@ -166,12 +205,12 @@ export default function ExecutiveView({
     },
     {
       label: isVi ? "Hợp đồng pháp lý CUAD" : "CUAD Ingested Contracts",
-      value: kpis ? `${kpis.totalContracts} ${isVi ? "hợp đồng" : "contracts"}` : "30 contracts",
-      sub: kpis ? `${kpis.totalClauses} ${isVi ? "điều khoản vector hóa" : "clauses indexed"}` : "103 clauses indexed",
+      value: kpis ? `${kpis.totalContracts} ${isVi ? "hợp đồng" : "contracts"}` : (isVi ? "509 hợp đồng" : "509 contracts"),
+      sub: kpis ? `${kpis.totalClauses} ${isVi ? "điều khoản vector hóa" : "clauses indexed"}` : (isVi ? "1,693 điều khoản vector hóa" : "1,693 clauses indexed"),
       isPos: true,
       icon: FileText,
-      color: "#8b5cf6",
-      bg: "rgba(139, 92, 246, 0.08)"
+      color: "var(--cyan, #0891b2)",
+      bg: "rgba(8, 145, 178, 0.08)"
     },
     {
       label: isVi ? "Tỷ lệ tuân thủ pháp lý" : "Legal Compliance Rate",
@@ -257,8 +296,8 @@ export default function ExecutiveView({
               {isVi ? (
                 <>
                   Theo quy định nghiệp vụ <strong>BR-05</strong> và đặc tả <strong>UC.19 / PB57</strong>, 
-                  Bảng điều khiển điều hành vĩ mô chỉ dành riêng cho <strong>Ban Giám Đốc (Executive)</strong> và 
-                  <strong> Quản trị viên (Admin)</strong>.
+                  Bảng điều khiển điều hành vĩ mô chỉ dành riêng cho <strong>Ban Giám Đốc</strong> và 
+                  <strong> Quản trị viên</strong>.
                   <br /><br />
                   Tài khoản hiện tại của bạn là <strong>{currentUser?.badge || (role === "knowledge_manager" ? "Trưởng phòng / Quản lý" : role)}</strong> thuộc phạm vi phòng ban (Department Scope - BR-02/BR-04).
                 </>
@@ -322,6 +361,23 @@ export default function ExecutiveView({
     );
   }
 
+  const defaultTrends = [
+    { year: 2011, revenue: 14155699.53, orders: 1607 },
+    { year: 2012, revenue: 37675549.44, orders: 3915 },
+    { year: 2013, revenue: 48965887.96, orders: 14182 },
+    { year: 2014, revenue: 22419498.32, orders: 11761 }
+  ];
+  const chartTrends = (revenueTrends && revenueTrends.length > 0) ? revenueTrends : defaultTrends;
+  const maxTrendRev = Math.max(...chartTrends.map(t => t.revenue || 0), 55000000);
+  const trendPoints = chartTrends.map((t, idx) => {
+    const x = chartTrends.length > 1 ? idx * (500 / (chartTrends.length - 1)) : 250;
+    const y = Math.max(14, Math.min(86, 92 - (t.revenue / maxTrendRev) * 78));
+    return { ...t, x, y };
+  });
+  const trendPathD = trendPoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const trendAreaD = `${trendPathD} L500,100 L0,100 Z`;
+  const currentActiveTrend = hoveredTrendIdx !== null ? chartTrends[hoveredTrendIdx] : (latestRevenue || chartTrends[chartTrends.length - 1]);
+
   return (
     <div style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px", boxSizing: "border-box" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -357,7 +413,7 @@ export default function ExecutiveView({
                 margin: 0,
                 fontFamily: "var(--f-display)"
               }}>
-                {isVi ? "Bảng điều khiển điều hành (Executive Decision Dashboard)" : "Executive Decision Dashboard"}
+                {isVi ? "Bảng điều khiển điều hành" : "Executive Decision Dashboard"}
               </h2>
             </div>
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0, paddingLeft: 38 }}>
@@ -432,9 +488,9 @@ export default function ExecutiveView({
                   fontSize: 12.5
                 }}
               >
-                <option value="all">{isVi ? "Toàn doanh nghiệp (Tất cả PB)" : "All Departments"}</option>
-                <option value="sales">{isVi ? "Kinh doanh & Bán hàng (Sales)" : "Sales"}</option>
-                <option value="legal">{isVi ? "Pháp chế (Legal Dept)" : "Legal"}</option>
+                <option value="all">{isVi ? "Toàn doanh nghiệp" : "All Departments"}</option>
+                <option value="sales">{isVi ? "Kinh doanh & Bán hàng" : "Sales"}</option>
+                <option value="legal">{isVi ? "Pháp chế" : "Legal"}</option>
                 <option value="finance">{isVi ? "Tài chính - Kế toán" : "Finance"}</option>
               </select>
             </div>
@@ -604,14 +660,21 @@ export default function ExecutiveView({
 
             <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
               <span style={{ fontSize: 26, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>
-                {latestRevenue ? formatCurrency(latestRevenue.revenue) : (kpis ? formatCurrency(kpis.totalRevenue) : "$22.42M")}
+                {currentActiveTrend ? formatCurrency(currentActiveTrend.revenue) : (kpis ? formatCurrency(kpis.totalRevenue) : "$22.42M")}
               </span>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 3 }}>
-                {latestRevenue ? (isVi ? `Năm ${latestRevenue.year} (${Number(latestRevenue.orders).toLocaleString()} đơn hàng)` : `Year ${latestRevenue.year} (${Number(latestRevenue.orders).toLocaleString()} orders)`) : (isVi ? "Kỳ gần nhất" : "Latest Period")}
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: hoveredTrendIdx !== null ? "var(--blue)" : "var(--text-3)", display: "flex", alignItems: "center", gap: 6 }}>
+                {currentActiveTrend
+                  ? (isVi ? `Năm ${currentActiveTrend.year} (${Number(currentActiveTrend.orders).toLocaleString()} đơn hàng)` : `Year ${currentActiveTrend.year} (${Number(currentActiveTrend.orders).toLocaleString()} orders)`)
+                  : (isVi ? "Kỳ gần nhất" : "Latest Period")}
+                {hoveredTrendIdx !== null && (
+                  <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: "var(--r-xs)", background: "var(--blue-soft)", color: "var(--blue)", fontWeight: 700 }}>
+                    {isVi ? "Chi tiết năm" : "Selected Year"}
+                  </span>
+                )}
               </span>
             </div>
 
-            {/* Line chart container */}
+            {/* Line chart container with interactive hover tooltip */}
             <div style={{
               flex: 1,
               background: "var(--surface-2)",
@@ -621,13 +684,14 @@ export default function ExecutiveView({
               display: "flex",
               flexDirection: "column",
               gap: 8,
-              minHeight: 140
+              minHeight: 140,
+              position: "relative"
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>
                 <span>$55M</span><span>$40M</span><span>$25M</span><span>$10M</span>
               </div>
               <div style={{ flex: 1, position: "relative", minHeight: 90 }}>
-                <svg width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none">
+                <svg width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none" style={{ overflow: "visible" }}>
                   <defs>
                     <linearGradient id="revGradTokens" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
@@ -635,7 +699,7 @@ export default function ExecutiveView({
                     </linearGradient>
                   </defs>
                   <path
-                    d="M0,69.4 L166.7,35.2 L333.3,18.8 L500,57.4"
+                    d={trendPathD}
                     fill="none"
                     stroke="#2563EB"
                     strokeWidth="2.5"
@@ -643,15 +707,57 @@ export default function ExecutiveView({
                     strokeLinejoin="round"
                   />
                   <path
-                    d="M0,69.4 L166.7,35.2 L333.3,18.8 L500,57.4 L500,100 L0,100 Z"
+                    d={trendAreaD}
                     fill="url(#revGradTokens)"
                   />
-                  <circle cx="0" cy="69.4" r="3.5" fill="#2563EB" />
-                  <circle cx="166.7" cy="35.2" r="3.5" fill="#2563EB" />
-                  <circle cx="333.3" cy="18.8" r="4.5" fill="#2563EB" stroke="var(--surface)" strokeWidth="2" />
-                  <circle cx="500" cy="57.4" r="4.5" fill="#2563EB" stroke="var(--surface)" strokeWidth="2" />
+
+                  {/* Vertical dashed guide line on hover */}
+                  {hoveredTrendIdx !== null && trendPoints[hoveredTrendIdx] && (
+                    <line
+                      x1={trendPoints[hoveredTrendIdx].x}
+                      y1={0}
+                      x2={trendPoints[hoveredTrendIdx].x}
+                      y2={100}
+                      stroke="#2563EB"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 3"
+                      opacity="0.65"
+                    />
+                  )}
+
+                  {/* Points with hover glow and hit boxes */}
+                  {trendPoints.map((p, i) => {
+                    const isHovered = hoveredTrendIdx === i;
+                    return (
+                      <g key={p.year || i}>
+                        {isHovered && (
+                          <circle cx={p.x} cy={p.y} r="9" fill="rgba(37, 99, 235, 0.2)" />
+                        )}
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={isHovered ? 6 : 4}
+                          fill="#2563EB"
+                          stroke={isHovered ? "#ffffff" : "var(--surface)"}
+                          strokeWidth={isHovered ? 2.5 : 1.5}
+                        />
+                        {/* Hover trigger zone */}
+                        <rect
+                          x={p.x - 35}
+                          y={0}
+                          width={70}
+                          height={100}
+                          fill="transparent"
+                          style={{ cursor: "pointer" }}
+                          onMouseEnter={() => setHoveredTrendIdx(i)}
+                          onMouseLeave={() => setHoveredTrendIdx(null)}
+                        />
+                      </g>
+                    );
+                  })}
                 </svg>
               </div>
+
               <div style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -661,10 +767,24 @@ export default function ExecutiveView({
                 borderTop: "1px solid var(--border-soft)",
                 paddingTop: 6
               }}>
-                <span>2011 ($14.2M)</span>
-                <span>2012 ($37.7M)</span>
-                <span>2013 ($49.0M)</span>
-                <span style={{ color: "var(--blue)", fontWeight: 700 }}>2014 ($22.4M)</span>
+                {trendPoints.map((p, i) => {
+                  const isSelected = hoveredTrendIdx === i || (hoveredTrendIdx === null && i === trendPoints.length - 1);
+                  return (
+                    <span
+                      key={p.year}
+                      onMouseEnter={() => setHoveredTrendIdx(i)}
+                      onMouseLeave={() => setHoveredTrendIdx(null)}
+                      style={{
+                        cursor: "pointer",
+                        color: isSelected ? "var(--blue)" : "var(--text-3)",
+                        fontWeight: isSelected ? 700 : 500,
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      {p.year} (${(p.revenue / 1e6).toFixed(1)}M)
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
@@ -706,7 +826,7 @@ export default function ExecutiveView({
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)" }}></span>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
-                  {isVi ? "Top Khách hàng Giá trị cao (AdventureWorks)" : "Top High-Value Customers (AdventureWorks)"}
+                  {isVi ? "Top Khách hàng Giá trị cao" : "Top High-Value Customers"}
                 </h3>
               </div>
               <button
@@ -744,14 +864,14 @@ export default function ExecutiveView({
                 <tbody>
                   {topCustomers.map((c) => (
                     <tr key={c.id} style={{ borderBottom: "1px solid var(--border-soft)", transition: "background 0.1s ease" }}>
-                      <td style={{ padding: "10px 0" }}>
+                      <td style={{ padding: "6.5px 0" }}>
                         <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.name}</div>
                         <span style={{ fontSize: 10.5, color: "var(--text-4)", fontFamily: "var(--f-mono)" }}>{c.id}</span>
                       </td>
-                      <td style={{ padding: "10px 0", fontFamily: "var(--f-mono)", fontWeight: 700, color: "var(--text-1)" }}>
+                      <td style={{ padding: "6.5px 0", fontFamily: "var(--f-mono)", fontWeight: 700, color: "var(--text-1)" }}>
                         {c.revenue}
                       </td>
-                      <td style={{ padding: "10px 0" }}>
+                      <td style={{ padding: "6.5px 0" }}>
                         <span style={{
                           display: "inline-block",
                           padding: "2px 8px",
@@ -764,7 +884,7 @@ export default function ExecutiveView({
                           {c.dept}
                         </span>
                       </td>
-                      <td style={{ padding: "10px 0", textAlign: "right" }}>
+                      <td style={{ padding: "6.5px 0", textAlign: "right" }}>
                         <button
                           onClick={() => onNavigate?.("knowledge")}
                           style={{
@@ -788,7 +908,7 @@ export default function ExecutiveView({
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
-              <span>{isVi ? "Top 3 / 84 đối tác giao dịch thường xuyên" : "Top 3 of 84 frequent partners"}</span>
+              <span>{isVi ? "Top 5 / 84 đối tác giao dịch thường xuyên" : "Top 5 of 84 frequent partners"}</span>
               <button
                 onClick={() => onNavigate?.("knowledge")}
                 style={{
@@ -810,43 +930,92 @@ export default function ExecutiveView({
           {/* 3. PHÂN BỐ HỢP ĐỒNG & TÀI LIỆU THEO PHÒNG BAN */}
           {(() => {
             const deptColorMap = {
+              "Pháp chế": "#2563EB",
               "Pháp chế (Legal)": "#2563EB",
+              "Legal": "#2563EB",
+              "Kinh doanh": "#059669",
               "Kinh doanh (Sales)": "#059669",
-              "Nghiên cứu & Phát triển (R&D)": "#8B5CF6",
-              "Kế toán & Thu mua": "#F59E0B",
-              "Công nghệ thông tin (IT)": "#06B6D4"
+              "Sales": "#059669",
+              "Nghiên cứu & Phát triển": "#0284C7",
+              "Nghiên cứu & Phát triển (R&D)": "#0284C7",
+              "R&D": "#0284C7",
+              "Kế toán & Thu mua": "#D97706",
+              "Accounting & Procurement": "#D97706",
+              "Công nghệ thông tin": "#64748B",
+              "IT": "#64748B"
+            };
+
+            const formatDeptName = (rawType) => {
+              if (!rawType) return "";
+              if (isVi) {
+                return rawType.replace(/\s*\([A-Za-z\s&/]+\)/g, "").trim();
+              }
+              if (/pháp chế|legal/i.test(rawType)) return "Legal";
+              if (/kinh doanh|sales/i.test(rawType)) return "Sales";
+              if (/nghiên cứu|r&d|rnd/i.test(rawType)) return "R&D";
+              if (/kế toán|thu mua|accounting/i.test(rawType)) return "Accounting";
+              if (/công nghệ|it/i.test(rawType)) return "IT";
+              return rawType;
             };
 
             const defaultDeptDist = [
-              { type: isVi ? "Pháp chế (Legal)" : "Legal", count: 519 },
-              { type: isVi ? "Kinh doanh (Sales)" : "Sales", count: 33 },
-              { type: isVi ? "Nghiên cứu & Phát triển (R&D)" : "R&D", count: 27 },
-              { type: isVi ? "Kế toán & Thu mua" : "Accounting & Procurement", count: 12 },
-              { type: isVi ? "Công nghệ thông tin (IT)" : "IT", count: 4 }
+              { type: isVi ? "Pháp chế" : "Legal", count: 509, deptKey: "legal" },
+              { type: isVi ? "Kinh doanh" : "Sales", count: 30, deptKey: "sales" },
+              { type: isVi ? "Nghiên cứu & Phát triển" : "R&D", count: 21, deptKey: "rnd" },
+              { type: isVi ? "Kế toán & Thu mua" : "Accounting", count: 11, deptKey: "accounting" },
             ];
 
             const rawDeptList = (contractDist?.byContractType && contractDist.byContractType.length > 0)
-              ? contractDist.byContractType
+              ? contractDist.byContractType.map(d => ({ ...d, type: formatDeptName(d.type) }))
               : defaultDeptDist;
 
-            const totalDeptDocs = rawDeptList.reduce((acc, curr) => acc + (curr.count || 0), 0) || 595;
+            const totalDeptDocs = rawDeptList.reduce((acc, curr) => acc + (curr.count || 0), 0) || 571;
 
-            let runningOffset = 0;
-            const computedDeptDist = rawDeptList.map((item) => {
+            // Tính % thực tế cho từng phòng ban
+            const realPctList = rawDeptList.map(item => {
               const count = item.count || 0;
-              const pct = totalDeptDocs > 0 ? (count / totalDeptDocs) * 100 : 0;
-              const offset = runningOffset;
-              runningOffset += pct;
-              const color = deptColorMap[item.type] || "#3B82F6";
               return {
-                type: item.type,
+                ...item,
                 count,
-                pct,
-                pctDisplay: `${pct.toFixed(1)}% (${count})`,
-                color,
-                offset
+                realPct: totalDeptDocs > 0 ? (count / totalDeptDocs) * 100 : 0
               };
             });
+
+            // Phân bổ tỷ lệ vòng tròn trực quan: Bảo toàn nghiêm ngặt thứ tự và tỷ lệ chênh lệch (30 > 21 > 11),
+            // kết hợp sàn cơ sở nhỏ (1.8%) để phân đoạn nhỏ nhất (11 tài liệu) vẫn có vòng cung màu rõ nét
+            const activeDepts = realPctList.filter(d => d.count > 0);
+            const baseFloor = 1.8;
+            const remainingPct = 100 - (activeDepts.length * baseFloor);
+
+            let runningOffset = 0;
+            const gap = 0.8;
+            const computedDeptDist = realPctList.map((item) => {
+              let visualPct = 0;
+              if (item.count > 0) {
+                visualPct = baseFloor + ((item.count / (totalDeptDocs || 1)) * remainingPct);
+              }
+
+              const visualOffset = runningOffset;
+              runningOffset += visualPct;
+              const color = deptColorMap[item.type] || "#2563EB";
+              const dashLen = Math.max(1.8, visualPct - gap);
+              const gapLen = Math.max(0, 100 - dashLen);
+
+              return {
+                type: item.type,
+                count: item.count,
+                pct: item.realPct,
+                pctDisplay: `${item.realPct.toFixed(1)}% (${item.count})`,
+                color,
+                visualPct,
+                visualOffset,
+                dashLen,
+                gapLen,
+                deptKey: item.deptKey || (item.type.includes("Pháp chế") ? "legal" : item.type.includes("Kinh doanh") ? "sales" : item.type.includes("Nghiên cứu") ? "rnd" : "accounting")
+              };
+            });
+
+            const activeItem = hoveredDept ? computedDeptDist.find(d => d.type === hoveredDept) : null;
 
             return (
               <div style={{
@@ -857,97 +1026,346 @@ export default function ExecutiveView({
                 boxShadow: "var(--shadow-xs)",
                 display: "flex",
                 flexDirection: "column",
-                gap: "14px"
+                gap: "16px"
               }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                {/* Header card: Tiêu đề + Bộ chuyển đổi chế độ xem (Donut ⟷ Bar) */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }}></span>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--blue, #2563eb)" }}></span>
                     <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
-                      {isVi ? "Phân bố Danh mục Tài liệu & Hợp đồng (5 Phòng ban)" : "Document & Contract Distribution by Department"}
+                      {isVi ? "Phân bố Danh mục Tài liệu & Hợp đồng" : "Document & Contract Distribution"}
                     </h3>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--cyan, #0284c7)",
+                      background: "var(--cyan-soft, rgba(2, 132, 199, 0.08))",
+                      padding: "2px 7px",
+                      borderRadius: 4
+                    }}>
+                      {computedDeptDist.length} {isVi ? "phòng ban" : "depts"}
+                    </span>
                   </div>
-                  <button
-                    onClick={() => onNavigate?.("copilot", isVi ? "Phân tích cơ cấu danh mục tài liệu và hợp đồng theo 5 phòng ban" : "Analyze document and contract distribution across 5 departments")}
-                    style={{
-                      display: "flex",
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {/* View Switcher: Donut vs Bars */}
+                    <div style={{
+                      display: "inline-flex",
                       alignItems: "center",
-                      gap: 5,
-                      padding: "5px 10px",
-                      borderRadius: "var(--r-md)",
-                      background: "var(--blue-soft)",
-                      border: "1px solid rgba(37,99,235,0.2)",
-                      color: "var(--blue)",
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease"
-                    }}
-                  >
-                    <Sparkles size={12} />
-                    <span>{isVi ? "Hỏi AI về chỉ số này" : "Ask AI about this"}</span>
-                  </button>
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 7,
+                      padding: "2px"
+                    }}>
+                      <button
+                        onClick={() => setDeptChartMode("donut")}
+                        title={isVi ? "Xem biểu đồ tròn" : "View Donut Chart"}
+                        style={{
+                          padding: "4px 9px",
+                          borderRadius: 5,
+                          border: "none",
+                          fontSize: 11.5,
+                          fontWeight: deptChartMode === "donut" ? 700 : 500,
+                          cursor: "pointer",
+                          background: deptChartMode === "donut" ? "var(--surface)" : "transparent",
+                          color: deptChartMode === "donut" ? "var(--text-1)" : "var(--text-3)",
+                          boxShadow: deptChartMode === "donut" ? "var(--shadow-xs)" : "none",
+                          transition: "all 0.15s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5
+                        }}
+                      >
+                        <i className="fa-solid fa-chart-pie" style={{ fontSize: 11, color: deptChartMode === "donut" ? "var(--blue)" : "inherit" }} />
+                        <span>{isVi ? "Tròn" : "Donut"}</span>
+                      </button>
+
+                      <button
+                        onClick={() => setDeptChartMode("bars")}
+                        title={isVi ? "Xem thanh tiến trình so sánh" : "View Horizontal Bars"}
+                        style={{
+                          padding: "4px 9px",
+                          borderRadius: 5,
+                          border: "none",
+                          fontSize: 11.5,
+                          fontWeight: deptChartMode === "bars" ? 700 : 500,
+                          cursor: "pointer",
+                          background: deptChartMode === "bars" ? "var(--surface)" : "transparent",
+                          color: deptChartMode === "bars" ? "var(--text-1)" : "var(--text-3)",
+                          boxShadow: deptChartMode === "bars" ? "var(--shadow-xs)" : "none",
+                          transition: "all 0.15s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5
+                        }}
+                      >
+                        <i className="fa-solid fa-bars-progress" style={{ fontSize: 11, color: deptChartMode === "bars" ? "var(--blue)" : "inherit" }} />
+                        <span>{isVi ? "Thanh ngang" : "Bars"}</span>
+                      </button>
+                    </div>
+
+                    {/* Ask AI button */}
+                    <button
+                      onClick={() => onNavigate?.("copilot", isVi ? "Phân tích cơ cấu danh mục tài liệu và hợp đồng theo các phòng ban trong hệ thống" : "Analyze document and contract distribution across departments")}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 10px",
+                        borderRadius: "var(--r-md)",
+                        background: "var(--blue-soft)",
+                        border: "1px solid rgba(37,99,235,0.2)",
+                        color: "var(--blue)",
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      <span>{isVi ? "Hỏi AI" : "Ask AI"}</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{
-                  flex: 1,
-                  display: "grid",
-                  gridTemplateColumns: "140px 1fr",
-                  gap: 20,
-                  alignItems: "center",
-                  padding: "10px 0"
-                }}>
-                  {/* Donut chart */}
-                  <div style={{ position: "relative", width: 130, height: 130, margin: "0 auto" }}>
-                    <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}>
-                      <circle cx="18" cy="18" r="14" fill="none" stroke="var(--surface-3)" strokeWidth="4.5" />
-                      {computedDeptDist.map((item, idx) => (
-                        <circle
-                          key={item.type || idx}
-                          cx="18"
-                          cy="18"
-                          r="14"
-                          fill="none"
-                          stroke={item.color}
-                          strokeWidth="4.5"
-                          strokeDasharray={`${item.pct.toFixed(2)} 100`}
-                          strokeDashoffset={idx === 0 ? "0" : `-${item.offset.toFixed(2)}`}
-                        />
-                      ))}
-                    </svg>
-                    <div style={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      pointerEvents: "none"
-                    }}>
-                      <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text-1)", fontFamily: "var(--f-display)" }}>
-                        {totalDeptDocs}
-                      </span>
-                      <span style={{ fontSize: 9.5, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
-                        {isVi ? "Tài liệu" : "Documents"}
-                      </span>
+                {/* Body: Chế độ Donut hoặc Chế độ Bars */}
+                {deptChartMode === "donut" ? (
+                  <div style={{
+                    flex: 1,
+                    display: "grid",
+                    gridTemplateColumns: "150px 1fr",
+                    gap: 22,
+                    alignItems: "center",
+                    padding: "6px 0"
+                  }}>
+                    {/* Donut chart đa màu tương tác cao */}
+                    <div
+                      style={{ position: "relative", width: 140, height: 140, margin: "0 auto", cursor: "pointer" }}
+                      onMouseLeave={() => setHoveredDept(null)}
+                    >
+                      <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", display: "block" }}>
+                        {/* Vòng nền mờ */}
+                        <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--surface-3, #f1f5f9)" strokeWidth="4.5" />
+                        {/* Các lát cắt phòng ban: xoay chuẩn -90 độ quanh tâm (18, 18) */}
+                        <g transform="rotate(-90 18 18)">
+                          {computedDeptDist.map((item, idx) => {
+                            const isHovered = hoveredDept === item.type;
+                            return (
+                              <circle
+                                key={item.type || idx}
+                                cx="18"
+                                cy="18"
+                                r="15.9155"
+                                fill="none"
+                                stroke={item.color}
+                                strokeWidth={isHovered ? 5.5 : 4.5}
+                                strokeDasharray={`${item.dashLen.toFixed(2)} ${item.gapLen.toFixed(2)}`}
+                                strokeDashoffset={`-${(item.visualOffset + gap / 2).toFixed(2)}`}
+                                style={{
+                                  transition: "stroke-width 0.18s ease, opacity 0.18s ease",
+                                  opacity: hoveredDept && !isHovered ? 0.45 : 1,
+                                  cursor: "pointer"
+                                }}
+                                onMouseEnter={() => setHoveredDept(item.type)}
+                              >
+                                <title>{`${item.type}: ${item.pctDisplay}`}</title>
+                              </circle>
+                            );
+                          })}
+                        </g>
+                      </svg>
+
+                      {/* Tâm vòng tròn Donut: Thay đổi sinh động khi rê chuột */}
+                      <div style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        pointerEvents: "none",
+                        padding: "8px",
+                        textAlign: "center"
+                      }}>
+                        <span style={{
+                          fontSize: activeItem ? 20 : 22,
+                          fontWeight: 800,
+                          color: activeItem ? activeItem.color : "var(--text-1)",
+                          fontFamily: "var(--f-display)",
+                          lineHeight: 1.1
+                        }}>
+                          {activeItem ? activeItem.count : totalDeptDocs}
+                        </span>
+                        <span style={{
+                          fontSize: 9.5,
+                          color: "var(--text-4)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          fontWeight: 700,
+                          marginTop: 2,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          maxWidth: "100px"
+                        }}>
+                          {activeItem ? `${activeItem.pct.toFixed(1)}%` : (isVi ? "Tài liệu" : "Docs")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Danh sách phòng ban kèm Thanh tiến trình mini trực quan */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {computedDeptDist.map((item) => {
+                        const isHovered = hoveredDept === item.type;
+                        return (
+                          <div
+                            key={item.type}
+                            onMouseEnter={() => setHoveredDept(item.type)}
+                            onMouseLeave={() => setHoveredDept(null)}
+                            onClick={() => {
+                              onNavigate?.("documents");
+                            }}
+                            title={isVi ? `Bấm để lọc tài liệu phòng ${item.type}` : `Click to filter ${item.type} documents`}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 4,
+                              padding: "6px 8px",
+                              borderRadius: 6,
+                              background: isHovered ? "var(--surface-hover, rgba(0,0,0,0.03))" : "transparent",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease"
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 12 }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: 8, color: isHovered ? "var(--text-1)" : "var(--text-2)", fontWeight: isHovered ? 700 : 500 }}>
+                                <span style={{ width: 9, height: 9, borderRadius: "50%", background: item.color, flexShrink: 0 }}></span>
+                                <span>{item.type}</span>
+                              </span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)", fontSize: 11.5 }}>
+                                  {item.count}
+                                </strong>
+                                <span style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
+                                  color: item.color,
+                                  background: `${item.color}18`,
+                                  padding: "1px 5px",
+                                  borderRadius: 4
+                                }}>
+                                  {item.pct.toFixed(1)}%
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Thanh tiến trình mini hiển thị độ phủ thực tế */}
+                            <div style={{
+                              width: "100%",
+                              height: 4,
+                              borderRadius: 2,
+                              background: "var(--surface-3, #f1f5f9)",
+                              overflow: "hidden"
+                            }}>
+                              <div style={{
+                                width: `${Math.max(2, item.pct)}%`,
+                                height: "100%",
+                                background: item.color,
+                                borderRadius: 2,
+                                transition: "width 0.3s ease"
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
+                ) : (
+                  /* Chế độ Thanh ngang so sánh (Horizontal Bars) */
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "8px 4px" }}>
+                    {computedDeptDist.map((item, idx) => (
+                      <div
+                        key={item.type}
+                        onClick={() => onNavigate?.("documents")}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          background: "var(--surface-2)",
+                          border: "1px solid var(--border-soft)",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease"
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = item.color}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-soft)"}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: "50%",
+                              background: item.color,
+                              color: "#fff",
+                              fontSize: 10,
+                              fontWeight: 800,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center"
+                            }}>
+                              {idx + 1}
+                            </span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>
+                              {item.type}
+                            </span>
+                          </div>
 
-                  {/* Legend */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11.5 }}>
-                    {computedDeptDist.map((item) => (
-                      <div key={item.type} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-2)" }}>
-                          <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }}></span>
-                          {item.type}
-                        </span>
-                        <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)", fontSize: 11 }}>{item.pctDisplay}</strong>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, fontFamily: "var(--f-mono)", color: "var(--text-1)" }}>
+                              {item.count} <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-3)" }}>{isVi ? "tài liệu" : "docs"}</span>
+                            </span>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 800,
+                              color: item.color,
+                              background: `${item.color}18`,
+                              padding: "2px 7px",
+                              borderRadius: 4
+                            }}>
+                              {item.pct.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Thanh tiến trình so sánh lớn */}
+                        <div style={{
+                          width: "100%",
+                          height: 8,
+                          borderRadius: 4,
+                          background: "var(--surface-3)",
+                          overflow: "hidden"
+                        }}>
+                          <div style={{
+                            width: `${Math.max(2, item.pct)}%`,
+                            height: "100%",
+                            background: item.color,
+                            borderRadius: 4,
+                            transition: "width 0.4s ease"
+                          }} />
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
 
+                {/* Footer card */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 10 }}>
-                  <span>{isVi ? "Trích xuất tự động qua Entity Extractor v1.2 & Neo4j" : "Auto-extracted via Entity Extractor & Neo4j"}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <i className="fa-solid fa-database" style={{ fontSize: 11, color: "var(--cyan)" }} />
+                    <span>{isVi ? "Trích xuất tự động qua Entity Extractor v1.2 & Neo4j" : "Auto-extracted via Entity Extractor & Neo4j"}</span>
+                  </span>
                   <button
                     onClick={() => onNavigate?.("knowledge")}
                     style={{
@@ -983,7 +1401,7 @@ export default function ExecutiveView({
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)" }}></span>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
-                  {isVi ? "Tỷ lệ Tuân thủ & An toàn Pháp lý (CUAD Clauses)" : "Legal Compliance & Safety Rate"}
+                  {isVi ? "Tỷ lệ Tuân thủ & An toàn Pháp lý" : "Legal Compliance & Safety Rate"}
                 </h3>
               </div>
               <button

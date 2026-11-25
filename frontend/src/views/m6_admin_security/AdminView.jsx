@@ -554,7 +554,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
                   {isVi ? "Tải lại" : "Refresh"}
                 </Button>
                 <Button variant="primary" size="sm" icon={UserPlus} onClick={() => setShowAddModal(true)} disabled={Boolean(usersForbidden)}>
-                  {isVi ? "+ Thêm Người dùng" : "+ Add User"}
+                  {isVi ? "Thêm Người dùng" : "Add User"}
                 </Button>
               </div>
             }
@@ -826,7 +826,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
 
         {activeTab === "audit" && (
           <Card
-            title={isVi ? "Nhật ký Hoạt động Bất biến (Immutable Audit Trail)" : "Immutable Activity & Security Audit Trail"}
+            title={isVi ? "Nhật ký Hoạt động Bất biến" : "Immutable Activity & Security Audit Trail"}
             subtitle={isVi ? "USER_CREATE, ROLE_CHANGE, USER_LOCK, PASSWORD_RESET, USER_DELETE, LOGIN" : "Account and login events"}
             icon={ClipboardList}
             actions={

@@ -272,8 +272,8 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
             <span style={{ fontSize: 13, color: "var(--text-3)" }}>{isVi ? "máy" : "units"}</span>
           </div>
           <div style={{ fontSize: 12, display: "flex", gap: 12, marginTop: 4 }}>
-            <span style={{ color: "#10b981", fontWeight: 600 }}>🟢 {summary.online_count} Online</span>
-            <span style={{ color: "var(--text-4)" }}>⚪ {summary.offline_count} Offline</span>
+            <span style={{ color: "#10b981", fontWeight: 600 }}><span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: "#10b981", marginRight: "5px" }}></span>{summary.online_count} Online</span>
+            <span style={{ color: "var(--text-4)" }}><span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: "#94a3b8", marginRight: "5px" }}></span>{summary.offline_count} Offline</span>
           </div>
         </div>
 
@@ -333,7 +333,7 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
             <span style={{ fontSize: 13, color: "var(--text-3)" }}>{isVi ? "lỗi" : "errors"}</span>
           </div>
           <span style={{ fontSize: 12, color: summary.total_checksum_errors > 0 ? "var(--red)" : "#10b981" }}>
-            {summary.total_checksum_errors > 0 ? (isVi ? "⚠️ Có tệp lỗi toàn vẹn" : "⚠️ Integrity faults") : (isVi ? "✓ Toàn vẹn 100%" : "✓ 100% Integrity")}
+            {summary.total_checksum_errors > 0 ? (isVi ? "Có tệp lỗi toàn vẹn" : "Integrity faults") : (isVi ? "✓ Toàn vẹn 100%" : "✓ 100% Integrity")}
           </span>
         </div>
       </div>
@@ -387,9 +387,9 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             {[
               { id: "ALL", label: isVi ? "Tất cả máy trạm" : "All Workstations" },
-              { id: "ONLINE", label: isVi ? "🟢 Đang trực tuyến" : "🟢 Online" },
-              { id: "OFFLINE", label: isVi ? "⚪ Đang ngoại tuyến" : "⚪ Offline" },
-              { id: "PENDING", label: isVi ? "⏳ Đang chờ áp dụng" : "⏳ Pending ACK" },
+              { id: "ONLINE", label: isVi ? "Đang trực tuyến" : "Online" },
+              { id: "OFFLINE", label: isVi ? "Đang ngoại tuyến" : "Offline" },
+              { id: "PENDING", label: isVi ? "Đang chờ áp dụng" : "Pending ACK" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -534,7 +534,7 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
                             fontWeight: 600, fontSize: 12,
                             color: ws.sync_mode === "realtime" ? "#2563eb" : "#7c3aed"
                           }}>
-                            {ws.sync_mode === "realtime" ? "⚡ Real-time Watchdog" : `⏱ Scheduled (${ws.schedule_type || "15m"})`}
+                            {ws.sync_mode === "realtime" ? "Real-time Watchdog" : `Scheduled (${ws.schedule_type || "15m"})`}
                           </span>
                           <button
                             onClick={() => handleOpenSyncModeModal(ws)}
@@ -776,8 +776,8 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
                     color: "var(--text-1)", fontSize: 13, boxSizing: "border-box"
                   }}
                 >
-                  <option value="realtime">⚡ Real-time Watchdog (Đồng bộ ngay khi tệp thay đổi)</option>
-                  <option value="scheduled">⏱ Scheduled Sync (Đồng bộ theo chu kỳ)</option>
+                  <option value="realtime">Real-time Watchdog (Đồng bộ ngay khi tệp thay đổi)</option>
+                  <option value="scheduled">Scheduled Sync (Đồng bộ theo chu kỳ)</option>
                 </select>
               </div>
 
@@ -868,7 +868,7 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
               borderRadius: "var(--r-sm)", padding: "10px 14px", fontSize: 12, color: "#b45309",
               marginBottom: 16, lineHeight: 1.5
             }}>
-              <strong>⚠️ LƯU Ý BẢO MẬT:</strong> Mã Token bên dưới chỉ hiển thị <strong>DUY NHẤT MỘT LẦN</strong>. Cơ sở dữ liệu chỉ lưu trữ bản băm mã hóa SHA-256. Hãy sao chép và cấu hình ngay vào file <code>.env</code> của máy trạm.
+              <strong>LƯU Ý BẢO MẬT:</strong> Mã Token bên dưới chỉ hiển thị <strong>DUY NHẤT MỘT LẦN</strong>. Cơ sở dữ liệu chỉ lưu trữ bản băm mã hóa SHA-256. Hãy sao chép và cấu hình ngay vào file <code>.env</code> của máy trạm.
             </div>
 
             <div style={{ marginBottom: 20 }}>
@@ -954,8 +954,8 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
                     color: "var(--text-1)", fontSize: 13
                   }}
                 >
-                  <option value="realtime">⚡ Real-time Watchdog (Đồng bộ ngay khi tệp thay đổi)</option>
-                  <option value="scheduled">⏱ Scheduled Sync (Đồng bộ theo lịch trình)</option>
+                  <option value="realtime">Real-time Watchdog (Đồng bộ ngay khi tệp thay đổi)</option>
+                  <option value="scheduled">Scheduled Sync (Đồng bộ theo lịch trình)</option>
                 </select>
               </div>
 

@@ -240,10 +240,10 @@ def generate_cypher_from_query(query: str) -> str:
         RETURN 'Báo cáo Tuân thủ & An toàn Pháp lý (CUAD Clauses)' AS name,
                total, liability_cnt, payment_cnt, confidentiality_cnt, termination_cnt,
                'Báo cáo an toàn pháp lý trên tổng số ' + toString(total) + ' hợp đồng/văn bản Pháp chế (CUAD) trong đồ thị tri thức Neo4j: ' +
-               '1. Điều khoản Chấm dứt hợp đồng (Termination): ' + toString(termination_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(termination_cnt) * 100.0 / toFloat(total), 1)) + '% - Bảo vệ hiệu lực). ' +
-               '2. Điều khoản Trách nhiệm & Bồi thường (Liability): ' + toString(liability_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(liability_cnt) * 100.0 / toFloat(total), 1)) + '% - Đạt chuẩn quy định). ' +
-               '3. Điều khoản Thanh toán (Payment Terms): ' + toString(payment_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(payment_cnt) * 100.0 / toFloat(total), 1)) + '% - Đạt chuẩn quy định). ' +
-               '4. Điều khoản Bảo mật thông tin (Confidentiality): ' + toString(confidentiality_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(confidentiality_cnt) * 100.0 / toFloat(total), 1)) + '% - Đạt chuẩn an toàn). ' +
+               '1. Điều khoản Chấm dứt hợp đồng: ' + toString(termination_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(termination_cnt) * 100.0 / toFloat(total), 1)) + '% — Bảo vệ hiệu lực). ' +
+               '2. Điều khoản Trách nhiệm & Bồi thường: ' + toString(liability_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(liability_cnt) * 100.0 / toFloat(total), 1)) + '% — Đạt chuẩn quy định). ' +
+               '3. Điều khoản Thanh toán: ' + toString(payment_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(payment_cnt) * 100.0 / toFloat(total), 1)) + '% — Đạt chuẩn quy định). ' +
+               '4. Điều khoản Bảo mật thông tin: ' + toString(confidentiality_cnt) + '/' + toString(total) + ' hợp đồng (' + toString(round(toFloat(confidentiality_cnt) * 100.0 / toFloat(total), 1)) + '% — Đạt chuẩn an toàn). ' +
                'Tổng thể độ rủi ro pháp lý toàn danh mục: THẤP (A-).' AS snippet,
                'compliance-stats' AS _id,
                ['ComplianceReport', 'DocumentSummary', 'CUAD'] AS _labels,

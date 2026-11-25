@@ -407,10 +407,11 @@ export async function searchQdrant(query, collection = null, top_k = 10) {
 // COMBINED KNOWLEDGE EXPLORER API (NEO4J + QDRANT)
 // ============================================================================
 
-export async function searchKnowledgeExplorer(query, top_k = 8) {
+export async function searchKnowledgeExplorer(query, top_k = 8, currentUser = null) {
   try {
     const res = await fetch(`${API_BASE}/knowledge-explorer/search?query=${encodeURIComponent(query)}&top_k=${top_k}`, {
-      method: "POST"
+      method: "POST",
+      headers: getAuthHeaders(currentUser)
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -1021,11 +1022,11 @@ export async function fetchGoogleAuthUrl() {
   return null;
 }
 
-export async function configureGoogleOAuth(clientId, clientSecret, redirectUri) {
+export async function configureGoogleOAuth(clientId, clientSecret, redirectUri, currentUser = null) {
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/configure`, {
+    const res = await fetch(`${API_BASE}/v1/connectors/google/configure`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(currentUser),
       body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri })
     });
     if (res.ok) return await res.json();
@@ -1035,10 +1036,11 @@ export async function configureGoogleOAuth(clientId, clientSecret, redirectUri) 
   return null;
 }
 
-export async function disconnectGoogleOAuth() {
+export async function disconnectGoogleOAuth(currentUser = null) {
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/disconnect`, {
-      method: "POST"
+    const res = await fetch(`${API_BASE}/v1/connectors/google/disconnect`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -1047,11 +1049,11 @@ export async function disconnectGoogleOAuth() {
   return null;
 }
 
-export async function mockConnectGoogle(email, organization) {
+export async function mockConnectGoogle(email, organization, currentUser = null) {
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/mock-connect`, {
+    const res = await fetch(`${API_BASE}/v1/connectors/google/mock-connect`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(currentUser),
       body: JSON.stringify({ email, organization })
     });
     if (res.ok) return await res.json();
@@ -1061,10 +1063,11 @@ export async function mockConnectGoogle(email, organization) {
   return null;
 }
 
-export async function syncGoogleDrive() {
+export async function syncGoogleDrive(currentUser = null) {
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/v1/connectors/google/sync`, {
-      method: "POST"
+    const res = await fetch(`${API_BASE}/v1/connectors/google/sync`, {
+      method: "POST",
+      headers: getAuthHeaders(currentUser),
     });
     if (res.ok) return await res.json();
   } catch (e) {

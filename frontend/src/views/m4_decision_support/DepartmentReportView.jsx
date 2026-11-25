@@ -661,7 +661,7 @@ export default function DepartmentReportView({
         <div style={{ background: "rgba(220, 38, 38, 0.08)", border: "1px solid rgba(220, 38, 38, 0.3)", borderRadius: "12px", padding: "16px 20px", display: "flex", alignItems: "center", gap: "12px", color: "#dc2626" }}>
           <AlertTriangle size={20} />
           <div>
-            <div style={{ fontWeight: "700", fontSize: "14px" }}>{isVi ? "Giới hạn phạm vi phòng ban (RBAC Scope Restriction)" : "Department Scope Restriction"}</div>
+            <div style={{ fontWeight: "700", fontSize: "14px" }}>{isVi ? "Giới hạn phạm vi phòng ban" : "Department Scope Restriction"}</div>
             <div style={{ fontSize: "13px", opacity: 0.9 }}>{errorMsg}</div>
           </div>
           <button

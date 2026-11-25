@@ -7,6 +7,78 @@ import {
 import { PageHeader, Card, Badge, Button, EmptyState } from "../../components/ui";
 import { fetchRiskAlerts } from "../../services/api";
 
+function formatDocName(rawName) {
+  if (!rawName) return "";
+  let name = String(rawName).trim();
+  name = name.replace(/\.(pdf|txt|docx|json)$/i, "");
+
+  // Match pattern: COMPANY,INC_MM_DD_YYYY-EX-xx.x-AGREEMENT NAME(x)
+  const cuadMatch = name.match(/^([A-Z0-9,.\s&]+?)_[0-9_]+-(?:EX-[0-9\.]+-)?(.+)$/i);
+  if (cuadMatch) {
+    let org = cuadMatch[1]
+      .replace(/[,_]+/g, " ")
+      .replace(/\bINC\b/i, "Inc.")
+      .replace(/\bCORP\b/i, "Corp.")
+      .replace(/\bLLC\b/i, "LLC")
+      .replace(/\bLTD\b/i, "Ltd.")
+      .trim();
+    org = org.replace(/ADUROBIOTECH/i, "Aduro Biotech")
+             .replace(/BIOAMBER/i, "BioAmber")
+             .replace(/ATENTOSA/i, "Atento SA")
+             .replace(/MARTINMIDSTREAM/i, "Martin Midstream");
+
+    let docType = cuadMatch[2].replace(/[_-]+/g, " ").replace(/\(\d+\)/g, "").trim();
+    docType = docType.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase());
+
+    const yearMatch = rawName.match(/_(\d{4})[-_]|_(\d{2})_(\d{2})_(\d{4})/);
+    const year = yearMatch ? (yearMatch[4] || yearMatch[1]) : "";
+    const yearStr = year ? ` (${year})` : "";
+    return `${org} — ${docType}${yearStr}`;
+  }
+
+  if (name.includes("—") || name.includes(" - ")) {
+    return name.replace(/\.pdf$/i, "");
+  }
+
+  return name.replace(/[_-]+/g, " ");
+}
+
+function cleanAlertTitle(title, docId) {
+  if (!title) return "";
+  const cleanDoc = formatDocName(docId || title);
+  if (title.includes("thiếu điều khoản Giới hạn trách nhiệm") || title.includes("Limitation of Liability")) {
+    return `Hợp đồng ${cleanDoc} thiếu điều khoản Giới hạn trách nhiệm`;
+  }
+  if (title.includes("thiếu điều khoản Chấm dứt") || title.includes("Termination")) {
+    return `Hợp đồng ${cleanDoc} thiếu điều khoản Chấm dứt hợp đồng`;
+  }
+  if (title.includes("bồi hoàn thiệt hại") || title.includes("Indemnif")) {
+    return `Hợp đồng ${cleanDoc} thiếu điều khoản Bồi hoàn thiệt hại`;
+  }
+  if (docId) {
+    const rawBase = docId.replace(/\.(pdf|docx|txt)$/i, "");
+    if (title.includes(docId)) return title.replace(docId, cleanDoc);
+    if (title.includes(rawBase)) return title.replace(rawBase, cleanDoc);
+    const spaceBase = rawBase.replace(/[_-]+/g, " ");
+    if (title.includes(spaceBase)) return title.replace(spaceBase, cleanDoc);
+  }
+  return title;
+}
+
+function cleanAlertDescription(desc, docId) {
+  if (!desc) return "";
+  if (!docId) return desc;
+  const cleanDoc = formatDocName(docId);
+  const rawBase = docId.replace(/\.(pdf|docx|txt)$/i, "");
+  const spaceBase = rawBase.replace(/[_-]+/g, " ");
+  let clean = desc;
+  clean = clean.split(docId).join(cleanDoc);
+  clean = clean.split(rawBase).join(cleanDoc);
+  clean = clean.split(spaceBase).join(cleanDoc);
+  clean = clean.replace(/hợp đồng\s+hợp đồng/gi, "hợp đồng");
+  return clean;
+}
+
 const ALL_ALERTS_DATA = (isVi) => [
   {
     id: "ALERT-LEGAL-LIAB",
@@ -15,17 +87,17 @@ const ALL_ALERTS_DATA = (isVi) => [
     severity: "high",
     variant: "danger",
     Icon: ShieldAlert,
-    badgeLabel: isVi ? "Không có trần bồi thường (No Liability Cap)" : "No Liability Cap",
-    detectedAt: isVi ? "Phát hiện từ Neo4j Clause Graph" : "Detected from Neo4j Clause Graph",
+    badgeLabel: isVi ? "Không có trần bồi thường" : "No Liability Cap",
+    detectedAt: isVi ? "Đồ thị điều khoản Neo4j" : "Neo4j Clause Graph",
     title: isVi
-      ? "Hợp đồng ADUROBIOTECHINC_03_28_2014-EX-10.1 thiếu điều khoản Giới hạn trách nhiệm"
-      : "Contract ADUROBIOTECHINC_03_28_2014-EX-10.1 lacks Limitation of Liability",
+      ? "Hợp đồng Aduro Biotech — Collaboration Agreement (2014) thiếu điều khoản Giới hạn trách nhiệm"
+      : "Contract Aduro Biotech — Collaboration Agreement (2014) lacks Limitation of Liability",
     description: isVi
-      ? "Phân tích đồ thị tri thức phát hiện hợp đồng thiếu điều khoản Giới hạn trách nhiệm bồi thường (Limitation of Liability). Khi có tranh chấp hoặc sự cố, doanh nghiệp đối mặt với rủi ro bồi thường vô hạn mức (74/510 hợp đồng có lỗ hổng này trong đồ thị Neo4j)."
+      ? "Phân tích đồ thị tri thức phát hiện hợp đồng thiếu điều khoản Giới hạn trách nhiệm bồi thường. Khi có tranh chấp hoặc sự cố, doanh nghiệp đối mặt với rủi ro bồi thường vô hạn mức (74/510 hợp đồng thiếu điều khoản này)."
       : "Graph analysis reveals contract lacks a Limitation of Liability clause, exposing enterprise to uncapped damages in disputes (74/510 contracts affected).",
     meta: [
       { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Pháp chế & Rủi ro" : "Legal & Risk" },
-      { label: isVi ? "Rủi ro pháp lý:" : "Legal Risk:", value: isVi ? "Bồi thường không giới hạn (Uncapped Liability)" : "Uncapped Liability" },
+      { label: isVi ? "Rủi ro pháp lý:" : "Legal Risk:", value: isVi ? "Bồi thường không giới hạn" : "Uncapped Liability" },
       { label: isVi ? "Tệp văn bản:" : "Document File:", value: "ADUROBIOTECHINC_03_28_2014-EX-10.1-COLLABORATION AGREEMENT.pdf" },
       { label: isVi ? "Trích dẫn nguồn:" : "Source citation:", value: "ADUROBIOTECHINC_03_28_2014-EX-10.1-COLLABORATION AGREEMENT.pdf", isLink: true },
     ],
@@ -39,13 +111,13 @@ const ALL_ALERTS_DATA = (isVi) => [
     severity: "medium",
     variant: "purple",
     Icon: AlertTriangle,
-    badgeLabel: isVi ? "Thiếu điều khoản chấm dứt (No Termination)" : "No Termination Clause",
-    detectedAt: isVi ? "Phát hiện từ Neo4j Clause Graph" : "Detected from Neo4j Clause Graph",
+    badgeLabel: isVi ? "Thiếu điều khoản chấm dứt" : "No Termination Clause",
+    detectedAt: isVi ? "Đồ thị điều khoản Neo4j" : "Neo4j Clause Graph",
     title: isVi
-      ? "Hợp đồng ATENTOSA_04_24_2017-EX-10.1 thiếu điều khoản Chấm dứt hợp đồng"
-      : "Contract ATENTOSA_04_24_2017-EX-10.1 lacks Termination clause",
+      ? "Hợp đồng Atento SA — Services Agreement (2017) thiếu điều khoản Chấm dứt hợp đồng"
+      : "Contract Atento SA — Services Agreement (2017) lacks Termination clause",
     description: isVi
-      ? "Đồ thị tri thức ghi nhận hợp đồng không chứa điều khoản Chấm dứt (Termination Clause), khiến doanh nghiệp thiếu cơ chế đơn phương rút lui an toàn khi đối tác vi phạm cam kết (52/510 hợp đồng có lỗ hổng này)."
+      ? "Đồ thị tri thức ghi nhận hợp đồng không chứa điều khoản Chấm dứt hợp đồng, khiến doanh nghiệp thiếu cơ chế đơn phương rút lui an toàn khi đối tác vi phạm cam kết (52/510 hợp đồng thiếu điều khoản này)."
       : "Knowledge graph reports absence of a Termination clause, restricting enterprise exit options upon partner breach (52/510 contracts affected).",
     meta: [
       { label: isVi ? "Phòng ban:" : "Department:", value: isVi ? "Pháp chế & Rủi ro" : "Legal & Risk" },
@@ -64,12 +136,12 @@ const ALL_ALERTS_DATA = (isVi) => [
     variant: "danger",
     Icon: TrendingDown,
     badgeLabel: isVi ? "Bán lỗ dưới giá vốn (-$15,100 USD)" : "Sold Below Standard Cost (-$15,100)",
-    detectedAt: isVi ? "Phát hiện từ Neo4j SalesOrder & Margin Analyzer" : "Detected from Neo4j SalesOrder & Margin",
+    detectedAt: isVi ? "Phân tích giá vốn & biên lợi nhuận" : "SalesOrder & Margin Analyzer",
     title: isVi
       ? "Đơn hàng #51823 (Metro Metals Co.) bán dưới giá vốn tiêu chuẩn"
       : "Order #51823 (Metro Metals Co.) sold below standard cost",
     description: isVi
-      ? "Phân tích biên lợi nhuận ghi nhận Đơn hàng #51823 bán 21 sản phẩm 'Touring-1000 Yellow, 60' với đơn giá sau chiết khấu 20% là $762.90 USD, thấp hơn đáng kể so với Giá vốn tiêu chuẩn $1,481.94 USD (StandardCost). Khoản lỗ gộp phát sinh: -$15,099.75 USD."
+      ? "Phân tích biên lợi nhuận ghi nhận Đơn hàng #51823 bán 21 sản phẩm 'Touring-1000 Yellow, 60' với đơn giá sau chiết khấu 20% là $762.90 USD, thấp hơn đáng kể so với Giá vốn tiêu chuẩn $1,481.94 USD. Khoản lỗ gộp phát sinh: -$15,099.75 USD."
       : "Margin analysis shows Order #51823 sold 21x 'Touring-1000 Yellow, 60' at net unit price $762.90 USD (after 20% discount) vs standard cost $1,481.94 USD, generating gross loss of -$15,099.75 USD.",
     meta: [
       { label: isVi ? "Khách hàng:" : "Customer:", value: "CUST-29615 (Metro Metals Co.)" },
@@ -89,7 +161,7 @@ const ALL_ALERTS_DATA = (isVi) => [
     variant: "danger",
     Icon: TrendingDown,
     badgeLabel: isVi ? "Bán lỗ dưới giá vốn (-$14,846 USD)" : "Sold Below Standard Cost (-$14,846)",
-    detectedAt: isVi ? "Phát hiện từ Neo4j SalesOrder & Margin Analyzer" : "Detected from Neo4j SalesOrder & Margin",
+    detectedAt: isVi ? "Phân tích giá vốn & biên lợi nhuận" : "SalesOrder & Margin Analyzer",
     title: isVi
       ? "Đơn hàng #46380 (Golf and Cycle Store) bán dưới giá vốn tiêu chuẩn"
       : "Order #46380 (Golf and Cycle Store) sold below standard cost",
@@ -114,7 +186,7 @@ const ALL_ALERTS_DATA = (isVi) => [
     variant: "warning",
     Icon: TrendingDown,
     badgeLabel: isVi ? "Chiết khấu đột biến (40%)" : "Abnormal Discount (40%)",
-    detectedAt: isVi ? "Phát hiện từ Neo4j SalesOrder Header" : "Detected from Neo4j SalesOrder Header",
+    detectedAt: isVi ? "Phân tích đơn hàng" : "SalesOrder Analysis",
     title: isVi
       ? "Đơn hàng #69471 (Brakes and Gears) chiết khấu vượt trần 40%"
       : "Order #69471 (Brakes and Gears) discount spike 40%",
@@ -220,51 +292,10 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
       ];
 
   const pageTitle = isExecOrAdmin
-    ? (isVi ? "Trung tâm Cảnh báo Rủi ro Thông minh" : "Smart Risk & Alert Center")
+    ? (isVi ? "Trung tâm Cảnh báo Rủi ro" : "Risk & Alert Center")
     : isManager
-    ? (isVi ? `Trung tâm Cảnh báo Rủi ro Phòng ban: ${userDept}` : `Department Risk & Alert Center: ${currentUser?.departmentEn || userDept}`)
-    : (isVi ? "Cảnh báo Rủi ro Phòng Kinh doanh (Sales Risk Center)" : "Sales Department Risk Alerts");
-
-  const pageSubtitle = isExecOrAdmin
-    ? (isVi
-        ? "Đài quan sát rủi ro vĩ mô toàn diện: giám sát hợp đồng thiếu điều khoản bảo vệ pháp lý (CUAD) và đơn vị phát sinh thâm hụt biên lợi nhuận dưới giá vốn (AdventureWorks) từ đồ thị tri thức."
-        : "Comprehensive enterprise risk center: early detection of expiring contracts, VIP order cadence drops and legal anomalies across knowledge graph (BR-05 / UC.20).")
-    : isManager
-    ? (isVi
-        ? `Giám sát toàn diện các chỉ số rủi ro tác nghiệp, hợp đồng sắp mãn hạn và biến động doanh số thuộc phạm vi ${userDept} (BR-02 / BR-04 / UC.20).`
-        : `Monitor operational risks, contract expirations and revenue anomalies within assigned department scope (BR-02 / BR-04 / UC.20).`)
-    : (isVi
-        ? "Chỉ hiển thị cảnh báo sụt giảm đơn hàng & hợp đồng sắp hết hạn thuộc phạm vi ca làm việc & phòng Kinh doanh (US23, US39, FR43). Hỗ trợ chuyên viên chủ động đàm phán tái ký."
-        : "Dedicated sales operational alerts: Track expiring client contracts and order cadence dips for sales shift (US23, US39, FR43).");
-
-  const scopeBadge = isExecOrAdmin ? (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-      <span>{isVi ? "Phạm vi: Toàn doanh nghiệp (Full Enterprise Scope · BR-05)" : "Scope: Enterprise-Wide (BR-05)"}</span>
-      {liveAlerts.length > 0 && (
-        <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.12)", padding: "1px 7px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
-          ● Live Neo4j & Qdrant
-        </span>
-      )}
-    </span>
-  ) : isManager ? (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-      <span>{isVi ? `Phạm vi quản lý: ${userDept} (BR-02 Scope)` : `Scope: ${userDept} (BR-02 Scope)`}</span>
-      {liveAlerts.length > 0 && (
-        <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.12)", padding: "1px 7px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
-          ● Live Neo4j & Qdrant
-        </span>
-      )}
-    </span>
-  ) : (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-      <span>{isVi ? "Phạm vi nghiệp vụ: Phòng Kinh doanh (US23/FR43)" : "Scope: Sales Department (US23/FR43)"}</span>
-      {liveAlerts.length > 0 && (
-        <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.12)", padding: "1px 7px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
-          ● Live Neo4j & Qdrant
-        </span>
-      )}
-    </span>
-  );
+    ? (isVi ? `Trung tâm Cảnh báo Rủi ro: ${userDept}` : `Department Risk Center: ${currentUser?.departmentEn || userDept}`)
+    : (isVi ? "Cảnh báo Rủi ro Phòng Kinh doanh" : "Sales Department Risk Alerts");
 
   return (
     <div style={{ background: "var(--base, #F8FAFC)", minHeight: "100%", padding: "28px 32px 48px", boxSizing: "border-box" }}>
@@ -273,8 +304,6 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
         {/* ── HEADER TOOLBAR ─────────────────────────────────── */}
         <PageHeader
           title={pageTitle}
-          subtitle={pageSubtitle}
-          badge={scopeBadge}
           actions={
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               {filterBtns.map(({ key, label, variant }) => {
@@ -290,14 +319,6 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                   </Button>
                 );
               })}
-
-              <Button
-                variant={showEmpty ? "primary" : "ghost"}
-                size="sm"
-                onClick={() => setShowEmpty((v) => !v)}
-              >
-                {isVi ? "Mô phỏng Trống" : "Simulate Empty"}
-              </Button>
             </div>
           }
         />
@@ -306,85 +327,99 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isExecOrAdmin ? "repeat(auto-fit, minmax(280px, 1fr))" : "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
             gap: "16px",
           }}
         >
-{/* Card 1: Rủi ro Tài chính & Giá vốn (AdventureWorks) */}
+          {/* Card 1: Rủi ro Tài chính & Giá vốn */}
           <div
             style={{
-              background: "linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(220,38,38,0.02) 100%)",
-              border: "1px solid rgba(220,38,38,0.25)",
-              borderRadius: "14px",
-              padding: "16px 20px",
+              background: "var(--surface, #FFFFFF)",
+              border: "1px solid var(--border, #E2E8F0)",
+              borderRadius: "12px",
+              padding: "18px 20px",
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: "14px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
             }}
           >
             <div
               style={{
-                width: 42,
-                height: 42,
+                width: 44,
+                height: 44,
                 borderRadius: "10px",
-                background: "rgba(220,38,38,0.15)",
+                background: "rgba(220,38,38,0.1)",
                 color: "#DC2626",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                marginTop: 2,
               }}
             >
-              <TrendingDown size={20} />
+              <TrendingDown size={22} />
             </div>
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#991B1B" }}>
-                {isVi ? "RỦI RO TÀI CHÍNH & GIÁ VỐN (ADVENTUREWORKS)" : "FINANCIAL & MARGIN RISKS"}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-3, #64748B)" }}>
+                {isVi ? "Rủi ro tài chính & giá vốn" : "Financial & Margin Risks"}
               </div>
-              <div style={{ fontSize: "20px", fontWeight: 800, color: "#991B1B", marginTop: "2px" }}>
-                {countFinancial} {isVi ? "Đơn hàng bất thường" : "Anomalous Orders"}
+              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "4px", marginBottom: "2px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "26px", fontWeight: 800, color: "var(--text-1, #0F172A)", lineHeight: 1 }}>
+                  {countFinancial}
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-1, #0F172A)", lineHeight: 1.3 }}>
+                  {isVi ? "Đơn hàng bất thường" : "Anomalous Orders"}
+                </span>
               </div>
-              <div style={{ fontSize: "11.5px", color: "#7F1D1D" }}>
-                {isVi ? "Bán dưới StandardCost & chiết khấu đột biến" : "Sales below cost & discount spikes"}
+              <div style={{ fontSize: "12px", color: "var(--text-3, #64748B)", marginTop: "2px", lineHeight: 1.4 }}>
+                {isVi ? "Bán dưới giá vốn & chiết khấu đột biến" : "Sales below cost & discount spikes"}
               </div>
             </div>
           </div>
 
-          {/* Card 2: Rủi ro Pháp lý & Hợp đồng (CUAD) */}
+          {/* Card 2: Rủi ro Pháp lý & Hợp đồng */}
           <div
             style={{
-              background: "linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.02) 100%)",
-              border: "1px solid rgba(139,92,246,0.25)",
-              borderRadius: "14px",
-              padding: "16px 20px",
+              background: "var(--surface, #FFFFFF)",
+              border: "1px solid var(--border, #E2E8F0)",
+              borderRadius: "12px",
+              padding: "18px 20px",
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: "14px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
             }}
           >
             <div
               style={{
-                width: 42,
-                height: 42,
+                width: 44,
+                height: 44,
                 borderRadius: "10px",
-                background: "rgba(139,92,246,0.15)",
+                background: "rgba(139,92,246,0.1)",
                 color: "#8B5CF6",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                marginTop: 2,
               }}
             >
-              <ShieldAlert size={20} />
+              <ShieldAlert size={22} />
             </div>
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#5B21B6" }}>
-                {isVi ? "RỦI RO ĐIỀU KHOẢN PHÁP LÝ (CUAD)" : "LEGAL COMPLIANCE EXPOSURE"}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-3, #64748B)" }}>
+                {isVi ? "Rủi ro điều khoản pháp lý" : "Legal Compliance Exposure"}
               </div>
-              <div style={{ fontSize: "20px", fontWeight: 800, color: "#5B21B6", marginTop: "2px" }}>
-                {countLegal} {isVi ? "Hợp đồng thiếu điều khoản" : "Contracts Lacking Clauses"}
+              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "4px", marginBottom: "2px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "26px", fontWeight: 800, color: "var(--text-1, #0F172A)", lineHeight: 1 }}>
+                  {countLegal}
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-1, #0F172A)", lineHeight: 1.3 }}>
+                  {isVi ? "Hợp đồng thiếu điều khoản" : "Contracts Lacking Clauses"}
+                </span>
               </div>
-              <div style={{ fontSize: "11.5px", color: "#4C1D95" }}>
+              <div style={{ fontSize: "12px", color: "var(--text-3, #64748B)", marginTop: "2px", lineHeight: 1.4 }}>
                 {isVi ? "74 hợp đồng thiếu trần bồi thường, 52 thiếu chấm dứt" : "74 uncapped liability, 52 no termination"}
               </div>
             </div>
@@ -393,38 +428,45 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
           {/* Card 3: Cảnh báo Mức độ Nghiêm trọng */}
           <div
             style={{
-              background: "linear-gradient(135deg, rgba(217,119,6,0.08) 0%, rgba(217,119,6,0.02) 100%)",
-              border: "1px solid rgba(217,119,6,0.25)",
-              borderRadius: "14px",
-              padding: "16px 20px",
+              background: "var(--surface, #FFFFFF)",
+              border: "1px solid var(--border, #E2E8F0)",
+              borderRadius: "12px",
+              padding: "18px 20px",
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: "14px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
             }}
           >
             <div
               style={{
-                width: 42,
-                height: 42,
+                width: 44,
+                height: 44,
                 borderRadius: "10px",
-                background: "rgba(217,119,6,0.15)",
+                background: "rgba(217,119,6,0.1)",
                 color: "#D97706",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                marginTop: 2,
               }}
             >
-              <AlertTriangle size={20} />
+              <AlertTriangle size={22} />
             </div>
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#92400E" }}>
-                {isVi ? "CẢNH BÁO MỨC ĐỘ NGHIÊM TRỌNG" : "CRITICAL SEVERITY ALERTS"}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-3, #64748B)" }}>
+                {isVi ? "Cảnh báo mức độ nghiêm trọng" : "Critical Severity Alerts"}
               </div>
-              <div style={{ fontSize: "20px", fontWeight: 800, color: "#92400E", marginTop: "2px" }}>
-                {countHigh} {isVi ? "Cảnh báo ưu tiên cao" : "High Priority Alerts"}
+              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "4px", marginBottom: "2px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "26px", fontWeight: 800, color: "var(--text-1, #0F172A)", lineHeight: 1 }}>
+                  {countHigh}
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-1, #0F172A)", lineHeight: 1.3 }}>
+                  {isVi ? "Cảnh báo ưu tiên cao" : "High Priority Alerts"}
+                </span>
               </div>
-              <div style={{ fontSize: "11.5px", color: "#78350F" }}>
+              <div style={{ fontSize: "12px", color: "var(--text-3, #64748B)", marginTop: "2px", lineHeight: 1.4 }}>
                 {isVi ? "Cần phê duyệt & chỉ đạo xử lý từ Ban Điều hành" : "Requires Executive review & guidance"}
               </div>
             </div>
@@ -439,8 +481,8 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
             description={
               isExecOrAdmin
                 ? (isVi
-                    ? "Toàn bộ hợp đồng CUAD và các giao dịch AdventureWorks trên đồ thị tri thức đều an toàn, nằm trong biên độ tuân thủ chuẩn."
-                    : "All enterprise contracts and AdventureWorks orders on the knowledge graph are safe and compliant.")
+                    ? "Toàn bộ hợp đồng và các giao dịch kinh doanh trên đồ thị tri thức đều an toàn, nằm trong biên độ tuân thủ chuẩn."
+                    : "All enterprise contracts and business orders on the knowledge graph are safe and compliant.")
                 : isManager
                 ? (isVi
                     ? `Toàn bộ hợp đồng và hoạt động kinh doanh thuộc phạm vi ${userDept} đang vận hành ổn định.`
@@ -494,12 +536,11 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                           <Badge variant={alert.variant} dot>
                             {alert.badgeLabel}
                           </Badge>
-                          <span style={{ fontSize: 11, fontFamily: "var(--f-mono)", color: "var(--text-3)", fontWeight: 600 }}>
-                            {alert.id}
-                          </span>
-                          <span style={{ fontSize: 11, color: "var(--text-4)" }}>
-                            • {alert.detectedAt}
-                          </span>
+                          {alert.detectedAt && (
+                            <span style={{ fontSize: 11.5, color: "var(--text-3, #64748B)" }}>
+                              • {alert.detectedAt}
+                            </span>
+                          )}
                         </div>
 
                         {/* Title */}
@@ -507,45 +548,55 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                           fontSize: 15,
                           fontWeight: 700,
                           color: "var(--text-1, #0F172A)",
-                          margin: 0,
+                          margin: "2px 0 0 0",
                           fontFamily: "var(--f-display, inherit)"
                         }}>
-                          {alert.title}
+                          {cleanAlertTitle(alert.title, alert.docId)}
                         </h3>
 
                         {/* Description */}
                         <p style={{
                           fontSize: 13,
                           color: "var(--text-2, #334155)",
-                          lineHeight: 1.5,
-                          margin: "2px 0 6px 0"
+                          lineHeight: 1.55,
+                          margin: "2px 0 8px 0"
                         }}>
-                          {alert.description}
+                          {cleanAlertDescription(alert.description, alert.docId)}
                         </p>
 
-                        {/* Metadata */}
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", fontSize: 12, color: "var(--text-3, #64748B)" }}>
-                          {(alert.meta || []).map((m, mIdx) => (
-                            <div key={mIdx} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <span>{m.label}</span>
-                              {m.isLink && (alert.docId || alert.aliasId) ? (
-                                <span
-                                  onClick={() => onNavigate?.("documents", alert.docId || alert.aliasId)}
-                                  style={{
-                                    color: "var(--primary, #2563EB)",
-                                    cursor: "pointer",
-                                    textDecoration: "underline",
-                                    fontWeight: 600,
-                                  }}
-                                  title={isVi ? "Xem văn bản gốc" : "View source document"}
-                                >
-                                  {m.value}
-                                </span>
-                              ) : (
-                                <strong style={{ color: m.highlight || "var(--text-1, #0F172A)" }}>{m.value}</strong>
-                              )}
-                            </div>
-                          ))}
+                        {/* Metadata: Clean & Non-redundant */}
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "14px", fontSize: 12, color: "var(--text-3, #64748B)" }}>
+                          {(alert.meta || [])
+                            .filter(m => !m.label?.includes("Tệp văn bản") && !m.label?.includes("Document File"))
+                            .map((m, mIdx) => {
+                              const isDocLink = m.isLink || m.label?.includes("Trích dẫn") || m.label?.includes("Nguồn");
+                              const displayVal = isDocLink ? formatDocName(m.value || alert.docId) : m.value;
+                              return (
+                                <div key={mIdx} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                  <span>{isDocLink ? (isVi ? "Hồ sơ gốc:" : "Source:") : m.label}</span>
+                                  {isDocLink && (alert.docId || alert.aliasId) ? (
+                                    <span
+                                      onClick={() => onNavigate?.("documents", alert.docId || alert.aliasId)}
+                                      style={{
+                                        color: "var(--primary, #2563EB)",
+                                        cursor: "pointer",
+                                        textDecoration: "underline",
+                                        fontWeight: 600,
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 3
+                                      }}
+                                      title={m.value}
+                                    >
+                                      <span>{displayVal}</span>
+                                      <ExternalLink size={11} />
+                                    </span>
+                                  ) : (
+                                    <strong style={{ color: m.highlight || "var(--text-1, #0F172A)" }}>{displayVal}</strong>
+                                  )}
+                                </div>
+                              );
+                            })}
                         </div>
                       </div>
                     </div>
@@ -583,20 +634,21 @@ export default function RiskView({ onNavigate, lang = "vi", role = "executive", 
                         <Button
                           variant="ghost"
                           size="sm"
-                          icon={FileText}
+                          icon={ExternalLink}
                           onClick={() => onNavigate?.("documents", alert.docId || alert.aliasId)}
                         >
-                          {isVi ? "Xem chi tiết" : "View Details"}
+                          {isVi ? "Xem hồ sơ" : "View Doc"}
                         </Button>
                       )}
 
                       <Button
-                        variant="primary"
+                        variant="ghost"
                         size="sm"
                         icon={Check}
+                        style={{ color: "#059669", background: "rgba(5, 150, 105, 0.08)", border: "1px solid rgba(5, 150, 105, 0.2)" }}
                         onClick={() => handleResolve(alert.id)}
                       >
-                        {isVi ? "Đã xử lý" : "Mark Resolved"}
+                        {isVi ? "Đã xử lý" : "Resolved"}
                       </Button>
                     </div>
                   </div>

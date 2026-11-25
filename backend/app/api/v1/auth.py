@@ -5,8 +5,9 @@ Endpoints:
 - GET  /api/v1/auth/me: Lấy thông tin tài khoản hiện tại từ JWT token
 """
 import uuid
+import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import or_, select
@@ -38,6 +39,11 @@ except ImportError:
 router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
 
+# In-memory Brute-force Login Protection (5 attempts per 5 minutes per identifier)
+_FAILED_LOGINS: Dict[str, Tuple[int, float]] = {}
+_MAX_FAILED_ATTEMPTS = 5
+_LOCKOUT_SECONDS = 300.0
+
 
 def resolve_user_role(username: str, email: str, is_superuser: bool) -> str:
     """Ánh xạ username/email sang role ID chuẩn của hệ thống Graph Mind"""
@@ -65,6 +71,20 @@ async def login(
     - Trả về JWT Access Token cùng thông tin User & Role
     """
     clean_identifier = payload.identifier.strip().lower()
+    now_ts = time.time()
+
+    # Brute-force lockout verification
+    if clean_identifier in _FAILED_LOGINS:
+        attempts, lock_until = _FAILED_LOGINS[clean_identifier]
+        if attempts >= _MAX_FAILED_ATTEMPTS:
+            if now_ts < lock_until:
+                wait_sec = max(1, int(lock_until - now_ts))
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá {_MAX_FAILED_ATTEMPTS} lần. Vui lòng thử lại sau {wait_sec} giây hoặc dùng chức năng Quên mật khẩu.",
+                )
+            else:
+                _FAILED_LOGINS.pop(clean_identifier, None)
 
     # Truy vấn người dùng theo email hoặc username
     stmt = select(User).where(
@@ -91,10 +111,19 @@ async def login(
     if not verify_password(payload.password, user.password_hash):
         await log_action(db, action="LOGIN_FAIL", resource_type="user",
                          resource_id=str(user.user_id), detail=f"email={user.email}")
+        attempts, _ = _FAILED_LOGINS.get(clean_identifier, (0, 0.0))
+        attempts += 1
+        lock_until = now_ts + _LOCKOUT_SECONDS if attempts >= _MAX_FAILED_ATTEMPTS else 0.0
+        _FAILED_LOGINS[clean_identifier] = (attempts, lock_until)
+        remaining = _MAX_FAILED_ATTEMPTS - attempts
+        warn_msg = f"Mật khẩu không chính xác. Bạn còn {remaining} lần thử trước khi tài khoản bị tạm khóa 5 phút." if remaining > 0 else "Mật khẩu không chính xác. Tài khoản đã bị tạm khóa 5 phút."
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Mật khẩu không chính xác.",
+            detail=warn_msg,
         )
+
+    # Đăng nhập thành công — xóa bộ đếm thất bại
+    _FAILED_LOGINS.pop(clean_identifier, None)
 
     # Cập nhật thời điểm đăng nhập & hoạt động
     now = datetime.now(timezone.utc)

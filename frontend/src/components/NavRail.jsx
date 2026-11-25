@@ -13,7 +13,7 @@ const NAV_SECTIONS = (role, isVi) => [
     id: "intelligence",
     label: isVi ? "TRỢ LÝ TRI THỨC" : "AI & SEARCH",
     items: [
-      { id: "copilot", icon: "fa-solid fa-robot", label: isVi ? "AI Copilot" : "AI Copilot", roles: ["executive","knowledge_manager","it_admin","standard"] },
+      { id: "copilot", icon: "fa-solid fa-brain", label: isVi ? "AI Copilot" : "AI Copilot", roles: ["executive","knowledge_manager","it_admin","standard"] },
       { id: "search", icon: "fa-solid fa-magnifying-glass", label: isVi ? "Tìm kiếm thông minh" : "Smart Search", roles: ["executive","knowledge_manager","it_admin","standard"] },
     ],
   },
@@ -128,7 +128,7 @@ export default function NavRail({
               cursor: "pointer",
               transition: "background 0.15s ease",
             }}
-            title={isVi ? "Mở rộng thanh điều hướng (Click)" : "Expand sidebar (Click)"}
+            title={isVi ? "Mở rộng thanh điều hướng" : "Expand sidebar (Click)"}
             onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
             onMouseLeave={e => e.currentTarget.style.background = "transparent"}
           >
@@ -202,9 +202,9 @@ export default function NavRail({
                         padding: isOpen ? "8px 12px" : "9px 0",
                         justifyContent: isOpen ? "flex-start" : "center",
                         borderRadius: isOpen ? "8px" : "6px",
-                        border: isActive ? "1px solid rgba(8, 145, 178, 0.2)" : "1px solid transparent",
-                        background: isActive ? "rgba(8, 145, 178, 0.08)" : "transparent",
-                        color: isActive ? "#0891b2" : "var(--text-2)",
+                        border: isActive ? "1px solid var(--nav-active-border, rgba(56, 189, 248, 0.35))" : "1px solid transparent",
+                        background: isActive ? "var(--nav-active-bg, rgba(56, 189, 248, 0.12))" : "transparent",
+                        color: isActive ? "var(--nav-active-text, #0284c7)" : "var(--text-2)",
                         fontSize: 13,
                         fontWeight: isActive ? 600 : 500,
                         cursor: "pointer",
@@ -233,9 +233,13 @@ export default function NavRail({
                       <span style={{
                         width: 20, height: 20, display: "flex", alignItems: "center",
                         justifyContent: "center", flexShrink: 0,
-                        color: isActive ? "#0891b2" : "var(--text-3)",
+                        color: isActive ? "var(--nav-active-text, #0284c7)" : "var(--text-3)",
                       }}>
-                        <i className={item.icon} style={{ fontSize: 14 }} />
+                        {typeof item.icon === "string" ? (
+                          <i className={item.icon} style={{ fontSize: 14 }} />
+                        ) : (
+                          <item.icon size={15} />
+                        )}
                       </span>
 
                       {/* Label */}

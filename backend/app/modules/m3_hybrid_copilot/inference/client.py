@@ -294,8 +294,9 @@ class OllamaClient:
         used_chunks = []
         chunks_text_list = []
         current_context_len = 0
+        max_chunks = 4 if (is_cuad_document and is_doc_risk_query) else 5
 
-        for i, c in enumerate(ordered_chunks[:4]):
+        for i, c in enumerate(ordered_chunks[:max_chunks]):
             t = (c.get("text") or c.get("content") or "").strip()
             cname = c.get("source_file") or c.get("contract_name") or c.get("name") or "Tài liệu"
             cid = c.get("chunk_index") if c.get("chunk_index") is not None else c.get("chunk_id", i + 1)

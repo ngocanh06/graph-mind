@@ -220,11 +220,11 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   };
 
   const SAMPLE_QUERIES = [
-    { label: isVi ? "CUAD Service Agreement" : "CUAD Service Agreement", text: "Service Agreement" },
+    { label: isVi ? "Hợp đồng dịch vụ bảo trì" : "Service Agreement", text: "Service Agreement" },
     { label: isVi ? "Khách hàng Roger Harui" : "Roger Harui (VIP)", text: "Roger Harui" },
-    { label: isVi ? "Sản phẩm Road Bikes" : "Road Bikes", text: "Road Bikes" },
-    { label: isVi ? "Điều khoản bồi thường (Indemnity)" : "Indemnity clauses", text: "indemnify liability" },
-    { label: isVi ? "Luật điều chỉnh (Governing Law)" : "Governing Law", text: "Governing Law" }
+    { label: isVi ? "Sản phẩm xe đạp thể thao" : "Road Bikes", text: "Road Bikes" },
+    { label: isVi ? "Điều khoản bồi thường thiệt hại" : "Indemnity clauses", text: "indemnify liability" },
+    { label: isVi ? "Luật điều chỉnh hợp đồng" : "Governing Law", text: "Governing Law" }
   ];
 
   // Helper lọc đa chiều trên dữ liệu thật từ Database
@@ -267,7 +267,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
   const pendingCount = assignedTasks.filter((t) => t.status === "PENDING").length;
 
   return (
-    <div className="view active" style={{ display: "flex", flexDirection: "column", gap: "20px", padding: "20px 24px 60px", boxSizing: "border-box", width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
+    <div className="view active" style={{ background: "var(--base)", display: "flex", flexDirection: "column", gap: "20px", padding: "20px 24px 60px", boxSizing: "border-box", width: "100%", maxWidth: "100%", minWidth: 0, minHeight: "100%", overflowX: "hidden" }}>
       {/* Toast Notification */}
       {toastMsg && (
         <div style={{
@@ -293,449 +293,206 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
       )}
 
       {/* ============================================================ */}
-      {/* 1. ROLE-AWARE COMMAND BANNER (BÀN LÀM VIỆC & TRA CỨU TRI THỨC) */}
+      {/* 1. THANH ĐIỀU HƯỚNG TAB CHÍNH (ENTERPRISE TAB BAR ĐỒNG BỘ)    */}
       {/* ============================================================ */}
-      {(() => {
-        const PERSONA = {
-          standard: {
-            initials: currentUser?.avatar || "OP",
-            bgGradient: "linear-gradient(135deg, #0891b2, #0284c7)",
-            shadowColor: "rgba(8, 145, 178, 0.25)",
-            title: isVi
-              ? `Tác Nghiệp Khách Hàng — ${currentUser?.name || "Chuyên viên Nghiệp vụ"}`
-              : `Client Operations Hub — ${currentUser?.name || "Operations Specialist"}`,
-            badge: isVi ? (currentUser?.badge || "CHUYÊN VIÊN NGHIỆP VỤ") : "OPERATIONS SPECIALIST",
-            badgeColor: "#0891b2",
-            badgeBg: "rgba(8, 145, 178, 0.08)",
-            badgeBorder: "rgba(8, 145, 178, 0.2)",
-            subtitle: isVi
-              ? `${currentUser?.department || "Phòng Nghiệp vụ & Vận hành"} · Ca làm việc: 08:00 - 17:30 · Phân quyền: Nghiệp vụ (Operations Tier)`
-              : `${currentUser?.departmentEn || "Operations Department"} · Shift: 08:00 - 17:30 · Operations Access Tier`,
-            tabTasksLabel: isVi ? "Ca Việc Của Tôi" : "My Assigned Cases",
-            tabSearchLabel: isVi ? "Tra Cứu Quy Trình & Hợp Đồng" : "Search & Evidence",
-            metric1Label: isVi ? "Hồ sơ cần xử lý hôm nay" : "Active Cases Today",
-            metric1Val: assignedTasks.length > 0 ? `${pendingCount} / ${assignedTasks.length} ca` : "0 / 0 ca",
-            metric1Sub: assignedTasks.length > 0 ? (isVi ? `${pendingCount} ca cần xử lý` : `${pendingCount} pending`) : (isVi ? "Chưa có ca việc cần xử lý" : "No active cases"),
-            metric1Color: assignedTasks.length > 0 ? "#dc2626" : "var(--text-3)",
-            metric2Label: isVi ? "Thời gian xử lý trung bình" : "Avg Resolution SLA",
-            metric2Val: assignedTasks.length > 0 ? "1.4 giờ (SLA < 2h)" : "--",
-            metric2Sub: assignedTasks.length > 0 ? (isVi ? "✓ Đạt chuẩn cam kết dịch vụ" : "Within enterprise SLA") : (isVi ? "Chưa ghi nhận ca làm việc" : "No active shifts"),
-            metric2Color: assignedTasks.length > 0 ? "#059669" : "var(--text-3)",
-            metric3Label: isVi ? "Khách hàng & Hợp đồng phụ trách" : "Assigned Accounts",
-            metric3Val: assignedTasks.length > 0 ? "18 đơn vị" : "0 đơn vị",
-            metric3Sub: assignedTasks.length > 0 ? (isVi ? "Bao gồm VIP Brakes and Gears (#29818)" : "Including VIP Brakes and Gears (#29818)") : (isVi ? "Chưa gán tài khoản phụ trách" : "No accounts assigned"),
-            metric3Color: assignedTasks.length > 0 ? "var(--cyan)" : "var(--text-3)",
-            metric4Label: isVi ? "Trợ lực bởi AI Copilot" : "AI Copilot Assistance",
-            metric4Val: assignedTasks.length > 0 ? "89.4%" : "--",
-            metric4Sub: assignedTasks.length > 0 ? (isVi ? "Tiết kiệm ~2.5 giờ làm việc/ngày" : "Saves ~2.5 hours/day") : (isVi ? "Chưa có tương tác cùng AI" : "No AI sessions logged"),
-            metric4Color: assignedTasks.length > 0 ? "#0891b2" : "var(--text-3)",
-          },
-          knowledge_manager: {
-            initials: "TA",
-            bgGradient: "linear-gradient(135deg, #059669, #10b981)",
-            shadowColor: "rgba(5, 150, 105, 0.25)",
-            title: isVi ? "Tra Cứu Tri Thức Doanh Nghiệp & Giám Sát Bộ Phận" : "Department Knowledge Search & Operations Oversight",
-            badge: isVi ? "TRƯỞNG PHÒNG / QUẢN LÝ" : "DEPARTMENT MANAGER",
-            badgeColor: "#059669",
-            badgeBg: "rgba(5, 150, 105, 0.1)",
-            badgeBorder: "rgba(5, 150, 105, 0.25)",
-            subtitle: isVi
-              ? "Trần M. Anh · Khối Quản lý Phòng ban · Tra cứu trực tiếp cơ sở dữ liệu Neo4j & Qdrant Vector, giám sát tiến độ ca việc của nhân viên"
-              : "Tran M. Anh · Middle Management · Live query across Neo4j Graph & Qdrant Vector, staff shift oversight",
-            tabTasksLabel: isVi ? "Giám Sát Ca Việc Nhân Viên" : "Staff Operations Queue",
-            tabSearchLabel: isVi ? "Tra Cứu Tri Thức & Hợp Đồng" : "Enterprise Search & Retrieval",
-            metric1Label: isVi ? "Ca việc nhân viên đang xử lý" : "Team Active Cases",
-            metric1Val: `${pendingCount} / ${assignedTasks.length} ca`,
-            metric1Sub: isVi ? "Chuyên viên Nam đang thụ lý" : "Handled by Specialist Nam",
-            metric1Color: "#d97706",
-            metric2Label: isVi ? "Giá trị phơi nhiễm giám sát" : "Monitored Value",
-            metric2Val: "$4.8M USD",
-            metric2Sub: isVi ? "AdventureWorks ERP & CUAD" : "AdventureWorks ERP & CUAD",
-            metric2Color: "#0891b2",
-            metric3Label: isVi ? "Quy trình & Hợp đồng phụ trách" : "Department Documents",
-            metric3Val: dbMetrics ? `${dbMetrics.total_documents} tài liệu` : "35 tài liệu",
-            metric3Sub: isVi ? "30 hợp đồng CUAD & 5 CSDL ERP" : "30 CUAD & 5 ERP DBs",
-            metric3Color: "#059669",
-            metric4Label: isVi ? "Thực thể đồ thị tri thức" : "Knowledge Graph Nodes",
-            metric4Val: dbMetrics ? `${(dbMetrics.total_nodes).toLocaleString()} thực thể` : "3,484 thực thể",
-            metric4Sub: isVi ? "Neo4j (3,484) + Qdrant (9,140)" : "Neo4j (3,484) + Qdrant (9,140)",
-            metric4Color: "var(--cyan)",
-          },
-          executive: {
-            initials: "HĐ",
-            bgGradient: "linear-gradient(135deg, #0891b2, #0284c7)",
-            shadowColor: "rgba(8, 145, 178, 0.25)",
-            title: isVi ? "Tra Cứu Tri Thức Doanh Nghiệp & Đồ Thị Đa Chiều" : "Enterprise Intelligence & Multi-Modal Search",
-            badge: isVi ? "BAN LÃNH ĐẠO C-LEVEL" : "C-SUITE EXECUTIVE",
-            badgeColor: "#0891b2",
-            badgeBg: "rgba(8, 145, 178, 0.1)",
-            badgeBorder: "rgba(8, 145, 178, 0.25)",
-            subtitle: isVi
-              ? "Hoàng Minh Điều (CEO) · Truy vấn hợp nhất 3,484 thực thể Neo4j, 9,140 vectors Qdrant, hợp đồng và dữ liệu bán hàng"
-              : "Hoang Minh Dieu (CEO) · Unified discovery across 3,484 Neo4j entities, 9,140 Qdrant vectors, contracts & sales",
-            tabTasksLabel: isVi ? "Giám Sát Vụ Việc Toàn Doanh Nghiệp" : "Corporate Cases",
-            tabSearchLabel: isVi ? "Tra Cứu Tri Thức Toàn Doanh Nghiệp" : "Enterprise Search Engine",
-            metric1Label: isVi ? "Thực thể đồ thị tri thức" : "Monitored Graph Entities",
-            metric1Val: `${(dbMetrics?.total_nodes || 3484).toLocaleString()} thực thể`,
-            metric1Sub: isVi ? "Đồng bộ từ CSDL Neo4j thực tế" : "Live synced from Neo4j DB",
-            metric1Color: "var(--cyan)",
-            metric2Label: isVi ? "Phơi nhiễm rủi ro hợp đồng" : "Contract Risk Exposure",
-            metric2Val: "$12.5M USD",
-            metric2Sub: isVi ? "CUAD Contracts & Sales Orders" : "CUAD Contracts & Sales Orders",
-            metric2Color: "#dc2626",
-            metric3Label: isVi ? "Tổng hồ sơ đã lập chỉ mục" : "Indexed Documents",
-            metric3Val: `${(dbMetrics?.total_documents ?? 581)} hồ sơ`,
-            metric3Sub: isVi ? "Hợp đồng CUAD & ERP Master" : "CUAD & ERP Master",
-            metric3Color: "#059669",
-            metric4Label: isVi ? "Vectơ nhúng ngữ nghĩa" : "Vector Chunks",
-            metric4Val: `${(dbMetrics?.total_vectors || 9140).toLocaleString()} vectors`,
-            metric4Sub: isVi ? "Qdrant Vector DB (cuad_contracts)" : "Qdrant Vector DB",
-            metric4Color: "#0891b2",
-          },
-          it_admin: {
-            initials: "SA",
-            bgGradient: "linear-gradient(135deg, #d97706, #f59e0b)",
-            shadowColor: "rgba(217, 119, 6, 0.25)",
-            title: isVi ? "Tra Cứu Tri Thức Hệ Thống & Kiểm Tra Bằng Chứng" : "SysOps & Evidence Knowledge Search",
-            badge: isVi ? "ADMIN HỆ THỐNG & TRI THỨC" : "SYS & KNOWLEDGE ADMIN",
-            badgeColor: "#d97706",
-            badgeBg: "rgba(217, 119, 6, 0.1)",
-            badgeBorder: "rgba(217, 119, 6, 0.25)",
-            subtitle: isVi
-              ? "SecOps Admin · Kiểm soát pipeline tri thức, bóc tách thực thể đồ thị và truy vết nguồn gốc bằng chứng"
-              : "SecOps Admin · Pipeline inspection, entity extraction, and audit evidence traceability",
-            tabTasksLabel: isVi ? "Hàng Đợi Ca Tác Nghiệp" : "Operations Queue",
-            tabSearchLabel: isVi ? "Truy Vấn Đồ Thị & Bằng Chứng" : "Graph & Evidence Query",
-            metric1Label: isVi ? "Nút đồ thị Neo4j" : "Neo4j Graph Nodes",
-            metric1Val: `${(dbMetrics?.total_nodes ?? 0).toLocaleString()} nodes`,
-            metric1Sub: isVi ? "Neo4j Bolt Sync: 100% OK" : "Neo4j Bolt Sync 100% OK",
-            metric1Color: "#059669",
-            metric2Label: isVi ? "Độ trễ truy vấn trung bình" : "Query Latency",
-            metric2Val: "18ms",
-            metric2Sub: isVi ? "Pipeline hoạt động tối ưu" : "Optimal pipeline latency",
-            metric2Color: "var(--cyan)",
-            metric3Label: isVi ? "Điều khoản bóc tách" : "Extracted Clauses",
-            metric3Val: `${(dbMetrics?.total_clauses ?? 0)} điều khoản`,
-            metric3Sub: isVi ? "Đã xác thực đồ thị" : "Graph verified",
-            metric3Color: "#d97706",
-            metric4Label: isVi ? "Điểm nhúng Qdrant" : "Qdrant Vectors",
-            metric4Val: `${(dbMetrics?.total_vectors ?? 0).toLocaleString()} vectors`,
-            metric4Sub: isVi ? "Qdrant collection cuad_contracts" : "cuad_contracts active",
-            metric4Color: "#0891b2",
-          }
-        };
-
-        const currentPersona = PERSONA[role] || PERSONA.knowledge_manager;
-
-        return (
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)",
-            padding: "22px 24px",
-            boxShadow: "var(--shadow-sm)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "18px"
-          }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "16px",
-              borderBottom: "1px solid var(--border-soft)",
-              paddingBottom: "16px"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <div style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "10px",
-                  background: currentPersona.bgGradient,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#ffffff",
-                  fontWeight: "800",
-                  fontSize: "15px",
-                  boxShadow: `0 4px 12px ${currentPersona.shadowColor}`
-                }}>
-                  {currentPersona.initials}
-                </div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <h2 style={{
-                      fontSize: "17px",
-                      fontWeight: "800",
-                      color: "var(--text-1)",
-                      margin: 0,
-                      letterSpacing: "-0.01em"
-                    }}>
-                      {currentPersona.title}
-                    </h2>
-                    <span style={{
-                      fontSize: "10.5px",
-                      fontWeight: "750",
-                      padding: "3px 8px",
-                      borderRadius: "4px",
-                      background: currentPersona.badgeBg,
-                      color: currentPersona.badgeColor,
-                      border: `1px solid ${currentPersona.badgeBorder}`
-                    }}>
-                      {currentPersona.badge}
-                    </span>
-                  </div>
-                  <p style={{
-                    fontSize: "12.5px",
-                    color: "var(--text-3)",
-                    margin: "4px 0 0 0",
-                    lineHeight: "1.4"
-                  }}>
-                    {currentPersona.subtitle}
-                  </p>
-                </div>
-              </div>
-
-              {/* Tab Switcher */}
-              <div style={{
-                display: "flex",
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        borderBottom: "1.5px solid var(--border, #e2e8f0)",
+        paddingBottom: "0px",
+        overflowX: "auto",
+        scrollbarWidth: "none",
+        width: "100%",
+        flexShrink: 0,
+        boxSizing: "border-box"
+      }}>
+        {[
+          { id: "search", label: isVi ? "Tra Cứu Tri Thức" : "Knowledge Search", icon: "fa-magnifying-glass" },
+          { id: "explorer", label: isVi ? "Hợp Nhất GraphRAG" : "GraphRAG Explorer", icon: "fa-diagram-project" },
+          { id: "neo4j", label: isVi ? `Đồ thị Neo4j (${(dbMetrics?.total_nodes || 56310).toLocaleString()})` : `Neo4j Graph (${(dbMetrics?.total_nodes || 56310).toLocaleString()})`, icon: "fa-circle-nodes" },
+          { id: "qdrant", label: isVi ? `Vector Qdrant (${(dbMetrics?.total_vectors || 9148).toLocaleString()})` : `Qdrant Vector (${(dbMetrics?.total_vectors || 9148).toLocaleString()})`, icon: "fa-database" },
+          { id: "tasks", label: isVi ? "Giám Sát Vụ Việc" : "Case Queue", icon: "fa-list-check", badge: pendingCount }
+        ].map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                display: "inline-flex",
                 alignItems: "center",
-                background: "var(--surface-2)",
-                padding: "3px",
-                borderRadius: "8px",
-                border: "1px solid var(--border)"
-              }}>
-                {/* Tab Tra Cứu (Default cho Manager / Exec) */}
-                <button
-                  onClick={() => setActiveTab("search")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "7px 16px",
-                    borderRadius: "6px",
-                    fontSize: "12.5px",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                    border: "none",
-                    transition: "all 0.15s ease",
-                    background: activeTab === "search" ? "var(--surface)" : "transparent",
-                    color: activeTab === "search" ? "var(--cyan)" : "var(--text-3)",
-                    boxShadow: activeTab === "search" ? "var(--shadow-sm)" : "none"
-                  }}
-                >
-                  <Icon name="fa-solid fa-magnifying-glass" size={15} />
-                  <span>{currentPersona.tabSearchLabel}</span>
-                </button>
-
-                {/* Tab Knowledge Explorer (Hợp nhất Qdrant + Neo4j) */}
-                <button
-                  onClick={() => setActiveTab("explorer")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "7px 16px",
-                    borderRadius: "6px",
-                    fontSize: "12.5px",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                    border: "none",
-                    transition: "all 0.15s ease",
-                    background: activeTab === "explorer" ? "var(--surface)" : "transparent",
-                    color: activeTab === "explorer" ? "#0284c7" : "var(--text-3)",
-                    boxShadow: activeTab === "explorer" ? "var(--shadow-sm)" : "none"
-                  }}
-                >
-                  <span>🌐</span>
-                  <span>{isVi ? "Knowledge Explorer" : "Knowledge Explorer"}</span>
-                </button>
-
-                {/* Tab Neo4j Live Knowledge Graph */}
-                <button
-                  onClick={() => setActiveTab("neo4j")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "7px 16px",
-                    borderRadius: "6px",
-                    fontSize: "12.5px",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                    border: "none",
-                    transition: "all 0.15s ease",
-                    background: activeTab === "neo4j" ? "var(--surface)" : "transparent",
-                    color: activeTab === "neo4j" ? "#0284c7" : "var(--text-3)",
-                    boxShadow: activeTab === "neo4j" ? "var(--shadow-sm)" : "none"
-                  }}
-                >
-                  <span>🕸️</span>
-                  <span>{isVi ? `Neo4j Graph (${(dbMetrics?.total_nodes || 3484).toLocaleString()})` : `Neo4j Graph (${(dbMetrics?.total_nodes || 3484).toLocaleString()})`}</span>
-                </button>
-
-                {/* Tab Qdrant Live Vector Search */}
-                <button
-                  onClick={() => setActiveTab("qdrant")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "7px 16px",
-                    borderRadius: "6px",
-                    fontSize: "12.5px",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                    border: "none",
-                    transition: "all 0.15s ease",
-                    background: activeTab === "qdrant" ? "var(--surface)" : "transparent",
-                    color: activeTab === "qdrant" ? "#0891b2" : "var(--text-3)",
-                    boxShadow: activeTab === "qdrant" ? "var(--shadow-sm)" : "none"
-                  }}
-                >
-                  <span>🔮</span>
-                  <span>{isVi ? `Qdrant Vector (${(dbMetrics?.total_vectors || 9140).toLocaleString()})` : `Qdrant Vector (${(dbMetrics?.total_vectors || 9140).toLocaleString()})`}</span>
-                </button>
-
-                {/* Tab Ca việc (Default cho Sales Specialist) */}
-                <button
-                  onClick={() => setActiveTab("tasks")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "7px 16px",
-                    borderRadius: "6px",
-                    fontSize: "12.5px",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                    border: "none",
-                    transition: "all 0.15s ease",
-                    background: activeTab === "tasks" ? "var(--surface)" : "transparent",
-                    color: activeTab === "tasks" ? "var(--cyan)" : "var(--text-3)",
-                    boxShadow: activeTab === "tasks" ? "var(--shadow-sm)" : "none"
-                  }}
-                >
-                  <Icon name="fa-solid fa-list-check" size={15} />
-                  <span>{currentPersona.tabTasksLabel}</span>
-                  {pendingCount > 0 && (
-                    <span style={{
-                      fontSize: "10.5px",
-                      fontWeight: "800",
-                      padding: "1px 7px",
-                      borderRadius: "10px",
-                      background: isSalesRole ? "#dc2626" : "#059669",
-                      color: "#ffffff"
-                    }}>
-                      {pendingCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* 4 Thẻ chỉ số tác nghiệp theo vai trò */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "14px"
-            }}>
-              <div style={{
-                background: "var(--surface-2)",
-                padding: "14px 16px",
-                borderRadius: "var(--r-md)",
-                border: "1px solid var(--border-soft)",
-                display: "flex",
-                flexDirection: "column"
-              }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {currentPersona.metric1Label}
+                gap: "8px",
+                padding: "11px 20px",
+                borderRadius: "8px 8px 0 0",
+                fontSize: "13.5px",
+                fontWeight: isActive ? "800" : "600",
+                cursor: "pointer",
+                border: isActive ? "1.5px solid var(--border, #cbd5e1)" : "1.5px solid transparent",
+                borderBottom: isActive ? "2px solid var(--base, #f8fafc)" : "none",
+                marginBottom: isActive ? "-1.5px" : "0",
+                background: isActive ? "var(--surface, #ffffff)" : "transparent",
+                color: isActive ? "var(--cyan, #0891b2)" : "var(--text-2, #475569)",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                transition: "all 0.15s ease",
+                boxShadow: isActive ? "0 -2px 8px rgba(0, 0, 0, 0.04)" : "none",
+                position: "relative"
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.color = "var(--text-1, #0f172a)";
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.03)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.color = "var(--text-2, #475569)";
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
+            >
+              <Icon
+                name={`fa-solid ${tab.icon}`}
+                size={14}
+                style={{
+                  color: isActive ? "var(--cyan, #0891b2)" : "var(--text-3, #94a3b8)",
+                  transition: "color 0.15s ease"
+                }}
+              />
+              <span style={{ fontSize: "13.5px" }}>{tab.label}</span>
+              {tab.badge > 0 && (
+                <span style={{
+                  fontSize: "11px",
+                  fontWeight: "800",
+                  padding: "1px 7px",
+                  borderRadius: "10px",
+                  background: isActive ? "var(--cyan, #0891b2)" : "#dc2626",
+                  color: "#ffffff"
+                }}>
+                  {tab.badge}
                 </span>
-                <div style={{ fontSize: "20px", fontWeight: "800", color: currentPersona.metric1Color, marginTop: "4px" }}>
-                  {currentPersona.metric1Val}
-                </div>
-                <span style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "4px" }}>
-                  {currentPersona.metric1Sub}
-                </span>
-              </div>
-
-              <div style={{
-                background: "var(--surface-2)",
-                padding: "14px 16px",
-                borderRadius: "var(--r-md)",
-                border: "1px solid var(--border-soft)",
-                display: "flex",
-                flexDirection: "column"
-              }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {currentPersona.metric2Label}
-                </span>
-                <div style={{ fontSize: "20px", fontWeight: "800", color: currentPersona.metric2Color, marginTop: "4px" }}>
-                  {currentPersona.metric2Val}
-                </div>
-                <span style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "4px" }}>
-                  {currentPersona.metric2Sub}
-                </span>
-              </div>
-
-              <div style={{
-                background: "var(--surface-2)",
-                padding: "14px 16px",
-                borderRadius: "var(--r-md)",
-                border: "1px solid var(--border-soft)",
-                display: "flex",
-                flexDirection: "column"
-              }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {currentPersona.metric3Label}
-                </span>
-                <div style={{ fontSize: "20px", fontWeight: "800", color: currentPersona.metric3Color, marginTop: "4px" }}>
-                  {currentPersona.metric3Val}
-                </div>
-                <span style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "4px" }}>
-                  {currentPersona.metric3Sub}
-                </span>
-              </div>
-
-              <div style={{
-                background: "var(--surface-2)",
-                padding: "14px 16px",
-                borderRadius: "var(--r-md)",
-                border: "1px solid var(--border-soft)",
-                display: "flex",
-                flexDirection: "column"
-              }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {currentPersona.metric4Label}
-                </span>
-                <div style={{ fontSize: "20px", fontWeight: "800", color: currentPersona.metric4Color, marginTop: "4px" }}>
-                  {currentPersona.metric4Val}
-                </div>
-                <span style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "4px" }}>
-                  {currentPersona.metric4Sub}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+              )}
+            </button>
+          );
+        })}
+      </div>
 
       {/* ============================================================ */}
       {/* 2. NỘI DUNG CHÍNH: CÁC TAB TÁC NGHIỆP, EXPLORER, GRAPH, VECTOR */}
       {/* ============================================================ */}
       {activeTab === "explorer" ? (
-        <KnowledgeExplorerView lang={lang} embedded={true} />
+        <KnowledgeExplorerView lang={lang} embedded={true} currentUser={currentUser} />
       ) : activeTab === "neo4j" ? (
-        <div style={{ background: "var(--surface, #fff)", padding: 18, borderRadius: 14, border: "1.5px solid var(--border-soft, #e2e8f0)", minHeight: 650 }}>
+        <div style={{ background: "var(--surface, #fff)", padding: "20px", borderRadius: "var(--r-xl, 14px)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", minHeight: 650 }}>
           <GraphPanel lang={lang} onSelectNode={onSelectEntity} />
         </div>
       ) : activeTab === "qdrant" ? (
-        <div style={{ background: "var(--surface, #fff)", padding: 18, borderRadius: 14, border: "1.5px solid var(--border-soft, #e2e8f0)", minHeight: 650 }}>
+        <div style={{
+          background: "var(--surface, #fff)",
+          padding: "20px",
+          borderRadius: "var(--r-xl, 14px)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-sm)",
+          minHeight: 650,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+          overflow: "hidden"
+        }}>
           <VectorSearchPanel lang={lang} onExploreRelated={() => setActiveTab("explorer")} />
         </div>
       ) : activeTab === "tasks" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* 4 Thẻ Chỉ Số Giám Sát Ca Việc */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "12px",
+            width: "100%",
+            boxSizing: "border-box"
+          }}>
+            <div style={{
+              background: "var(--surface)",
+              padding: "14px 16px",
+              borderRadius: "12px",
+              border: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "var(--shadow-xs)"
+            }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase" }}>
+                {isVi ? "Hồ sơ cần xử lý hôm nay" : "Active Cases Today"}
+              </span>
+              <div style={{ fontSize: "20px", fontWeight: "800", color: pendingCount > 0 ? "#dc2626" : "var(--text-1)", marginTop: "4px" }}>
+                {pendingCount} / {assignedTasks.length} ca
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "2px" }}>
+                {isVi ? `${pendingCount} ca chờ phản hồi` : `${pendingCount} pending review`}
+              </span>
+            </div>
+
+            <div style={{
+              background: "var(--surface)",
+              padding: "14px 16px",
+              borderRadius: "12px",
+              border: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "var(--shadow-xs)"
+            }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase" }}>
+                {isVi ? "Thời gian xử lý trung bình" : "Avg Resolution SLA"}
+              </span>
+              <div style={{ fontSize: "20px", fontWeight: "800", color: "#059669", marginTop: "4px" }}>
+                1.4 giờ
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "2px" }}>
+                {isVi ? "Đạt chuẩn SLA < 2h" : "Within enterprise SLA"}
+              </span>
+            </div>
+
+            <div style={{
+              background: "var(--surface)",
+              padding: "14px 16px",
+              borderRadius: "12px",
+              border: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "var(--shadow-xs)"
+            }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase" }}>
+                {isVi ? "Quy trình & Hợp đồng phụ trách" : "Department Documents"}
+              </span>
+              <div style={{ fontSize: "20px", fontWeight: "800", color: "#0284c7", marginTop: "4px" }}>
+                {dbMetrics?.total_documents ?? 581} hồ sơ
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "2px" }}>
+                {isVi ? "Hợp đồng CUAD & ERP Master" : "CUAD & ERP Master"}
+              </span>
+            </div>
+
+            <div style={{
+              background: "var(--surface)",
+              padding: "14px 16px",
+              borderRadius: "12px",
+              border: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "var(--shadow-xs)"
+            }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-3)", textTransform: "uppercase" }}>
+                {isVi ? "Thực thể đồ thị Neo4j" : "Neo4j Graph Nodes"}
+              </span>
+              <div style={{ fontSize: "20px", fontWeight: "800", color: "#0891b2", marginTop: "4px" }}>
+                {(dbMetrics?.total_nodes || 56310).toLocaleString()} thực thể
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "2px" }}>
+                {isVi ? "Đồng bộ từ CSDL thực tế" : "Live synced from Neo4j DB"}
+              </span>
+            </div>
+          </div>
           {/* Header danh sách ca việc */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px" }}>
             <div>
@@ -813,225 +570,281 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               </div>
             ) : (
               assignedTasks.map((task) => {
-              const isResolved = task.status === "RESOLVED";
-              return (
-                <div
-                  key={task.id}
-                  style={{
-                    background: isResolved ? "var(--surface-2)" : "var(--surface)",
-                    border: `1px solid ${isResolved ? "var(--border-soft)" : "var(--border)"}`,
-                    borderRadius: "var(--r-lg)",
-                    padding: "20px 24px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "12px",
-                    boxShadow: isResolved ? "none" : "var(--shadow-sm)",
-                    opacity: isResolved ? 0.75 : 1,
-                    transition: "all var(--transition-fast)"
-                  }}
-                >
-                  {/* Dòng 1: Tiêu đề, Mức ưu tiên & Hạn xử lý */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <span style={{
-                        fontSize: "11px",
-                        fontWeight: "800",
-                        padding: "3px 8px",
-                        borderRadius: "4px",
-                        background: isResolved ? "var(--surface-3)" : task.badgeBg,
-                        color: isResolved ? "var(--text-3)" : task.badgeColor,
-                        border: `1px solid ${isResolved ? "var(--border)" : task.badgeBorder}`,
-                        textTransform: "uppercase"
-                      }}>
-                        {task.priority}
-                      </span>
-                      <span style={{
-                        fontSize: "15.5px",
-                        fontWeight: "700",
-                        color: "var(--text-1)",
-                        letterSpacing: "-0.01em"
-                      }}>
-                        {task.title}
-                      </span>
-                    </div>
+                const isResolved = task.status === "RESOLVED";
+                const borderLeftColor = isResolved
+                  ? "#94a3b8"
+                  : task.priority === "CRITICAL"
+                    ? "#ef4444"
+                    : task.priority === "HIGH"
+                      ? "#f59e0b"
+                      : "#0284c7";
+                const isUrgent = Boolean(task.dueDate && (task.dueDate.includes("Hôm nay") || task.dueDate.includes("Today")));
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "12.5px", color: "var(--text-3)" }}>
-                      <span>
-                        <Icon name="fa-solid fa-clock" size={15} style={{ marginRight: "6px", color: "var(--text-4)" }} />
-                        {isVi ? "Hạn chót:" : "Due:"} <b style={{ color: "var(--text-2)" }}>{task.dueDate}</b>
-                      </span>
-                      {isResolved && (
+                return (
+                  <div
+                    key={task.id}
+                    style={{
+                      background: isResolved ? "var(--surface-2, #f8fafc)" : "#ffffff",
+                      border: "1px solid var(--border, #e2e8f0)",
+                      borderLeft: `4px solid ${borderLeftColor}`,
+                      borderRadius: "10px",
+                      padding: "16px 20px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                      boxShadow: isResolved ? "none" : "0 1px 3px rgba(0,0,0,0.04)",
+                      opacity: isResolved ? 0.7 : 1,
+                      transition: "all 0.15s ease"
+                    }}
+                  >
+                    {/* Dòng 1: Mức độ ưu tiên + Tiêu đề + Hạn chót */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", flex: 1, minWidth: 0 }}>
                         <span style={{
                           fontSize: "10.5px",
                           fontWeight: "800",
-                          padding: "2px 8px",
+                          padding: "2px 7px",
                           borderRadius: "4px",
-                          background: "#d1fae5",
-                          color: "#059669",
-                          border: "1px solid #a7f3d0"
+                          background: isResolved ? "#f1f5f9" : task.badgeBg,
+                          color: isResolved ? "#64748b" : task.badgeColor,
+                          border: `1px solid ${isResolved ? "#e2e8f0" : task.badgeBorder}`,
+                          letterSpacing: "0.03em",
+                          flexShrink: 0
                         }}>
-                          ✓ {isVi ? "ĐÃ HOÀN TẤT" : "RESOLVED"}
+                          {task.priority}
                         </span>
-                      )}
-                    </div>
-                  </div>
+                        <h4 style={{
+                          fontSize: "14.5px",
+                          fontWeight: "750",
+                          color: isResolved ? "#64748b" : "#0f172a",
+                          margin: 0,
+                          lineHeight: "1.4"
+                        }}>
+                          {task.title}
+                        </h4>
+                      </div>
 
-                  {/* Dòng 2: Thông tin đối tác & Hợp đồng */}
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: "16px",
-                    background: "var(--surface-2)",
-                    padding: "8px 14px",
-                    borderRadius: "var(--r-md)",
-                    fontSize: "12.5px",
-                    color: "var(--text-2)",
-                    border: "1px solid var(--border-soft)"
-                  }}>
-                    <div>
-                      <span style={{ color: "var(--text-3)" }}>{isVi ? "Đối tác:" : "Client:"}</span>{" "}
-                      <b style={{ color: "var(--text-1)" }}>{task.clientName}</b>
-                    </div>
-                    <div>
-                      <span style={{ color: "var(--text-3)" }}>{isVi ? "Đầu mối:" : "Contact:"}</span> {task.contactPerson}
-                    </div>
-                    <div>
-                      <span style={{ color: "var(--text-3)" }}>{isVi ? "Hồ sơ liên kết:" : "Ref:"}</span>{" "}
-                      <code style={{
-                        color: "var(--cyan)",
-                        fontWeight: "700",
-                        fontFamily: "var(--f-mono)",
-                        background: "var(--surface-3)",
-                        padding: "2px 6px",
-                        borderRadius: "4px"
-                      }}>
-                        {task.contractRef}
-                      </code>
-                    </div>
-                  </div>
-
-                  {/* Dòng 3: Mô tả tình huống */}
-                  <p style={{
-                    fontSize: "13.5px",
-                    color: "var(--text-2)",
-                    lineHeight: "1.65",
-                    margin: "2px 0"
-                  }}>
-                    {task.description}
-                  </p>
-
-                  {/* Hộp Đề xuất Hành động AI */}
-                  <div style={{
-                    background: "var(--cyan-soft)",
-                    border: "1px solid rgba(8, 145, 178, 0.25)",
-                    borderRadius: "8px",
-                    padding: "10px 14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    fontSize: "13px",
-                    color: "var(--text-1)"
-                  }}>
-                    <Icon name="fa-solid fa-lightbulb" size={15} style={{ color: "var(--cyan)", fontSize: "14px" }} />
-                    <span>
-                      <b style={{ color: "var(--cyan)" }}>{isVi ? "Khuyến nghị xử lý:" : "Recommended Action:"}</b> {task.suggestedAction}
-                    </span>
-                  </div>
-
-                  {/* Dòng 4: Nút hành động tác nghiệp cụ thể */}
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                    gap: "12px",
-                    paddingTop: "10px",
-                    borderTop: "1px solid var(--border-soft)"
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                      {/* Nút 1: Soạn thư trao đổi */}
-                      <button
-                        onClick={() => handleOpenEmailModal(task)}
-                        className="btn primary sm"
-                        style={{ padding: "7px 14px", fontSize: "12.5px", fontWeight: "600" }}
-                      >
-                        <Icon name="fa-solid fa-paper-plane" size={15} style={{ marginRight: "6px" }} />
-                        {isVi ? "Soạn Thư & Đề Xuất Tái Ký" : "Draft Outreach Email"}
-                      </button>
-
-                      {/* Nút 2: Hỏi Copilot chuyên sâu */}
-                      <button
-                        onClick={() => {
-                          onNavigate?.("copilot");
-                          showToast(isVi ? "Đang mở Trợ lý Copilot để phân tích ca..." : "Opening Operational Copilot...");
-                        }}
-                        className="btn sm"
-                        style={{ padding: "7px 14px", fontSize: "12.5px" }}
-                      >
-                        <Icon name="fa-solid fa-brain" size={15} style={{ marginRight: "6px", color: "var(--cyan)" }} />
-                        {isVi ? "Hỏi Copilot Ca Này" : "Ask Copilot"}
-                      </button>
-
-                      {/* Nút 3: Xem tài liệu */}
-                      <button
-                        onClick={() => {
-                          onNavigate?.("documents");
-                          showToast(isVi ? "Đang mở Kho Tài liệu đối soát..." : "Opening Document Explorer...");
-                        }}
-                        className="btn sm"
-                        style={{ padding: "7px 14px", fontSize: "12.5px" }}
-                      >
-                        <Icon name="fa-solid fa-file-lines" size={15} style={{ marginRight: "6px", color: "var(--amber)" }} />
-                        {isVi ? "Xem Hợp Đồng PDF" : "View PDF"}
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          fontSize: "11.5px",
+                          fontWeight: "600",
+                          color: isUrgent ? "#dc2626" : "#64748b"
+                        }}>
+                          <Icon name="fa-regular fa-clock" size={12} style={{ color: isUrgent ? "#dc2626" : "#94a3b8" }} />
+                          <span>{isVi ? "Hạn chót:" : "Due:"} <strong>{task.dueDate}</strong></span>
+                        </span>
+                        {isResolved && (
+                          <span style={{
+                            fontSize: "10.5px",
+                            fontWeight: "800",
+                            padding: "2px 7px",
+                            borderRadius: "4px",
+                            background: "#dcfce7",
+                            color: "#15803d",
+                            border: "1px solid #bbf7d0",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}>
+                            <Icon name="fa-solid fa-check" size={10} />
+                            <span>{isVi ? "Đã xử lý" : "Resolved"}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Nút hoàn tất ca */}
-                    <div>
-                      {!isResolved ? (
+                    {/* Dòng 2: Thông tin Đối tác, Đầu mối, Hồ sơ (Dạng meta tinh gọn, không rườm rà) */}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "14px",
+                      flexWrap: "wrap",
+                      fontSize: "12px",
+                      color: "#64748b"
+                    }}>
+                      <span>
+                        {isVi ? "Đối tác: " : "Client: "}
+                        <strong style={{ color: "#0f172a" }}>{task.clientName}</strong>
+                      </span>
+                      <span style={{ color: "#cbd5e1" }}>•</span>
+                      <span>
+                        {isVi ? "Đầu mối: " : "Contact: "}
+                        <strong style={{ color: "#334155" }}>{task.contactPerson}</strong>
+                      </span>
+                      <span style={{ color: "#cbd5e1" }}>•</span>
+                      <span>
+                        {isVi ? "Hồ sơ: " : "Ref: "}
+                        <strong style={{ color: "#0284c7" }}>{task.contractRef}</strong>
+                      </span>
+                    </div>
+
+                    {/* Dòng 3: Mô tả tình huống */}
+                    <p style={{
+                      fontSize: "12.5px",
+                      color: "#475569",
+                      lineHeight: "1.55",
+                      margin: 0
+                    }}>
+                      {task.description}
+                    </p>
+
+                    {/* Dòng 4: Hộp Khuyến nghị xử lý AI tinh gọn, trang nhã */}
+                    <div style={{
+                      background: "#f0f9ff",
+                      borderLeft: "3px solid #0284c7",
+                      borderRadius: "0 6px 6px 0",
+                      padding: "8px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontSize: "12px"
+                    }}>
+                      <Icon name="fa-solid fa-lightbulb" size={13} style={{ color: "#0284c7", flexShrink: 0 }} />
+                      <div>
+                        <strong style={{ color: "#0369a1", marginRight: "6px" }}>
+                          {isVi ? "Khuyến nghị xử lý:" : "Suggested Action:"}
+                        </strong>
+                        <span style={{ color: "#0f172a" }}>
+                          {task.suggestedAction}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Dòng 5: Cụm nút hành động tinh gọn */}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: "10px",
+                      paddingTop: "8px",
+                      borderTop: "1px solid #f1f5f9"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        {/* Nút chính */}
                         <button
-                          onClick={() => handleMarkTaskCompleted(task.id)}
+                          onClick={() => handleOpenEmailModal(task)}
                           style={{
-                            display: "flex",
+                            display: "inline-flex",
                             alignItems: "center",
                             gap: "6px",
-                            padding: "7px 14px",
-                            borderRadius: "6px",
-                            background: "rgba(5, 150, 105, 0.1)",
-                            color: "#059669",
-                            border: "1px solid rgba(5, 150, 105, 0.3)",
-                            fontSize: "12.5px",
+                            padding: "6px 14px",
+                            fontSize: "12px",
                             fontWeight: "700",
+                            borderRadius: "6px",
+                            border: "none",
                             cursor: "pointer",
-                            transition: "all 0.15s ease"
+                            background: "#0284c7",
+                            color: "#ffffff",
+                            boxShadow: "0 1px 3px rgba(2, 132, 199, 0.25)"
                           }}
                         >
-                          <Icon name="fa-solid fa-check" size={15} />
-                          <span>{isVi ? "Đánh Dấu Đã Xử Lý" : "Mark Resolved"}</span>
+                          <Icon name="fa-solid fa-paper-plane" size={11} />
+                          <span>{isVi ? "Soạn Thư & Đề Xuất" : "Draft Outreach"}</span>
                         </button>
-                      ) : (
+
+                        {/* Nút phụ 1: Copilot */}
                         <button
                           onClick={() => {
-                            setAssignedTasks((prev) =>
-                              prev.map((t) => (t.id === task.id ? { ...t, status: "PENDING" } : t))
-                            );
-                            showToast(isVi ? "Đã mở lại ca nghiệp vụ!" : "Re-opened task!");
+                            onNavigate?.("copilot");
+                            showToast(isVi ? "Đang mở Trợ lý Copilot..." : "Opening Copilot...");
                           }}
                           style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--text-3)",
-                            fontSize: "12.5px",
-                            cursor: "pointer",
-                            textDecoration: "underline"
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "5px 12px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            borderRadius: "6px",
+                            border: "1px solid #e2e8f0",
+                            background: "#ffffff",
+                            color: "#334155",
+                            cursor: "pointer"
                           }}
                         >
-                          {isVi ? "Mở lại ca" : "Re-open"}
+                          <Icon name="fa-solid fa-brain" size={12} style={{ color: "#0284c7" }} />
+                          <span>{isVi ? "Hỏi Copilot" : "Ask Copilot"}</span>
                         </button>
-                      )}
+
+                        {/* Nút phụ 2: Xem PDF */}
+                        <button
+                          onClick={() => {
+                            onNavigate?.("documents");
+                            showToast(isVi ? "Đang mở Kho Tài liệu..." : "Opening Document...");
+                          }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "5px 12px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            borderRadius: "6px",
+                            border: "1px solid #e2e8f0",
+                            background: "#ffffff",
+                            color: "#334155",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <Icon name="fa-solid fa-file-lines" size={12} style={{ color: "#64748b" }} />
+                          <span>{isVi ? "Xem Hợp Đồng PDF" : "View PDF"}</span>
+                        </button>
+                      </div>
+
+                      {/* Nút hoàn tất ca */}
+                      <div>
+                        {!isResolved ? (
+                          <button
+                            onClick={() => handleMarkTaskCompleted(task.id)}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              padding: "5px 12px",
+                              borderRadius: "6px",
+                              background: "#f0fdf4",
+                              color: "#15803d",
+                              border: "1px solid #bbf7d0",
+                              fontSize: "12px",
+                              fontWeight: "700",
+                              cursor: "pointer"
+                            }}
+                          >
+                            <Icon name="fa-solid fa-check" size={11} />
+                            <span>{isVi ? "Đánh Dấu Đã Xử Lý" : "Mark Resolved"}</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setAssignedTasks((prev) =>
+                                prev.map((t) => (t.id === task.id ? { ...t, status: "PENDING" } : t))
+                              );
+                              showToast(isVi ? "Đã mở lại ca nghiệp vụ!" : "Re-opened task!");
+                            }}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              padding: "5px 10px",
+                              borderRadius: "6px",
+                              background: "transparent",
+                              border: "1px dashed #cbd5e1",
+                              fontSize: "11.5px",
+                              fontWeight: "600",
+                              color: "#64748b",
+                              cursor: "pointer"
+                            }}
+                          >
+                            <Icon name="fa-solid fa-rotate-left" size={11} />
+                            <span>{isVi ? "Mở lại ca" : "Re-open"}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
                 </div>
               );
             })
@@ -1040,88 +853,10 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
         </div>
       ) : (
         /* ============================================================ */
-        /* TAB 2: SCREEN-020 ENTERPRISE MULTI-FACET SEARCH (STITCH UI)  */
+        /* TAB 2: ENTERPRISE MULTI-FACET SEARCH (STREAMLINED STITCH UI) */
         /* ============================================================ */
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           
-          {/* SCREEN-020 HEADER BANNER */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-lg)",
-            padding: "20px 24px",
-            boxShadow: "var(--shadow-sm)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "14px"
-          }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                <div style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "8px",
-                  background: "var(--teal-soft, rgba(13, 148, 136, 0.1))",
-                  color: "var(--teal, #0d9488)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "13px"
-                }}>
-                  <i className="fa-solid fa-magnifying-glass" />
-                </div>
-                <h2 style={{ fontSize: "17px", fontWeight: "700", color: "var(--text-1)", margin: 0, letterSpacing: "-0.01em" }}>
-                  {isVi ? "Tìm kiếm Hợp nhất Đa chiều" : "Enterprise Multi-facet Search"}
-                </h2>
-              </div>
-              <p style={{ fontSize: "12.5px", color: "var(--text-3)", margin: "4px 0 0 0", lineHeight: "1.4" }}>
-                {isVi
-                  ? "Tìm kiếm ngữ nghĩa kết hợp từ khóa trên Customer, Product, Contract và Document kèm bộ lọc đa chiều (phòng ban, ngày, giá trị, hiệu lực)."
-                  : "Unified semantic & keyword retrieval across Customer, Product, Contract, and Document entities with multi-facet filters."}
-              </p>
-            </div>
-
-            {/* Quick Engine Mode Switcher */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              background: "var(--surface-2)",
-              padding: "3px",
-              borderRadius: "8px",
-              border: "1px solid var(--border)"
-            }}>
-              {[
-                { id: "hybrid", label: isVi ? "Hybrid GraphRAG" : "Hybrid GraphRAG" },
-                { id: "semantic", label: isVi ? "Vector Ngữ nghĩa" : "Vector" },
-                { id: "keyword", label: isVi ? "Từ khóa chính xác" : "Keyword" }
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => {
-                    setSearchMode(m.id);
-                    showToast(isVi ? `Chế độ máy tìm kiếm: ${m.label}` : `Search engine mode: ${m.label}`);
-                  }}
-                  style={{
-                    padding: "5px 12px",
-                    borderRadius: "6px",
-                    fontSize: "11.5px",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                    border: "none",
-                    background: searchMode === m.id ? "var(--surface)" : "transparent",
-                    color: searchMode === m.id ? "var(--cyan)" : "var(--text-3)",
-                    boxShadow: searchMode === m.id ? "var(--shadow-sm)" : "none",
-                    transition: "all 0.15s ease"
-                  }}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* MAIN SEARCH CONTAINER (STITCH CARD) */}
           <div style={{
             background: "var(--surface)",
@@ -1132,33 +867,112 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
             display: "flex",
             flexDirection: "column"
           }}>
+            {/* Integrated Header of Search Card */}
+            <div style={{
+              padding: "16px 24px",
+              background: "var(--surface)",
+              borderBottom: "1px solid var(--border-soft)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "12px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "8px",
+                  background: "rgba(8, 145, 178, 0.1)",
+                  color: "#0891b2",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "15px"
+                }}>
+                  <i className="fa-solid fa-magnifying-glass" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: 0, letterSpacing: "-0.01em" }}>
+                    {isVi ? "Tra cứu Tri thức Đa chiều" : "Enterprise Multi-facet Search"}
+                  </h2>
+                  <p style={{ fontSize: "12px", color: "var(--text-3)", margin: "2px 0 0 0" }}>
+                    {isVi
+                      ? "Hợp nhất từ 509 Hợp đồng · 19,820 Khách hàng · 504 Sản phẩm · 581 Quy trình SOP"
+                      : "Unified retrieval across 509 Contracts, 19,820 Customers, 504 Products & 581 SOP Documents"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Engine Mode Switcher */}
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                background: "var(--surface-2, #f8fafc)",
+                padding: "3px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)"
+              }}>
+                {[
+                  { id: "hybrid", label: isVi ? "Tìm kiếm Kết hợp" : "Hybrid Search", icon: "fa-solid fa-network-wired" },
+                  { id: "semantic", label: isVi ? "Tìm theo Ngữ nghĩa" : "Semantic Search", icon: "fa-solid fa-compass" },
+                  { id: "keyword", label: isVi ? "Từ khóa chính xác" : "Exact Keyword", icon: "fa-solid fa-font" }
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      setSearchMode(m.id);
+                      showToast(isVi ? `Chế độ tìm kiếm: ${m.label}` : `Search engine mode: ${m.label}`);
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 12px",
+                      borderRadius: "6px",
+                      fontSize: "11.5px",
+                      fontWeight: searchMode === m.id ? "750" : "600",
+                      cursor: "pointer",
+                      border: "none",
+                      background: searchMode === m.id ? "var(--surface, #ffffff)" : "transparent",
+                      color: searchMode === m.id ? "var(--cyan, #0284c7)" : "var(--text-3, #64748b)",
+                      boxShadow: searchMode === m.id ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                      transition: "all 0.15s ease"
+                    }}
+                  >
+                    <i className={m.icon} style={{ fontSize: 10.5 }} />
+                    <span>{m.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             
             {/* TOP BAR: BIG SEARCH INPUT & FACETED FILTERS */}
             <div style={{
-              padding: "24px 28px",
-              background: "var(--surface-2)",
-              borderBottom: "1px solid var(--border)",
+              padding: "20px 24px",
+              background: "var(--surface, #ffffff)",
+              borderBottom: "1px solid var(--border-soft)",
               display: "flex",
               flexDirection: "column",
-              gap: "18px"
+              gap: "14px"
             }}>
               
               {/* BIG SEARCH INPUT */}
-              <div style={{ position: "relative", width: "100%", maxWidth: "860px", margin: "0 auto" }}>
+              <div style={{ position: "relative", width: "100%", maxWidth: "900px", margin: "0 auto" }}>
                 <Icon name="fa-solid fa-magnifying-glass" size={15} style={{
                     position: "absolute",
                     left: "18px",
                     top: "50%",
                     transform: "translateY(-50%)",
                     color: "var(--cyan)",
-                    fontSize: "18px"
+                    fontSize: "16px"
                   }} />
 
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={isVi ? "Nhập từ khóa hoặc câu hỏi: Alpha Corp hợp đồng dịch vụ bồi thường..." : "Search entities, contracts, clauses, or questions..."}
+                  placeholder={isVi ? "Nhập tên khách hàng, mã hợp đồng, sản phẩm, điều khoản bồi thường..." : "Search entities, contracts, clauses, or questions..."}
                   style={{
                     width: "100%",
                     fontSize: "14.5px",
@@ -1166,10 +980,11 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                     background: "var(--surface)",
                     color: "var(--text-1)",
                     border: "2px solid var(--border)",
-                    borderRadius: "14px",
-                    padding: "13px 180px 13px 48px",
+                    borderRadius: "12px",
+                    padding: "13px 125px 13px 48px",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                     outline: "none",
+                    boxSizing: "border-box",
                     transition: "border-color 0.2s ease, box-shadow 0.2s ease"
                   }}
                   onFocus={(e) => {
@@ -1184,12 +999,12 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
 
                 <div style={{
                   position: "absolute",
-                  right: "10px",
+                  right: "8px",
                   top: "50%",
                   transform: "translateY(-50%)",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px"
+                  gap: "6px"
                 }}>
                   {query && (
                     <button
@@ -1199,58 +1014,51 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         border: "none",
                         color: "var(--text-4)",
                         cursor: "pointer",
-                        padding: "4px 8px",
-                        fontSize: "14px"
+                        padding: "4px 6px",
+                        fontSize: "13px",
+                        display: "flex",
+                        alignItems: "center"
                       }}
                       title={isVi ? "Xóa tìm kiếm" : "Clear"}
                     >
-                      <Icon name="fa-solid fa-xmark" size={15} />
+                      <Icon name="fa-solid fa-xmark" size={14} />
                     </button>
                   )}
-                  <span style={{
-                    fontSize: "11px",
-                    fontFamily: "var(--f-mono)",
-                    background: "var(--surface-3)",
-                    color: "var(--text-3)",
-                    padding: "4px 8px",
-                    borderRadius: "6px",
-                    border: "1px solid var(--border-soft)"
-                  }}>
-                    ⌘ + K
-                  </span>
+                  {/* Search action button */}
                   <button
                     onClick={() => showToast(isVi ? "Đang truy xuất kết quả tìm kiếm đa chiều..." : "Running multi-facet search...")}
                     className="btn primary sm"
                     style={{
-                      borderRadius: "10px",
-                      padding: "8px 18px",
+                      borderRadius: "8px",
+                      padding: "7px 14px",
                       fontWeight: "700",
+                      fontSize: "12px",
                       boxShadow: "0 2px 6px rgba(8, 145, 178, 0.25)"
                     }}
                   >
                     {isSearching ? (
-                      <Icon name="fa-solid fa-spinner fa-spin" size={15} />
+                      <Icon name="fa-solid fa-spinner fa-spin" size={13} />
                     ) : (
-                      isVi ? "Tìm kiếm" : "Search"
+                      isVi ? "Tìm" : "Search"
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* MULTI-FACET FILTER CHIPS ROW (DROPDOWNS THEO STITCH SPEC) */}
+              {/* MULTI-FACET FILTER CHIPS ROW */}
               <div style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                flexWrap: "wrap",
                 gap: "12px",
                 fontSize: "12px",
-                paddingTop: "4px"
+                paddingTop: "2px",
+                flexWrap: "wrap"
               }}>
-                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                  <span style={{ color: "var(--text-3)", fontWeight: "750", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Icon name="fa-solid fa-sliders" size={15} style={{ color: "var(--cyan)" }} />
-                    {isVi ? "Bộ lọc đa chiều:" : "Multi-facet Filters:"}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <span style={{ color: "var(--text-3)", fontWeight: "750", display: "flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap" }}>
+                    <Icon name="fa-solid fa-sliders" size={13} style={{ color: "var(--cyan)" }} />
+                    <span>{isVi ? "Bộ lọc:" : "Filters:"}</span>
                   </span>
 
                   {/* 1. Phòng ban Dropdown */}
@@ -1262,18 +1070,19 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                       color: "var(--text-1)",
                       border: "1px solid var(--border)",
                       borderRadius: "8px",
-                      padding: "6px 12px",
+                      padding: "5px 10px",
                       fontSize: "12px",
                       fontWeight: "600",
                       cursor: "pointer",
-                      outline: "none"
+                      outline: "none",
+                      whiteSpace: "nowrap"
                     }}
                   >
                     <option value="ALL">{isVi ? "Phòng ban: Tất cả" : "Dept: All"}</option>
-                    <option value="LEGAL">{isVi ? "Phòng ban: Pháp chế & R&D" : "Dept: Legal & R&D"}</option>
-                    <option value="SALES">{isVi ? "Phòng ban: Bán hàng (Sales)" : "Dept: Sales"}</option>
-                    <option value="FINANCE">{isVi ? "Phòng ban: Kế toán & Tài chính" : "Dept: Finance"}</option>
-                    <option value="OPS">{isVi ? "Phòng ban: Vận hành (Operations)" : "Dept: Operations"}</option>
+                    <option value="LEGAL">{isVi ? "Pháp chế & Nghiên cứu" : "Legal & R&D"}</option>
+                    <option value="SALES">{isVi ? "Phòng Bán hàng" : "Sales"}</option>
+                    <option value="FINANCE">{isVi ? "Kế toán & Tài chính" : "Finance"}</option>
+                    <option value="OPS">{isVi ? "Phòng Vận hành" : "Operations"}</option>
                   </select>
 
                   {/* 2. Ngày tạo Dropdown */}
@@ -1285,16 +1094,17 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                       color: "var(--text-1)",
                       border: "1px solid var(--border)",
                       borderRadius: "8px",
-                      padding: "6px 12px",
+                      padding: "5px 10px",
                       fontSize: "12px",
                       fontWeight: "600",
                       cursor: "pointer",
-                      outline: "none"
+                      outline: "none",
+                      whiteSpace: "nowrap"
                     }}
                   >
-                    <option value="ALL">{isVi ? "Ngày tạo: Toàn bộ thời gian" : "Created: All Time"}</option>
-                    <option value="30D">{isVi ? "Ngày tạo: 30 ngày qua" : "Created: Past 30 Days"}</option>
-                    <option value="2026">{isVi ? "Ngày tạo: Năm nay (2026)" : "Created: Year 2026"}</option>
+                    <option value="ALL">{isVi ? "Ngày tạo: Tất cả" : "Created: All"}</option>
+                    <option value="30D">{isVi ? "30 ngày qua" : "Past 30 Days"}</option>
+                    <option value="2026">{isVi ? "Năm 2026" : "Year 2026"}</option>
                   </select>
 
                   {/* 3. Giá trị giao dịch Dropdown */}
@@ -1306,17 +1116,18 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                       color: "var(--text-1)",
                       border: "1px solid var(--border)",
                       borderRadius: "8px",
-                      padding: "6px 12px",
+                      padding: "5px 10px",
                       fontSize: "12px",
                       fontWeight: "600",
                       cursor: "pointer",
-                      outline: "none"
+                      outline: "none",
+                      whiteSpace: "nowrap"
                     }}
                   >
-                    <option value="ALL">{isVi ? "Giá trị: Mọi mức" : "Value: Any Amount"}</option>
-                    <option value="50K">{isVi ? "Giá trị: > $50K USD" : "Value: > $50K USD"}</option>
-                    <option value="100K">{isVi ? "Giá trị: > $100K USD" : "Value: > $100K USD"}</option>
-                    <option value="500K">{isVi ? "Giá trị: > $500K USD" : "Value: > $500K USD"}</option>
+                    <option value="ALL">{isVi ? "Giá trị: Tất cả" : "Value: All"}</option>
+                    <option value="50K">&gt; $50K USD</option>
+                    <option value="100K">&gt; $100K USD</option>
+                    <option value="500K">&gt; $500K USD</option>
                   </select>
 
                   {/* 4. Hiệu lực / Trạng thái Dropdown */}
@@ -1328,16 +1139,17 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                       color: "var(--text-1)",
                       border: "1px solid var(--border)",
                       borderRadius: "8px",
-                      padding: "6px 12px",
+                      padding: "5px 10px",
                       fontSize: "12px",
                       fontWeight: "600",
                       cursor: "pointer",
-                      outline: "none"
+                      outline: "none",
+                      whiteSpace: "nowrap"
                     }}
                   >
                     <option value="ALL">{isVi ? "Hiệu lực: Tất cả" : "Status: All"}</option>
-                    <option value="VALID">{isVi ? "Hiệu lực: Còn hiệu lực" : "Status: Active"}</option>
-                    <option value="EXPIRING">{isVi ? "Hiệu lực: Sắp hết hạn (<30 ngày)" : "Status: Expiring (<30d)"}</option>
+                    <option value="VALID">{isVi ? "Còn hiệu lực" : "Active"}</option>
+                    <option value="EXPIRING">{isVi ? "Sắp hết hạn (<30 ngày)" : "Expiring (<30d)"}</option>
                   </select>
 
                   {(filterDept !== "ALL" || filterDate !== "ALL" || filterValue !== "ALL" || filterStatus !== "ALL") && (
@@ -1356,125 +1168,134 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         fontWeight: "700",
                         fontSize: "12px",
                         cursor: "pointer",
-                        textDecoration: "underline"
+                        textDecoration: "underline",
+                        whiteSpace: "nowrap",
+                        padding: "0 4px"
                       }}
                     >
-                      {isVi ? "Đặt lại lọc" : "Reset Filters"}
+                      {isVi ? "Đặt lại" : "Reset"}
                     </button>
                   )}
                 </div>
 
-                {/* Right controls: View Toggle & Count */}
-                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    padding: "2px"
-                  }}>
-                    <button
-                      onClick={() => setViewLayout("grouped")}
-                      title={isVi ? "Xem theo 4 nhóm thực thể" : "Grouped View"}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        border: "none",
-                        cursor: "pointer",
-                        background: viewLayout === "grouped" ? "var(--surface-3)" : "transparent",
-                        color: viewLayout === "grouped" ? "var(--cyan)" : "var(--text-3)",
-                        fontSize: "12px",
-                        fontWeight: "700",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "5px"
-                      }}
-                    >
-                      <Icon name="fa-solid fa-table-cells-large" size={15} />
-                      <span>{isVi ? "Nhóm 4 mục" : "Sections"}</span>
-                    </button>
-                    <button
-                      onClick={() => setViewLayout("table")}
-                      title={isVi ? "Xem dạng bảng hợp nhất" : "Unified Table"}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        border: "none",
-                        cursor: "pointer",
-                        background: viewLayout === "table" ? "var(--surface-3)" : "transparent",
-                        color: viewLayout === "table" ? "var(--cyan)" : "var(--text-3)",
-                        fontSize: "12px",
-                        fontWeight: "700",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "5px"
-                      }}
-                    >
-                      <Icon name="fa-solid fa-table-list" size={15} />
-                      <span>{isVi ? "Bảng dữ liệu" : "Table"}</span>
-                    </button>
-                  </div>
-
-                  <span style={{ fontSize: "12.5px", color: "var(--text-3)" }}>
-                    {isVi ? "Tìm thấy" : "Found"}{" "}
-                    <strong style={{ color: "var(--text-1)", fontWeight: "800" }}>{displayCountAll.toLocaleString()} {isVi ? "kết quả" : "results"}</strong>{" "}
-                    {isVi ? "trong 4 nhóm thực thể" : "across 4 clusters"}
-                    {!hasFilter && (
-                      <span style={{ marginLeft: "8px", fontSize: "11px", color: "var(--cyan)", fontWeight: "700" }}>
-                        {isVi ? "• Toàn bộ cơ sở dữ liệu tri thức" : "• Full Enterprise Knowledge Base"}
-                      </span>
-                    )}
+                {/* Right Result Count with safe spacing */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                  <span style={{ fontSize: "12.5px", color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                    <strong style={{ color: "var(--text-1)", fontWeight: "800" }}>{displayCountAll.toLocaleString()}</strong> {isVi ? "kết quả tìm thấy" : "results found"}
                   </span>
                 </div>
               </div>
 
-              {/* QUICK CATEGORY TABS ROW */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", paddingTop: "2px" }}>
-                {[
-                  { id: "ALL", label: isVi ? "Tất cả kết quả" : "All Results", count: displayCountAll.toLocaleString(), icon: "fa-layer-group" },
-                  { id: "CONTRACT", label: isVi ? "Hợp Đồng & CUAD" : "Contracts", count: displayCountContracts.toLocaleString(), icon: "fa-file-signature", color: "#0891b2" },
-                  { id: "CUSTOMER", label: isVi ? "Khách Hàng (CRM)" : "Customers", count: displayCountCustomers.toLocaleString(), icon: "fa-building", color: "#0284c7" },
-                  { id: "PRODUCT", label: isVi ? "Sản Phẩm & Dịch Vụ" : "Products", count: displayCountProducts.toLocaleString(), icon: "fa-box-open", color: "#0d9488" },
-                  { id: "DOCUMENT", label: isVi ? "Tài Liệu & SOP" : "Documents", count: displayCountDocuments.toLocaleString(), icon: "fa-file-lines", color: "#64748b" }
-                ].map((cat) => {
-                  const isActive = activeCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setActiveCategory(cat.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "6px 12px",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                        fontWeight: isActive ? "750" : "600",
-                        cursor: "pointer",
-                        border: `1px solid ${isActive ? "var(--cyan)" : "var(--border-soft)"}`,
-                        background: isActive ? "var(--surface)" : "transparent",
-                        color: isActive ? "var(--cyan)" : "var(--text-2)",
-                        boxShadow: isActive ? "var(--shadow-sm)" : "none",
-                        transition: "all 0.15s ease"
-                      }}
-                    >
-                      <Icon name="" size={14} />
-                      <span>{cat.label}</span>
-                      <span style={{
-                        fontSize: "10.5px",
-                        padding: "1px 6px",
-                        borderRadius: "10px",
-                        background: isActive ? "var(--cyan-soft)" : "var(--surface-3)",
-                        color: isActive ? "var(--cyan)" : "var(--text-3)",
-                        fontFamily: "var(--f-mono)",
-                        fontWeight: "700"
-                      }}>
-                        {cat.count}
-                      </span>
-                    </button>
-                  );
-                })}
+              {/* QUICK CATEGORY TABS & VIEW LAYOUT ROW */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "12px",
+                flexWrap: "wrap",
+                paddingTop: "2px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  {[
+                    { id: "ALL", label: isVi ? "Tất cả" : "All", count: displayCountAll.toLocaleString(), icon: "fa-layer-group" },
+                    { id: "CONTRACT", label: isVi ? "Hợp đồng" : "Contracts", count: displayCountContracts.toLocaleString(), icon: "fa-file-signature", color: "#0891b2" },
+                    { id: "CUSTOMER", label: isVi ? "Khách hàng" : "Customers", count: displayCountCustomers.toLocaleString(), icon: "fa-building", color: "#0284c7" },
+                    { id: "PRODUCT", label: isVi ? "Sản phẩm" : "Products", count: displayCountProducts.toLocaleString(), icon: "fa-box-open", color: "#0d9488" },
+                    { id: "DOCUMENT", label: isVi ? "Tài liệu SOP" : "SOP Docs", count: displayCountDocuments.toLocaleString(), icon: "fa-file-lines", color: "#64748b" }
+                  ].map((cat) => {
+                    const isActive = activeCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setActiveCategory(cat.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          fontWeight: isActive ? "750" : "600",
+                          cursor: "pointer",
+                          border: `1px solid ${isActive ? "var(--cyan)" : "var(--border-soft)"}`,
+                          background: isActive ? "var(--surface)" : "transparent",
+                          color: isActive ? "var(--cyan)" : "var(--text-2)",
+                          boxShadow: isActive ? "var(--shadow-sm)" : "none",
+                          transition: "all 0.15s ease",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        <Icon name={`fa-solid ${cat.icon}`} size={13} style={{ color: isActive ? "var(--cyan)" : (cat.color || "var(--text-3)") }} />
+                        <span>{cat.label}</span>
+                        <span style={{
+                          fontSize: "10.5px",
+                          padding: "1px 6px",
+                          borderRadius: "10px",
+                          background: isActive ? "var(--cyan-soft)" : "var(--surface-3)",
+                          color: isActive ? "var(--cyan)" : "var(--text-3)",
+                          fontFamily: "var(--f-mono)",
+                          fontWeight: "700"
+                        }}>
+                          {cat.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* View Layout Switcher (Grouped / Table) */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  padding: "2px",
+                  flexShrink: 0
+                }}>
+                  <button
+                    onClick={() => setViewLayout("grouped")}
+                    title={isVi ? "Xem theo 4 nhóm thực thể" : "Grouped View"}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      border: "none",
+                      cursor: "pointer",
+                      background: viewLayout === "grouped" ? "var(--surface-3)" : "transparent",
+                      color: viewLayout === "grouped" ? "var(--cyan)" : "var(--text-3)",
+                      fontSize: "11.5px",
+                      fontWeight: "700",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    <Icon name="fa-solid fa-table-cells-large" size={12} />
+                    <span>{isVi ? "Nhóm 4 mục" : "Sections"}</span>
+                  </button>
+                  <button
+                    onClick={() => setViewLayout("table")}
+                    title={isVi ? "Xem dạng bảng hợp nhất" : "Unified Table"}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      border: "none",
+                      cursor: "pointer",
+                      background: viewLayout === "table" ? "var(--surface-3)" : "transparent",
+                      color: viewLayout === "table" ? "var(--cyan)" : "var(--text-3)",
+                      fontSize: "11.5px",
+                      fontWeight: "700",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    <Icon name="fa-solid fa-table-list" size={12} />
+                    <span>{isVi ? "Bảng" : "Table"}</span>
+                  </button>
+                </div>
               </div>
 
               {/* PROMPT SUGGESTIONS SHORTCUTS */}
@@ -1680,7 +1501,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           margin: 0
                         }}>
                           <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#0891b2", display: "inline-block" }}></span>
-                          <span>{isVi ? "Hợp Đồng & Điều Khoản Pháp Lý (CUAD)" : "Contracts & Legal Clauses (CUAD)"}</span>
+                          <span>{isVi ? "Hợp Đồng & Điều Khoản Pháp Lý" : "Contracts & Legal Clauses"}</span>
                           <span style={{
                             fontSize: "11px",
                             fontWeight: "700",
@@ -1704,7 +1525,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         </button>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "14px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "14px" }}>
                         {(activeCategory === "ALL" ? filteredContracts.slice(0, 12) : filteredContracts.slice(0, visibleLimits.CONTRACT || 24)).map((c) => (
                           <div
                             key={c.id}
@@ -1717,11 +1538,14 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                               flexDirection: "column",
                               gap: "10px",
                               boxShadow: "var(--shadow-sm)",
-                              transition: "all 0.15s ease"
+                              transition: "all 0.15s ease",
+                              minWidth: 0,
+                              overflow: "hidden",
+                              boxSizing: "border-box"
                             }}
                           >
-                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", minWidth: 0, flex: 1 }}>
                                 <span style={{
                                   fontSize: "10.5px",
                                   fontWeight: "800",
@@ -1729,11 +1553,19 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                   background: "rgba(8, 145, 178, 0.1)",
                                   color: "#0e7490",
                                   padding: "2px 7px",
-                                  borderRadius: "4px"
+                                  borderRadius: "4px",
+                                  flexShrink: 0
                                 }}>
                                   {c.code}
                                 </span>
-                                <span style={{ fontSize: "13.5px", fontWeight: "750", color: "var(--text-1)" }}>
+                                <span style={{
+                                  fontSize: "13.5px",
+                                  fontWeight: "750",
+                                  color: "var(--text-1)",
+                                  wordBreak: "break-word",
+                                  overflowWrap: "anywhere",
+                                  minWidth: 0
+                                }}>
                                   {c.title}
                                 </span>
                               </div>
@@ -1744,13 +1576,14 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 borderRadius: "4px",
                                 background: c.status === "VALID" ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
                                 color: c.status === "VALID" ? "#059669" : "#d97706",
-                                whiteSpace: "nowrap"
+                                whiteSpace: "nowrap",
+                                flexShrink: 0
                               }}>
                                 {c.statusText}
                               </span>
                             </div>
 
-                            <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0 }}>
+                            <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, wordBreak: "break-word" }}>
                               {isVi ? "Đối tác:" : "Client:"} <strong style={{ color: "var(--text-1)" }}>{c.client}</strong> • {isVi ? "Giá trị:" : "Value:"} <strong style={{ color: "var(--text-1)" }}>{c.value}</strong> • {isVi ? "Ký:" : "Signed:"} {c.date}
                             </p>
 
@@ -1762,9 +1595,16 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                               padding: "10px 12px",
                               fontSize: "12px",
                               color: "var(--text-1)",
-                              lineHeight: "1.6"
+                              lineHeight: "1.6",
+                              wordBreak: "break-word",
+                              overflowWrap: "anywhere",
+                              whiteSpace: "pre-wrap",
+                              maxHeight: "130px",
+                              overflowY: "auto",
+                              overflowX: "hidden",
+                              boxSizing: "border-box"
                             }}>
-                              <span style={{ fontWeight: "700", color: "#b45309", marginRight: "4px" }}>
+                              <span style={{ fontWeight: "700", color: "#b45309", marginRight: "6px" }}>
                                 {isVi ? "Phù hợp từ khóa:" : "Matching excerpt:"}
                               </span>
                               <span>
@@ -1792,34 +1632,49 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                               paddingTop: "10px",
                               borderTop: "1px solid var(--border-soft)",
                               fontSize: "11.5px",
-                              color: "var(--text-4)"
+                              color: "var(--text-4)",
+                              gap: "10px",
+                              minWidth: 0
                             }}>
-                              <span>{c.agent} • {c.sourceDoc}</span>
-                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              <span
+                                style={{
+                                  minWidth: 0,
+                                  flex: "1 1 auto",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  color: "var(--text-3)",
+                                  fontSize: "11px"
+                                }}
+                                title={`${c.agent} • ${c.sourceDoc}`}
+                              >
+                                {c.agent} • {c.sourceDoc}
+                              </span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, whiteSpace: "nowrap" }}>
                                 <button
                                   onClick={() => {
                                     onNavigate?.("copilot");
                                     showToast(isVi ? "Đang gửi yêu cầu phân tích hợp đồng sang Copilot..." : "Switching to Copilot...");
                                   }}
-                                  style={{ background: "transparent", border: "none", color: "var(--cyan)", fontWeight: "700", cursor: "pointer", fontSize: "12px" }}
+                                  style={{ background: "transparent", border: "none", color: "var(--cyan)", fontWeight: "700", cursor: "pointer", fontSize: "12px", whiteSpace: "nowrap" }}
                                 >
-                                  {isVi ? "Hỏi AI Copilot" : "Ask Copilot"}
+                                  {isVi ? "Hỏi Copilot" : "Ask Copilot"}
                                 </button>
                                 <button
                                   onClick={() => {
                                     onNavigate?.("knowledge", c.code || c.id);
                                     showToast(isVi ? `Đang định vị ${c.code} trên Đồ thị Tri thức` : `Locating ${c.code} on Graph`);
                                   }}
-                                  style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px" }}
+                                  style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px", whiteSpace: "nowrap" }}
                                 >
-                                  {isVi ? "Xem trên đồ thị" : "Graph"}
+                                  {isVi ? "Xem đồ thị" : "Graph"}
                                 </button>
                                 <button
                                   onClick={() => {
                                     onNavigate?.("documents", c.sourceDoc || c.code || c.id);
                                     showToast(isVi ? `Mở tài liệu ${c.sourceDoc}` : `Opening ${c.sourceDoc}`);
                                   }}
-                                  style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px" }}
+                                  style={{ background: "transparent", border: "none", color: "var(--text-2)", fontWeight: "600", cursor: "pointer", fontSize: "12px", whiteSpace: "nowrap" }}
                                 >
                                   {isVi ? "Xem trước" : "Preview"}
                                 </button>
@@ -1888,7 +1743,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           margin: 0
                         }}>
                           <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#3b82f6", display: "inline-block" }}></span>
-                          <span>{isVi ? "Khách Hàng (Customer — AdventureWorks CRM)" : "Customers (AdventureWorks CRM)"}</span>
+                          <span>{isVi ? "Khách Hàng Doanh Nghiệp" : "Enterprise Customers"}</span>
                           <span style={{
                             fontSize: "11px",
                             fontWeight: "700",
@@ -1912,7 +1767,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                         </button>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "14px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "14px" }}>
                         {(activeCategory === "ALL" ? filteredCustomers.slice(0, 12) : filteredCustomers.slice(0, visibleLimits.CUSTOMER || 24)).map((cust) => (
                           <div
                             key={cust.id}
@@ -1925,12 +1780,15 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                               alignItems: "center",
                               justifyContent: "space-between",
                               gap: "14px",
-                              boxShadow: "var(--shadow-sm)"
+                              boxShadow: "var(--shadow-sm)",
+                              minWidth: 0,
+                              overflow: "hidden",
+                              boxSizing: "border-box"
                             }}
                           >
-                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "14px", fontWeight: "800", color: "var(--text-1)" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", minWidth: 0 }}>
+                                <span style={{ fontSize: "14px", fontWeight: "800", color: "var(--text-1)", wordBreak: "break-word" }}>
                                   {cust.name}
                                 </span>
                                 <span style={{
@@ -1940,7 +1798,8 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                   background: "rgba(59, 130, 246, 0.1)",
                                   color: "#2563eb",
                                   padding: "2px 6px",
-                                  borderRadius: "4px"
+                                  borderRadius: "4px",
+                                  flexShrink: 0
                                 }}>
                                   {cust.code}
                                 </span>
@@ -2070,7 +1929,10 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                               display: "flex",
                               flexDirection: "column",
                               gap: "8px",
-                              boxShadow: "var(--shadow-sm)"
+                              boxShadow: "var(--shadow-sm)",
+                              minWidth: 0,
+                              overflow: "hidden",
+                              boxSizing: "border-box"
                             }}
                           >
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -2089,10 +1951,10 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                                 {p.value}
                               </span>
                             </div>
-                            <h4 style={{ fontSize: "13.5px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
+                            <h4 style={{ fontSize: "13.5px", fontWeight: "800", color: "var(--text-1)", margin: 0, wordBreak: "break-word" }}>
                               {p.name}
                             </h4>
-                            <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, lineHeight: "1.5" }}>
+                            <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, lineHeight: "1.5", wordBreak: "break-word" }}>
                               {p.desc}
                             </p>
                           </div>
@@ -2158,7 +2020,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
                           margin: 0
                         }}>
                           <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#64748b", display: "inline-block" }}></span>
-                          <span>{isVi ? "Tài Liệu & Quy Trình SOP Nội Bộ (Document Explorer)" : "Internal Documents & SOPs"}</span>
+                          <span>{isVi ? "Tài Liệu & Quy Trình Nội Bộ" : "Internal Documents & SOPs"}</span>
                           <span style={{
                             fontSize: "11px",
                             fontWeight: "700",
@@ -2320,7 +2182,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Icon name="fa-solid fa-paper-plane" size={15} style={{ color: "var(--cyan)", fontSize: "16px" }} />
                 <h3 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-1)", margin: 0 }}>
-                  {isVi ? "Soạn Thảo Đề Xuất Tác Nghiệp (AI Assisted Draft)" : "Draft Operational Proposal"}
+                  {isVi ? "Soạn Thảo Đề Xuất Tác Nghiệp" : "Draft Operational Proposal"}
                 </h3>
               </div>
 
@@ -2532,7 +2394,7 @@ export default function SearchView({ onNavigate, onSelectEntity, t, lang, role =
 
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 <span style={{ color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase", fontWeight: "700" }}>
-                  {isVi ? "Mã băm kiểm toán bảo mật (Audit Trail Hash):" : "Immutable Audit Hash:"}
+                  {isVi ? "Mã băm kiểm toán bảo mật:" : "Immutable Audit Hash:"}
                 </span>
                 <span style={{
                   background: "var(--surface)",

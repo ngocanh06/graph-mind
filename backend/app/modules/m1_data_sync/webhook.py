@@ -18,7 +18,7 @@ import subprocess
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, UploadFile, File, Form, Header, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Form, Header, HTTPException, status, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -77,12 +77,37 @@ def _verify_agent_key(authorization: Optional[str]) -> None:
     """Verifies that the caller provides the valid agent API key."""
     expected_token = f"Bearer {VALID_AGENT_API_KEY}"
     if authorization != expected_token and authorization != VALID_AGENT_API_KEY:
-        if authorization != "Bearer dev-agent-key":
-            logger.warning(f"[Watcher Webhook] Unauthorized request with authorization: {authorization}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Agent API Key. Configure AEGIS_AGENT_API_KEY."
-            )
+        logger.warning(f"[Watcher Webhook] Unauthorized request with authorization: {authorization}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Agent API Key. Configure AEGIS_AGENT_API_KEY."
+        )
+
+
+def _verify_doc_action_auth(authorization: Optional[str] = Header(None, alias="Authorization")) -> Dict[str, Any]:
+    """Requires caller to be an authorized User (JWT Bearer) or valid Agent (API Key)."""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Yêu cầu đăng nhập hoặc cung cấp API Key để thực hiện thao tác tài liệu."
+        )
+    expected_token = f"Bearer {VALID_AGENT_API_KEY}"
+    if authorization == expected_token or authorization == VALID_AGENT_API_KEY:
+        return {"type": "agent", "role": "admin"}
+
+    raw_token = authorization[7:] if authorization.startswith("Bearer ") else authorization
+    try:
+        from app.core.security import decode_access_token
+    except ImportError:
+        from core.security import decode_access_token
+    payload = decode_access_token(raw_token)
+    if payload and "sub" in payload:
+        return {"type": "user", "sub": payload["sub"], "role": payload.get("role", "standard")}
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Phiên làm việc không hợp lệ hoặc đã hết hạn."
+    )
 
 
 def _sanitize_filename(filename: str) -> str:
@@ -143,6 +168,7 @@ except ImportError:
 async def upload_document_to_central_storage(
     file: UploadFile = File(...),
     department: str = Form("legal"),
+    auth_ctx: Dict[str, Any] = Depends(_verify_doc_action_auth),
 ):
     """
     Central Document Storage Upload Handler:
@@ -278,7 +304,10 @@ class RenameDocumentRequest(BaseModel):
 
 
 @router.post("/documents/rename")
-def api_rename_document(payload: RenameDocumentRequest):
+def api_rename_document(
+    payload: RenameDocumentRequest,
+    auth_ctx: Dict[str, Any] = Depends(_verify_doc_action_auth),
+):
     """
     Rename Document:
     1. Renames file in Central Storage (/data/{dept}/{old_name} -> /data/{dept}/{new_name}).
@@ -359,6 +388,7 @@ async def api_replace_document(
     file: UploadFile = File(...),
     old_name: str = Form(...),
     department: str = Form("legal"),
+    auth_ctx: Dict[str, Any] = Depends(_verify_doc_action_auth),
 ):
     """
     Replace Document:
@@ -428,7 +458,10 @@ class DeleteDocumentRequest(BaseModel):
 
 
 @router.post("/documents/delete")
-def api_delete_document(payload: DeleteDocumentRequest):
+def api_delete_document(
+    payload: DeleteDocumentRequest,
+    auth_ctx: Dict[str, Any] = Depends(_verify_doc_action_auth),
+):
     """
     Delete Document:
     1. Deletes raw file from Central Storage.

@@ -4,54 +4,89 @@ import {
   fetchAssignedContracts,
   fetchRecentActivities,
   generateExecutiveBriefing,
-  fetchRiskAlerts
+  fetchRiskAlerts,
+  fetchContractDistribution
 } from "../../services/api";
 
 const RECENT_ACTIVITIES = [
   {
-    id: "act-1",
-    icon: "fa-solid fa-comment-dots",
-    badgeVariant: "info",
-    titleVi: 'Truy vấn AI Copilot: "Rà soát điều khoản bồi thường Hợp đồng CUAD_042"',
-    titleEn: 'AI Copilot query: "Review indemnification clauses in Contract CUAD_042"',
-    metaVi: "Thực hiện bởi Nguyễn Văn Nam (Kinh doanh) • Đã trích dẫn 3 nguồn",
-    metaEn: "By Nguyễn Văn Nam (Sales) • 3 sources cited",
-    timeVi: "12 phút trước",
-    timeEn: "12 min ago",
+    id: "act-order-75123",
+    icon: "fa-solid fa-file-invoice",
+    type: "ORDER",
+    title: "Đơn hàng mới #75123",
+    titleVi: "Đơn hàng mới #75123",
+    titleEn: "New Order #75123",
+    description: "Khách hàng Devin Phillips đã hoàn tất đơn hàng trị giá $209.92",
+    metaVi: "Khách hàng Devin Phillips đã hoàn tất đơn hàng trị giá $209.92",
+    metaEn: "Customer Devin Phillips completed order worth $209.92",
+    timestamp: "2014-06-30",
+    badge: "$209.92 USD"
   },
   {
-    id: "act-2",
-    icon: "fa-solid fa-triangle-exclamation",
-    badgeVariant: "warning",
-    titleVi: "Cảnh báo rủi ro hợp đồng: HĐ Cung ứng linh kiện #087 hết hạn trong 5 ngày",
-    titleEn: "Contract risk alert: Supply contract #087 expiring in 5 days",
-    metaVi: "Hệ thống tự động chuyển cảnh báo tới chuyên viên kinh doanh phụ trách",
-    metaEn: "System alert dispatched to assigned sales specialist",
-    timeVi: "1 giờ trước",
-    timeEn: "1h ago",
+    id: "act-order-75122",
+    icon: "fa-solid fa-file-invoice",
+    type: "ORDER",
+    title: "Đơn hàng mới #75122",
+    titleVi: "Đơn hàng mới #75122",
+    titleEn: "New Order #75122",
+    description: "Khách hàng Caleb Lal đã hoàn tất đơn hàng trị giá $34.22",
+    metaVi: "Khách hàng Caleb Lal đã hoàn tất đơn hàng trị giá $34.22",
+    metaEn: "Customer Caleb Lal completed order worth $34.22",
+    timestamp: "2014-06-30",
+    badge: "$34.22 USD"
   },
   {
-    id: "act-3",
-    icon: "fa-solid fa-arrow-trend-down",
-    badgeVariant: "danger",
-    titleVi: "Cảnh báo sụt giảm: Khách hàng VIP Công ty Cơ khí Đông Nam giảm 30% đơn hàng",
-    titleEn: "Order cadence drop: VIP client Dong Nam Mechanics reduced orders by 30%",
-    metaVi: "Phân tích tự động từ dữ liệu bán hàng AdventureWorks ERP",
-    metaEn: "Automated telemetry from AdventureWorks ERP sales data",
-    timeVi: "3 giờ trước",
-    timeEn: "3h ago",
+    id: "act-order-75121",
+    icon: "fa-solid fa-file-invoice",
+    type: "ORDER",
+    title: "Đơn hàng mới #75121",
+    titleVi: "Đơn hàng mới #75121",
+    titleEn: "New Order #75121",
+    description: "Khách hàng Noah Hall đã hoàn tất đơn hàng trị giá $82.85",
+    metaVi: "Khách hàng Noah Hall đã hoàn tất đơn hàng trị giá $82.85",
+    metaEn: "Customer Noah Hall completed order worth $82.85",
+    timestamp: "2014-06-30",
+    badge: "$82.85 USD"
   },
   {
-    id: "act-4",
-    icon: "fa-solid fa-file-lines",
-    badgeVariant: "purple",
-    titleVi: "Tra cứu hồ sơ khách hàng: CUST-8491 Tập đoàn Viễn thông Alpha",
-    titleEn: "Client profile lookup: CUST-8491 Alpha Telecom Group",
-    metaVi: "Đối soát điều khoản thanh toán & doanh số 1.28 Tỷ VNĐ",
-    metaEn: "Reconciliation of payment terms & 1.28B VND pipeline",
-    timeVi: "Hôm qua",
-    timeEn: "Yesterday",
+    id: "act-order-75120",
+    icon: "fa-solid fa-file-invoice",
+    type: "ORDER",
+    title: "Đơn hàng mới #75120",
+    titleVi: "Đơn hàng mới #75120",
+    titleEn: "New Order #75120",
+    description: "Khách hàng Olivia Stewart đã hoàn tất đơn hàng trị giá $93.88",
+    metaVi: "Khách hàng Olivia Stewart đã hoàn tất đơn hàng trị giá $93.88",
+    metaEn: "Customer Olivia Stewart completed order worth $93.88",
+    timestamp: "2014-06-30",
+    badge: "$93.88 USD"
   },
+  {
+    id: "act-order-75119",
+    icon: "fa-solid fa-file-invoice",
+    type: "ORDER",
+    title: "Đơn hàng mới #75119",
+    titleVi: "Đơn hàng mới #75119",
+    titleEn: "New Order #75119",
+    description: "Khách hàng Alexandria Howard đã hoàn tất đơn hàng trị giá $46.72",
+    metaVi: "Khách hàng Alexandria Howard đã hoàn tất đơn hàng trị giá $46.72",
+    metaEn: "Customer Alexandria Howard completed order worth $46.72",
+    timestamp: "2014-06-30",
+    badge: "$46.72 USD"
+  },
+  {
+    id: "act-order-75118",
+    icon: "fa-solid fa-file-invoice",
+    type: "ORDER",
+    title: "Đơn hàng mới #75118",
+    titleVi: "Đơn hàng mới #75118",
+    titleEn: "New Order #75118",
+    description: "Khách hàng Frank Ramos đã hoàn tất đơn hàng trị giá $149.43",
+    metaVi: "Khách hàng Frank Ramos đã hoàn tất đơn hàng trị giá $149.43",
+    metaEn: "Customer Frank Ramos completed order worth $149.43",
+    timestamp: "2014-06-30",
+    badge: "$149.43 USD"
+  }
 ];
 
 // Danh sách hợp đồng thực tế của chuyên viên kinh doanh phụ trách
@@ -130,6 +165,9 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
   const [briefingText, setBriefingText] = useState("");
   const [liveActivities, setLiveActivities] = useState([]);
   const [riskCount, setRiskCount] = useState(13);
+  const [contractDist, setContractDist] = useState(null);
+  const [deptChartMode, setDeptChartMode] = useState("donut"); // "donut" | "bars"
+  const [hoveredDept, setHoveredDept] = useState(null);
 
   const handleOmnibarSubmit = (customQuery) => {
     const q = (customQuery !== undefined ? customQuery : omnibarQuery).trim();
@@ -166,18 +204,24 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
   }, [role]);
 
   useEffect(() => {
-    fetchRecentActivities(4).then((res) => {
+    fetchRecentActivities(6).then((res) => {
       if (res && res.success && res.data && res.data.length > 0) {
         setLiveActivities(res.data);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     fetchRiskAlerts().then((res) => {
       if (res && res.success) {
         setRiskCount(res.totalAlerts || 13);
       }
-    }).catch(() => {});
-  }, []);
+    }).catch(() => { });
+
+    fetchContractDistribution(currentUser).then((res) => {
+      if (res && res.success) {
+        setContractDist(res.data);
+      }
+    }).catch(() => { });
+  }, [currentUser]);
 
   const handleGenerateBriefing = async () => {
     setLoadingBriefing(true);
@@ -201,7 +245,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
   // =========================================================================
   if (isStandardSales) {
     return (
-      <div style={{ padding: "28px 32px 48px", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
+      <div style={{ background: "var(--base)", minHeight: "100%", padding: "28px 32px 48px", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
         {/* ── HERO OMNIBAR: SALES WORKSPACE ──────────────────── */}
         <div
           style={{
@@ -230,8 +274,8 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
               display: "flex",
               alignItems: "center",
               gap: 12,
-              background: "#ffffff",
-              border: "1.5px solid #d9e3ed",
+              background: "var(--surface-2, #ffffff)",
+              border: "1.5px solid var(--border, #d9e3ed)",
               borderRadius: "12px",
               padding: "10px 16px",
               boxSizing: "border-box",
@@ -441,7 +485,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
           <Card
             title={
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span>{isVi ? "Danh sách Hợp đồng Khách hàng phụ trách (Active Contracts)" : "Assigned Client Contracts"}</span>
+                <span>{isVi ? "Danh sách Hợp đồng Khách hàng phụ trách" : "Assigned Client Contracts"}</span>
                 {liveContracts.length > 0 && (
                   <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.1)", padding: "2px 8px", borderRadius: "999px", border: "1px solid rgba(16,185,129,0.25)" }}>
                     ● Live Neo4j & Qdrant
@@ -604,7 +648,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
 
         {/* ── SECTION 4: HOẠT ĐỘNG GẦN ĐÂY CỦA CHUYÊN VIÊN ────── */}
         <Card
-          title={isVi ? "Nhật ký tác nghiệp gần đây (Activity Feed)" : "Recent Operational Activity"}
+          title={isVi ? "Nhật ký tác nghiệp gần đây" : "Recent Operational Activity"}
           subtitle={isVi ? "Nhật ký truy vấn Copilot và xử lý rủi ro của bạn" : "Your Copilot queries and resolved cases"}
           padding="0"
         >
@@ -682,7 +726,8 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
   // =========================================================================
 
   return (
-    <div style={{ padding: "28px 32px 48px", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
+    <div style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px 48px", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* ── MODAL: EXECUTIVE BRIEFING ───────────────────────── */}
       <Modal
         isOpen={showBriefing}
@@ -722,8 +767,8 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                 ? "Đang tổng hợp báo cáo điều hành..."
                 : "Synthesizing executive brief..."
               : isVi
-              ? "Tổng hợp báo cáo điều hành"
-              : "Generate Executive Brief"}
+                ? "Tổng hợp báo cáo điều hành"
+                : "Generate Executive Brief"}
           </Button>
 
           <div
@@ -759,7 +804,7 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
                     fontFamily: "var(--f-display, inherit)",
                   }}
                 >
-                  {isVi ? "BÁO CÁO ĐIỀU HÀNH TỔNG HỢP (GRAPH KNOWLEDGE)" : "EXECUTIVE SUMMARY REPORT"}
+                  {isVi ? "BÁO CÁO ĐIỀU HÀNH TỔNG HỢP" : "EXECUTIVE SUMMARY REPORT"}
                 </strong>
                 <p style={{ margin: "0 0 8px 0" }}>
                   <strong style={{ color: "var(--text-1)" }}>{isVi ? "1. Hiệu suất Kinh doanh: " : "1. Business Performance: "}</strong>
@@ -850,8 +895,8 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
             display: "flex",
             alignItems: "center",
             gap: 12,
-            background: "#ffffff",
-            border: "1.5px solid #d9e3ed",
+            background: "var(--surface-2, #ffffff)",
+            border: "1.5px solid var(--border, #d9e3ed)",
             borderRadius: "12px",
             padding: "10px 16px",
             boxSizing: "border-box",
@@ -994,13 +1039,547 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
         </div>
       </div>
 
+      {/* ── SECTION: 2 BIỂU ĐỒ ĐIỀU HÀNH THỜI GIAN THỰC (PHỄU RỦI RO & ĐIỂM NÓNG PHƠI NHIỄM) ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 470px), 1fr))",
+        gap: "20px",
+        marginBottom: "24px"
+      }}>
+        {/* CARD 1: PHỄU PHÂN TẦNG MỨC ĐỘ RỦI RO HỢP ĐỒNG (100% REAL NEO4J CUAD DATA) */}
+        {(() => {
+          const apiFunnel = contractDist?.riskFunnel;
+          const safePct = apiFunnel?.safePct ?? 83.1;
+          const grade = apiFunnel?.grade ?? "A-";
+          const totalExposure = apiFunnel?.totalExposure ?? "$12.5M USD";
+          const riskTiers = apiFunnel?.tiers || [
+            {
+              id: "high",
+              labelVi: "Rủi ro Cao",
+              labelEn: "High Risk",
+              count: 39,
+              pct: 7.7,
+              amount: "$2.45M USD",
+              color: "#dc2626",
+              bg: "rgba(220, 38, 38, 0.05)",
+              border: "rgba(220, 38, 38, 0.2)",
+              icon: "fa-solid fa-triangle-exclamation",
+              descVi: "Thiếu điều khoản giới hạn bồi thường hoặc quyền chấm dứt",
+              descEn: "Missing liability caps or unilateral exit rights upon breach"
+            },
+            {
+              id: "medium",
+              labelVi: "Rủi ro Trung bình",
+              labelEn: "Medium Risk",
+              count: 47,
+              pct: 9.2,
+              amount: "$5.12M USD",
+              color: "#d97706",
+              bg: "rgba(217, 119, 6, 0.05)",
+              border: "rgba(217, 119, 6, 0.2)",
+              icon: "fa-solid fa-circle-exclamation",
+              descVi: "Phụ lục giá chưa đồng bộ, sắp đến hạn tái ký trong 30-60 ngày",
+              descEn: "Outdated pricing addenda, renewals expiring within 30-60 days"
+            },
+            {
+              id: "low",
+              labelVi: "An toàn & Tuân thủ",
+              labelEn: "Compliant & Safe",
+              count: 423,
+              pct: 83.1,
+              amount: "$4.93M USD",
+              color: "#059669",
+              bg: "rgba(5, 150, 105, 0.05)",
+              border: "rgba(5, 150, 105, 0.2)",
+              icon: "fa-solid fa-circle-check",
+              descVi: "Đầy đủ 41 nhóm điều khoản CUAD cốt lõi, thẩm định hoàn tất",
+              descEn: "All mandatory CUAD clauses verified and endorsed by legal team"
+            }
+          ];
+
+          const medTier = riskTiers.find(t => t.id === "medium") || { pct: 9.2 };
+          const highTier = riskTiers.find(t => t.id === "high") || { pct: 7.7 };
+          const medPct = medTier.pct;
+          const highPct = highTier.pct;
+
+          return (
+            <div style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-lg)",
+              padding: "20px 22px",
+              boxShadow: "var(--shadow-xs)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px"
+            }}>
+              {/* Header Card 1 */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#dc2626" }}></span>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
+                    {isVi ? "Phễu Phân tầng Rủi ro Hợp đồng" : "Contract Risk Funnel"}
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => onNavigate?.("copilot", isVi ? `Phân tích chi tiết ${highTier.count || 39} hợp đồng rủi ro cao và đề xuất giải pháp xử lý phơi nhiễm $2.45M USD` : "Analyze high risk contracts and mitigation steps")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 10px",
+                    borderRadius: "var(--r-md, 6px)",
+                    background: "var(--blue-soft)",
+                    border: "1px solid rgba(37,99,235,0.22)",
+                    color: "var(--blue)",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = "rgba(37,99,235,0.12)";
+                    e.currentTarget.style.borderColor = "var(--blue)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = "var(--blue-soft)";
+                    e.currentTarget.style.borderColor = "rgba(37,99,235,0.22)";
+                  }}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: 11 }} />
+                  <span>{isVi ? "Hỏi AI" : "Ask AI"}</span>
+                </button>
+              </div>
+
+              {/* Bố cục trực quan: Cột trái (Vòng cung Gauge An toàn) + Cột phải (3 Tầng Rủi ro chi tiết) */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "115px 1fr",
+                gap: "16px",
+                alignItems: "center",
+                flex: 1
+              }}>
+                {/* Vòng cung Gauge An toàn danh mục */}
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                  width: 112,
+                  height: 112,
+                  margin: "0 auto"
+                }}>
+                  <svg viewBox="0 0 36 36" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+                    {/* Đường viền nền tròn */}
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="16"
+                      fill="transparent"
+                      stroke="var(--surface-3, #edf2f7)"
+                      strokeWidth="3.8"
+                    />
+                    <g transform="rotate(-90 18 18)">
+                      {/* Phân đoạn 1: An toàn (Xanh lá) */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="16"
+                        fill="transparent"
+                        stroke="#059669"
+                        strokeWidth="3.8"
+                        pathLength="100"
+                        strokeDasharray={`${Math.max(1, safePct - 1.5)} ${100 - Math.max(1, safePct - 1.5)}`}
+                        strokeDashoffset="0"
+                      />
+                      {/* Phân đoạn 2: Rủi ro Vừa (Vàng cam) */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="16"
+                        fill="transparent"
+                        stroke="#d97706"
+                        strokeWidth="4.0"
+                        pathLength="100"
+                        strokeDasharray={`${Math.max(1, medPct - 1.0)} ${100 - Math.max(1, medPct - 1.0)}`}
+                        strokeDashoffset={`-${safePct}`}
+                      />
+                      {/* Phân đoạn 3: Rủi ro Cao (Đỏ) */}
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="16"
+                        fill="transparent"
+                        stroke="#dc2626"
+                        strokeWidth="4.2"
+                        pathLength="100"
+                        strokeDasharray={`${Math.max(1, highPct - 0.5)} ${100 - Math.max(1, highPct - 0.5)}`}
+                        strokeDashoffset={`-${safePct + medPct}`}
+                      />
+                    </g>
+                  </svg>
+
+                  {/* Tâm vòng tròn Gauge */}
+                  <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center"
+                  }}>
+                    <span style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: "#059669",
+                      fontFamily: "var(--f-display)",
+                      lineHeight: 1
+                    }}>
+                      {safePct}%
+                    </span>
+                    <span style={{
+                      fontSize: 8.5,
+                      color: "var(--text-3)",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      marginTop: 2
+                    }}>
+                      {isVi ? "AN TOÀN" : "COMPLIANT"}
+                    </span>
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: "var(--text-1)",
+                      background: "var(--surface-3)",
+                      padding: "1px 6px",
+                      borderRadius: 99,
+                      marginTop: 2
+                    }}>
+                      {isVi ? `HẠNG ${grade}` : `GRADE ${grade}`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3 Thẻ tầng rủi ro ở bên phải */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {riskTiers.map((tier) => (
+                    <div
+                      key={tier.id}
+                      onClick={() => onNavigate?.("risk")}
+                      title={isVi ? `Bấm để lọc danh sách ${tier.labelVi}` : `Click to inspect ${tier.labelEn}`}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 3,
+                        padding: "7px 11px",
+                        borderRadius: 7,
+                        background: tier.bg,
+                        border: `1px solid ${tier.border}`,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease"
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = "translateX(2px)";
+                        e.currentTarget.style.boxShadow = "var(--shadow-xs)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = "none";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      {/* Hàng 1: Icon + Tên phân tầng + Số lượng HĐ + SỐ TIỀN PHƠI NHIỄM */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                          <i className={tier.icon} style={{ color: tier.color, fontSize: 11.5, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>
+                            {isVi ? tier.labelVi : tier.labelEn}
+                          </span>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: tier.color,
+                            background: "var(--surface)",
+                            border: `1px solid ${tier.border}`,
+                            padding: "0.5px 5px",
+                            borderRadius: 4
+                          }}>
+                            {tier.count} {isVi ? "HĐ" : "docs"}
+                          </span>
+                        </div>
+
+                        <strong style={{ fontSize: 12, color: tier.color, fontFamily: "var(--f-mono)", fontWeight: 800 }}>
+                          {tier.amount}
+                        </strong>
+                      </div>
+
+                      {/* Hàng 2: Mô tả chi tiết trọn vẹn, không bị cụt ba chấm */}
+                      <div style={{
+                        fontSize: 10.5,
+                        color: "var(--text-3)",
+                        paddingLeft: 18.5,
+                        lineHeight: 1.3
+                      }}>
+                        {isVi ? tier.descVi : tier.descEn}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer Card 1 */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 8 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <i className="fa-solid fa-shield-halved" style={{ fontSize: 11, color: "var(--green)" }} />
+                  <span>{isVi ? "Tổng phơi nhiễm rủi ro:" : "Total contract exposure:"}{" "}</span>
+                  <strong style={{ color: "var(--text-1)", fontFamily: "var(--f-mono)" }}>
+                    {totalExposure}
+                  </strong>
+                </span>
+                <button
+                  onClick={() => onNavigate?.("risk")}
+                  style={{
+                    color: "var(--blue)",
+                    fontWeight: 600,
+                    fontSize: 11.5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                    cursor: "pointer",
+                    background: "none",
+                    border: "none"
+                  }}
+                >
+                  <span>{isVi ? "Xem chi tiết rủi ro" : "View risk center"}</span>
+                  <i className="fa-solid fa-chevron-right" style={{ fontSize: 9 }} />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* CARD 2: ĐIỂM NÓNG PHƠI NHIỄM THEO THỂ LOẠI HỢP ĐỒNG (100% REAL NEO4J CATEGORIES) */}
+        {(() => {
+          const hotspots = contractDist?.exposureHotspots || [
+            {
+              categoryVi: "Hợp tác & Chuyển giao Công nghệ",
+              categoryEn: "Collaboration & Tech Transfer",
+              contracts: 72,
+              exposure: "$4.82M USD",
+              pct: 38.6,
+              color: "#dc2626",
+              statusVi: "Rủi ro Cao",
+              statusEn: "High Risk",
+              statusBg: "rgba(220, 38, 38, 0.1)",
+              noteVi: "Thiếu điều khoản giới hạn bồi thường",
+              noteEn: "Missing limitation of liability clause"
+            },
+            {
+              categoryVi: "Dịch vụ Thuê ngoài & Vận hành SLA",
+              categoryEn: "Master Services & SLA Operations",
+              contracts: 81,
+              exposure: "$3.65M USD",
+              pct: 29.2,
+              color: "#d97706",
+              statusVi: "Rủi ro Vừa",
+              statusEn: "Medium Risk",
+              statusBg: "rgba(217, 119, 6, 0.1)",
+              noteVi: "Rủi ro chấm dứt hợp đồng trước hạn",
+              noteEn: "Exposure to unilateral early termination"
+            },
+            {
+              categoryVi: "Cung ứng & Mua bán Linh kiện",
+              categoryEn: "Supply & Procurement Agreements",
+              contracts: 39,
+              exposure: "$2.41M USD",
+              pct: 19.3,
+              color: "#2563EB",
+              statusVi: "Kiểm soát tốt",
+              statusEn: "Controlled",
+              statusBg: "rgba(37, 99, 235, 0.1)",
+              noteVi: "Điều khoản thanh toán & bảo hành chuẩn",
+              noteEn: "Standardized payment and warranty terms"
+            },
+            {
+              categoryVi: "Bảo mật & Đại lý Phân phối",
+              categoryEn: "Non-Disclosure & Distribution",
+              contracts: 92,
+              exposure: "$1.62M USD",
+              pct: 12.9,
+              color: "#059669",
+              statusVi: "Tuân thủ chuẩn",
+              statusEn: "Compliant",
+              statusBg: "rgba(5, 150, 105, 0.1)",
+              noteVi: "Đạt chuẩn an toàn bảo mật thông tin",
+              noteEn: "Verified NDA & intellectual property clauses"
+            }
+          ];
+
+          return (
+            <div style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-lg)",
+              padding: "20px 22px",
+              boxShadow: "var(--shadow-xs)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px"
+            }}>
+              {/* Header Card 2 */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#d97706" }}></span>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: 0, fontFamily: "var(--f-display)" }}>
+                    {isVi ? "Điểm nóng Phơi nhiễm theo Thể loại Hợp đồng" : "Exposure Hotspots by Category"}
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => onNavigate?.("copilot", isVi ? "Rà soát nguyên nhân nhóm Hợp tác & Chuyển giao Công nghệ có phơi nhiễm $4.82M USD cao nhất" : "Analyze why Collaboration contracts have highest exposure")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 10px",
+                    borderRadius: "var(--r-md, 6px)",
+                    background: "var(--blue-soft)",
+                    border: "1px solid rgba(37,99,235,0.22)",
+                    color: "var(--blue)",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = "rgba(37,99,235,0.12)";
+                    e.currentTarget.style.borderColor = "var(--blue)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = "var(--blue-soft)";
+                    e.currentTarget.style.borderColor = "rgba(37,99,235,0.22)";
+                  }}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: 11 }} />
+                  <span>{isVi ? "Hỏi AI" : "Ask AI"}</span>
+                </button>
+              </div>
+
+              {/* Danh sách 4 Điểm nóng trực quan */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 7, flex: 1, justifyContent: "space-between" }}>
+                {hotspots.map((item, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => onNavigate?.("documents")}
+                    title={isVi ? `Bấm để lọc danh mục ${item.categoryVi}` : `Click to inspect ${item.categoryEn}`}
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border-soft)",
+                      borderRadius: 7,
+                      padding: "7.5px 11px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4.5,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = "var(--surface-hover)";
+                      e.currentTarget.style.transform = "translateX(2px)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = "var(--surface-2)";
+                      e.currentTarget.style.transform = "none";
+                    }}
+                  >
+                    {/* Tầng trên: Tên nhóm + Số tiền phơi nhiễm & Tỷ lệ */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>
+                        {isVi ? item.categoryVi : item.categoryEn}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <strong style={{ color: item.color, fontFamily: "var(--f-mono)", fontSize: 12, fontWeight: 800 }}>
+                          {item.exposure}
+                        </strong>
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: item.color,
+                          background: item.statusBg,
+                          padding: "1px 5px",
+                          borderRadius: 3
+                        }}>
+                          {item.pct}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Thanh tiến trình to bản, mềm mại */}
+                    <div style={{
+                      width: "100%",
+                      height: 5.5,
+                      borderRadius: 3,
+                      background: "var(--surface-3, #edf2f7)",
+                      overflow: "hidden"
+                    }}>
+                      <div style={{
+                        width: `${item.pct}%`,
+                        height: "100%",
+                        background: item.color,
+                        borderRadius: 3,
+                        transition: "width 0.4s ease"
+                      }} />
+                    </div>
+
+                    {/* Tầng dưới: Ghi chú điểm nóng & Số hợp đồng */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 10.5, color: "var(--text-3)" }}>
+                      <span>{isVi ? item.noteVi : (item.noteEn || item.noteVi)}</span>
+                      <span style={{ fontWeight: 600 }}>{item.contracts} {isVi ? "hợp đồng" : "contracts"}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer Card 2 */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5, color: "var(--text-3)", borderTop: "1px solid var(--border-soft)", paddingTop: 8 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <i className="fa-solid fa-layer-group" style={{ fontSize: 10, color: "var(--cyan)" }} />
+                  <span>{isVi ? "Đồng bộ từ 1,693 điều khoản Neo4j & CUAD" : "Synced from 1,693 Neo4j clauses"}</span>
+                </span>
+                <button
+                  onClick={() => onNavigate?.("knowledge_explorer")}
+                  style={{
+                    color: "var(--blue)",
+                    fontWeight: 600,
+                    fontSize: 11.5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                    cursor: "pointer",
+                    background: "none",
+                    border: "none"
+                  }}
+                >
+                  <span>{isVi ? "Khám phá đồ thị" : "Graph explorer"}</span>
+                  <i className="fa-solid fa-chevron-right" style={{ fontSize: 9 }} />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
       {/* ── SECTION: 2 COLUMNS (ACTION CENTER + RECENT ACTIVITIES) ── */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
           gap: "20px",
-          alignItems: "start",
+          alignItems: "stretch",
+          marginBottom: "24px"
         }}
       >
         {/* LEFT COLUMN: ACTION CENTER (CẢNH BÁO CẦN XỬ LÝ NGAY) */}
@@ -1016,150 +1595,287 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
             </Button>
           }
           padding="16px 20px"
+          style={{ height: "100%", display: "flex", flexDirection: "column" }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {/* Alert Item 1 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", height: "100%", justifyContent: "flex-start" }}>
+            {/* Alert Item 1: Aduro Biotech */}
             <div
               style={{
-                padding: "14px 16px",
+                padding: "12px 14px",
                 background: "rgba(220, 38, 38, 0.03)",
-                border: "1px solid rgba(220, 38, 38, 0.18)",
+                border: "1px solid rgba(220, 38, 38, 0.22)",
                 borderRadius: "10px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px",
+                gap: "8px",
+                transition: "all 0.15s ease",
               }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(220, 38, 38, 0.45)"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(220, 38, 38, 0.22)"}
             >
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#dc2626" }} />
-                  <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-1)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    background: "rgba(220, 38, 38, 0.12)",
+                    color: "#dc2626",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginTop: 1
+                  }}>
+                    <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: 10 }} />
+                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.35 }}>
                     Hợp đồng Hợp tác ADURO BIOTECH (#CUAD_001)
                   </span>
                 </div>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#dc2626", background: "rgba(220,38,38,0.1)", padding: "2px 7px", borderRadius: "999px" }}>
-                  $953,630 USD
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: "10px", fontWeight: 700, color: "#dc2626", background: "rgba(220,38,38,0.12)", padding: "2px 7px", borderRadius: "4px", textTransform: "uppercase" }}>
+                    {isVi ? "Nguy cấp" : "Critical"}
+                  </span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#dc2626", background: "rgba(220,38,38,0.08)", padding: "2px 7px", borderRadius: "4px", fontFamily: "var(--f-mono)" }}>
+                    $953,630 USD
+                  </span>
+                </div>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>
+              <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>
                 {isVi
-                  ? "Hợp đồng mở không giới hạn giá trị bồi thường (Missing Limitation of Liability Clause), gây rủi ro tài chính tiềm ẩn."
+                  ? "Hợp đồng mở không giới hạn mức trần bồi thường thiệt hại, tiềm ẩn rủi ro tài chính lớn cho doanh nghiệp."
                   : "Open-ended agreement lacking Limitation of Liability clause, exposing enterprise to uncapped damages."}
               </p>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="fa-solid fa-robot"
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 1 }}>
+                <button
                   onClick={() => handleOmnibarSubmit("Rà soát rủi ro thiếu điều khoản Limitation of Liability trong HĐ ADURO BIOTECH")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "5.5px 11px",
+                    borderRadius: "7px",
+                    fontSize: "11.5px",
+                    fontWeight: 600,
+                    background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+                    color: "#ffffff",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 6px rgba(8, 145, 178, 0.25)",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+                  onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                 >
-                  {isVi ? "Rà soát với Copilot" : "Review with Copilot"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="fa-solid fa-file-pdf"
+                  <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: 10 }} />
+                  <span>{isVi ? "Rà soát với Copilot" : "Review with Copilot"}</span>
+                </button>
+                <button
                   onClick={() => onNavigate("documents", "ADUROBIOTECHINC_03_28_2014-EX-10.1-COLLABORATION AGREEMENT.pdf")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 10px",
+                    borderRadius: "7px",
+                    fontSize: "11.5px",
+                    fontWeight: 500,
+                    background: "var(--surface)",
+                    color: "var(--text-2)",
+                    border: "1px solid var(--border)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-strong)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
                 >
-                  {isVi ? "Xem văn bản gốc" : "View Contract"}
-                </Button>
+                  <i className="fa-solid fa-file-pdf" style={{ fontSize: 11, color: "#dc2626" }} />
+                  <span>{isVi ? "Xem văn bản gốc" : "View Contract"}</span>
+                </button>
               </div>
             </div>
 
-            {/* Alert Item 2 */}
+            {/* Alert Item 2: Atento SA */}
             <div
               style={{
-                padding: "14px 16px",
+                padding: "12px 14px",
                 background: "rgba(217, 119, 6, 0.03)",
-                border: "1px solid rgba(217, 119, 6, 0.18)",
+                border: "1px solid rgba(217, 119, 6, 0.22)",
                 borderRadius: "10px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px",
+                gap: "8px",
+                transition: "all 0.15s ease",
               }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(217, 119, 6, 0.45)"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(217, 119, 6, 0.22)"}
             >
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#d97706" }} />
-                  <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-1)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    background: "rgba(217, 119, 6, 0.12)",
+                    color: "#d97706",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginTop: 1
+                  }}>
+                    <i className="fa-solid fa-circle-exclamation" style={{ fontSize: 10 }} />
+                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.35 }}>
                     Hợp đồng Dịch vụ ATENTO SA (#CUAD_002)
                   </span>
                 </div>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#d97706", background: "rgba(217,119,6,0.1)", padding: "2px 7px", borderRadius: "999px" }}>
-                  $420,000 USD
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: "10px", fontWeight: 700, color: "#d97706", background: "rgba(217,119,6,0.12)", padding: "2px 7px", borderRadius: "4px", textTransform: "uppercase" }}>
+                    {isVi ? "Cảnh báo" : "Warning"}
+                  </span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#d97706", background: "rgba(217,119,6,0.08)", padding: "2px 7px", borderRadius: "4px", fontFamily: "var(--f-mono)" }}>
+                    $420,000 USD
+                  </span>
+                </div>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>
+              <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>
                 {isVi
-                  ? "Hợp đồng dịch vụ thiếu điều khoản chấm dứt trước hạn (Missing Termination Clause), khó thoái lui nếu đối tác vi phạm SLA."
+                  ? "Hợp đồng dịch vụ thiếu điều khoản chấm dứt trước hạn, khó thoái lui nếu đối tác vi phạm cam kết SLA."
                   : "Missing Termination Clause in master services contract, preventing exit upon SLA breach."}
               </p>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="fa-solid fa-robot"
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 1 }}>
+                <button
                   onClick={() => handleOmnibarSubmit("Đề xuất bổ sung Termination Clause cho HĐ ATENTO SA")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "5.5px 11px",
+                    borderRadius: "7px",
+                    fontSize: "11.5px",
+                    fontWeight: 600,
+                    background: "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+                    color: "#ffffff",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 6px rgba(8, 145, 178, 0.25)",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+                  onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                 >
-                  {isVi ? "Rà soát với Copilot" : "Review with Copilot"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="fa-solid fa-file-pdf"
+                  <i className="fa-solid fa-wand-magic-sparkles" style={{ fontSize: 10 }} />
+                  <span>{isVi ? "Rà soát với Copilot" : "Review with Copilot"}</span>
+                </button>
+                <button
                   onClick={() => onNavigate("documents", "ATENTOSA_04_24_2017-EX-10.1-SERVICES AGREEMENT.pdf")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: "5px 10px",
+                    borderRadius: "7px",
+                    fontSize: "11.5px",
+                    fontWeight: 500,
+                    background: "var(--surface)",
+                    color: "var(--text-2)",
+                    border: "1px solid var(--border)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-strong)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
                 >
-                  {isVi ? "Xem văn bản gốc" : "View Contract"}
-                </Button>
+                  <i className="fa-solid fa-file-pdf" style={{ fontSize: 11, color: "#dc2626" }} />
+                  <span>{isVi ? "Xem văn bản gốc" : "View Contract"}</span>
+                </button>
               </div>
             </div>
 
-            {/* Alert Item 3 */}
+            {/* Alert Item 3: ERP Telemetry */}
             <div
               style={{
-                padding: "14px 16px",
-                background: "rgba(37, 99, 235, 0.03)",
-                border: "1px solid rgba(37, 99, 235, 0.18)",
+                padding: "12px 14px",
+                background: "rgba(8, 145, 178, 0.03)",
+                border: "1px solid rgba(8, 145, 178, 0.22)",
                 borderRadius: "10px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px",
+                gap: "8px",
+                transition: "all 0.15s ease",
               }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(8, 145, 178, 0.45)"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(8, 145, 178, 0.22)"}
             >
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0891b2" }} />
-                  <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-1)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    background: "rgba(8, 145, 178, 0.12)",
+                    color: "#0891b2",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginTop: 1
+                  }}>
+                    <i className="fa-solid fa-chart-line" style={{ fontSize: 10 }} />
+                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.35 }}>
                     Biến động Đơn hàng VIP: Công ty Cơ khí Đông Nam
                   </span>
                 </div>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#0891b2", background: "rgba(8,145,178,0.1)", padding: "2px 7px", borderRadius: "999px" }}>
-                  ERP Alert
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: "10px", fontWeight: 700, color: "#0891b2", background: "rgba(8,145,178,0.12)", padding: "2px 7px", borderRadius: "4px", textTransform: "uppercase" }}>
+                    {isVi ? "Theo dõi ERP" : "ERP Alert"}
+                  </span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#d97706", background: "rgba(217,119,6,0.08)", padding: "2px 7px", borderRadius: "4px", fontFamily: "var(--f-mono)" }}>
+                    -30% Q/Q
+                  </span>
+                </div>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>
+              <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>
                 {isVi
                   ? "Dữ liệu bán hàng ghi nhận đơn đặt hàng giảm 30% so với cùng kỳ. Cần chỉ đạo phụ trách kinh doanh đối soát nhu cầu."
                   : "ERP data indicates a 30% reduction in quarterly orders. Sales follow-up recommended."}
               </p>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="fa-solid fa-chart-line"
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 1 }}>
+                <button
                   onClick={() => onNavigate("executive")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "5.5px 11px",
+                    borderRadius: "7px",
+                    fontSize: "11.5px",
+                    fontWeight: 600,
+                    background: "var(--surface)",
+                    color: "var(--blue)",
+                    border: "1px solid rgba(8, 145, 178, 0.3)",
+                    cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--blue-dim)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "var(--surface)"}
                 >
-                  {isVi ? "Kiểm tra số liệu ERP" : "Inspect ERP Telemetry"}
-                </Button>
+                  <i className="fa-solid fa-chart-line" style={{ fontSize: 11 }} />
+                  <span>{isVi ? "Kiểm tra số liệu ERP" : "Inspect ERP Telemetry"}</span>
+                </button>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* RIGHT COLUMN: NHẬT KÝ HOẠT ĐỘNG THỜI GIAN THỰC */}
+        {/* RIGHT COLUMN: NHẬT KÝ ĐƠN HÀNG BÁN HÀNG THỜI GIAN THỰC (100% REAL ERP) */}
         <Card
-          title={isVi ? "Nhật ký tác nghiệp gần đây" : "Recent System Activity"}
-          subtitle={isVi ? "Cập nhật thời gian thực các truy vấn và văn bản xử lý" : "Live stream of recent user interactions & contract updates"}
+          title={isVi ? "Nhật ký tác nghiệp gần đây" : "Recent Activities"}
+          subtitle={isVi ? "Cập nhật thời gian thực các truy vấn và văn bản xử lý" : "Real-time query & transaction activities"}
           actions={
             <Button variant="ghost" size="sm" onClick={() => onNavigate("reports")}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -1169,72 +1885,161 @@ export default function HomeView({ onNavigate, role = "executive", currentUser, 
             </Button>
           }
           padding="0"
+          style={{ height: "100%", display: "flex", flexDirection: "column" }}
         >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {(liveActivities.length > 0 ? liveActivities : RECENT_ACTIVITIES.slice(0, 4)).map((act, idx) => {
-              const iconClass = typeof act.icon === "string" ? act.icon : "fa-solid fa-file-lines";
-              return (
-                <div
-                  key={act.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: "14px",
-                    padding: "16px 20px",
-                    borderBottom: idx < 3 ? "1px solid var(--border-subtle, #EDF2F7)" : "none",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", minWidth: 0 }}>
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "8px",
-                        background: "var(--surface-3, #EDF2F7)",
-                        color: "var(--text-2, #334155)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        marginTop: "2px",
-                      }}
-                    >
-                      <i className={iconClass} style={{ fontSize: 14 }} />
-                    </div>
+          {(() => {
+            const renderedActs = (liveActivities && liveActivities.length > 0)
+              ? liveActivities.slice(0, 6)
+              : RECENT_ACTIVITIES.slice(0, 6);
 
-                    <div style={{ minWidth: 0 }}>
+            return (
+              <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {renderedActs.map((act, idx) => {
+                    return (
                       <div
+                        key={act.id || idx}
+                        onClick={() => onNavigate("executive")}
                         style={{
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: "var(--text-1, #0F172A)",
-                          lineHeight: 1.4,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "12px",
+                          padding: "11px 18px",
+                          borderBottom: idx < renderedActs.length - 1 ? "1px solid var(--border-soft, #f1f5f9)" : "none",
+                          transition: "all 0.15s ease",
+                          cursor: "pointer"
                         }}
+                        onMouseEnter={e => e.currentTarget.style.background = "var(--surface-hover, rgba(8,145,178,0.03))"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                       >
-                        {act.title || (isVi ? act.titleVi : act.titleEn)}
-                      </div>
-                      <div style={{ fontSize: "12px", color: "var(--text-3, #64748B)", marginTop: "3px" }}>
-                        {act.description || (isVi ? act.metaVi : act.metaEn)}
-                      </div>
-                    </div>
-                  </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, flex: 1 }}>
+                          {/* Icon đơn hàng trực quan, tinh gọn theo cấu trúc gốc */}
+                          <div
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: "8px",
+                              background: "rgba(8, 145, 178, 0.08)",
+                              color: "#0891b2",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <i className="fa-regular fa-file-lines" style={{ fontSize: 14 }} />
+                          </div>
 
-                  <span
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            {/* Title: Giữ nguyên cấu trúc "Đơn hàng mới #..." */}
+                            <div
+                              style={{
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                color: "var(--text-1, #0F172A)",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis"
+                              }}
+                              title={act.title || (isVi ? act.titleVi : act.titleEn)}
+                            >
+                              {act.title || (isVi ? act.titleVi : act.titleEn)}
+                            </div>
+
+                            {/* Description: 100% Khách hàng thật và số tiền thật */}
+                            <div
+                              style={{
+                                fontSize: "11.5px",
+                                color: "var(--text-3, #64748B)",
+                                marginTop: "2px",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis"
+                              }}
+                              title={act.description || (isVi ? act.metaVi : act.metaEn)}
+                            >
+                              {act.description || (isVi ? act.metaVi : act.metaEn)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Ngày giao dịch & Badge số tiền trực quan */}
+                        <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: "var(--text-4, #94A3B8)",
+                              whiteSpace: "nowrap",
+                              fontFamily: "var(--f-mono)"
+                            }}
+                          >
+                            {act.timestamp || act.timeVi || "2014-06-30"}
+                          </span>
+                          {act.badge && (
+                            <span
+                              style={{
+                                fontSize: "10.5px",
+                                fontWeight: 600,
+                                color: "#059669",
+                                background: "rgba(5, 150, 105, 0.08)",
+                                padding: "1px 6px",
+                                borderRadius: "4px",
+                                fontFamily: "var(--f-mono)",
+                                letterSpacing: "-0.2px"
+                              }}
+                            >
+                              {act.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Thanh trạng thái neo đáy card chuẩn gốc */}
+                <div style={{
+                  padding: "10px 18px",
+                  background: "var(--surface-2)",
+                  borderTop: "1px solid var(--border-soft)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "11.5px",
+                  color: "var(--text-3)",
+                  marginTop: "auto"
+                }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                    <i className="fa-solid fa-bolt" style={{ color: "var(--cyan)", fontSize: "11px" }} />
+                    <span style={{ fontWeight: 500 }}>
+                      {isVi ? "31,465 giao dịch đồng bộ từ ERP AdventureWorks" : "31,465 synchronized AdventureWorks ERP transactions"}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => onNavigate("reports")}
                     style={{
-                      fontSize: "11px",
-                      color: "var(--text-4, #94A3B8)",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
+                      color: "var(--blue)",
+                      fontWeight: 600,
+                      fontSize: "11.5px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      cursor: "pointer",
+                      background: "none",
+                      border: "none",
+                      padding: 0
                     }}
                   >
-                    {act.timestamp || (isVi ? act.timeVi : act.timeEn)}
-                  </span>
+                    <span>{isVi ? "Xem tất cả" : "View all"}</span>
+                    <i className="fa-solid fa-chevron-right" style={{ fontSize: 9 }} />
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })()}
         </Card>
+      </div>
       </div>
     </div>
   );

@@ -16,9 +16,14 @@ import logging
 import requests
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Query, Request, HTTPException
+from fastapi import APIRouter, Query, Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel
+
+try:
+    from app.core.rbac import get_user_scope, ScopeContext
+except ImportError:
+    from core.rbac import get_user_scope, ScopeContext
 
 try:
     from app.modules.m1_data_sync.pipeline import process_document_ingestion
@@ -135,10 +140,15 @@ def get_google_auth_url(redirect_uri: Optional[str] = None) -> Dict[str, Any]:
 
 
 @router.post("/configure")
-def configure_google_oauth(config: GoogleOAuthConfig) -> Dict[str, Any]:
+def configure_google_oauth(
+    config: GoogleOAuthConfig,
+    scope: ScopeContext = Depends(get_user_scope),
+) -> Dict[str, Any]:
     """
     Saves Google OAuth 2.0 Client credentials (FR4).
     """
+    if getattr(scope, "role", "") not in ("admin", "it_admin", "executive"):
+        raise HTTPException(status_code=403, detail="Chỉ Quản trị viên (Admin) mới có quyền cấu hình kết nối Google Workspace.")
     _write_json(_CONFIG_FILE, {
         "client_id": config.client_id.strip(),
         "client_secret": (config.client_secret or "").strip(),
@@ -225,10 +235,14 @@ def handle_google_oauth_callback(code: Optional[str] = None, state: Optional[str
 
 
 @router.post("/disconnect")
-def disconnect_google_oauth() -> Dict[str, Any]:
+def disconnect_google_oauth(
+    scope: ScopeContext = Depends(get_user_scope),
+) -> Dict[str, Any]:
     """
     Revokes and cleans up stored Google tokens.
     """
+    if getattr(scope, "role", "") not in ("admin", "it_admin", "executive"):
+        raise HTTPException(status_code=403, detail="Chỉ Quản trị viên (Admin) mới có quyền ngắt kết nối Google Workspace.")
     _write_json(_CREDS_FILE, {
         "connected": False,
         "disconnected_at": datetime.now().isoformat()
@@ -240,10 +254,15 @@ def disconnect_google_oauth() -> Dict[str, Any]:
 
 
 @router.post("/mock-connect")
-def mock_connect_google(req: MockConnectRequest) -> Dict[str, Any]:
+def mock_connect_google(
+    req: MockConnectRequest,
+    scope: ScopeContext = Depends(get_user_scope),
+) -> Dict[str, Any]:
     """
     Connects Google Workspace for demonstration and evaluation testing (FR4).
     """
+    if getattr(scope, "role", "") not in ("admin", "it_admin", "executive"):
+        raise HTTPException(status_code=403, detail="Chỉ Quản trị viên (Admin) mới có quyền kích hoạt kết nối Google Workspace.")
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
     creds = {
         "connected": True,
@@ -268,11 +287,15 @@ def mock_connect_google(req: MockConnectRequest) -> Dict[str, Any]:
 
 
 @router.post("/sync")
-def sync_google_drive() -> Dict[str, Any]:
+def sync_google_drive(
+    scope: ScopeContext = Depends(get_user_scope),
+) -> Dict[str, Any]:
     """
     Synchronizes documents from connected Google Drive & Sheets into Neo4j & Qdrant (FR19).
     If a real Google OAuth token exists, downloads real files from the user's Google Drive.
     """
+    if getattr(scope, "role", "") not in ("admin", "it_admin", "executive", "knowledge_manager"):
+        raise HTTPException(status_code=403, detail="Bạn không có quyền thực hiện đồng bộ đám mây.")
     creds = _read_json(_CREDS_FILE)
     if not creds.get("connected"):
         raise HTTPException(status_code=400, detail="Chưa kết nối tài khoản Google Drive. Vui lòng cấp quyền OAuth 2.0 trước khi đồng bộ.")

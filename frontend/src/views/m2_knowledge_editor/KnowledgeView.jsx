@@ -145,7 +145,7 @@ export default function KnowledgeView({
       id: "q-3",
       source: "Lê Hoàng Minh",
       sourceType: "Employee",
-      sourceColor: "bg-purple-600",
+      sourceColor: "bg-slate-700",
       relation: "AUTHORIZED_SIGNER",
       target: "CUAD_042",
       targetType: "Contract",
@@ -179,13 +179,13 @@ export default function KnowledgeView({
   };
 
   const ENTITY_CHIPS = [
-    { key: "Customer", label: "Customer", count: 19820, bg: "bg-cyan-50 text-cyan-900 border-cyan-300", dot: "bg-cyan-600" },
-    { key: "Product", label: "Product", count: 504, bg: "bg-teal-50 text-teal-900 border-teal-300", dot: "bg-teal-600" },
-    { key: "Order", label: "SalesOrder", count: 31465, bg: "bg-emerald-50 text-emerald-900 border-emerald-300", dot: "bg-emerald-600" },
-    { key: "Employee", label: "Employee", count: 290, bg: "bg-slate-100 text-slate-800 border-slate-300", dot: "bg-slate-500" },
-    { key: "Vendor", label: "Company", count: 30, bg: "bg-sky-50 text-sky-900 border-sky-300", dot: "bg-sky-600" },
-    { key: "Contract", label: "Contract", count: 30, bg: "bg-teal-50 text-teal-900 border-teal-300", dot: "bg-teal-700" },
-    { key: "Clause", label: "Clause", count: 103, bg: "bg-cyan-50 text-cyan-900 border-cyan-300 font-bold", dot: "bg-cyan-700" },
+    { key: "Customer", label: "Customer", count: 19820, bg: "bg-amber-50 text-amber-900 border-amber-300", dot: "bg-amber-500" },
+    { key: "Product", label: "Product", count: 504, bg: "bg-emerald-50 text-emerald-900 border-emerald-300", dot: "bg-emerald-600" },
+    { key: "Order", label: "SalesOrder", count: 31465, bg: "bg-orange-50 text-orange-900 border-orange-300", dot: "bg-orange-600" },
+    { key: "Employee", label: "Employee", count: 290, bg: "bg-slate-100 text-slate-800 border-slate-300", dot: "bg-slate-600" },
+    { key: "Vendor", label: "Company", count: 30, bg: "bg-blue-50 text-blue-900 border-blue-300", dot: "bg-blue-600" },
+    { key: "Contract", label: "Contract", count: 30, bg: "bg-red-50 text-red-900 border-red-300", dot: "bg-red-600" },
+    { key: "Clause", label: "Clause", count: 103, bg: "bg-teal-50 text-teal-900 border-teal-300 font-bold", dot: "bg-teal-600" },
   ];
 
   // Filter chips visible according to user RBAC scope
@@ -306,7 +306,7 @@ export default function KnowledgeView({
   return (
     <div
       className="space-y-6 font-sans text-on-surface min-h-screen"
-      style={{ padding: "24px 32px 64px", boxSizing: "border-box" }}
+      style={{ background: "var(--base)", minHeight: "100%", padding: "24px 32px 64px", boxSizing: "border-box" }}
     >
       {/* Toast Notification */}
       {toastMsg && (
@@ -317,167 +317,270 @@ export default function KnowledgeView({
       )}
 
       {/* ========================================================================= */}
-      {/* HEADER & CONTROLS */}
+      {/* 1. UNIFIED KNOWLEDGE HEADER & GLOBAL CONTROLS */}
       {/* ========================================================================= */}
-      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "16px 22px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-sm border border-teal-200/50">
-              <i className="fa-solid fa-project-diagram" />
+      <div style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r-lg, 12px)",
+        boxShadow: "var(--shadow-xs)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden"
+      }}>
+        {/* Tier 1: Title, Subtitle, RBAC Badge & Primary Actions */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "16px 20px 14px 20px",
+          flexWrap: "wrap",
+          gap: "12px",
+          borderBottom: "1px solid var(--border-soft, #f1f5f9)"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "10px",
+              background: "rgba(8, 145, 178, 0.08)",
+              border: "1px solid rgba(8, 145, 178, 0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--cyan, #0891b2)",
+              flexShrink: 0
+            }}>
+              <i className="fa-solid fa-project-diagram" style={{ fontSize: "16px" }} />
             </div>
-            <h1 className="text-xl font-bold text-on-surface tracking-tight">
-              {isVi ? "Đồ thị Tri thức & Hiệu chỉnh Thực thể" : "Knowledge Graph & Entity Editor"}
-            </h1>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <h1 style={{
+                  fontSize: "17px",
+                  fontWeight: "800",
+                  color: "var(--text-1)",
+                  margin: 0,
+                  letterSpacing: "-0.01em"
+                }}>
+                  {isVi ? "Đồ thị Tri thức & Hiệu chỉnh Thực thể" : "Knowledge Graph & Entity Editor"}
+                </h1>
+              </div>
+              <p style={{
+                fontSize: "12px",
+                color: "var(--text-3)",
+                margin: "2px 0 0 0",
+                lineHeight: "1.3"
+              }}>
+                {isVi
+                  ? "Trực quan hóa mạng lưới liên kết thực thể Neo4j, kiểm duyệt ontology và bóc tách quan hệ đồ thị."
+                  : "Visualize enterprise entity triples, curate ontology, and inspect relationship pathways."}
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-on-surface-variant">
-            {isVi
-              ? "Trực quan hóa mạng lưới liên kết thực thể và hiệu chỉnh ontology đồ thị tri thức doanh nghiệp."
-              : "Visualize enterprise entity triples, curate ontology, and inspect relationship pathways."}
-          </p>
+
+          {/* Right side: RBAC Badge + Action Buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            {/* RBAC Scope Badge */}
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "5px 12px",
+              borderRadius: "20px",
+              background: "rgba(8, 145, 178, 0.08)",
+              border: "1px solid rgba(8, 145, 178, 0.2)",
+              fontSize: "11px",
+              fontWeight: "750",
+              color: "#0891b2"
+            }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#0891b2" }}></span>
+              <span>RBAC: {currentUser?.badge || (isPrivileged ? "ADMIN / EXECUTIVE" : isManager ? "TRƯỞNG PHÒNG" : "CHUYÊN VIÊN")}</span>
+              <span style={{ opacity: 0.7, fontFamily: "var(--f-mono)" }}>({visibleChips.length}/7 loại)</span>
+            </div>
+
+            <button
+              onClick={() => {
+                if (isStandard) {
+                  showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền thêm thực thể mới." : "Read-only: Only Admin and Manager can create new entities.");
+                  return;
+                }
+                setIsAddModalOpen(true);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "6px 13px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: "700",
+                background: "var(--cyan, #0891b2)",
+                color: "#ffffff",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(8, 145, 178, 0.25)"
+              }}
+            >
+              <Icon name="fa-solid fa-plus text-[12px]" size={12} />
+              <span>{isVi ? "Thực thể mới" : "New Entity"}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (isStandard) {
+                  showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền thêm quan hệ mới." : "Read-only: Only Admin and Manager can add relations.");
+                  return;
+                }
+                showToast(isVi ? "Kéo thả giữa 2 node trên canvas để tạo quan hệ mới" : "Drag between 2 nodes on canvas to create relation");
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "6px 12px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: "600",
+                background: "var(--surface-2)",
+                color: "var(--text-2)",
+                border: "1px solid var(--border)",
+                cursor: "pointer"
+              }}
+            >
+              <Icon name="fa-solid fa-link text-[12px]" size={12} />
+              <span>{isVi ? "Thêm quan hệ" : "Add Relation"}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (isStandard) {
+                  showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền ghi dữ liệu vào Neo4j + Qdrant." : "Read-only: Only Admin and Manager can commit to Neo4j + Qdrant.");
+                  return;
+                }
+                showToast(isVi ? "Đã lưu và đồng bộ các thuộc tính thực thể vào cơ sở dữ liệu." : "Saved entity attributes and synchronized with database.");
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "6px 12px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: "700",
+                background: "var(--text-1)",
+                color: "var(--surface)",
+                border: "none",
+                cursor: "pointer"
+              }}
+            >
+              <Icon name="fa-solid fa-cloud-arrow-up text-[12px]" size={12} />
+              <span>{isVi ? "Lưu thay đổi" : "Save Changes"}</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap">
-          <button
-            onClick={() => {
-              if (isStandard) {
-                showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền thêm thực thể mới." : "Read-only: Only Admin and Manager can create new entities.");
-                return;
-              }
-              setIsAddModalOpen(true);
-            }}
-            className="btn-gradient-cyan px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
-          >
-            <Icon name="fa-solid fa-plus text-[13px]" size={13} />
-            <span>{isVi ? "+ Thực thể mới" : "+ New Entity"}</span>
-          </button>
-          <button
-            onClick={() => {
-              if (isStandard) {
-                showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền thêm quan hệ mới." : "Read-only: Only Admin and Manager can add relations.");
-                return;
-              }
-              showToast(isVi ? "Kéo thả giữa 2 node trên canvas để tạo quan hệ mới" : "Drag between 2 nodes on canvas to create relation");
-            }}
-            className="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Icon name="fa-solid fa-link text-[13px]" size={13} />
-            <span>{isVi ? "Thêm quan hệ" : "Add Relation"}</span>
-          </button>
-          <button
-            onClick={() => showToast(isVi ? "Hoàn tác chưa được hỗ trợ; không có dữ liệu nào thay đổi." : "Undo is not implemented; no data was changed.")}
-            className="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container border border-outline-variant/30 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Icon name="fa-solid fa-rotate-left text-[13px]" size={13} />
-            <span>{isVi ? "Hoàn tác" : "Undo"}</span>
-          </button>
-          <button
-            onClick={() => {
-              if (isStandard) {
-                showToast(isVi ? "Chế độ xem (Read-only): Chỉ Quản trị viên & Trưởng phòng mới có quyền ghi dữ liệu vào Neo4j + Qdrant." : "Read-only: Only Admin and Manager can commit to Neo4j + Qdrant.");
-                return;
-              }
-              showToast(isVi ? "Đã lưu và đồng bộ các thuộc tính thực thể vào cơ sở dữ liệu." : "Saved entity attributes and synchronized with database.");
-            }}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold shadow-xs hover:bg-slate-800 transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Icon name="fa-solid fa-cloud-arrow-up text-[13px]" size={13} />
-            <span>{isVi ? "Lưu thay đổi" : "Save Changes"}</span>
-          </button>
-        </div>
-      </div>
+        {/* Tier 2: Integrated Navigation Tabs & Taxonomy Filters */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "8px",
+          padding: "6px 16px",
+          background: "var(--surface-2, #f8fafc)",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          flexWrap: "nowrap"
+        }}>
+          {/* Main View Tabs */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {[
+              { id: "neo4j_live", label: isVi ? "Đồ thị Trực quan (55.342 Nút)" : "Live Graph (55,342 Nodes)", icon: "fa-circle-nodes", dot: "#0891b2" },
+              { id: "queue", label: isVi ? "Hàng chờ Phê duyệt Thực thể" : "Review Queue", icon: "fa-list-check", badge: visibleQueueItems.length }
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "7px 14px",
+                    borderRadius: "8px",
+                    fontSize: "12.5px",
+                    fontWeight: isActive ? "750" : "600",
+                    cursor: "pointer",
+                    border: isActive ? "1px solid var(--border)" : "1px solid transparent",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    transition: "all 0.15s ease",
+                    background: isActive ? "var(--surface, #ffffff)" : "transparent",
+                    color: isActive ? "var(--cyan, #0891b2)" : "var(--text-2, #64748b)",
+                    boxShadow: isActive ? "0 1px 3px rgba(0, 0, 0, 0.06)" : "none"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "var(--surface-3, #f1f5f9)";
+                      e.currentTarget.style.color = "var(--text-1, #0f172a)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--text-2, #64748b)";
+                    }
+                  }}
+                >
+                  {tab.dot && (
+                    <span style={{
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "50%",
+                      background: tab.dot,
+                      display: "inline-block"
+                    }} />
+                  )}
+                  <Icon name={`fa-solid ${tab.icon}`} size={12} style={{ color: isActive ? "var(--cyan, #0891b2)" : "var(--text-3, #94a3b8)" }} />
+                  <span>{tab.label}</span>
+                  {tab.badge > 0 && (
+                    <span style={{
+                      fontSize: "10px",
+                      fontWeight: "800",
+                      padding: "1px 6px",
+                      borderRadius: "10px",
+                      background: isActive ? "var(--cyan, #0891b2)" : "#d97706",
+                      color: "#ffffff"
+                    }}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-      {/* ========================================================================= */}
-      {/* SUB-BAR: VIEW TOGGLE (CANVAS vs REVIEW QUEUE) & ENTITY COLOR SPECTRUM */}
-      {/* ========================================================================= */}
-      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 16px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }} className="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold">
-        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Taxonomies Chips (show when in canvas mode) */}
           {activeTab === "canvas" && (
-            <span className="text-on-surface-variant px-1">{isVi ? "Lọc thực thể:" : "Filter:"}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+              <span style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: "600" }}>{isVi ? "Lọc:" : "Filter:"}</span>
+              {visibleChips.map((chip) => {
+                const isActive = selectedEntityFilter === chip.key || selectedEntityFilter === "ALL";
+                return (
+                  <span
+                    key={chip.key}
+                    onClick={() => setSelectedEntityFilter(selectedEntityFilter === chip.key ? "ALL" : chip.key)}
+                    className={`px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 cursor-pointer text-[11px] transition-all ${
+                      chip.bg
+                    } ${!isActive ? "opacity-35 grayscale" : "opacity-100 hover:scale-105"}`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${chip.dot}`}></span>
+                    <span>{chip.label}</span>
+                  </span>
+                );
+              })}
+            </div>
           )}
-
-          {/* RBAC Scope Badge */}
-          <span
-            className="px-2.5 py-1 rounded text-[11px] font-bold border flex items-center gap-1.5 mr-1"
-            style={{
-              background: "#ecfeff",
-              color: "#0891b2",
-              border: "1px solid #cffafe"
-            }}
-            title={
-              isPrivileged
-                ? "Toàn quyền quản trị tri thức (Full RBAC Scope)"
-                : isManager
-                ? "Phân quyền Quản lý: Đã ẩn bảo mật Thực thể Nhân sự (Employee / HR Payroll)"
-                : "Phân quyền Chuyên viên: Đã ẩn bảo mật Thực thể Nhân sự (Employee) & Nhà cung cấp (Vendor)"
-            }
-          >
-            <i className="fa-solid fa-shield-halved text-[10px]" />
-            <span>
-              RBAC: {currentUser?.badge || (isPrivileged ? "ADMIN / EXECUTIVE" : isManager ? "TRƯỞNG PHÒNG" : "CHUYÊN VIÊN")}
-            </span>
-            <span className="text-[10px] opacity-75">
-              ({visibleChips.length}/7 loại)
-            </span>
-          </span>
-
-          {/* Taxonomies Chips filtered by RBAC - only show for static canvas */}
-          {activeTab === "canvas" && visibleChips.map((chip) => {
-            const isActive = selectedEntityFilter === chip.key || selectedEntityFilter === "ALL";
-            return (
-              <span
-                key={chip.key}
-                onClick={() => setSelectedEntityFilter(selectedEntityFilter === chip.key ? "ALL" : chip.key)}
-                className={`px-3 py-1 rounded-full border flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all ${
-                  chip.bg
-                } ${!isActive ? "opacity-35 grayscale" : "opacity-100 hover:scale-105"}`}
-              >
-                <span className={`w-2.5 h-2.5 rounded-full ${chip.dot}`}></span>
-                <span>{chip.label} ({chip.count})</span>
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Tab switch button between Canvas & Queue */}
-        <div className="flex items-center gap-2 ml-auto">
-          <button
-            onClick={() => setActiveTab("canvas")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              activeTab === "canvas"
-                ? "bg-primary text-on-primary shadow-xs"
-                : "bg-surface-container-low text-on-surface hover:bg-surface-container"
-            }`}
-          >
-            <Icon name="fa-solid fa-circle-nodes text-[14px]" size={14} />
-            <span>{isVi ? "Graph Canvas" : "Canvas"}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("queue")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              activeTab === "queue"
-                ? "bg-amber-600 text-white shadow-xs"
-                : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
-            }`}
-          >
-            <Icon name="fa-solid fa-list-check text-[14px]" size={14} />
-            <span>{isVi ? "Hàng chờ duyệt NER" : "Review Queue"}</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-200/80 text-[10px] text-amber-900 font-bold">
-              {visibleQueueItems.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("neo4j_live")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              activeTab === "neo4j_live"
-                ? "bg-cyan-700 text-white shadow-xs"
-                : "bg-cyan-50 text-cyan-900 border border-cyan-200 hover:bg-cyan-100"
-            }`}
-          >
-            <Icon name="fa-solid fa-circle-nodes text-[14px]" size={14} />
-            <span>{isVi ? "Neo4j Live (55.342 Nodes)" : "Neo4j Live (55,342 Nodes)"}</span>
-          </button>
         </div>
       </div>
 
@@ -485,7 +588,7 @@ export default function KnowledgeView({
       {/* TAB 0: LIVE REAL NEO4J GRAPH PANEL */}
       {/* ========================================================================= */}
       {activeTab === "neo4j_live" && (
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5 shadow-xs min-h-[650px]">
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg, 12px)", overflow: "hidden", boxShadow: "var(--shadow-xs)" }}>
           <GraphPanel lang={lang} onSelectNode={handleGraphNodeSelect} initialSearch={selectedEntity} role={effectiveRole} currentUser={currentUser} />
         </div>
       )}
@@ -549,8 +652,11 @@ export default function KnowledgeView({
                   <marker id="arrow-blue" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
                     <polygon points="0 0, 7 3.5, 0 7" fill="#004AC6" />
                   </marker>
-                  <marker id="arrow-purple" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
-                    <polygon points="0 0, 7 3.5, 0 7" fill="#712AE2" />
+                  <marker id="arrow-cyan" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
+                    <polygon points="0 0, 7 3.5, 0 7" fill="#0891b2" />
+                  </marker>
+                  <marker id="arrow-slate" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
+                    <polygon points="0 0, 7 3.5, 0 7" fill="#475569" />
                   </marker>
                   <marker id="arrow-red" markerWidth="7" markerHeight="7" refX="24" refY="3.5" orient="auto">
                     <polygon points="0 0, 7 3.5, 0 7" fill="#BA1A1A" />
@@ -565,10 +671,10 @@ export default function KnowledgeView({
                 {/* Edges / Links with Directional Markers */}
                 <path
                   d="M 180 180 L 350 140"
-                  stroke="#712AE2"
+                  stroke="#0891b2"
                   strokeWidth="2.5"
                   strokeDasharray="4 4"
-                  markerEnd="url(#arrow-purple)"
+                  markerEnd="url(#arrow-cyan)"
                   className="cursor-pointer"
                   onClick={() =>
                     setSelectedEdge({
@@ -576,7 +682,7 @@ export default function KnowledgeView({
                       label: "PARTNER_OF",
                       from: "Alpha Corp",
                       to: "CUAD_042",
-                      color: "#712AE2"
+                      color: "#0891b2"
                     })
                   }
                 />
@@ -614,14 +720,14 @@ export default function KnowledgeView({
                 />
                 <path
                   d="M 520 220 L 520 340"
-                  stroke="#712AE2"
+                  stroke="#0891b2"
                   strokeWidth="2"
-                  markerEnd="url(#arrow-purple)"
+                  markerEnd="url(#arrow-cyan)"
                 />
 
                 {/* Edge Labels */}
-                <rect x="230" y="145" width="85" height="20" rx="4" fill="#F2F3FF" stroke="#C3C6D7" strokeWidth="0.5" />
-                <text x="272" y="159" textAnchor="middle" fill="#712AE2" fontSize="10" fontWeight="600" fontFamily="Inter">
+                <rect x="230" y="145" width="85" height="20" rx="4" fill="#F0FDFA" stroke="#99F6E4" strokeWidth="0.5" />
+                <text x="272" y="159" textAnchor="middle" fill="#0891b2" fontSize="10" fontWeight="600" fontFamily="Inter">
                   PARTNER_OF
                 </text>
 
@@ -694,9 +800,9 @@ export default function KnowledgeView({
                     showToast(isVi ? "Đã chọn Node: CUAD_001 (WPPPLC)" : "Selected Node: CUAD_001 (WPPPLC)");
                   }}
                 >
-                  <circle r="48" fill="#EAEDFF" stroke="#712AE2" strokeWidth="3" />
-                  <circle cx="0" cy="0" r="8" fill="#712AE2" />
-                  <text y="-8" textAnchor="middle" fill="#712AE2" fontSize="12" fontWeight="bold" fontFamily="Inter">CUAD_001</text>
+                  <circle r="48" fill="#ECFEFF" stroke="#0891b2" strokeWidth="3" />
+                  <circle cx="0" cy="0" r="8" fill="#0891b2" />
+                  <text y="-8" textAnchor="middle" fill="#0891b2" fontSize="12" fontWeight="bold" fontFamily="Inter">CUAD_001</text>
                   <text y="10" textAnchor="middle" fill="#434655" fontSize="9" fontFamily="Inter">WPPPLC ($36K)</text>
                 </g>
 
@@ -790,9 +896,9 @@ export default function KnowledgeView({
                     showToast(isVi ? "Đã chọn Node: SLA 99.9%" : "Selected Node: SLA 99.9%");
                   }}
                 >
-                  <circle r="36" fill="#F2F3FF" stroke="#712AE2" strokeWidth="2" />
-                  <circle cx="0" cy="0" r="5" fill="#712AE2" />
-                  <text y="-6" textAnchor="middle" fill="#712AE2" fontSize="10" fontWeight="bold" fontFamily="Inter">SLA 99.9%</text>
+                  <circle r="36" fill="#F0FDFA" stroke="#0D9488" strokeWidth="2" />
+                  <circle cx="0" cy="0" r="5" fill="#0D9488" />
+                  <text y="-6" textAnchor="middle" fill="#0D9488" fontSize="10" fontWeight="bold" fontFamily="Inter">SLA 99.9%</text>
                   <text y="8" textAnchor="middle" fill="#434655" fontSize="8" fontFamily="Inter">Requirement</text>
                 </g>
 
@@ -858,9 +964,9 @@ export default function KnowledgeView({
                   <>
                     <path
                       d="M 350 45 L 350 140"
-                      stroke="#712AE2"
+                      stroke="#475569"
                       strokeWidth="2"
-                      markerEnd="url(#arrow-purple)"
+                      markerEnd="url(#arrow-slate)"
                       className="cursor-pointer"
                       onClick={() =>
                         setSelectedEdge({
@@ -868,12 +974,12 @@ export default function KnowledgeView({
                           label: "AUTHORIZED_SIGNER",
                           from: "Lê Hoàng Minh",
                           to: "CUAD_001",
-                          color: "#712AE2"
+                          color: "#475569"
                         })
                       }
                     />
-                    <rect x="280" y="65" width="140" height="20" rx="4" fill="#F5F3FF" stroke="#DDD6FE" strokeWidth="0.5" />
-                    <text x="350" y="79" textAnchor="middle" fill="#712AE2" fontSize="10" fontWeight="600" fontFamily="Inter">
+                    <rect x="280" y="65" width="140" height="20" rx="4" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.5" />
+                    <text x="350" y="79" textAnchor="middle" fill="#475569" fontSize="10" fontWeight="600" fontFamily="Inter">
                       AUTHORIZED_SIGNER
                     </text>
                     <g
@@ -901,10 +1007,10 @@ export default function KnowledgeView({
                         showToast(isVi ? "Đã chọn Node Nhân sự: Lê Hoàng Minh" : "Selected Node: Lê Hoàng Minh");
                       }}
                     >
-                      <circle r="36" fill="#F5F3FF" stroke="#7C3AED" strokeWidth="2.5" />
-                      <circle cx="0" cy="0" r="5" fill="#7C3AED" />
-                      <text y="-6" textAnchor="middle" fill="#7C3AED" fontSize="10" fontWeight="bold" fontFamily="Inter">Lê H. Minh</text>
-                      <text y="8" textAnchor="middle" fill="#5B21B6" fontSize="8" fontFamily="Inter">Employee (HR)</text>
+                      <circle r="36" fill="#F8FAFC" stroke="#475569" strokeWidth="2.5" />
+                      <circle cx="0" cy="0" r="5" fill="#475569" />
+                      <text y="-6" textAnchor="middle" fill="#0F172A" fontSize="10" fontWeight="bold" fontFamily="Inter">Lê H. Minh</text>
+                      <text y="8" textAnchor="middle" fill="#475569" fontSize="8" fontFamily="Inter">Employee (HR)</text>
                     </g>
                   </>
                 )}
@@ -954,7 +1060,7 @@ export default function KnowledgeView({
               </span>
               <span className="flex items-center gap-1.5 text-primary font-semibold">
                 <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
-                {5 + (allowedTaxonomies.includes("Vendor") ? 1 : 0) + (allowedTaxonomies.includes("Employee") ? 1 : 0)} Nodes • {4 + (allowedTaxonomies.includes("Vendor") ? 1 : 0) + (allowedTaxonomies.includes("Employee") ? 1 : 0)} Edges • {isPrivileged ? (isVi ? "Toàn quyền (Tất cả nhãn)" : "Full Scope") : isManager ? (isVi ? "Phạm vi: Quản lý (Đã ẩn HR)" : "Scope: Manager (Hidden HR)") : (isVi ? "Phạm vi: Kinh doanh (Đã ẩn HR & NCC)" : "Scope: Sales (Hidden HR & Vendor)")}
+                {5 + (allowedTaxonomies.includes("Vendor") ? 1 : 0) + (allowedTaxonomies.includes("Employee") ? 1 : 0)} {isVi ? "Nút" : "Nodes"} • {4 + (allowedTaxonomies.includes("Vendor") ? 1 : 0) + (allowedTaxonomies.includes("Employee") ? 1 : 0)} {isVi ? "Liên kết" : "Edges"} • {isPrivileged ? (isVi ? "Toàn quyền (Tất cả nhãn)" : "Full Scope") : isManager ? (isVi ? "Phạm vi: Quản lý (Đã ẩn HR)" : "Scope: Manager (Hidden HR)") : (isVi ? "Phạm vi: Kinh doanh (Đã ẩn HR & NCC)" : "Scope: Sales (Hidden HR & Vendor)")}
               </span>
             </div>
           </div>
@@ -1037,7 +1143,7 @@ export default function KnowledgeView({
 
                 <div>
                   <label className="block font-semibold text-on-surface mb-1">
-                    {isVi ? "Ghi chú chuyên viên pháp chế (Human Feedback)" : "Specialist Notes (Human Feedback)"}
+                    {isVi ? "Ghi chú chuyên viên pháp chế" : "Specialist Notes (Human Feedback)"}
                   </label>
                   <textarea
                     rows="3"
@@ -1102,7 +1208,7 @@ export default function KnowledgeView({
                   {isVi ? "Cần Human-in-the-loop" : "HITL Required"}
                 </span>
                 <h2 className="text-xl font-bold text-on-surface">
-                  {isVi ? "Hàng chờ duyệt trích xuất tự động (Pending Review Queue)" : "Automated Extraction Pending Review Queue"}
+                  {isVi ? "Hàng chờ duyệt trích xuất tự động" : "Automated Extraction Pending Review Queue"}
                 </h2>
               </div>
               <p className="text-xs text-on-surface-variant max-w-3xl leading-relaxed">
@@ -1124,14 +1230,14 @@ export default function KnowledgeView({
                   className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow hover:bg-emerald-700 transition-all flex items-center gap-1.5"
                 >
                   <Icon name="fa-solid fa-check-double text-[15px]" size={15} />
-                  <span>{isVi ? "Duyệt hàng loạt (Approve)" : "Batch Approve"}</span>
+                  <span>{isVi ? "Duyệt hàng loạt" : "Batch Approve"}</span>
                 </button>
                 <button
                   onClick={handleBatchReject}
                   className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow hover:bg-rose-700 transition-all flex items-center gap-1.5"
                 >
                   <Icon name="fa-solid fa-ban text-[15px]" size={15} />
-                  <span>{isVi ? "Từ chối hàng loạt (Reject)" : "Batch Reject"}</span>
+                  <span>{isVi ? "Từ chối hàng loạt" : "Batch Reject"}</span>
                 </button>
               </div>
             )}
@@ -1279,7 +1385,7 @@ export default function KnowledgeView({
       {/* QUICK ENTITY CREATION MODAL */}
       {/* ========================================================================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/40 shadow-2xl w-full max-w-md p-6 space-y-4 animate-scaleUp">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container">
               <h3 className="text-base font-bold text-on-surface">
@@ -1296,7 +1402,7 @@ export default function KnowledgeView({
             <form onSubmit={handleCreateNewEntity} className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-on-surface mb-1">
-                  {isVi ? "Tên Thực thể (Entity Name)" : "Entity Name"}
+                  {isVi ? "Tên Thực thể" : "Entity Name"}
                 </label>
                 <input
                   type="text"
@@ -1310,7 +1416,7 @@ export default function KnowledgeView({
 
               <div>
                 <label className="block font-semibold text-on-surface mb-1">
-                  {isVi ? "Loại Thực thể (Taxonomy Type)" : "Taxonomy Type"}
+                  {isVi ? "Loại Thực thể" : "Taxonomy Type"}
                 </label>
                 <select
                   value={newEntityType}

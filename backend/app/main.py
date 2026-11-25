@@ -233,11 +233,18 @@ async def concurrent_login_exception_handler(request: Request, exc: ConcurrentLo
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Error-Code"],
+    expose_headers=["X-Error-Code", "Content-Disposition"],
 )
 
 # Authentication routers (/api/v1/auth and /api/auth)
@@ -742,23 +749,21 @@ def search_neo4j_nodes(
     return {"success": True, "count": len(results), "data": results}
 
 @app.post("/api/neo4j/cypher")
-def run_cypher_endpoint(req: CypherQueryRequest, role: Optional[str] = Query(default=None)):
-    """Execute raw read Cypher query against Neo4j with RBAC protections."""
-    # Basic security check: disallow DROP, DELETE, DETACH, REMOVE, CREATE, SET from public demo endpoint
-    disallowed = ["DROP", "DELETE", "DETACH", "REMOVE", "CREATE", "SET", "ALTER"]
-    upper_query = req.cypher.upper()
-    for word in disallowed:
-        if f" {word} " in f" {upper_query} ":
-            raise HTTPException(status_code=400, detail=f"Mutation statement '{word}' is not allowed via this endpoint.")
-    
-    clean_role = (role or "").strip().lower()
-    if clean_role in ["standard", "sales", "ops", "user"]:
-        if "EMPLOYEE" in upper_query or "SALARY" in upper_query or "PAYROLL" in upper_query:
-            raise HTTPException(
-                status_code=403,
-                detail="Từ chối truy vấn RBAC: Vai trò Chuyên viên Kinh doanh không được phép tra cứu hồ sơ Employee hoặc dữ liệu nhân sự."
-            )
-            
+def run_cypher_endpoint(
+    req: CypherQueryRequest,
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """Execute raw read Cypher query against Neo4j with strict RBAC protections (Admin / Executive only)."""
+    if getattr(scope, "role", "") not in ("admin", "it_admin", "executive"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (Admin) hoặc Lãnh đạo mới có quyền thực thi Cypher trực tiếp."
+        )
+
+    disallowed_pattern = re.compile(r"\b(DROP|DELETE|DETACH|REMOVE|CREATE|SET|ALTER|MERGE|CALL|LOAD)\b", re.IGNORECASE)
+    if disallowed_pattern.search(req.cypher):
+        raise HTTPException(status_code=400, detail="Chỉ cho phép các câu lệnh Cypher chỉ đọc (read-only).")
+
     records = neo4j_client.run_cypher(req.cypher, req.params)
     return {"success": True, "count": len(records), "data": records}
 
@@ -787,71 +792,6 @@ def get_entity_by_id(entity_id: str):
     if not entity:
         raise HTTPException(status_code=404, detail=f"Entity '{entity_id}' not found")
     return {"success": True, "data": entity}
-
-@app.post("/api/graph/verify")
-def verify_entity(req: VerifyEntityRequest):
-    new_status = "Human Verified" if req.verified else "Needs Review"
-    updated_node = None
-
-    # 1. Update in Neo4j Production Graph DB if connected (FR24 & FR25)
-    if neo4j_client.is_connected or neo4j_client.connect():
-        try:
-            cypher = """
-            MATCH (n)
-            WHERE elementId(n) = $id 
-               OR n.id = $id 
-               OR toString(n.ProductID) = $id 
-               OR toString(n.CustomerID) = $id 
-               OR toString(n.SalesOrderID) = $id 
-               OR n.name = $id
-            SET n.verified = $verified,
-                n.status = $status,
-                n.auditor = $auditor,
-                n.verifiedAt = datetime()
-            RETURN elementId(n) AS id, labels(n) AS labels, coalesce(n.name, n.id, $id) AS name,
-                   n.verified AS verified, n.status AS status, n.auditor AS auditor,
-                   toString(n.verifiedAt) AS verifiedAt
-            LIMIT 1
-            """
-            records = neo4j_client.run_cypher(
-                cypher,
-                {
-                    "id": str(req.entityId),
-                    "verified": bool(req.verified),
-                    "status": new_status,
-                    "auditor": str(req.auditor or "Human Auditor")
-                }
-            )
-            if records:
-                updated_node = records[0]
-                logger.info(f"[Knowledge Editor] Verified node in Neo4j: {updated_node}")
-        except Exception as e:
-            logger.warning(f"[Knowledge Editor] Neo4j verify error: {e}")
-
-    # 2. Also update in-memory ENTITIES map (if exists or fallback)
-    entity = ENTITIES.get(req.entityId)
-    if entity:
-        entity["verified"] = req.verified
-        entity["status"] = new_status
-        entity["auditor"] = req.auditor
-        if not updated_node:
-            updated_node = entity
-
-    if not updated_node:
-        updated_node = {
-            "id": req.entityId,
-            "verified": req.verified,
-            "status": new_status,
-            "auditor": req.auditor,
-            "source": "Neo4j / Knowledge Graph"
-        }
-
-    return {
-        "success": True,
-        "message": f"Entity {req.entityId} verification updated by {req.auditor}: status={new_status}",
-        "data": updated_node
-    }
-
 
 # ============================================================================
 # QDRANT VECTOR ENDPOINTS (REAL DATA)
@@ -901,19 +841,31 @@ def get_qdrant_points(
         )
     points = qdrant_client.scroll_points(collection_name=collection, limit=limit, offset=offset)
     if not include_inactive:
-        points = [p for p in points if (p.get("payload") or {}).get("is_active") is True]
+        points = [p for p in points if (p.get("payload") or {}).get("is_active") is not False]
     return {"success": True, "count": len(points), "data": points}
 
 @app.post("/api/vector-search")
 @app.post("/api/qdrant/search")
-def vector_search_endpoint(req: VectorSearchRequest):
-    """Executes real vector similarity search on Qdrant using SentenceTransformer embeddings."""
+def vector_search_endpoint(
+    req: VectorSearchRequest,
+    scope: ScopeContext = Depends(get_user_scope),
+):
+    """Executes real vector similarity search on Qdrant using SentenceTransformer embeddings with RBAC scope."""
     limit = req.top_k or req.limit or 10
     results = qdrant_client.vector_search(
         query=req.query,
         collection_name=req.collection,
         limit=limit
     )
+    if not scope.is_unrestricted:
+        filtered = []
+        for r in results:
+            payload = r.get("payload") or {}
+            c_name = payload.get("contract_name") or r.get("contract_name") or ""
+            dept = payload.get("department") or r.get("department") or "legal"
+            if scope.is_document_allowed(c_name, dept):
+                filtered.append(r)
+        results = filtered
     return {
         "success": True,
         "query": req.query,
@@ -924,14 +876,46 @@ def vector_search_endpoint(req: VectorSearchRequest):
 
 
 # ============================================================================
-# COMBINED KNOWLEDGE EXPLORER (NEO4J + QDRANT)
+# COMBINED KNOWLEDGE EXPLORER (NEO4J + QDRANT) — GRAPHRAG CORRELATION
 # ============================================================================
+
+VI_EN_EXPANSIONS = {
+    "hợp đồng": "contract agreement",
+    "bảo mật": "confidentiality non-disclosure proprietary",
+    "bồi thường": "indemnification liability damages",
+    "chấm dứt": "termination expiration notice",
+    "luật điều chỉnh": "governing law jurisdiction",
+    "tài phán": "jurisdiction governing law",
+    "xe đạp": "bike bicycle mountain road",
+    "phụ tùng": "components parts pedals brakes frame",
+    "linh kiện": "components parts",
+    "khách hàng": "customer client",
+    "đơn hàng": "sales order invoice",
+    "thanh toán": "payment terms fee billing",
+    "kiểm toán": "audit rights inspection",
+    "lao động": "employment employee personnel",
+    "bảo hành": "warranty guarantee",
+    "dịch vụ": "service agreement maintenance",
+}
+
+def expand_query_bilingual(text: str) -> str:
+    if not text:
+        return text
+    t_lower = text.lower()
+    additions = []
+    for vi_kw, en_kw in VI_EN_EXPANSIONS.items():
+        if vi_kw in t_lower:
+            additions.append(en_kw)
+    if additions:
+        return f"{text} {' '.join(additions)}"
+    return text
 
 @app.post("/api/knowledge-explorer/search")
 @app.get("/api/knowledge-explorer/search")
 def knowledge_explorer_search(
     query: str = Query(...),
-    top_k: int = Query(default=8, ge=1, le=50)
+    top_k: int = Query(default=8, ge=1, le=50),
+    scope: ScopeContext = Depends(get_user_scope),
 ):
     """
     Combined Search Flow:
@@ -939,15 +923,39 @@ def knowledge_explorer_search(
     2. Query Neo4j for entities matching keywords in query or top documents.
     3. Return linked knowledge graph + vector evidence chunks.
     """
+    search_q = expand_query_bilingual(query.strip())
+
     # 1. Qdrant vector search
-    qdrant_results = qdrant_client.vector_search(query=query, limit=top_k)
+    qdrant_results = qdrant_client.vector_search(query=search_q, limit=top_k)
+    # If fewer than 2 results or query relates to enterprise products/customers, also search adventureworks_entities
+    if len(qdrant_results) < 3:
+        try:
+            erp_results = qdrant_client.vector_search(query=search_q, collection_name="adventureworks_entities", limit=top_k)
+            if erp_results:
+                for er in erp_results:
+                    p = er.get("payload") or {}
+                    er["contract_name"] = p.get("name") or p.get("title") or er.get("contract_name") or "Thực thể Doanh Nghiệp"
+                    er["text"] = p.get("text") or f"Dữ liệu thực thể: {er['contract_name']} | Mã: {p.get('product_id', p.get('customer_id', er.get('id', 'N/A')))}"
+                qdrant_results.extend(erp_results)
+        except Exception as e:
+            print(f"[KnowledgeExplorer] fallback vector search error: {e}")
+
+    if not scope.is_unrestricted:
+        filtered = [
+            r for r in qdrant_results
+            if scope.is_document_allowed(
+                (r.get("payload") or {}).get("contract_name") or r.get("contract_name") or "",
+                (r.get("payload") or {}).get("department") or r.get("department") or "legal"
+            )
+        ]
+        if filtered:
+            qdrant_results = filtered
 
     # 2. Neo4j entity search
     neo4j_nodes = []
-    # Search for entities matching query keywords (e.g. "Bike", "Mountain", "Order", "Agreement", or direct tokens)
     clean_query = query.strip()
-    words = [w for w in clean_query.split() if len(w) >= 3]
-    search_terms = [clean_query] + words[:3]
+    words = [w for w in search_q.split() if len(w) >= 3]
+    search_terms = [clean_query] + words[:4]
     seen_ids = set()
 
     for term in search_terms:
@@ -963,6 +971,9 @@ def knowledge_explorer_search(
     # If no keyword matches, fetch a small sample of live products/categories
     if not neo4j_nodes and (neo4j_client.is_connected or neo4j_client.connect()):
         neo4j_nodes = neo4j_client.get_all_nodes(limit=15, label="Product")
+
+    if not scope.is_unrestricted and neo4j_nodes:
+        neo4j_nodes = filter_graph_entities_by_scope(neo4j_nodes, scope.role)
 
     # 3. Fetch relationships connecting these nodes or their neighbors
     relationships = []
@@ -1047,7 +1058,7 @@ def _init_aw_search_cache():
     repo_root = Path(__file__).resolve().parent.parent.parent
 
     def _resolve_csv(filename: str, candidate_dirs: list) -> Path:
-        for d in candidate_dirs:
+        for d in [".cache_adv_csv"] + candidate_dirs:
             p = repo_root / d / filename
             if p.exists():
                 return p
@@ -3089,13 +3100,13 @@ def get_risk_alerts(
                         "dept": "legal",
                         "severity": "high",
                         "variant": "danger",
-                        "badgeLabel": "Không có trần bồi thường (No Liability Cap)",
-                        "detectedAt": "Neo4j Clause Graph Inspector",
+                        "badgeLabel": "Không có trần bồi thường",
+                        "detectedAt": "Đồ thị điều khoản Neo4j",
                         "title": f"Hợp đồng {doc_name} thiếu điều khoản Giới hạn trách nhiệm",
-                        "description": f"Phân tích đồ thị tri thức phát hiện hợp đồng {doc_name} không có điều khoản Giới hạn trách nhiệm bồi thường (Limitation of Liability). Khi có tranh chấp hoặc vi phạm, doanh nghiệp đối mặt với rủi ro bồi thường vô hạn mức (74/510 hợp đồng có lỗ hổng này).",
+                        "description": f"Phân tích đồ thị tri thức phát hiện hợp đồng {doc_name} không có điều khoản Giới hạn trách nhiệm bồi thường. Khi có tranh chấp hoặc sự cố, doanh nghiệp đối mặt với rủi ro bồi thường vô hạn mức (74/510 hợp đồng thiếu điều khoản này).",
                         "meta": [
                             {"label": "Phòng ban:", "value": "Pháp chế & Rủi ro"},
-                            {"label": "Rủi ro pháp lý:", "value": "Bồi thường không giới hạn (Uncapped Liability)"},
+                            {"label": "Rủi ro pháp lý:", "value": "Bồi thường không giới hạn"},
                             {"label": "Tệp văn bản:", "value": doc_name},
                             {"label": "Trích dẫn nguồn:", "value": doc_name, "isLink": True}
                         ],
@@ -3124,10 +3135,10 @@ def get_risk_alerts(
                         "dept": "legal",
                         "severity": "medium",
                         "variant": "purple",
-                        "badgeLabel": "Thiếu điều khoản chấm dứt (No Termination)",
-                        "detectedAt": "Neo4j Clause Graph Inspector",
+                        "badgeLabel": "Thiếu điều khoản chấm dứt",
+                        "detectedAt": "Đồ thị điều khoản Neo4j",
                         "title": f"Hợp đồng {doc_name} thiếu điều khoản Chấm dứt hợp đồng",
-                        "description": f"Đồ thị tri thức ghi nhận hợp đồng {doc_name} không chứa điều khoản Chấm dứt (Termination Clause), khiến doanh nghiệp thiếu cơ chế đơn phương rút lui an toàn khi đối tác vi phạm cam kết (52/510 hợp đồng có lỗ hổng này).",
+                        "description": f"Đồ thị tri thức ghi nhận hợp đồng {doc_name} không chứa điều khoản Chấm dứt, khiến doanh nghiệp thiếu cơ chế đơn phương rút lui an toàn khi đối tác vi phạm cam kết (52/510 hợp đồng thiếu điều khoản này).",
                         "meta": [
                             {"label": "Phòng ban:", "value": "Pháp chế & Rủi ro"},
                             {"label": "Rủi ro pháp lý:", "value": "Thiếu cơ chế rút lui an toàn"},

@@ -7,6 +7,7 @@
  * KHÔNG chạm luồng JWT/OAuth cũ. Hoàn toàn tách biệt.
  */
 import React, { useState, useEffect, useRef } from "react";
+import Icon from "./ui/Icon";
 
 const API = "/api/v1/auth";
 
@@ -241,9 +242,9 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
             width: 52, height: 52, borderRadius: "50%", margin: "0 auto 16px",
             background: "linear-gradient(135deg,#0891b2,#0f172a)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 24, boxShadow: "0 4px 16px rgba(8,145,178,0.35)",
+            boxShadow: "0 4px 16px rgba(8,145,178,0.35)",
           }}>
-            🔐
+            <Icon name="fa-solid fa-lock" size={22} style={{ color: "#ffffff" }} />
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>
             {isVi ? "Khôi phục Mật khẩu" : "Password Recovery"}
@@ -260,7 +261,8 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
         {/* Messages */}
         {error && (
           <div style={ERR_BOX}>
-            ⚠️ <span>{error}</span>
+            <Icon name="fa-solid fa-circle-exclamation" size={14} style={{ color: "#dc2626", marginRight: "6px" }} />
+            <span>{error}</span>
             {error.includes("hết hạn") && step === 3 && (
               <button
                 type="button"
@@ -276,14 +278,20 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
             )}
           </div>
         )}
-        {success && <div style={OK_BOX}>✅ <span>{success}</span></div>}
+        {success && (
+          <div style={OK_BOX}>
+            <Icon name="fa-solid fa-circle-check" size={14} style={{ color: "#16a34a", marginRight: "6px" }} />
+            <span>{success}</span>
+          </div>
+        )}
 
         {/* ── Step 1: Email ─────────────────────────────────────────────── */}
         {step === 1 && (
           <form onSubmit={handleSendOtp}>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
-                📧 {isVi ? "Email công ty" : "Company Email"}
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                <Icon name="fa-solid fa-envelope" size={12} />
+                <span>{isVi ? "Email công ty" : "Company Email"}</span>
               </label>
               <input
                 type="email" required value={email}
@@ -303,7 +311,7 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
               type="submit" disabled={loading}
               style={{ ...BTN, background: loading ? "#94a3b8" : "#0f172a", color: "#fff" }}
             >
-              {loading ? "⏳ Đang gửi..." : (isVi ? "📨 Nhận mã xác thực" : "Send Verification Code")}
+              {loading ? (isVi ? "Đang gửi..." : "Sending...") : (isVi ? "Nhận mã xác thực" : "Send Verification Code")}
             </button>
           </form>
         )}
@@ -344,11 +352,11 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               {countdown.expired ? (
                 <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>
-                  ⌛ {isVi ? "Mã đã hết hạn" : "Code expired"}
+                  {isVi ? "Mã đã hết hạn" : "Code expired"}
                 </span>
               ) : (
                 <span style={{ fontSize: 13, color: "#64748b" }}>
-                  ⏱ {isVi ? "Còn" : "Expires in"}{" "}
+                  {isVi ? "Còn hiệu lực trong" : "Expires in"}{" "}
                   <strong style={{ color: countdown.seconds <= 15 ? "#dc2626" : "#0891b2", fontVariantNumeric: "tabular-nums" }}>
                     {countdown.fmt}
                   </strong>
@@ -358,7 +366,7 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
 
             <button type="submit" disabled={loading}
               style={{ ...BTN, background: loading ? "#94a3b8" : "#0891b2", color: "#fff", marginBottom: 12 }}>
-              {loading ? "⏳ Đang xác thực..." : (isVi ? "✅ Xác nhận mã OTP" : "Verify OTP")}
+              {loading ? (isVi ? "Đang xác thực..." : "Verifying...") : (isVi ? "Xác nhận mã OTP" : "Verify OTP")}
             </button>
 
             <button type="button" onClick={handleResendOtp} disabled={loading || !countdown.expired}
@@ -367,8 +375,10 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
                 color: countdown.expired ? "#0891b2" : "#94a3b8",
                 border: `1.5px solid ${countdown.expired ? "#0891b2" : "#e2e8f0"}`,
                 cursor: (loading || !countdown.expired) ? "not-allowed" : "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px"
               }}>
-              🔄 {isVi ? "Gửi lại mã OTP" : "Resend OTP"}
+              <Icon name="fa-solid fa-rotate" size={12} />
+              <span>{isVi ? "Gửi lại mã OTP" : "Resend OTP"}</span>
             </button>
           </form>
         )}
@@ -381,8 +391,9 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
               { label: isVi ? "Xác nhận mật khẩu" : "Confirm Password", val: confirmPwd, set: setConfirmPwd, hint: "" },
             ].map(({ label, val, set, hint }) => (
               <div key={label} style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
-                  🔑 {label}
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+                  <Icon name="fa-solid fa-key" size={12} />
+                  <span>{label}</span>
                 </label>
                 <input type="password" required value={val} onChange={e => set(e.target.value)}
                   placeholder="••••••••" style={INPUT_STYLE}
@@ -416,7 +427,7 @@ export default function ForgotPasswordPage({ onBackToLogin, lang = "vi" }) {
 
             <button type="submit" disabled={loading}
               style={{ ...BTN, background: loading ? "#94a3b8" : "#059669", color: "#fff" }}>
-              {loading ? "⏳ Đang lưu..." : (isVi ? "💾 Đặt lại mật khẩu" : "Reset Password")}
+              {loading ? (isVi ? "Đang lưu..." : "Saving...") : (isVi ? "Đặt lại mật khẩu" : "Reset Password")}
             </button>
           </form>
         )}

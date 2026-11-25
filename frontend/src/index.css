@@ -142,36 +142,36 @@ h1, h2, h3, h4, h5, h6 {
   --border: #0A3D5C;
   --border-soft: #062B42;
   --border-strong: #0E4E75;
-  --border-focus: #00E5FF;
+  --border-focus: #38BDF8;
 
-  --text-1: #F0FDFA;
-  --text-2: #CCFBF1;
-  --text-3: #99F6E4;
-  --text-4: #2DD4BF;
+  --text-1: #F8FAFC;
+  --text-2: #E2E8F0;
+  --text-3: #94A3B8;
+  --text-4: #64748B;
 
   --navy: #010F1A;
   --navy-light: #021727;
-  --blue: #00E5FF;
+  --blue: #38BDF8;
   --blue-dim: #04243D;
-  --blue-soft: rgba(0, 229, 255, 0.14);
+  --blue-soft: rgba(56, 189, 248, 0.14);
 
-  --cyan: #00E5FF;
+  --cyan: #38BDF8;
   --cyan-dim: #04243D;
-  --cyan-soft: rgba(0, 229, 255, 0.14);
-  --cyan-hover: #22D3EE;
-  --cyan-electric: #00E5FF;
-  --cyan-mint: #2DD4BF;
-  --nav-active-bg: rgba(0, 229, 255, 0.12);
-  --nav-active-border: rgba(0, 229, 255, 0.35);
-  --nav-active-text: #00e5ff;
+  --cyan-soft: rgba(56, 189, 248, 0.14);
+  --cyan-hover: #0284C7;
+  --cyan-electric: #38BDF8;
+  --cyan-mint: #38BDF8;
+  --nav-active-bg: rgba(56, 189, 248, 0.12);
+  --nav-active-border: rgba(56, 189, 248, 0.35);
+  --nav-active-text: #38bdf8;
 
-  --brand: #00E5FF;
-  --brand-hover: #22D3EE;
-  --brand-soft: rgba(0, 229, 255, 0.14);
-  --brand-glow: 0 0 20px rgba(0, 229, 255, 0.45);
-  --brand-gradient: linear-gradient(135deg, #0284c7 0%, #00e5ff 100%);
-  --brand-gradient-hover: linear-gradient(135deg, #0369a1 0%, #38bdf8 100%);
-  --brand-gradient-shadow: 0 4px 16px rgba(0, 229, 255, 0.35);
+  --brand: #38BDF8;
+  --brand-hover: #0284C7;
+  --brand-soft: rgba(56, 189, 248, 0.14);
+  --brand-glow: 0 0 20px rgba(56, 189, 248, 0.35);
+  --brand-gradient: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+  --brand-gradient-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
 
   --green: #34D399;
   --green-dim: #164634;
@@ -912,7 +912,7 @@ svg {
   flex: 1;
   overflow: hidden;
   position: relative;
-  background: radial-gradient(1200px 500px at 50% 0px, rgba(6, 182, 212, 0.035) 0%, rgba(255, 255, 255, 0) 100%), var(--bg-app);
+  background: var(--base);
 }
 
 .kpi-quick-strip {
@@ -938,6 +938,7 @@ svg {
   overflow-x: hidden;
   padding: 24px 28px 60px;
   display: none;
+  background: var(--base);
 }
 .view.active {
   display: block;
@@ -3223,6 +3224,155 @@ select:focus {
   display: flex !important;
   flex-direction: column !important;
   gap: 22px !important;
+}
+
+/* ============================================================
+   DARK MODE OVERRIDES FOR TAILWIND MATERIAL / SURFACE TOKENS
+   Fixes bright white cards in DocumentsView, SopView, KnowledgeView, ReportsView
+   ============================================================ */
+[data-theme="dark"], html.dark {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .bg-surface-container-lowest,
+html.dark .bg-surface-container-lowest,
+[data-theme="dark"] .bg-surface-card,
+html.dark .bg-surface-card,
+[data-theme="dark"] .bg-white,
+html.dark .bg-white {
+  background-color: var(--surface, #031B2C) !important;
+  color: var(--text-1, #F8FAFC) !important;
+}
+
+[data-theme="dark"] .bg-surface-container-low,
+html.dark .bg-surface-container-low {
+  background-color: var(--surface-2, #052438) !important;
+  color: var(--text-1, #F8FAFC) !important;
+}
+
+[data-theme="dark"] .bg-surface-container,
+html.dark .bg-surface-container {
+  background-color: var(--surface-3, #072D45) !important;
+  color: var(--text-1, #F8FAFC) !important;
+}
+
+[data-theme="dark"] .bg-surface-container-high,
+html.dark .bg-surface-container-high {
+  background-color: var(--surface-hover, #09344F) !important;
+  color: var(--text-1, #F8FAFC) !important;
+}
+
+[data-theme="dark"] .bg-surface-container-highest,
+html.dark .bg-surface-container-highest {
+  background-color: #0c3e64 !important;
+  color: var(--text-1, #F8FAFC) !important;
+}
+
+[data-theme="dark"] .text-on-surface,
+html.dark .text-on-surface {
+  color: #F8FAFC !important;
+}
+
+[data-theme="dark"] .text-on-surface-variant,
+html.dark .text-on-surface-variant {
+  color: #94A3B8 !important;
+}
+
+[data-theme="dark"] .text-outline,
+html.dark .text-outline {
+  color: #64748B !important;
+}
+
+[data-theme="dark"] .text-text-primary,
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-slate-900,
+html.dark .text-text-primary,
+html.dark .text-gray-900,
+html.dark .text-slate-900 {
+  color: #F8FAFC !important;
+}
+
+[data-theme="dark"] .text-text-secondary,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-slate-700,
+html.dark .text-text-secondary,
+html.dark .text-gray-700,
+html.dark .text-slate-700 {
+  color: #E2E8F0 !important;
+}
+
+[data-theme="dark"] .text-text-muted,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-slate-500,
+html.dark .text-text-muted,
+html.dark .text-gray-500,
+html.dark .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+[data-theme="dark"] [class*="border-outline-variant"],
+html.dark [class*="border-outline-variant"] {
+  border-color: rgba(0, 229, 255, 0.16) !important;
+}
+
+/* Translucent tinted backgrounds for badge chips in Dark Mode */
+[data-theme="dark"] .bg-blue-50,
+html.dark .bg-blue-50 {
+  background-color: rgba(0, 229, 255, 0.12) !important;
+  color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .bg-emerald-50,
+html.dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
+
+[data-theme="dark"] .bg-amber-50,
+html.dark .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .bg-rose-50,
+[data-theme="dark"] .bg-red-50,
+html.dark .bg-rose-50,
+html.dark .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .bg-purple-50,
+html.dark .bg-purple-50 {
+  background-color: rgba(8, 145, 178, 0.15) !important;
+  color: #22d3ee !important;
+}
+
+[data-theme="dark"] .bg-cyan-50,
+html.dark .bg-cyan-50 {
+  background-color: rgba(6, 182, 212, 0.15) !important;
+  color: #22d3ee !important;
+}
+
+[data-theme="dark"] .bg-primary-fixed,
+html.dark .bg-primary-fixed {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  color: #38BDF8 !important;
+}
+
+[data-theme="dark"] .bg-secondary-fixed,
+html.dark .bg-secondary-fixed {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  color: #38BDF8 !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color-scheme: dark;
 }
 
 

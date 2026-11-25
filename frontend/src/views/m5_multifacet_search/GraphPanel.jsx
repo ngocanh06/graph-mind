@@ -7,21 +7,21 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from "d3-force";
 import { fetchNeo4jStatus, fetchNeo4jGraph, fetchNeo4jNode, runCypherQuery, searchNeo4jNodes, expandNeo4jNode } from "../../services/api";
 
-// Color map for real Neo4j labels — Unified Harmonious Teal/Cyan/Ocean Enterprise Spectrum
+// Color map for real Neo4j labels — Distinct, high-contrast, professional palette (no purple)
 const LABEL_COLORS = {
-  Product: { bg: "#f0fdf4", border: "#0d9488", text: "#115e59", circle: "#0d9488", highlight: "#5eead4", shadow: "#134e4a", shape: "circle" },
-  Category: { bg: "#f0f9ff", border: "#0284c7", text: "#0369a1", circle: "#0284c7", highlight: "#7dd3fc", shadow: "#075985", shape: "circle" },
-  SubCategory: { bg: "#ecfeff", border: "#0891b2", text: "#0e7490", circle: "#0891b2", highlight: "#67e8f9", shadow: "#155e75", shape: "circle" },
-  Customer: { bg: "#ecfeff", border: "#06b6d4", text: "#0e7490", circle: "#06b6d4", highlight: "#a5f3fc", shadow: "#0891b2", shape: "circle" },
-  SalesOrder: { bg: "#f0fdfa", border: "#14b8a6", text: "#0f766e", circle: "#14b8a6", highlight: "#99f6e4", shadow: "#115e59", shape: "circle" },
-  Employee: { bg: "#f8fafc", border: "#475569", text: "#1e293b", circle: "#475569", highlight: "#94a3b8", shadow: "#334155", shape: "circle" },
-  Contract: { bg: "#f0fdfa", border: "#0f766e", text: "#134e4a", circle: "#0f766e", highlight: "#2dd4bf", shadow: "#042f2e", shape: "circle" },
-  Clause: { bg: "#e0f2fe", border: "#0369a1", text: "#075985", circle: "#0369a1", highlight: "#38bdf8", shadow: "#0c4a6e", shape: "circle" },
-  Company: { bg: "#cffafe", border: "#00b4d8", text: "#0077b6", circle: "#00b4d8", highlight: "#90e0ef", shadow: "#0096c7", shape: "circle" },
-  Document: { bg: "#f1f5f9", border: "#64748b", text: "#334155", circle: "#64748b", highlight: "#cbd5e1", shadow: "#475569", shape: "circle" },
-  Department: { bg: "#f0f9ff", border: "#0284c7", text: "#0369a1", circle: "#0284c7", highlight: "#38bdf8", shadow: "#075985", shape: "circle" },
-  Vendor: { bg: "#ecfdf5", border: "#10b981", text: "#065f46", circle: "#10b981", highlight: "#6ee7b7", shadow: "#047857", shape: "circle" },
-  default: { bg: "#f8fafc", border: "#64748b", text: "#334155", circle: "#64748b", highlight: "#cbd5e1", shadow: "#475569", shape: "circle" },
+  Category:    { bg: "#eff6ff", border: "#2563eb", text: "#1e40af", circle: "#2563eb", highlight: "#60a5fa", shadow: "#1d4ed8", shape: "circle" },
+  SubCategory: { bg: "#f0f9ff", border: "#0284c7", text: "#075985", circle: "#0284c7", highlight: "#38bdf8", shadow: "#0369a1", shape: "circle" },
+  Product:     { bg: "#ecfdf5", border: "#059669", text: "#065f46", circle: "#059669", highlight: "#34d399", shadow: "#047857", shape: "circle" },
+  Customer:    { bg: "#fffbeb", border: "#d97706", text: "#b45309", circle: "#f59e0b", highlight: "#fde047", shadow: "#b45309", shape: "circle" },
+  SalesOrder:  { bg: "#fff7ed", border: "#ea580c", text: "#9a3412", circle: "#ea580c", highlight: "#fb923c", shadow: "#c2410c", shape: "circle" },
+  Contract:    { bg: "#fef2f2", border: "#dc2626", text: "#991b1b", circle: "#dc2626", highlight: "#f87171", shadow: "#b91c1c", shape: "circle" },
+  Clause:      { bg: "#f0fdfa", border: "#0d9488", text: "#115e59", circle: "#0d9488", highlight: "#2dd4bf", shadow: "#0f766e", shape: "circle" },
+  Company:     { bg: "#eff6ff", border: "#1d4ed8", text: "#172554", circle: "#1d4ed8", highlight: "#93c5fd", shadow: "#1e3a8a", shape: "circle" },
+  Vendor:      { bg: "#f7fee7", border: "#65a30d", text: "#3f6212", circle: "#65a30d", highlight: "#a3e635", shadow: "#4d7c0f", shape: "circle" },
+  Employee:    { bg: "#f8fafc", border: "#475569", text: "#1e293b", circle: "#475569", highlight: "#94a3b8", shadow: "#334155", shape: "circle" },
+  Document:    { bg: "#fff1f2", border: "#e11d48", text: "#9f1239", circle: "#e11d48", highlight: "#fb7185", shadow: "#be123c", shape: "circle" },
+  Department:  { bg: "#ecfeff", border: "#0891b2", text: "#155e75", circle: "#0891b2", highlight: "#22d3ee", shadow: "#0e7490", shape: "circle" },
+  default:     { bg: "#f8fafc", border: "#64748b", text: "#334155", circle: "#64748b", highlight: "#cbd5e1", shadow: "#475569", shape: "circle" },
 };
 
 const LABEL_ICONS = {
@@ -41,13 +41,13 @@ const LABEL_ICONS = {
 };
 
 const REL_COLORS = {
-  PURCHASED: "#0284c7",
-  PLACED_ORDER: "#0ea5e9",
-  CONTAINS_PRODUCT: "#0d9488",
-  CONTAINS_CLAUSE: "#0891b2",
-  PARTY_TO: "#14b8a6",
-  PART_OF: "#0e7490",
-  BELONGS_TO: "#0284c7",
+  PURCHASED: "#f59e0b",
+  PLACED_ORDER: "#ea580c",
+  CONTAINS_PRODUCT: "#059669",
+  CONTAINS_CLAUSE: "#0d9488",
+  PARTY_TO: "#dc2626",
+  PART_OF: "#0284c7",
+  BELONGS_TO: "#2563eb",
   default: "#94a3b8"
 };
 
@@ -483,8 +483,50 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
   };
 
   const resetViewport = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    const posList = Object.values(nodePositions);
+    const svg = svgRef.current;
+    if (!posList.length || !svg) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+
+    const rect = svg.getBoundingClientRect();
+    const width = rect.width || 800;
+    const height = rect.height || 600;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    posList.forEach(p => {
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+    });
+
+    if (minX === Infinity) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+
+    const padding = 80;
+    const graphWidth = Math.max(100, maxX - minX + padding * 2);
+    const graphHeight = Math.max(100, maxY - minY + padding * 2);
+
+    const scaleX = width / graphWidth;
+    const scaleY = height / graphHeight;
+    const targetZoom = Math.max(0.45, Math.min(1.6, Math.min(scaleX, scaleY)));
+
+    const graphCenterX = (minX + maxX) / 2;
+    const graphCenterY = (minY + maxY) / 2;
+
+    const targetPanX = width / 2 - graphCenterX * targetZoom;
+    const targetPanY = height / 2 - graphCenterY * targetZoom;
+
+    setZoom(Number(targetZoom.toFixed(2)));
+    setPan({ x: Math.round(targetPanX), y: Math.round(targetPanY) });
   };
 
   // Node selection & neighbor inspection
@@ -565,27 +607,27 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         flexWrap: "wrap", gap: 12, padding: "12px 18px",
-        background: "#ffffff",
-        border: "1px solid #e2e8f0",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
         borderRadius: 8,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+        boxShadow: "var(--shadow-xs)"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-            background: "#ecfeff", border: "1px solid #cffafe", color: "#0891b2", fontSize: 14
+            background: "rgba(8, 145, 178, 0.12)", border: "1px solid rgba(8, 145, 178, 0.25)", color: "#0891b2", fontSize: 14
           }}>
             <i className="fa-solid fa-circle-nodes" />
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span>{isVi ? "Đồ thị Tri thức Neo4j" : "Neo4j Knowledge Graph"}</span>
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 padding: "2px 8px", borderRadius: 4, fontSize: 10.5, fontWeight: 600,
-                background: connected ? "#ecfdf5" : "#fee2e2",
-                color: connected ? "#065f46" : "#b91c1c",
-                border: `1px solid ${connected ? "#a7f3d0" : "#fca5a5"}`
+                background: connected ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
+                color: connected ? "#10b981" : "#ef4444",
+                border: `1px solid ${connected ? "rgba(16, 185, 129, 0.25)" : "rgba(239, 68, 68, 0.25)"}`
               }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: connected ? "#10b981" : "#ef4444" }} />
                 <span>{connected ? "Neo4j Live" : "Offline"}</span>
@@ -593,15 +635,15 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "2px 8px", borderRadius: 4, fontSize: 10.5, fontWeight: 600,
-                background: "#f0fdfa",
+                background: "rgba(8, 145, 178, 0.12)",
                 color: "#0891b2",
-                border: "1px solid #ccfbf1"
+                border: "1px solid rgba(8, 145, 178, 0.25)"
               }}>
                 <i className="fa-solid fa-shield-halved text-[10px]" />
                 <span>{currentUser?.badge || (isPrivileged ? "EXECUTIVE DIRECTOR" : (isManager ? "TRƯỞNG PHÒNG" : "CHUYÊN VIÊN"))}</span>
               </span>
             </div>
-            <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2 }}>
+            <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
               {nodes.length} nodes · {rels.length} liên kết
               <span style={{ marginLeft: 6, fontSize: 11, color: "#0891b2", fontWeight: 500 }}>
                 {isPrivileged
@@ -616,14 +658,14 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
 
         {/* Controls: Limit, Refresh */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "#334155" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-2)" }}>
             <span>{isVi ? "Hiển thị:" : "Limit:"}</span>
             <select
               value={nodeLimit}
               onChange={e => setNodeLimit(Number(e.target.value))}
               style={{
-                padding: "4px 8px", borderRadius: 6, border: "1px solid #cbd5e1",
-                fontSize: 11.5, background: "#ffffff", color: "#0f172a", outline: "none"
+                padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)",
+                fontSize: 11.5, background: "var(--surface-2)", color: "var(--text-1)", outline: "none"
               }}
             >
               <option value={30}>30 nodes</option>
@@ -638,9 +680,9 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             disabled={loading}
             style={{
               display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px",
-              borderRadius: 6, border: "1px solid #cbd5e1",
-              background: "#f8fafc", cursor: "pointer",
-              fontSize: 11.5, fontWeight: 600, color: "#0f172a", transition: "all 0.15s"
+              borderRadius: 6, border: "1px solid var(--border)",
+              background: "var(--surface-2)", cursor: "pointer",
+              fontSize: 11.5, fontWeight: 600, color: "var(--text-1)", transition: "all 0.15s"
             }}
           >
             <i className={`fa-solid fa-rotate-right text-xs ${loading ? "fa-spin" : ""}`} />
@@ -683,12 +725,12 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         gap: 10, flexWrap: "wrap", padding: "8px 14px",
-        background: "#ffffff", borderRadius: 8,
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+        background: "var(--surface)", borderRadius: 8,
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow-xs)"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11.5, fontWeight: 600, color: "#64748b", marginRight: 4 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", marginRight: 4 }}>
             {isVi ? "Miền tri thức:" : "Domain:"}
           </span>
           {[
@@ -704,9 +746,9 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                 onClick={() => setSelectedDomain(dom.id)}
                 style={{
                   padding: "4px 11px", borderRadius: 6, fontSize: 11.5, fontWeight: isSelected ? 700 : 500,
-                  cursor: "pointer", border: isSelected ? "1px solid #0891b2" : "1px solid #e2e8f0",
-                  background: isSelected ? "#0891b2" : "#ffffff",
-                  color: isSelected ? "#ffffff" : "#334155",
+                  cursor: "pointer", border: isSelected ? "1px solid #0891b2" : "1px solid var(--border)",
+                  background: isSelected ? "#0891b2" : "var(--surface-2)",
+                  color: isSelected ? "#ffffff" : "var(--text-2)",
                   transition: "all 0.15s"
                 }}
               >
@@ -717,7 +759,7 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 500, color: "#64748b" }}>
+          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-3)" }}>
             {isVi ? "Loại quan hệ:" : "Relationship:"}
           </span>
           <select
@@ -725,8 +767,8 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             onChange={e => setSelectedRelType(e.target.value)}
             style={{
               padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 500,
-              border: "1px solid #cbd5e1", background: "#ffffff",
-              color: "#0f172a", outline: "none"
+              border: "1px solid var(--border)", background: "var(--surface-2)",
+              color: "var(--text-1)", outline: "none"
             }}
           >
             <option value="ALL">{isVi ? "Tất cả quan hệ" : "All Relationships"}</option>
@@ -744,19 +786,19 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
       {/* ── LABEL FILTER TAGS ────────────────────────────────────────── */}
       <div style={{
         display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
-        padding: "8px 14px", background: "#ffffff", borderRadius: 8,
-        border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+        padding: "8px 14px", background: "var(--surface)", borderRadius: 8,
+        border: "1px solid var(--border)", boxShadow: "var(--shadow-xs)"
       }}>
-        <span style={{ fontSize: 11.5, fontWeight: 600, color: "#64748b", marginRight: 2 }}>
+        <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-3)", marginRight: 2 }}>
           {isVi ? "Nhãn thực thể:" : "Labels:"}
         </span>
         <button
           onClick={() => setSelectedLabel("ALL")}
           style={{
             padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: selectedLabel === "ALL" ? 700 : 500,
-            cursor: "pointer", border: selectedLabel === "ALL" ? "1px solid #0891b2" : "1px solid #e2e8f0",
-            background: selectedLabel === "ALL" ? "#0891b2" : "#f8fafc",
-            color: selectedLabel === "ALL" ? "#ffffff" : "#334155",
+            cursor: "pointer", border: selectedLabel === "ALL" ? "1px solid #0891b2" : "1px solid var(--border)",
+            background: selectedLabel === "ALL" ? "#0891b2" : "var(--surface-2)",
+            color: selectedLabel === "ALL" ? "#ffffff" : "var(--text-2)",
             transition: "all 0.15s"
           }}
         >
@@ -776,9 +818,9 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                   display: "inline-flex", alignItems: "center", gap: 5,
                   padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: isSelected ? 700 : 500,
                   cursor: "pointer",
-                  border: isSelected ? "1px solid #0891b2" : "1px solid #e2e8f0",
-                  background: isSelected ? "#0891b2" : "#ffffff",
-                  color: isSelected ? "#ffffff" : "#334155",
+                  border: isSelected ? "1px solid #0891b2" : "1px solid var(--border)",
+                  background: isSelected ? "#0891b2" : "var(--surface-2)",
+                  color: isSelected ? "#ffffff" : "var(--text-2)",
                   transition: "all 0.15s"
                 }}
               >
@@ -839,7 +881,7 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                 handleSearchAndFocus(searchTerm.trim());
               }
             }}
-            placeholder={isVi ? "Tìm thực thể... (Enter)" : "Search entities... (Enter)"}
+            placeholder={isVi ? "Tìm kiếm thực thể..." : "Search entities..."}
             style={{
               padding: "5px 12px 5px 28px", borderRadius: 6, border: "1px solid var(--border-soft, #cbd5e1)",
               fontSize: 12, outline: "none", width: 190,
@@ -850,8 +892,9 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             <button
               onClick={() => setSearchTerm("")}
               style={{ border: "none", background: "none", cursor: "pointer", fontSize: 12, color: "var(--text-3)", padding: "0 4px" }}
+              title={isVi ? "Xóa tìm kiếm" : "Clear"}
             >
-              ✕
+              <i className="fa-solid fa-xmark" />
             </button>
           )}
         </div>
@@ -872,9 +915,9 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
           <div
             style={{
               flex: 1, position: "relative", borderRadius: 8, overflow: "hidden",
-              border: "1px solid #e2e8f0",
-              background: "#ffffff",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+              border: "1px solid var(--border)",
+              background: "var(--base, #ffffff)",
+              boxShadow: "var(--shadow-xs)",
               userSelect: "none"
             }}
           >
@@ -882,11 +925,11 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             <div style={{
               position: "absolute", top: 12, left: 12, zIndex: 10,
               display: "flex", alignItems: "center", gap: 8,
-              background: "rgba(255,255,255,0.94)", backdropFilter: "blur(8px)",
+              background: "var(--surface)", backdropFilter: "blur(8px)",
               padding: "6px 14px", borderRadius: 20,
-              border: "1px solid var(--border-soft, #cbd5e1)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-              fontSize: 11.5, color: "var(--text-2, #334155)"
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-sm)",
+              fontSize: 11.5, color: "var(--text-2)"
             }}>
               {searchTerm ? (
                 <>
@@ -899,10 +942,12 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                     style={{
                       padding: "2px 9px", borderRadius: 10, fontSize: 10.5, fontWeight: 700,
                       background: "#0891b2", color: "#fff", border: "none", cursor: "pointer",
-                      boxShadow: "0 1px 3px rgba(8,145,178,0.3)"
+                      boxShadow: "0 1px 3px rgba(8,145,178,0.3)",
+                      display: "inline-flex", alignItems: "center", gap: 4
                     }}
                   >
-                    {isVi ? "✕ Xem toàn cảnh (50+ nodes)" : "✕ View Full Graph"}
+                    <i className="fa-solid fa-globe" />
+                    <span>{isVi ? "Xem toàn cảnh (50+ thực thể)" : "View Full Graph"}</span>
                   </button>
                 </>
               ) : (
@@ -910,11 +955,11 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
                   <span>
                     {isVi
-                      ? `Toàn cảnh: ${filteredNodes.length} nodes · ${rels.length} liên kết thực tế`
+                      ? `Toàn cảnh: ${filteredNodes.length} thực thể · ${rels.length} liên kết thực tế`
                       : `Graph: ${filteredNodes.length} nodes · ${rels.length} live edges`}
                   </span>
-                  <span style={{ color: "var(--text-4, #94a3b8)", fontSize: 10.5 }}>
-                    {isVi ? "(Kéo thả để di chuyển · Cuộn để zoom)" : "(Drag to pan · Scroll to zoom)"}
+                  <span style={{ color: "var(--text-4)", fontSize: 10.5 }}>
+                    {isVi ? "(Kéo thả để di chuyển · Cuộn chuột để thu phóng)" : "(Drag to pan · Scroll to zoom)"}
                   </span>
                 </span>
               )}
@@ -924,37 +969,44 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
             <div style={{
               position: "absolute", top: 12, right: 12, zIndex: 10,
               display: "flex", flexDirection: "column", gap: 6,
-              background: "rgba(255,255,255,0.95)", backdropFilter: "blur(6px)",
-              padding: 6, borderRadius: 8, border: "1px solid #cbd5e1", boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+              background: "var(--surface)", backdropFilter: "blur(6px)",
+              padding: 6, borderRadius: 8, border: "1px solid var(--border)", boxShadow: "var(--shadow-md)"
             }}>
               <button
                 onClick={() => setZoom(z => Math.min(3.5, z * 1.2))}
-                title="Zoom In"
-                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontWeight: 700 }}
-              >+</button>
+                title={isVi ? "Phóng to" : "Zoom In"}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)" }}
+              >
+                <i className="fa-solid fa-plus text-xs" />
+              </button>
               <button
                 onClick={() => setZoom(z => Math.max(0.3, z / 1.2))}
-                title="Zoom Out"
-                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontWeight: 700 }}
-              >-</button>
+                title={isVi ? "Thu nhỏ" : "Zoom Out"}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)" }}
+              >
+                <i className="fa-solid fa-minus text-xs" />
+              </button>
               <button
                 onClick={resetViewport}
-                title="Fit View"
-                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 11 }}
-              >⤢</button>
+                title={isVi ? "Căn vừa toàn cảnh" : "Fit View"}
+                style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)" }}
+              >
+                <i className="fa-solid fa-expand text-xs" />
+              </button>
             </div>
 
             {/* Canvas Legend */}
             <div style={{
               position: "absolute", bottom: 12, left: 12, zIndex: 10,
-              display: "flex", gap: 8, background: "rgba(255,255,255,0.92)",
-              padding: "5px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 11,
-              backdropFilter: "blur(6px)", boxShadow: "0 1px 4px rgba(0,0,0,0.05)"
+              display: "flex", gap: "10px 14px", background: "var(--surface)",
+              padding: "6px 14px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 11,
+              backdropFilter: "blur(6px)", boxShadow: "var(--shadow-sm)",
+              flexWrap: "wrap", maxWidth: "calc(100% - 24px)"
             }}>
               {Object.entries(LABEL_COLORS).filter(([k]) => k !== "default" && allowedLabels.includes(k)).map(([lbl, c]) => (
-                <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.circle }} />
-                  <span style={{ color: "var(--text-2, #334155)", fontWeight: 600, fontSize: 10.5 }}>{lbl}</span>
+                <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: c.circle, boxShadow: `0 0 0 2px ${c.highlight}55` }} />
+                  <span style={{ color: "var(--text-1, #0f172a)", fontWeight: 700, fontSize: 11 }}>{lbl}</span>
                 </div>
               ))}
             </div>
@@ -1257,26 +1309,29 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
           {/* Side Inspector Panel (Node or Rel details) */}
           <div style={{
             width: 320, flexShrink: 0, borderRadius: 8,
-            border: "1px solid #e2e8f0",
-            background: "#ffffff", padding: 16,
+            border: "1px solid var(--border)",
+            background: "var(--surface)", padding: 16,
             display: "flex", flexDirection: "column", gap: 12,
-            overflowY: "auto", boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+            overflowY: "auto", boxShadow: "var(--shadow-xs)"
           }}>
             {selectedNode ? (
               <>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#64748b" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-3)" }}>
                       Entity Inspector
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a", marginTop: 2 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-1)", marginTop: 2 }}>
                       {selectedNode.name || selectedNode._id}
                     </div>
                   </div>
                   <button
                     onClick={() => setSelectedNode(null)}
-                    style={{ border: "none", background: "none", cursor: "pointer", fontSize: 14, color: "#64748b" }}
-                  >✕</button>
+                    style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13, color: "var(--text-3)", padding: 4 }}
+                    title={isVi ? "Đóng chi tiết" : "Close"}
+                  >
+                    <i className="fa-solid fa-xmark" />
+                  </button>
                 </div>
 
                 {/* Labels */}
@@ -1311,7 +1366,17 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                     boxShadow: "0 1px 3px rgba(8,145,178,0.25)", transition: "all 0.15s"
                   }}
                 >
-                  {expanding ? "⏳ Đang mở rộng..." : (isVi ? "🔍 Mở rộng liên kết (Expand 1-hop)" : "🔍 Expand Neighbors (1-hop)")}
+                  {expanding ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin" />
+                      <span>{isVi ? "Đang mở rộng..." : "Expanding..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-diagram-project" />
+                      <span>{isVi ? "Mở rộng liên kết (1-hop)" : "Expand Neighbors (1-hop)"}</span>
+                    </>
+                  )}
                 </button>
 
                 {/* Provenance & Source Metadata Card */}
@@ -1329,12 +1394,14 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                   </div>
                   {selectedNode.source_file && (
                     <div style={{ color: "#334155", wordBreak: "break-all", marginBottom: 2 }}>
-                      📁 File: <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{selectedNode.source_file}</span>
+                      <i className="fa-solid fa-folder" style={{ color: "#0891b2", marginRight: 5 }} />
+                      File: <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{selectedNode.source_file}</span>
                     </div>
                   )}
                   {selectedNode.source_table && (
                     <div style={{ color: "#334155", marginBottom: 2 }}>
-                      📊 Table: <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{selectedNode.source_table}</span>
+                      <i className="fa-solid fa-table" style={{ color: "#0891b2", marginRight: 5 }} />
+                      Table: <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{selectedNode.source_table}</span>
                     </div>
                   )}
                   {selectedNode.evidence_text && (
@@ -1432,8 +1499,11 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                   </div>
                   <button
                     onClick={() => setSelectedRel(null)}
-                    style={{ border: "none", background: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}
-                  >✕</button>
+                    style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13, color: "var(--text-3)", padding: 4 }}
+                    title={isVi ? "Đóng chi tiết" : "Close"}
+                  >
+                    <i className="fa-solid fa-xmark" />
+                  </button>
                 </div>
 
                 <div style={{ padding: 10, background: "var(--bg-subtle, #f8fafc)", borderRadius: 8, fontSize: 12 }}>
@@ -1637,7 +1707,17 @@ export default function GraphPanel({ lang = "vi", onSelectNode = null, initialSe
                 background: connected ? "#0284c7" : "#cbd5e1", color: "#fff", fontWeight: 700, fontSize: 13
               }}
             >
-              {cypherLoading ? "⏳..." : "▶ Run Cypher"}
+              {cypherLoading ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <i className="fa-solid fa-spinner fa-spin" />
+                  <span>{isVi ? "Đang chạy..." : "Running..."}</span>
+                </span>
+              ) : (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <i className="fa-solid fa-play" style={{ fontSize: 11 }} />
+                  <span>{isVi ? "Chạy Cypher" : "Run Cypher"}</span>
+                </span>
+              )}
             </button>
             <button
               onClick={() => setCypher("MATCH (n:Product)-[r:BELONGS_TO]->(s:SubCategory) RETURN n.Name as Product, s.Name as SubCategory LIMIT 10")}
