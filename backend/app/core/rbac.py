@@ -391,6 +391,12 @@ class ScopeContext:
             return True
         if self.is_unrestricted and "*" in self.allowed_depts:
             return True
+        d_lower = target_dept.strip().lower()
+        if d_lower in self.allowed_depts or "*" in self.allowed_depts:
+            return True
+        norm_d = normalize_dept(target_dept)
+        if norm_d in self.allowed_depts:
+            return True
         res_type = resolve_resource_type(target_dept)
         if self.allowed_resources:
             return res_type in self.allowed_resources

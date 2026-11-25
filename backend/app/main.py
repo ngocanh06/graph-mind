@@ -249,6 +249,7 @@ app.add_middleware(
 # Authentication routers (/api/v1/auth and /api/auth)
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+# Knowledge Editor HITL router exposes /api/graph/verify (FR24, PB41)
 app.include_router(graph_editor_router, tags=["Knowledge Editor"])
 
 # Copilot routers (/api/copilot and /api/v1/copilot)
