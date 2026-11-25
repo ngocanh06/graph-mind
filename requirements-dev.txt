@@ -5,4 +5,15 @@ pytest>=8.0.0
 pytest-asyncio>=0.23.0
 pytest-mock>=3.12.0
 pytest-socket>=0.7.0
+pytest-html>=4.1.0
 respx>=0.21.0
+httpx>=0.27.0
+
+# UI E2E Automation
+pytest-playwright>=0.5.0
+
+# Load & Performance Testing
+locust>=2.29.0
+
+# AI / GraphRAG Evaluation
+deepeval>=1.0.0
