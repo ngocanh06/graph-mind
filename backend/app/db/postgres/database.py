@@ -89,7 +89,7 @@ async def create_all_tables():
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ NULL;"))
         await conn.execute(text("UPDATE users SET status = CASE WHEN is_active = true THEN 'active' ELSE 'locked' END WHERE status IS NULL;"))
 
-        # Migrate knowledge_access_policies columns (PB48 / PB50 / M6 Admin RBAC)
+        # Migrate knowledge_access_policies (can_upload added in PB48/PB50 / M6 Admin RBAC)
         await conn.execute(text("ALTER TABLE knowledge_access_policies ADD COLUMN IF NOT EXISTS can_upload BOOLEAN NOT NULL DEFAULT FALSE;"))
 
 

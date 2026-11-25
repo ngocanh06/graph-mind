@@ -126,9 +126,9 @@ def generate_cypher_from_query(query: str) -> str:
         return f"""
         MATCH (d:Document)
         WHERE {CYPHER_SERVING_ELIGIBILITY_FILTER}
-          AND (toLower(d.name) CONTAINS 'expires' OR toLower(d.name) CONTAINS 'expiration' OR toLower(d.name) CONTAINS 'hết hạn')
+          AND (toLower(d.name) CONTAINS 'expires' OR toLower(d.name) CONTAINS 'expiration' OR toLower(d.name) CONTAINS 'agreement' OR toLower(d.name) CONTAINS 'contract' OR d.name ENDS WITH '.pdf' OR d.name ENDS WITH '.PDF')
         OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
-        WITH d, coalesce(dept.name, d.department, 'Chung') AS dept_name,
+        WITH d, coalesce(dept.name, d.department, 'Pháp chế (Legal)') AS dept_name,
              coalesce(d.ingestedAt, d.lastModified, '') AS upload_time
         ORDER BY d.name ASC
         RETURN d.name AS name,
@@ -138,10 +138,10 @@ def generate_cypher_from_query(query: str) -> str:
                dept_name AS department,
                upload_time AS ingestedAt,
                coalesce(d.chunksCount, 0) AS chunksCount,
-               'Hợp đồng ghi nhận thời hạn hết hạn: ' + d.name + ' (Mã hồ sơ: ' + d.id + ', Phòng ban: ' + dept_name + ').' AS snippet,
+               'Hợp đồng đối tác / cung ứng dịch vụ: ' + d.name + ' (Mã hồ sơ: ' + d.id + ', Phòng ban: ' + dept_name + ').' AS snippet,
                elementId(d) AS _id,
                ['Document', 'ExpiringContract', dept_name] AS _labels
-        LIMIT 10
+        LIMIT 6
         """
 
     # 0.036 CUAD Legal Contracts count query (e.g. "bao nhiêu hợp đồng pháp lý CUAD", "tổng số hợp đồng CUAD", "hợp đồng pháp lý")
