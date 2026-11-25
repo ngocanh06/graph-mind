@@ -35,6 +35,8 @@ const VIEW_TITLES = {
 
 // Role-specific view title overrides
 const ROLE_VIEW_TITLES = {
+  executive: { en: { reports: "Report Approvals & Strategic Decisions" }, vi: { reports: "Phê duyệt Báo cáo & Quyết định" } },
+  it_admin: { en: { reports: "Audit Reconciliation & System Reports" }, vi: { reports: "Báo cáo Kiểm toán & Giám sát" } },
   standard: { en: { search: "Client Operations Workspace", documents: "Contracts & Quotes", reports: "Work & Shift Report" }, vi: { search: "Tác nghiệp Khách hàng", documents: "Kho Hợp đồng & Báo giá", reports: "Báo cáo Công việc Ca" } },
   knowledge_manager: { en: { reports: "Department Performance Reports" }, vi: { reports: "Báo cáo Hiệu suất Phòng ban" } },
 };
@@ -128,7 +130,8 @@ export default function Topbar({
   }, []);
 
   const titles = VIEW_TITLES[lang] || VIEW_TITLES.en;
-  const roleOverrides = ROLE_VIEW_TITLES[role];
+  const normRole = (role === "admin" || currentUser?.id === "admin" || currentUser?.role === "it_admin") ? "it_admin" : (role || "executive");
+  const roleOverrides = ROLE_VIEW_TITLES[normRole] || ROLE_VIEW_TITLES[role];
   const roleSpecific = roleOverrides ? (roleOverrides[lang] || roleOverrides.en) : {};
   const currentTitle = roleSpecific[view] || titles[view] || titles.home;
 
