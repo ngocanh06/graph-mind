@@ -4,6 +4,7 @@ Endpoints:
 - POST /api/v1/auth/login: Xác thực đăng nhập qua email hoặc username và mật khẩu
 - GET  /api/v1/auth/me: Lấy thông tin tài khoản hiện tại từ JWT token
 """
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -88,7 +89,7 @@ async def login(
             detail="Tài khoản đã bị khóa, liên hệ quản trị viên",
         )
 
-    if not verify_password(payload.password, user.password_hash):
+    if not await asyncio.to_thread(verify_password, payload.password, user.password_hash):
         await log_action(db, action="LOGIN_FAIL", resource_type="user",
                          resource_id=str(user.user_id), detail=f"email={user.email}")
         raise HTTPException(

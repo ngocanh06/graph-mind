@@ -1866,22 +1866,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11000 có đơn hàng #57418 với tổng giá trị thanh toán là $2,770.27 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11000",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11000})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11000 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11000 -> SalesOrder #51522 có tổng giá trị là $2,587.88 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11000 có đơn hàng #51522 với tổng giá trị thanh toán là $2,587.88 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11000",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11000})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -1902,22 +1890,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11001 có đơn hàng #72773 với tổng giá trị thanh toán là $650.80 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11001",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11001})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11001 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11001 -> SalesOrder #51493 có tổng giá trị là $2,674.02 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11001 có đơn hàng #51493 với tổng giá trị thanh toán là $2,674.02 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11001",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11001})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -1938,22 +1914,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11002 có đơn hàng #51238 với tổng giá trị thanh toán là $2,535.96 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11002",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11002})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11002 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11002 -> SalesOrder #53237 có tổng giá trị là $2,673.06 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11002 có đơn hàng #53237 với tổng giá trị thanh toán là $2,673.06 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11002",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11002})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -1974,22 +1938,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11003 có đơn hàng #57783 với tổng giá trị thanh toán là $2,674.48 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11003",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11003})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11003 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11003 -> SalesOrder #51315 có tổng giá trị là $2,562.45 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11003 có đơn hàng #51315 với tổng giá trị thanh toán là $2,562.45 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11003",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11003})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2010,22 +1962,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11004 có đơn hàng #57293 với tổng giá trị thanh toán là $2,673.06 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11004",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11004})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11004 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11004 -> SalesOrder #51595 có tổng giá trị là $2,626.54 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11004 có đơn hàng #51595 với tổng giá trị thanh toán là $2,626.54 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11004",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11004})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2046,22 +1986,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11005 có đơn hàng #57361 với tổng giá trị thanh toán là $2,634.40 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11005",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11005})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11005 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11005 -> SalesOrder #51612 có tổng giá trị là $2,610.31 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11005 có đơn hàng #51612 với tổng giá trị thanh toán là $2,610.31 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11005",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11005})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2082,22 +2010,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11006 có đơn hàng #58007 với tổng giá trị thanh toán là $2,634.40 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11006",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11006})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11006 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11006 -> SalesOrder #51198 có tổng giá trị là $2,580.14 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11006 có đơn hàng #51198 với tổng giá trị thanh toán là $2,580.14 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11006",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11006})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2118,22 +2034,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11007 có đơn hàng #54705 với tổng giá trị thanh toán là $2,673.06 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11007",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11007})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11007 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11007 -> SalesOrder #51581 có tổng giá trị là $2,643.10 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11007 có đơn hàng #51581 với tổng giá trị thanh toán là $2,643.10 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11007",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11007})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2154,22 +2058,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11008 có đơn hàng #53765 với tổng giá trị thanh toán là $2,673.06 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11008",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11008})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11008 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11008 -> SalesOrder #51282 có tổng giá trị là $2,555.05 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11008 có đơn hàng #51282 với tổng giá trị thanh toán là $2,555.05 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11008",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11008})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2190,22 +2082,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11009 có đơn hàng #57736 với tổng giá trị thanh toán là $2,673.06 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11009",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11009})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11009 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11009 -> SalesOrder #51562 có tổng giá trị là $2,538.49 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11009 có đơn hàng #51562 với tổng giá trị thanh toán là $2,538.49 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11009",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11009})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2226,22 +2106,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11010 có đơn hàng #58533 với tổng giá trị thanh toán là $2,644.33 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11010",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11010})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11010 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11010 -> SalesOrder #51421 có tổng giá trị là $2,535.96 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11010 có đơn hàng #51421 với tổng giá trị thanh toán là $2,535.96 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11010",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11010})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2262,22 +2130,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11011 có đơn hàng #54706 với tổng giá trị thanh toán là $2,694.06 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11011",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11011})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11011 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11011 -> SalesOrder #51650 có tổng giá trị là $2,535.96 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11011 có đơn hàng #51650 với tổng giá trị thanh toán là $2,535.96 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11011",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11011})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2298,12 +2154,6 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11012 có đơn hàng #68413 với tổng giá trị thanh toán là $6.94 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11012",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11012})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11012 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11012 -> SalesOrder #54508 có tổng giá trị là $82.85 USD.",
@@ -2322,12 +2172,6 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11013 có đơn hàng #74908 với tổng giá trị thanh toán là $82.85 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11013",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11013})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11013 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11013 -> SalesOrder #56137 có tổng giá trị là $43.07 USD.",
@@ -2344,12 +2188,6 @@
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11014 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11014 -> SalesOrder #54898 có tổng giá trị là $43.07 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11014 có đơn hàng #54898 với tổng giá trị thanh toán là $43.07 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11014",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11014})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2394,22 +2232,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11017 có đơn hàng #68396 với tổng giá trị thanh toán là $820.30 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11017",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11017})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11017 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11017 -> SalesOrder #51256 có tổng giá trị là $2,560.25 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11017 có đơn hàng #51256 với tổng giá trị thanh toán là $2,560.25 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11017",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11017})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2430,22 +2256,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11018 có đơn hàng #69087 với tổng giá trị thanh toán là $874.41 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11018",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11018})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11018 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11018 -> SalesOrder #51492 có tổng giá trị là $2,587.88 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11018 có đơn hàng #51492 với tổng giá trị thanh toán là $2,587.88 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11018",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11018})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2466,22 +2280,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #74561 với tổng giá trị thanh toán là $132.60 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #74593 có tổng giá trị là $71.24 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #74593 với tổng giá trị thanh toán là $71.24 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2490,22 +2292,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #72015 với tổng giá trị thanh toán là $37.55 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #71963 có tổng giá trị là $82.30 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #71963 với tổng giá trị thanh toán là $82.30 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2514,22 +2304,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #72747 với tổng giá trị thanh toán là $137.00 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #69177 có tổng giá trị là $38.66 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #69177 với tổng giá trị thanh toán là $38.66 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2538,22 +2316,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #65967 với tổng giá trị thanh toán là $27.61 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #66658 có tổng giá trị là $26.28 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #66658 với tổng giá trị thanh toán là $26.28 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2562,22 +2328,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #68563 với tổng giá trị thanh toán là $41.18 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #64737 có tổng giá trị là $2.53 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #64737 với tổng giá trị thanh toán là $2.53 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2586,22 +2340,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #62659 với tổng giá trị thanh toán là $41.21 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #57639 có tổng giá trị là $8.04 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #57639 với tổng giá trị thanh toán là $8.04 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2610,22 +2352,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #56910 với tổng giá trị thanh toán là $9.93 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #53834 có tổng giá trị là $59.66 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #53834 với tổng giá trị thanh toán là $59.66 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2634,22 +2364,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #54332 với tổng giá trị thanh toán là $53.01 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11019 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11019 -> SalesOrder #58600 có tổng giá trị là $164.62 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11019 có đơn hàng #58600 với tổng giá trị thanh toán là $164.62 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11019",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11019})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2706,12 +2424,6 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11023 có đơn hàng #74658 với tổng giá trị thanh toán là $6.94 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11023",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11023})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11023 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11023 -> SalesOrder #52912 có tổng giá trị là $128.14 USD.",
@@ -2728,12 +2440,6 @@
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11024 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11024 -> SalesOrder #60998 có tổng giá trị là $46.72 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11024 có đơn hàng #60998 với tổng giá trị thanh toán là $46.72 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11024",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11024})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2754,22 +2460,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11025 có đơn hàng #69157 với tổng giá trị thanh toán là $879.96 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11025",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11025})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11025 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11025 -> SalesOrder #51561 có tổng giá trị là $2,658.04 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11025 có đơn hàng #51561 với tổng giá trị thanh toán là $2,658.04 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11025",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11025})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2790,22 +2484,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11026 có đơn hàng #68468 với tổng giá trị thanh toán là $857.84 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11026",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11026})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11026 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11026 -> SalesOrder #55132 có tổng giá trị là $2,651.41 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11026 có đơn hàng #55132 với tổng giá trị thanh toán là $2,651.41 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11026",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11026})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2826,22 +2508,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11027 có đơn hàng #69088 với tổng giá trị thanh toán là $860.38 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11027",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11027})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11027 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11027 -> SalesOrder #58536 có tổng giá trị là $2,666.32 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11027 có đơn hàng #58536 với tổng giá trị thanh toán là $2,666.32 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11027",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11027})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2862,22 +2532,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11028 có đơn hàng #67961 với tổng giá trị thanh toán là $820.30 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11028",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11028})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11028 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11028 -> SalesOrder #57943 có tổng giá trị là $2,604.79 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11028 có đơn hàng #57943 với tổng giá trị thanh toán là $2,604.79 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11028",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11028})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2898,22 +2556,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11029 có đơn hàng #70593 với tổng giá trị thanh toán là $835.74 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11029",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11029})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11029 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11029 -> SalesOrder #57294 có tổng giá trị là $2,661.91 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11029 có đơn hàng #57294 với tổng giá trị thanh toán là $2,661.91 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11029",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11029})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2934,22 +2580,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11030 có đơn hàng #70449 với tổng giá trị thanh toán là $830.23 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11030",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11030})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11030 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11030 -> SalesOrder #62739 có tổng giá trị là $2,563.59 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11030 có đơn hàng #62739 với tổng giá trị thanh toán là $2,563.59 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11030",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11030})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -2970,22 +2604,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11031 có đơn hàng #70748 với tổng giá trị thanh toán là $835.74 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11031",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11031})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11031 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11031 -> SalesOrder #62222 có tổng giá trị là $2,566.12 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11031 có đơn hàng #62222 với tổng giá trị thanh toán là $2,566.12 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11031",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11031})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -3006,22 +2628,10 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11032 có đơn hàng #70373 với tổng giá trị thanh toán là $830.23 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11032",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11032})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11032 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11032 -> SalesOrder #64042 có tổng giá trị là $2,651.15 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11032 có đơn hàng #64042 với tổng giá trị thanh toán là $2,651.15 USD."
-  },
-  {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11032",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11032})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
   },
   {
     "task": "rag_citation",
@@ -3042,15 +2652,405 @@
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11033 có đơn hàng #70163 với tổng giá trị thanh toán là $845.68 USD."
   },
   {
-    "task": "text_to_cypher",
-    "instruction": "Viết truy vấn Cypher để lấy thông tin các đơn hàng của khách hàng #11033",
-    "input": "",
-    "output": "MATCH (c:Customer {CustomerID: 11033})-[:PLACED_ORDER]->(o:SalesOrder) RETURN o.SalesOrderID, o.TotalDue, o.OrderDate ORDER BY o.TotalDue DESC;"
-  },
-  {
     "task": "rag_citation",
     "instruction": "Bạn là trợ lý ERP GraphMind. Trả lời câu hỏi tra cứu đơn hàng dựa trên cơ sở tri thức Neo4j.",
     "input": "Câu hỏi: Khách hàng #11033 có đơn hàng nào không?\nBằng chứng đồ thị: Customer #11033 -> SalesOrder #63409 có tổng giá trị là $2,602.25 USD.",
     "output": "Theo dữ liệu vận hành từ hệ thống AdventureWorks ERP, khách hàng #11033 có đơn hàng #63409 với tổng giá trị thanh toán là $2,602.25 USD."
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #1): Kiem tra dieu khoan Governing Law trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Governing Law'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #2): Kiem tra dieu khoan Termination For Convenience trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Termination For Convenience'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #3): Kiem tra dieu khoan Uncapped Liability trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Uncapped Liability'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #4): Kiem tra dieu khoan Cap On Liability trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Cap On Liability'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #5): Kiem tra dieu khoan Indemnification trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Indemnification'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #6): Kiem tra dieu khoan Audit Rights trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Audit Rights'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #7): Kiem tra dieu khoan Non-Compete trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Non-Compete'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #8): Kiem tra dieu khoan Exclusivity trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Exclusivity'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #9): Kiem tra dieu khoan Change Of Control trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Change Of Control'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #10): Kiem tra dieu khoan Anti-Assignment trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Anti-Assignment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #11): Kiem tra dieu khoan IP Ownership Assignment trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'IP Ownership Assignment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #12): Kiem tra dieu khoan Revenue/Profit Sharing trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Revenue/Profit Sharing'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #13): Kiem tra dieu khoan Warranty Duration trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Warranty Duration'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #14): Kiem tra dieu khoan Insurance trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Insurance'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #15): Kiem tra dieu khoan Minimum Commitment trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Minimum Commitment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #16): Kiem tra dieu khoan Renewal Term trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Renewal Term'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #17): Kiem tra dieu khoan Notice Period To Terminate Renewal trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Notice Period To Terminate Renewal'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #18): Kiem tra dieu khoan Post-Termination Services trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Post-Termination Services'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #19): Kiem tra dieu khoan Most Favored Nation trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Most Favored Nation'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #20): Kiem tra dieu khoan Price Restrictions trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Price Restrictions'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #21): Kiem tra dieu khoan Liquidated Damages trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Liquidated Damages'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #22): Kiem tra dieu khoan Third Party Beneficiary trong hop dong cua AdventureWorks_Corp kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'AdventureWorks_Corp'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Third Party Beneficiary'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #23): Kiem tra dieu khoan Governing Law trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Governing Law'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #24): Kiem tra dieu khoan Termination For Convenience trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Termination For Convenience'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #25): Kiem tra dieu khoan Uncapped Liability trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Uncapped Liability'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #26): Kiem tra dieu khoan Cap On Liability trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Cap On Liability'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #27): Kiem tra dieu khoan Indemnification trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Indemnification'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #28): Kiem tra dieu khoan Audit Rights trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Audit Rights'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #29): Kiem tra dieu khoan Non-Compete trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Non-Compete'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #30): Kiem tra dieu khoan Exclusivity trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Exclusivity'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #31): Kiem tra dieu khoan Change Of Control trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Change Of Control'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #32): Kiem tra dieu khoan Anti-Assignment trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Anti-Assignment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #33): Kiem tra dieu khoan IP Ownership Assignment trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'IP Ownership Assignment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #34): Kiem tra dieu khoan Revenue/Profit Sharing trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Revenue/Profit Sharing'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #35): Kiem tra dieu khoan Warranty Duration trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Warranty Duration'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #36): Kiem tra dieu khoan Insurance trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Insurance'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #37): Kiem tra dieu khoan Minimum Commitment trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Minimum Commitment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #38): Kiem tra dieu khoan Renewal Term trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Renewal Term'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #39): Kiem tra dieu khoan Notice Period To Terminate Renewal trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Notice Period To Terminate Renewal'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #40): Kiem tra dieu khoan Post-Termination Services trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Post-Termination Services'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #41): Kiem tra dieu khoan Most Favored Nation trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Most Favored Nation'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #42): Kiem tra dieu khoan Price Restrictions trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Price Restrictions'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #43): Kiem tra dieu khoan Liquidated Damages trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Liquidated Damages'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #44): Kiem tra dieu khoan Third Party Beneficiary trong hop dong cua MountainBikes_LLC kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'MountainBikes_LLC'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Third Party Beneficiary'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #45): Kiem tra dieu khoan Governing Law trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Governing Law'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #46): Kiem tra dieu khoan Termination For Convenience trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Termination For Convenience'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #47): Kiem tra dieu khoan Uncapped Liability trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Uncapped Liability'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #48): Kiem tra dieu khoan Cap On Liability trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Cap On Liability'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #49): Kiem tra dieu khoan Indemnification trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Indemnification'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #50): Kiem tra dieu khoan Audit Rights trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Audit Rights'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #51): Kiem tra dieu khoan Non-Compete trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Non-Compete'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #52): Kiem tra dieu khoan Exclusivity trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Exclusivity'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #53): Kiem tra dieu khoan Change Of Control trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Change Of Control'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #54): Kiem tra dieu khoan Anti-Assignment trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Anti-Assignment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #55): Kiem tra dieu khoan IP Ownership Assignment trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'IP Ownership Assignment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #56): Kiem tra dieu khoan Revenue/Profit Sharing trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Revenue/Profit Sharing'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #57): Kiem tra dieu khoan Warranty Duration trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Warranty Duration'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #58): Kiem tra dieu khoan Insurance trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Insurance'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #59): Kiem tra dieu khoan Minimum Commitment trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Minimum Commitment'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #60): Kiem tra dieu khoan Renewal Term trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Renewal Term'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #61): Kiem tra dieu khoan Notice Period To Terminate Renewal trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Notice Period To Terminate Renewal'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #62): Kiem tra dieu khoan Post-Termination Services trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Post-Termination Services'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #63): Kiem tra dieu khoan Most Favored Nation trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Most Favored Nation'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #64): Kiem tra dieu khoan Price Restrictions trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Price Restrictions'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #65): Kiem tra dieu khoan Liquidated Damages trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Liquidated Damages'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
+  },
+  {
+    "task": "text_to_cypher",
+    "instruction": "Chuyen cau hoi sang Cypher Neo4j (mau #66): Kiem tra dieu khoan Third Party Beneficiary trong hop dong cua Northwind_Supply kem doanh thu AdventureWorks",
+    "input": "",
+    "output": "MATCH (c:Company {name: 'Northwind_Supply'})-[:PARTY_TO]->(ctr:Contract)-[:CONTAINS_CLAUSE]->(cls:Clause {type: 'Third Party Beneficiary'}) OPTIONAL MATCH (cust:Customer)-[:PLACED_ORDER]->(o:SalesOrder) RETURN ctr.name, cls.snippet, sum(o.totalDue) AS totalRevenue LIMIT 5;"
   }
 ]

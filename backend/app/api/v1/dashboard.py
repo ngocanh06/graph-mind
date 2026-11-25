@@ -627,6 +627,40 @@ def get_risk_alerts(
                 })
                 alert_id += 1
 
+            # 6. FR42 Financial Risk: Negative margin orders & abnormal discount >= 35%
+            try:
+                margin_discount_cypher = """
+                MATCH (s:SalesOrder)-[:CONTAINS_PRODUCT]->(p:Product)
+                WHERE (coalesce(s.unitPrice, 0.0) > 0 AND coalesce(p.standardCost, 0.0) > coalesce(s.unitPrice, 0.0))
+                   OR coalesce(s.unitPriceDiscount, 0.0) >= 0.35
+                RETURN s.id AS orderId, p.name AS productName,
+                       coalesce(s.unitPrice, 0.0) AS unitPrice,
+                       coalesce(p.standardCost, 0.0) AS standardCost,
+                       coalesce(s.unitPriceDiscount, 0.0) AS discount
+                LIMIT 4
+                """
+                md_records = neo4j_client.run_cypher(margin_discount_cypher)
+                for rec in md_records:
+                    disc = float(rec.get("discount") or 0.0)
+                    is_discount_risk = disc >= 0.35
+                    alerts.append({
+                        "id": f"risk-erp-{alert_id}",
+                        "title": (
+                            f"Chiết khấu bất thường {disc*100:.0f}% (>=35%) trên đơn #{rec.get('orderId')}"
+                            if is_discount_risk
+                            else f"Đơn hàng biên lợi nhuận âm (Negative Margin) #{rec.get('orderId')}"
+                        ),
+                        "description": f"Sản phẩm '{rec.get('productName')}' vi phạm ngưỡng kiểm soát tài chính FR42 (unitPrice={rec.get('unitPrice')}, standardCost={rec.get('standardCost')}, discount={disc*100:.1f}%).",
+                        "severity": "HIGH",
+                        "variant": "danger",
+                        "category": "ABNORMAL_DISCOUNT" if is_discount_risk else "NEGATIVE_MARGIN",
+                        "source": "ADVENTUREWORKS_NEO4J",
+                        "orderId": rec.get("orderId"),
+                    })
+                    alert_id += 1
+            except Exception as e:
+                logger.warning(f"[Risk] Query negative margin/discount error: {e}")
+
         return {
             "success": True,
             "totalAlerts": len(alerts),

@@ -226,6 +226,14 @@ def test_s2_rbac_05_matrix_role_codes_canonical_audit():
         assert expected in role_codes
 
 
+def test_s2_rbac_06_known_limitation_5_role_split_e2e_iss_02():
+    """S2_RBAC_06 [Known MVP Limitation E2E-ISS-02]: 2D RBAC Matrix uses 4 unsplit roles instead of splitting IT_ADMIN & KNOWLEDGE_ADMIN."""
+    role_codes = {r["code"] if isinstance(r, dict) else str(r) for r in MATRIX_ROLES}
+    assert {"IT_ADMIN", "KNOWLEDGE_ADMIN"}.issubset(role_codes), (
+        f"Known Limitation E2E-ISS-02: RBAC Matrix stores 4 unsplit role codes ({sorted(role_codes)}); 5-role split deferred to v2."
+    )
+
+
 # =============================================================================
 # 4. 3-STEP EMAIL OTP PASSWORD RECOVERY & SESSION ENFORCEMENT (PB73, PB74)
 # =============================================================================

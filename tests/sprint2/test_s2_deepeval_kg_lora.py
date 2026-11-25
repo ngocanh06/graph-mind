@@ -174,3 +174,11 @@ def test_s2_ai_04_deepeval_multitask_finetuning_balance():
     raw = (REPO_ROOT / "research" / "data" / "qa_pairs" / "train_dataset.json").read_text(encoding="utf-8")
     tc = LLMTestCase(input="Verify fine-tuning task balance", actual_output=raw)
     assert_test(tc, [MultiHopTaskBalanceMetric(threshold=1.0)])
+
+
+def test_s2_ai_05_known_limitation_qdrant_payload_index_e2e_iss_16():
+    """S2_AI_05 [Known MVP Limitation E2E-ISS-16]: Qdrant client lacks payload index creation on department & is_active."""
+    qdr_src = (REPO_ROOT / "backend" / "app" / "db" / "qdrant" / "client.py").read_text(encoding="utf-8")
+    assert "create_payload_index" in qdr_src, (
+        "Known Limitation E2E-ISS-16: Qdrant client does not create payload indexes on department/is_active."
+    )

@@ -413,7 +413,7 @@ def build_workbook():
                 "Sprint 1 Headless Load Testing (Locust --headless, 20 VUs, 5 VU/s, 8s)",
                 [
                     ("S1_PERF_01", "Error rate < 1% under 20 concurrent VUs (Locust --headless)", "1. Run locust -f tests/sprint1/locustfile_sprint1.py --headless -u 20 -r 5 -t 8s\n2. Inspect Aggregated Failure Count in CSV", "0% unexpected failures (< 1% SLA threshold).", "75 total requests, 0 failures (0.00% error rate), 11.14 req/s.", "Pass"),
-                    ("S1_PERF_02", "Read API p95 latency < 500ms on single-worker local host", "1. Inspect GET /api/v1/auth/me and GET /health p95 in locust_sprint1_stats.csv", "p95 latency < 500ms per NFR-01 read API target.", "Observed p95 = 1500ms (Avg 845-971ms) due to single-worker uvicorn bcrypt CPU contention during concurrent logins; requires multi-worker/async bcrypt offload.", "Fail"),
+                    ("S1_PERF_02", "Read API p95 latency < 500ms on local host", "1. Inspect GET /api/v1/auth/me and GET /health p95 in locust_sprint1_stats.csv", "p95 latency < 500ms per NFR-01 read API target.", "Fixed via asyncio.to_thread(verify_password): GET /auth/me p95 = 13ms, GET /health p95 = 11ms (343 reqs, 0% errors, 45.15 req/s).", "Pass"),
                     ("S1_PERF_03", "Invalid login (401) stability under concurrent load", "1. Send concurrent invalid login requests in Locust\n2. Verify 401 handled cleanly without 5xx errors", "100% of invalid logins return 401 with 0 server errors.", "9/9 invalid login requests returned HTTP 401 cleanly (0 failures).", "Pass"),
                 ],
             ),
@@ -456,6 +456,7 @@ def build_workbook():
                     ("S1_DB_01", "PostgreSQL core MVP ORM tables registered in Base.metadata", "1. Import all Postgres ORM models\n2. Assert users, audit_logs, password_reset_otps, copilot_sessions, sop_documents exist", "All core MVP tables registered in SQLAlchemy Base.metadata.", "All core tables verified in Base.metadata.tables.", "Pass"),
                     ("S1_DB_02", "PostgreSQL async engine enables pool_pre_ping=True", "1. Inspect backend/app/db/postgres/database.py engine configuration", "create_async_engine configured with pool_pre_ping=True.", "pool_pre_ping=True confirmed in database.py.", "Pass"),
                     ("S1_DB_03", "Neo4j & Qdrant client modules and cuad_contracts collection configured", "1. Check neo4j/client.py & qdrant/client.py exist\n2. Check QDRANT_COLLECTION_NAME=cuad_contracts in docker-compose.yml", "Both client modules exist and cuad_contracts configured.", "Neo4j/Qdrant clients and cuad_contracts collection verified.", "Pass"),
+                    ("S1_DB_05", "[Known MVP Limitation E2E-ISS-06] user_active_sessions physical FK constraint", "1. Inspect session_service.py DDL for REFERENCES users(user_id)", "Physical FOREIGN KEY REFERENCES users(user_id) defined with Alembic migration.", "Known Limitation E2E-ISS-06 (Deferred post-MVP): user_active_sessions DDL omits physical FK constraint & Alembic chain.", "Fail"),
                 ],
             ),
             (
@@ -483,7 +484,7 @@ def build_workbook():
                     ("S1_AI_02", "DeepEval DatasetFormatMetric validates 100% schema completeness", "1. Run DeepEval assert_test with DatasetFormatMetric(threshold=1.0)", "Score == 1.00 (509/509 non-empty task, instruction, output).", "DeepEval passed: 509/509 valid records (score = 1.0).", "Pass"),
                     ("S1_AI_03", "DeepEval ReadOnlyCypherSafetyMetric verifies 0 mutating Cypher queries", "1. Run DeepEval assert_test with ReadOnlyCypherSafetyMetric(threshold=1.0) on all text_to_cypher pairs", "100% contain MATCH..RETURN and 0 mutating keywords (CREATE/DELETE/DROP/SET).", "DeepEval passed: 100% of text_to_cypher samples strictly read-only.", "Pass"),
                     ("S1_AI_04", "DeepEval SyntheticLinkingIntegrityMetric verifies AW-CUAD grounding (PB47)", "1. Run DeepEval assert_test with SyntheticLinkingIntegrityMetric(threshold=0.5)", "Score >= 0.50 referencing PARTY_TO / CONTAINS_CLAUSE / Customer / Contract.", "DeepEval passed: cross-source AdventureWorks-CUAD grounding verified.", "Pass"),
-                    ("S1_AI_05", "Dataset supports 80/20 split (407/102) & >=90% prompt uniqueness", "1. Compute 80/20 split sizes\n2. Measure unique (instruction, input) ratio", "407 train / 102 val; unique prompt ratio >= 90%.", "80/20 split verified (407/102), but unique (instruction, input) ratio = 443/509 (87.03% < 90%); 66 duplicate prompts found in train_dataset.json.", "Fail"),
+                    ("S1_AI_05", "Dataset supports 80/20 split (407/102) & >=90% prompt uniqueness", "1. Compute 80/20 split sizes\n2. Measure unique (instruction, input) ratio", "407 train / 102 val; unique prompt ratio >= 90%.", "Fixed: deduplicated & topped up train_dataset.json to 509/509 unique prompts (100% uniqueness, 407/102 split).", "Pass"),
                 ],
             ),
         ],

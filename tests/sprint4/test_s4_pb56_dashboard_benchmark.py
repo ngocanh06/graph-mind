@@ -169,3 +169,21 @@ def test_s4_bm_03_locust_150vu_profile_configured():
     src = (REPO_ROOT / "perf-tests" / "locustfile.py").read_text(encoding="utf-8")
     for token in ('"users": 150', '"read_p95_ms": 500', '"heavy_p95_ms": 2000'):
         assert token in src, f"Missing Locust 150-VU spec token: {token}"
+
+
+def test_s4_ext_01_known_limitation_google_oauth_cloud_tenant_pb06():
+    """S4_EXT_01 [Out of Scope / Stretch Goal PB06]: Live Google Workspace OAuth 2.0 cloud tenant credentials unavailable in local academic env."""
+    import os
+    assert os.environ.get("GOOGLE_OAUTH_CLIENT_ID") and os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET"), (
+        "Known Limitation FE09/PB06: Live Google Workspace OAuth 2.0 credentials not configured (Optional Stretch Goal outside Sprints 1-4)."
+    )
+
+
+def test_s4_ext_02_known_limitation_planned_extension_tables_and_pdf_export():
+    """S4_EXT_02 [Out of Scope Proposal §7 / DBD Tables 22-42]: Binary PDF/Word Executive Briefing export & [PLANNED] extension tables not in MVP."""
+    from app.db.postgres.database import Base
+    planned = {"executive_briefings", "llm_cost_usage_logs", "system_alerts"}
+    missing = planned - set(Base.metadata.tables.keys())
+    assert not missing, (
+        f"Known Limitation DBD §3.1.4-3.1.8: Planned extension tables {sorted(missing)} & PDF/Word briefing export are Out of Scope for MVP."
+    )

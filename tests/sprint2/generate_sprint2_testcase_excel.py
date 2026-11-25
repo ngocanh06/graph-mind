@@ -148,8 +148,8 @@ def _build_workbook(vi: bool):
         c = ws_rep.cell(6, idx, h)
         c.font, c.fill, c.border, c.alignment = FONT_HEADER, FILL_HEADER, BORDER_ALL, ALIGN_CENTER
 
-    # Sprint 1 historical (33 Pass / 2 Fail), Sprint 2 dynamically linked to Overview!E38:I38
-    ws_rep.cell(7, 3, 1); ws_rep.cell(7, 4, "Sprint 1"); ws_rep.cell(7, 5, 33); ws_rep.cell(7, 6, 2)
+    # Sprint 1 historical (35 Pass / 1 Fail), Sprint 2 dynamically linked to Overview!E38:I38
+    ws_rep.cell(7, 3, 1); ws_rep.cell(7, 4, "Sprint 1"); ws_rep.cell(7, 5, 35); ws_rep.cell(7, 6, 1)
     for col_i in (7, 8, 9): ws_rep.cell(7, col_i, 0)
     ws_rep.cell(7, 10, "=SUM(E7:I7)")
 
@@ -338,7 +338,7 @@ def _build_workbook(vi: bool):
     _style_range(ws_ov, 38, 1, 38, 10, font=FONT_BOLD, fill=FILL_HEADER, alignment=ALIGN_CENTER)
     for c_i in range(5, 11): ws_ov.cell(38, c_i).number_format = "#,##0"
 
-    P = "Đạt" if vi else "Pass"
+    P, F = ("Đạt", "Không đạt") if vi else ("Pass", "Fail")
 
     # ── Sheet 3: Knowledge Base & Preview ────────────────────────────────────
     _build_module_sheet(
@@ -388,6 +388,7 @@ def _build_workbook(vi: bool):
                 ("S2_RBAC_03", "GET /api/admin/rbac-matrix chặn truy cập chưa xác thực" if vi else "GET /api/admin/rbac-matrix blocks unauthenticated access", "1. Gửi GET /api/admin/rbac-matrix không kèm JWT Admin" if vi else "1. Call GET /api/admin/rbac-matrix without Admin JWT", "Trả về HTTP 401 hoặc 403." if vi else "Returns HTTP 401 or 403.", "Đã chặn truy cập trái phép với mã 401/403." if vi else "Blocked unauthorized access with HTTP 401/403.", P),
                 ("S2_RBAC_04", "Audit Log đảm bảo bất biến — không có API sửa/xóa (BR-03)" if vi else "Audit Log immutability — no PUT/DELETE endpoints (BR-03)", "1. Rà soát user_admin_api.py tìm route DELETE/PUT trên /audit" if vi else "1. Audit user_admin_api.py for PUT/DELETE routes on /audit", "Không tồn tại API sửa hay xóa nhật ký kiểm toán." if vi else "No update/delete endpoints exist for audit_logs.", "Đã xác nhận không có API sửa/xóa audit_logs." if vi else "Confirmed no PUT/DELETE routes for audit_logs.", P),
                 ("S2_RBAC_05", "Cấu trúc ROLES của Ma trận RBAC 2D chứa đủ 4 vai trò chuẩn" if vi else "2D RBAC Matrix ROLES schema defines 4 canonical roles", "1. Kiểm tra danh sách MATRIX_ROLES trong rbac_matrix_schema.py" if vi else "1. Inspect MATRIX_ROLES in rbac_matrix_schema.py", "Chứa đủ ADMIN, EXECUTIVE, DEPARTMENT_MANAGER, STANDARD_USER." if vi else "Contains ADMIN, EXECUTIVE, DEPARTMENT_MANAGER, STANDARD_USER.", "Đủ 4 mã vai trò chuẩn trong MATRIX_ROLES." if vi else "All 4 canonical role codes verified.", P),
+                ("S2_RBAC_06", "[Giới hạn MVP E2E-ISS-02] Tách riêng 2 vai trò IT_ADMIN & KNOWLEDGE_ADMIN trong Ma trận RBAC 2D" if vi else "[Known MVP Limitation E2E-ISS-02] Split IT_ADMIN & KNOWLEDGE_ADMIN in 2D RBAC Matrix", "1. Kiểm tra MATRIX_ROLES có chứa đồng thời IT_ADMIN và KNOWLEDGE_ADMIN" if vi else "1. Check MATRIX_ROLES contains both IT_ADMIN and KNOWLEDGE_ADMIN", "Tách đủ 5 mã vai trò theo BR-04." if vi else "5 split role codes defined per BR-04.", "Giới hạn MVP (E2E-ISS-02 — chuyển sang v2): Ma trận RBAC 2D hiện gộp chung 4 mã vai trò (ADMIN chưa tách IT_ADMIN / KNOWLEDGE_ADMIN)." if vi else "Known Limitation E2E-ISS-02 (Deferred to v2): 2D RBAC Matrix stores 4 unsplit role codes (ADMIN not split into IT_ADMIN & KNOWLEDGE_ADMIN).", F),
             ],
         )],
     )
@@ -450,6 +451,7 @@ def _build_workbook(vi: bool):
                 ("S2_AI_02", "DeepEval CUADExtractionSchemaMetric xác minh thực thể pháp lý CUAD (PB08..10)" if vi else "DeepEval validates CUAD NER/RE graph schema coverage (PB08..10)", "1. Chạy DeepEval CUADExtractionSchemaMetric(threshold=0.8) trên extract_cuad_kg.py" if vi else "1. Run DeepEval CUADExtractionSchemaMetric(threshold=0.8) on extract_cuad_kg.py", "Điểm >= 0.80 phủ các nhãn Company, Contract, Clause, PARTY_TO, CONTAINS_CLAUSE." if vi else "Score >= 0.80 covering Company, Contract, Clause, PARTY_TO, CONTAINS_CLAUSE.", "DeepEval vượt ngưỡng, xác minh đủ lược đồ thực thể CUAD." if vi else "DeepEval passed; CUAD KG entities and relations verified.", P),
                 ("S2_AI_03", "DeepEval QdrantVectorSchemaMetric xác minh vector 384 chiều & Layer-1 guard (PB12)" if vi else "DeepEval validates Qdrant 384-dim embeddings & Layer-1 is_active guard (PB12)", "1. Chạy DeepEval QdrantVectorSchemaMetric(threshold=1.0) trên qdrant/client.py & pipeline.py" if vi else "1. Run DeepEval QdrantVectorSchemaMetric(threshold=1.0) on qdrant client & pipeline", "Điểm 1.00: có 384-dim, cuad_contracts và bộ lọc is_active." if vi else "Score 1.00: 384-dim, cuad_contracts, and is_active guard present.", "DeepEval đạt 1.00 (3/3 thành phần Qdrant & Layer-1)." if vi else "DeepEval passed with score 1.00 (3/3 markers).", P),
                 ("S2_AI_04", "DeepEval MultiHopTaskBalanceMetric xác minh cân bằng tác vụ text_to_cypher & rag_citation (PB17)" if vi else "DeepEval validates text_to_cypher & rag_citation task balance (PB17)", "1. Chạy DeepEval MultiHopTaskBalanceMetric(threshold=1.0) trên train_dataset.json" if vi else "1. Run DeepEval MultiHopTaskBalanceMetric(threshold=1.0) on train_dataset.json", "Điểm 1.00: có đủ cả 2 tác vụ text_to_cypher và rag_citation." if vi else "Score 1.00: both text_to_cypher and rag_citation tasks present.", "DeepEval đạt 1.00: cân bằng đủ 2 nhóm tác vụ huấn luyện." if vi else "DeepEval passed with score 1.00: both training tasks verified.", P),
+                ("S2_AI_05", "Kiểm tra tạo payload index Qdrant trong qdrant/client.py" if vi else "Verify Qdrant payload index creation in qdrant/client.py", "1. Kiểm tra lệnh create_payload_index trong backend/app/db/qdrant/client.py" if vi else "1. Check create_payload_index in backend/app/db/qdrant/client.py", "Có cấu hình create_payload_index hỗ trợ lọc nhanh." if vi else "create_payload_index present for fast filtered search.", "Đã xác minh create_payload_index có mặt trong qdrant/client.py." if vi else "Verified create_payload_index exists in qdrant/client.py.", P),
             ],
         )],
     )

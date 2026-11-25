@@ -290,3 +290,11 @@ def test_s1_db_04_docker_compose_services_defined():
     dc = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     for svc in ["neo4j:", "qdrant:", "backend:", "frontend:", "file-watcher:"]:
         assert svc in dc, f"Missing service {svc} in docker-compose.yml"
+
+
+def test_s1_db_05_known_limitation_sessions_physical_fk_e2e_iss_06():
+    """S1_DB_05 [Known MVP Limitation E2E-ISS-06]: user_active_sessions lacks physical FK constraint & Alembic chain."""
+    src = (REPO_ROOT / "backend" / "app" / "modules" / "m6_admin_security" / "session_service.py").read_text(encoding="utf-8")
+    assert "REFERENCES users(" in src, (
+        "Known Limitation E2E-ISS-06: user_active_sessions DDL omits physical FOREIGN KEY REFERENCES users(user_id)"
+    )

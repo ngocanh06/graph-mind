@@ -238,3 +238,23 @@ def test_s3_ai_02_deepeval_rrf_k60_ranking():
     fused = reciprocal_rank_fusion([{"id": "doc_overlap"}], [{"id": "doc_overlap"}, {"id": "doc_2"}], k=60)
     top_id = fused[0].get("id", "") if fused else ""
     assert_test(LLMTestCase(input="Verify RRF k=60 top-1 fusion", actual_output=top_id), [_RRFMonotonicityMetric(1.0)])
+
+
+def test_s3_arch_01_known_limitation_modular_packaging_e2e_iss_12():
+    """S3_ARCH_01 [Known MVP Limitation E2E-ISS-12]: m2/m4/m5 backend module folders are 0-line stubs (routes live in main.py)."""
+    stubs = [
+        REPO_ROOT / "backend" / "app" / "modules" / "m2_knowledge_editor",
+        REPO_ROOT / "backend" / "app" / "modules" / "m4_decision_support",
+        REPO_ROOT / "backend" / "app" / "modules" / "m5_multifacet_search",
+    ]
+    non_empty = [p.name for p in stubs if p.exists() and any(f.stat().st_size > 0 for f in p.glob("*.py"))]
+    assert len(non_empty) == 3, (
+        f"Known Limitation E2E-ISS-12: Backend module directories m2/m4/m5 are empty stubs (non-empty: {non_empty}); refactoring deferred post-MVP."
+    )
+
+
+def test_s3_gov_05_known_limitation_shift_summary_persistence_e2e_iss_09():
+    """S3_GOV_05 [Known MVP Limitation E2E-ISS-09]: AI daily shift consolidation is on-screen only; shift_daily_summaries table is [PLANNED]."""
+    assert "shift_daily_summaries" in Base.metadata.tables, (
+        "Known Limitation E2E-ISS-09: shift_daily_summaries table is [PLANNED] in DBD §3.1.4; consolidated shift summaries are not persisted."
+    )
