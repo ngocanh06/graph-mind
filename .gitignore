@@ -89,3 +89,9 @@ backend/app/modules/m1_data_sync/data/google_credentials.json
 backend/app/modules/m1_data_sync/data/google_oauth_config.json
 backend/app/modules/m1_data_sync/data/watcher_ingested_docs.json
 backend/app/modules/m1_data_sync/data/watcher_sync_logs.json
+
+# Local third-party skill installer & external reference templates (non-GraphMind)
+diagram-skills-package/
+MẪU/
+C2SE.27_*
+9. TEST CASE/C2SE.27_*
