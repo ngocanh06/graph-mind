@@ -10,7 +10,7 @@ import secrets
 from typing import Optional, Tuple, List, Dict, Any
 from uuid import UUID
 
-from sqlalchemy import select, update, func, text
+from sqlalchemy import select, update, func, text, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
@@ -679,13 +679,16 @@ async def seed_demo_data(session: AsyncSession) -> Dict[str, Any]:
         )
 
     now = datetime.now(timezone.utc)
+    # Clean out any older demo records to ensure crisp Da Nang fleet data
+    await session.execute(delete(PB56Workstation).where(PB56Workstation.is_demo == True))
+
     demo_workstations = [
         {
-            "id": "WS-SALES-HN01",
-            "hostname": "sales-desktop-01.hn.internal",
-            "ip_address": "192.168.10.45",
+            "id": "WS-SALES-DNG01",
+            "hostname": "sales-desktop-01.danang.internal",
+            "ip_address": "192.168.1.45",
             "os_info": "Windows 11 Pro 64-bit",
-            "monitored_folder": "D:/AEGIS_Data/Sales_Contracts",
+            "monitored_folder": "D:/AEGIS_Data/Sales_DaNang_Contracts",
             "sync_mode": "realtime",
             "schedule_type": None,
             "shift_end_time": None,
@@ -703,11 +706,11 @@ async def seed_demo_data(session: AsyncSession) -> Dict[str, Any]:
             "is_demo": True,
         },
         {
-            "id": "WS-LEGAL-HCM02",
-            "hostname": "legal-macbook-pro.hcm.internal",
-            "ip_address": "192.168.20.112",
+            "id": "WS-LEGAL-DNG02",
+            "hostname": "legal-macbook-pro.danang.internal",
+            "ip_address": "192.168.1.112",
             "os_info": "macOS Sonoma 14.5",
-            "monitored_folder": "/Users/legal/Documents/CUAD_Legal_Docs",
+            "monitored_folder": "/Users/legal/Documents/CUAD_Legal_DaNang",
             "sync_mode": "scheduled",
             "schedule_type": "15m",
             "shift_end_time": None,
@@ -725,11 +728,11 @@ async def seed_demo_data(session: AsyncSession) -> Dict[str, Any]:
             "is_demo": True,
         },
         {
-            "id": "WS-RND-UBUNTU",
-            "hostname": "rnd-lab-server.internal",
-            "ip_address": "10.0.15.8",
+            "id": "WS-RND-DNG03",
+            "hostname": "rnd-lab-server.danang.internal",
+            "ip_address": "10.0.1.8",
             "os_info": "Ubuntu 22.04 LTS",
-            "monitored_folder": "/mnt/storage/rnd/linear_models",
+            "monitored_folder": "/mnt/storage/rnd/danang_models",
             "sync_mode": "scheduled",
             "schedule_type": "end_of_shift",
             "shift_end_time": "18:00",

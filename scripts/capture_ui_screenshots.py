@@ -180,6 +180,13 @@ def run():
         # 17. Connectors View
         print("[17/22] Capturing Connectors View...")
         navigate_to("connectors")
+        try:
+            ws_tab = page.locator("button:has-text('Quản lý máy trạm')").first
+            if ws_tab.is_visible():
+                ws_tab.click()
+                time.sleep(1.2)
+        except Exception:
+            pass
         page.screenshot(path=os.path.join(OUTPUT_DIR, "17_data_connectors.png"))
 
         # 18. Admin View - Tab Users

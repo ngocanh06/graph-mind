@@ -42,7 +42,7 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
     hostname: "",
     ip_address: "",
     os_info: "Windows 11 Pro 64-bit",
-    monitored_folder: "D:/AEGIS_Data/Sales_Contracts",
+    monitored_folder: "D:/AEGIS_Data/Sales_DaNang_Contracts",
     sync_mode: "realtime",
     schedule_type: "15m",
     shift_end_time: "17:30",
@@ -675,7 +675,7 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: WS-SALES-HN02"
+                  placeholder="Ví dụ: WS-SALES-DNG02"
                   value={registerForm.id}
                   onChange={(e) => setRegisterForm({ ...registerForm, id: e.target.value })}
                   required
