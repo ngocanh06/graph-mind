@@ -290,7 +290,7 @@ def build_document():
 
     # Table 2: Version History
     add_heading_2(doc, "Version Revision History")
-    rev_table = doc.add_table(rows=4, cols=5)
+    rev_table = doc.add_table(rows=5, cols=5)
     rev_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(rev_table, color="CBD5E1")
     rev_hdrs = ["Version", "Release Date", "Primary Changes & Scope", "Author", "Review Status"]
@@ -308,7 +308,8 @@ def build_document():
     revisions = [
         ("v0.1", "15/10/2026", "Initial UI wireframes & navigation tree draft for Sprints 1-2", "Trần Thị Ngọc Ánh", "Approved (Internal)"),
         ("v0.8", "12/11/2026", "Consolidated 6 modules: Risk Observatory, Hybrid Copilot, HITL Knowledge Editor", "C1SE18 Team", "Reviewed (Sprint 3)"),
-        ("v1.0", "25/11/2026", "Finalized enterprise UI design with 22 high-resolution screens, BVA/EP forms & dark mode", "Trần Thị Ngọc Ánh", "Approved (Final Capstone)")
+        ("v1.0", "25/11/2026", "Finalized enterprise UI design with 22 high-resolution screens, BVA/EP forms & dark mode", "Trần Thị Ngọc Ánh", "Approved (Final Capstone)"),
+        ("v1.1", "26/11/2026", "Aligned C-Suite governance workflow (Phê duyệt Báo cáo), restored admin sidebar navigation & telemetry briefing engine", "Trần Thị Ngọc Ánh", "Approved (Current Version)")
     ]
     for r_idx, rev in enumerate(revisions):
         row = rev_table.rows[r_idx + 1]
@@ -365,7 +366,7 @@ def build_document():
         ("Module 1 (M1 — Data Sync & Ingestion):", "Local AEGIS file watcher and Google Drive cloud connector with SHA-256 integrity verification and automated document registration."),
         ("Module 2 (M2 — Knowledge Management & SOP Wiki):", "Central file repository (581 contracts/documents), Human-in-the-Loop (HITL) Graph Editor, and Standard Operating Procedure (SOP) authoring."),
         ("Module 3 (M3 — Hybrid AI Copilot):", "Multi-model reasoning combining Qdrant Vector search with Neo4j Graph Cypher traversal and Qwen2.5-7B ChatML LLM inference."),
-        ("Module 4 (M4 — Decision Support & Risk Observatory):", "Executive KPIs, profit margin analysis, enterprise risk observatory, and automated daily shift handover consolidation."),
+        ("Module 4 (M4 — Decision Support & Risk Observatory):", "Executive KPIs, profit margin analysis, enterprise risk observatory, departmental shift reports, and strategic report approvals for C-Suite leadership."),
         ("Module 5 (M5 — Multi-facet Search & Explorer):", "Unified faceted search spanning Contracts, Customers, Products, and SOPs with interactive Neo4j force-directed graph canvas."),
         ("Module 6 (M6 — Admin, Security & RBAC):", "User lifecycle management, single-active-session kick enforcement, granular department matrix, and SHA-256 tamper-evident audit logs.")
     ]
@@ -534,22 +535,24 @@ def build_document():
         {
             "num": "2.2.4",
             "id": "SCREEN-007",
-            "title": "Daily Shift Handover & Operations Consolidation View",
+            "title": "Executive Report Approvals & Strategic Decisions View (Phê duyệt Báo cáo & Quyết định)",
             "img": "15_executive_reports.png",
-            "desc": "Executive shift report management (UC.24, UC.25). Provides daily timeline consolidation of departmental operations, pending handovers, safety incidents, and executive approvals.",
-            "role": "Executive, Knowledge Manager, Admin",
-            "table_title": "Table 9: Field Specifications for Shift Handover View (SCREEN-007)",
+            "desc": "Executive governance and decision approval workspace (UC.24, UC.25). Provides C-Suite leaders with automated AI telemetry synthesis, contract exposure overview, VIP customer retention signals, and one-click budget / discount threshold authorization.",
+            "role": "Executive (Ban Giám Đốc), IT Admin",
+            "table_title": "Table 9: Field Specifications for Executive Report Approvals View (SCREEN-007)",
             "cols": ["No.", "Field name", "Type", "Require / Styling", "Target / Action / Logic"],
             "col_widths": [0.5, 1.6, 1.0, 1.6, 2.3],
             "fields": [
-                ("1", "Report Page Header", "Page Header", "Title: 'Báo cáo Vận hành & Bàn giao Ca'", "Central management view for operational shift reports"),
-                ("2", "Shift Status KPI Bar", "Metric Bar", "3 Cards: Ca Sáng, Ca Chiều, Ca Đêm", "Displays active shift supervisor, status (Completed, In Progress), and incidents"),
-                ("3", "Date Picker Toolbar", "Date Selector", "Calendar icon; Default: Today", "Allows browsing past daily shift logs and handover archives"),
-                ("4", "Shift Report Cards Grid", "Card Grid", "Cards with Shift Badge, Dept, Author", "Displays individual shift dossiers submitted by department managers"),
-                ("5", "Approval Status Badge", "Badge", "Green (Approved) / Amber (Pending)", "Indicates executive review and sign-off status"),
-                ("6", "Incident Summary Tag", "Tag", "Red #EF4444 badge if incident reported", "Highlights equipment downtime or client escalations"),
-                ("7", "View Full Report Action", "Button", "Text 'Xem chi tiết'", "Navigates to full shift report detail view"),
-                ("8", "Sign-off Shift Button", "Primary Button", "Background #0284C7", "Commits executive digital approval to database audit trail")
+                ("1", "Navigation Sidebar Item", "Nav Button", "Active state: Teal #0891B2 border/bg; Label 'Phê duyệt báo cáo'", "Navigates to executive strategic briefing & decision approval workspace"),
+                ("2", "Scope Mode Switcher Bar", "Tab Pills", "2 Modes: Báo Cáo Tổng Hợp Chiến Lược / Báo Cáo Tiếp Nhận Từ Phòng Ban", "Switches between macro enterprise synthesis and departmental shift dossiers"),
+                ("3", "Page Header Title & Subtitle", "Header Banner", "Title: 'Phê Duyệt Báo Cáo & Quyết Định Chiến Lược'", "Displays executive authority scope and AI telemetry summary description"),
+                ("4", "Update Report Action Button", "Primary Button", "Teal gradient background #0891B2; Text 'Cập nhật Báo cáo'", "Triggers AI engine to synthesize fresh live briefing from Neo4j & Qdrant with real metrics"),
+                ("5", "Timeframe & Scope Selectors", "Dropdowns (x4)", "Time (7D, 30D, Q3, YTD), Business Area, Detail Depth, Provenance", "Configures AI multi-hop reasoning parameters across departments"),
+                ("6", "Document Export Toolbar", "Button Group", "Buttons: 'Sao chép Tóm tắt', 'Xuất Word (.doc)', 'Xuất PDF A4'", "Exports board-ready briefing document for Board of Directors (HĐQT) meetings"),
+                ("7", "Executive Summary Omnibox", "Textarea", "Editable, auto-resizing; 8 lines", "Contains AI-synthesized executive overview ($123.2M revenue, 74 contracts lacking caps)"),
+                ("8", "Customer Retention Signals", "Data List", "Flags Brakes and Gears (-32%), Excellent Riding (-44%)", "Highlights VIP account churn indicators derived from Neo4j order velocity graph"),
+                ("9", "Financial Exposure Matrix", "Data Table", "5 Columns: HD-29818 ($989k USD), HD-29715 ($961k USD)", "Tabulates contracts expiring within 15-30 days with exposure value and risk levels"),
+                ("10", "Priority Approval Buttons", "Button Group", "Priority 1: 'Phê Duyệt Hạn Mức 10-12%'; Priority 2: 'Quyết Định Phân Bổ Ngân Sách'", "Commits C-Suite binding digital authorizations to system audit trail")
             ]
         },
         {

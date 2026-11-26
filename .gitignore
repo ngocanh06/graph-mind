@@ -97,3 +97,7 @@ diagram-skills-package/
 MẪU/
 C2SE.27_*
 9. TEST CASE/C2SE.27_*
+
+# Temporary MS Word lock & fallback files
+~$*.docx
+*_v1.1.docx
