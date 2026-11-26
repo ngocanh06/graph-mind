@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     FRONTEND_PORT: int = 5173
 
     # Feature Flags
-    PB56_WORKSTATIONS_ENABLED: bool = False
+    PB56_WORKSTATIONS_ENABLED: bool = True
 
     # Security & Authentication
     SECRET_KEY: str = "change-me"

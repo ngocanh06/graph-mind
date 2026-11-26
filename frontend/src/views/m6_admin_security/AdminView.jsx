@@ -95,7 +95,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
 
 
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
-  const [isPb56Enabled, setIsPb56Enabled] = useState(false);
+  const [isPb56Enabled, setIsPb56Enabled] = useState(true);
 
   useEffect(() => {
     fetchPb56Status()

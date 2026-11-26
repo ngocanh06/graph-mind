@@ -145,7 +145,10 @@ async def ensure_pb56_tables_dev(session: AsyncSession) -> None:
         );
         """
         try:
-            await session.execute(text(ddl))
+            for stmt in ddl.split(";"):
+                stmt = stmt.strip()
+                if stmt:
+                    await session.execute(text(stmt))
             await session.commit()
             _DEV_TABLES_INITIALIZED = True
         except Exception:

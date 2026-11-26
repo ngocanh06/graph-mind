@@ -309,9 +309,9 @@ except ImportError:
 # PB56 — AEGIS Local Agent & Workstations Management Dashboard
 try:
     from app.core.config import settings
-    pb56_enabled = getattr(settings, "PB56_WORKSTATIONS_ENABLED", False)
+    pb56_enabled = getattr(settings, "PB56_WORKSTATIONS_ENABLED", True)
 except Exception:
-    pb56_enabled = os.getenv("PB56_WORKSTATIONS_ENABLED", "false").lower() in ("true", "1", "yes")
+    pb56_enabled = os.getenv("PB56_WORKSTATIONS_ENABLED", "true").lower() in ("true", "1", "yes")
 
 if pb56_enabled:
     try:
