@@ -120,7 +120,10 @@ def get_executive_kpis(scope: Optional[ScopeContext] = Depends(get_user_scope)):
 # 2. Top High-Value Customers (US33 / PB57 / AdventureWorks data)
 # ---------------------------------------------------------------------------
 @router.get("/top-customers")
-def get_top_customers(limit: int = Query(5, ge=1, le=50)):
+def get_top_customers(
+    limit: int = Query(5, ge=1, le=50),
+    scope: ScopeContext = Depends(get_user_scope),
+):
     """
     Returns top VIP customers ranked by total spend from AdventureWorks data.
     Enriched with store name, contact representative person, and tier.
@@ -170,7 +173,7 @@ def get_top_customers(limit: int = Query(5, ge=1, le=50)):
 # 3. Revenue Trends Over Time (US33 / PB57)
 # ---------------------------------------------------------------------------
 @router.get("/revenue-trend")
-def get_revenue_trend():
+def get_revenue_trend(scope: ScopeContext = Depends(get_user_scope)):
     """
     Returns yearly & aggregated revenue trends from real SalesOrder dates.
     """
@@ -215,7 +218,7 @@ def get_revenue_trend():
 # 4. Contract Portfolio & Clause Breakdown (US33 / PB57 / CUAD data)
 # ---------------------------------------------------------------------------
 @router.get("/contract-distribution")
-def get_contract_distribution():
+def get_contract_distribution(scope: ScopeContext = Depends(get_user_scope)):
     """
     Returns real contract distribution by type and clause breakdown from CUAD data in Neo4j.
     Consolidated repository inventory has exactly 610 documents.
@@ -844,7 +847,10 @@ def get_risk_alerts(
 # 6. Recent Operational Activities (Home & Overview - US32 / PB44)
 # ---------------------------------------------------------------------------
 @router.get("/recent-activities")
-def get_recent_activities(limit: int = Query(6, ge=1, le=30)):
+def get_recent_activities(
+    limit: int = Query(6, ge=1, le=30),
+    scope: ScopeContext = Depends(get_user_scope),
+):
     """
     Returns latest REAL transactions directly from Neo4j AdventureWorks SalesOrder data.
     100% real database query - no mock/synthetic events.

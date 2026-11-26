@@ -20,6 +20,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 # ── 2. Environment Sandboxing (Pre-Import) ──────────────────────────────────
 os.environ["APP_ENV"] = "testing"
+os.environ["SECRET_KEY"] = "test_environment_ephemeral_secure_secret_key_0123456789abcdef0123"
 os.environ["POSTGRES_SERVER"] = "disabled.invalid"
 os.environ["POSTGRES_PORT"] = "59999"
 os.environ["POSTGRES_DB"] = "graphmind_test_disabled"

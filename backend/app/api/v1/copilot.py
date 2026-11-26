@@ -1182,6 +1182,10 @@ async def ask_copilot(
         "bao nhiêu đoạn", "lập chỉ mục", "indexing", "metadata", "dung lượng", "hash"
     ])
 
+    is_doc_risk_query = any(k in q_lower for k in [
+        "rủi ro", "risk", "nguy cơ", "cảnh báo", "lưu ý", "vi phạm", "penalty", "phạt"
+    ])
+
     is_doc_expiry_query = any(k in q_lower for k in [
         "hết hạn", "sắp hết hạn", "ngày hết hạn", "thời hạn", "hiệu lực", "khi nào hết hạn",
         "hết hiệu lực", "thời hạn hợp đồng", "kéo dài bao lâu", "tái ký", "gia hạn", "hạn hợp đồng",

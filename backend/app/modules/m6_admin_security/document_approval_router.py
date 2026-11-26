@@ -180,8 +180,6 @@ async def submit_document_upload(
     resource_type: str = Form("SALES"),
     department_code: Optional[str] = Form(None),
     action_type: str = Form("UPLOAD_NEW"),
-    x_user_role: Optional[str] = Header(None),
-    x_user_dept: Optional[str] = Header(None),
     user: User = Depends(get_request_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -218,10 +216,10 @@ async def submit_document_upload(
             detail=f"Dung lượng tệp ({round(file_size / (1024 * 1024), 2)}MB) vượt quá giới hạn tối đa 50MB."
         )
 
-    # Determine user role and department
-    user_role = (x_user_role or getattr(user, "role", "standard") or "standard").strip().lower()
+    # Determine user role and department strictly from database User
+    user_role = (getattr(user, "role", "standard") or "standard").strip().lower()
     role_code = normalize_role_code(user_role)
-    raw_dept = department_code or x_user_dept or getattr(user, "department", "SALES")
+    raw_dept = department_code or getattr(user, "department", "SALES")
     norm_dept = normalize_dept_code(raw_dept)
     if norm_dept == "ALL":
         norm_dept = "SALES"
@@ -401,8 +399,6 @@ async def list_upload_approvals(
     status_filter: Optional[str] = Query(None, alias="status"),
     department: Optional[str] = Query(None),
     resource_type: Optional[str] = Query(None),
-    x_user_role: Optional[str] = Header(None),
-    x_user_email: Optional[str] = Header(None),
     user: User = Depends(get_request_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -413,27 +409,20 @@ async def list_upload_approvals(
     """
     await ensure_approval_table(db)
 
-    effective_role = normalize_role_code(x_user_role or getattr(user, "role", "standard"))
-    if x_user_role:
-        is_admin = effective_role == "ADMIN"
-    else:
-        is_admin = is_system_admin(user) or effective_role == "ADMIN"
-    clean_email = (x_user_email or getattr(user, "email", "") or "").strip().lower()
-    is_real_user_match = bool(user and getattr(user, "email", None) and user.email.lower() == clean_email)
+    effective_role = normalize_role_code(getattr(user, "role", "standard"))
+    is_admin = is_system_admin(user) or effective_role == "ADMIN"
+    clean_email = (getattr(user, "email", "") or "").strip().lower()
 
     query = select(KnowledgeUploadApproval)
 
     if not is_admin:
         # Scoped strictly to the current user
-        if is_real_user_match:
-            query = query.where(
-                or_(
-                    KnowledgeUploadApproval.uploaded_by_id == user.user_id,
-                    KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email),
-                )
+        query = query.where(
+            or_(
+                KnowledgeUploadApproval.uploaded_by_id == user.user_id,
+                KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email),
             )
-        else:
-            query = query.where(KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email))
+        )
 
     if status_filter and status_filter.upper() != "ALL":
         query = query.where(KnowledgeUploadApproval.status == status_filter.upper())
@@ -454,17 +443,12 @@ async def list_upload_approvals(
         KnowledgeUploadApproval.status == "PENDING"
     )
     if not is_admin:
-        if is_real_user_match:
-            pending_count_query = pending_count_query.where(
-                or_(
-                    KnowledgeUploadApproval.uploaded_by_id == user.user_id,
-                    KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email),
-                )
+        pending_count_query = pending_count_query.where(
+            or_(
+                KnowledgeUploadApproval.uploaded_by_id == user.user_id,
+                KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email),
             )
-        else:
-            pending_count_query = pending_count_query.where(
-                KnowledgeUploadApproval.uploaded_by_email.ilike(clean_email)
-            )
+        )
     pending_count = (await db.execute(pending_count_query)).scalar() or 0
 
     return {
@@ -483,7 +467,6 @@ async def list_upload_approvals(
 @router.post("/v1/admin/upload-approvals/{request_id}/approve")
 async def approve_upload_request(
     request_id: uuid.UUID,
-    x_user_role: Optional[str] = Header(None),
     user: User = Depends(get_request_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -497,11 +480,8 @@ async def approve_upload_request(
     """
     await ensure_approval_table(db)
 
-    effective_role = normalize_role_code(x_user_role or getattr(user, "role", "standard"))
-    if x_user_role:
-        is_admin = effective_role == "ADMIN"
-    else:
-        is_admin = is_system_admin(user) or effective_role == "ADMIN"
+    effective_role = normalize_role_code(getattr(user, "role", "standard"))
+    is_admin = is_system_admin(user) or effective_role == "ADMIN"
     if not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ADMIN_ONLY_DETAIL)
 
@@ -602,7 +582,6 @@ async def approve_upload_request(
 async def reject_upload_request(
     request_id: uuid.UUID,
     payload: RejectPayload,
-    x_user_role: Optional[str] = Header(None),
     user: User = Depends(get_request_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -615,11 +594,8 @@ async def reject_upload_request(
     """
     await ensure_approval_table(db)
 
-    effective_role = normalize_role_code(x_user_role or getattr(user, "role", "standard"))
-    if x_user_role:
-        is_admin = effective_role == "ADMIN"
-    else:
-        is_admin = is_system_admin(user) or effective_role == "ADMIN"
+    effective_role = normalize_role_code(getattr(user, "role", "standard"))
+    is_admin = is_system_admin(user) or effective_role == "ADMIN"
     if not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ADMIN_ONLY_DETAIL)
 

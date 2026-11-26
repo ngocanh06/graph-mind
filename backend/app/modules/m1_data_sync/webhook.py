@@ -13,12 +13,13 @@ import shutil
 import logging
 import asyncio
 import hashlib
+import hmac
 import tempfile
 import subprocess
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, UploadFile, File, Form, Header, HTTPException, status, Depends
+from fastapi import APIRouter, UploadFile, File, Form, Header, HTTPException, status, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -74,28 +75,46 @@ CANONICAL_DEPARTMENTS = ["legal", "sales", "accounting_procurement", "it", "rnd"
 
 
 def _verify_agent_key(authorization: Optional[str]) -> None:
-    """Verifies that the caller provides the valid agent API key."""
-    expected_token = f"Bearer {VALID_AGENT_API_KEY}"
-    if authorization != expected_token and authorization != VALID_AGENT_API_KEY:
-        logger.warning(f"[Watcher Webhook] Unauthorized request with authorization: {authorization}")
+    """Verifies that the caller provides the valid agent API key using timing-safe hmac.compare_digest."""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Agent API Key. Configure AEGIS_AGENT_API_KEY."
+        )
+    auth_clean = authorization.strip()
+    expected_bearer = f"Bearer {VALID_AGENT_API_KEY}"
+    match_bearer = hmac.compare_digest(auth_clean, expected_bearer)
+    match_raw = hmac.compare_digest(auth_clean, VALID_AGENT_API_KEY)
+    if not (match_bearer or match_raw):
+        logger.warning(f"[Watcher Webhook] Unauthorized request with invalid authorization header")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Agent API Key. Configure AEGIS_AGENT_API_KEY."
         )
 
 
-def _verify_doc_action_auth(authorization: Optional[str] = Header(None, alias="Authorization")) -> Dict[str, Any]:
+def verify_agent_token(authorization: Optional[str] = Header(None, alias="Authorization")) -> None:
+    """Verifies that the caller provides the valid agent API key (AEGIS Service Token)."""
+    _verify_agent_key(authorization)
+
+
+def _verify_doc_action_auth(
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    token: Optional[str] = Query(None),
+) -> Dict[str, Any]:
     """Requires caller to be an authorized User (JWT Bearer) or valid Agent (API Key)."""
-    if not authorization:
+    auth_val = authorization or (f"Bearer {token}" if token else None)
+    if not auth_val:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Yêu cầu đăng nhập hoặc cung cấp API Key để thực hiện thao tác tài liệu."
         )
-    expected_token = f"Bearer {VALID_AGENT_API_KEY}"
-    if authorization == expected_token or authorization == VALID_AGENT_API_KEY:
+    auth_clean = auth_val.strip()
+    expected_bearer = f"Bearer {VALID_AGENT_API_KEY}"
+    if hmac.compare_digest(auth_clean, expected_bearer) or hmac.compare_digest(auth_clean, VALID_AGENT_API_KEY):
         return {"type": "agent", "role": "admin"}
 
-    raw_token = authorization[7:] if authorization.startswith("Bearer ") else authorization
+    raw_token = auth_val[7:] if auth_val.startswith("Bearer ") else auth_val
     try:
         from app.core.security import decode_access_token
     except ImportError:
@@ -543,7 +562,7 @@ async def ingest_file_from_watcher(
     department: str = Form("sales"),
     file_name: Optional[str] = Form(None),
     event_type: str = Form("created"),
-    authorization: Optional[str] = Header(None)
+    agent_auth: None = Depends(verify_agent_token),
 ):
     """
     Webhook endpoint invoked by AEGIS File Watcher Daemon when file is created or modified.
@@ -607,13 +626,12 @@ class DeleteEventPayload(BaseModel):
 
 
 @router.post("/file-watcher/deleted")
-def handle_file_deleted(payload: DeleteEventPayload, authorization: Optional[str] = Header(None)):
+def handle_file_deleted(payload: DeleteEventPayload, agent_auth: None = Depends(verify_agent_token)):
     """
     Invoked by AEGIS File Watcher when a monitored file is deleted from Central Storage.
     Removes Qdrant vectors and owned Document/Clause nodes in Neo4j while strictly
     preserving shared Company, Department, Customer nodes.
     """
-    _verify_agent_key(authorization or payload.authorization)
     safe_name = _sanitize_filename(payload.file_name)
     dept = resolve_canonical_dept(payload.department)
     storage_path = f"/data/{dept}/{safe_name}"
@@ -658,12 +676,11 @@ class RenameEventPayload(BaseModel):
 
 
 @router.post("/file-watcher/renamed")
-def handle_file_renamed(payload: RenameEventPayload, authorization: Optional[str] = Header(None)):
+def handle_file_renamed(payload: RenameEventPayload, agent_auth: None = Depends(verify_agent_token)):
     """
     Invoked by AEGIS File Watcher when a file is renamed or moved within Central Storage.
     Updates metadata in Qdrant & Neo4j without re-embedding to preserve doc_id and vector integrity.
     """
-    _verify_agent_key(authorization or payload.authorization)
     old_name = _sanitize_filename(payload.old_name)
     new_name = _sanitize_filename(payload.new_name)
     dept = resolve_canonical_dept(payload.department)
@@ -703,7 +720,7 @@ def handle_file_renamed(payload: RenameEventPayload, authorization: Optional[str
 
 
 @router.get("/file-watcher/status")
-def get_watcher_sync_status():
+def get_watcher_sync_status(auth: Dict[str, Any] = Depends(_verify_doc_action_auth)):
     """Returns live telemetry and recent ingestion events from AEGIS Local Agents."""
     logs = get_watcher_sync_logs()
     return {
@@ -717,7 +734,7 @@ def get_watcher_sync_status():
 
 
 @router.get("/file-watcher/events")
-def get_all_watcher_events(limit: int = 50):
+def get_all_watcher_events(limit: int = 50, auth: Dict[str, Any] = Depends(_verify_doc_action_auth)):
     """Returns event log for Notification Center."""
     logs = get_watcher_sync_logs()
     return {
@@ -728,7 +745,7 @@ def get_all_watcher_events(limit: int = 50):
 
 
 @router.get("/file-watcher/latest")
-def get_latest_watcher_event():
+def get_latest_watcher_event(auth: Dict[str, Any] = Depends(_verify_doc_action_auth)):
     """Returns the single most recent event."""
     logs = get_watcher_sync_logs()
     latest = logs[0] if logs else None
@@ -740,7 +757,7 @@ def get_latest_watcher_event():
 
 
 @router.get("/file-watcher/known-hashes")
-def get_known_hashes_endpoint():
+def get_known_hashes_endpoint(agent_auth: None = Depends(verify_agent_token)):
     """
     Returns list of all file SHA-256 hashes already indexed in GraphMind.
     Enables AEGIS File Watcher Initial Sync to skip already-indexed files idempotently.
@@ -754,7 +771,7 @@ def get_known_hashes_endpoint():
 
 
 @router.get("/file-watcher/stream")
-async def stream_watcher_events():
+async def stream_watcher_events(auth: Dict[str, Any] = Depends(_verify_doc_action_auth)):
     """
     Server-Sent Events (SSE) live push stream for instant 0ms notification in frontend.
     Dispatches created, modified, deleted, renamed events in realtime.
@@ -794,7 +811,7 @@ class TestEventPayload(BaseModel):
 
 
 @router.post("/file-watcher/test-event")
-def inject_test_event(payload: TestEventPayload):
+def inject_test_event(payload: TestEventPayload, auth: Dict[str, Any] = Depends(_verify_doc_action_auth)):
     """Dev/demo helper: inject a fake ingestion event to test frontend SSE ticker."""
     now_dt = datetime.now()
     import hashlib as _hl, time as _t

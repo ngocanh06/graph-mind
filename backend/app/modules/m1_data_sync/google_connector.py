@@ -71,7 +71,7 @@ class MockConnectRequest(BaseModel):
 
 
 @router.get("/status")
-def get_google_status() -> Dict[str, Any]:
+def get_google_status(scope: ScopeContext = Depends(get_user_scope)) -> Dict[str, Any]:
     """
     Returns connection and sync status of Google Drive & Sheets connector.
     """
@@ -102,7 +102,10 @@ def get_google_status() -> Dict[str, Any]:
 
 
 @router.get("/auth-url")
-def get_google_auth_url(redirect_uri: Optional[str] = None) -> Dict[str, Any]:
+def get_google_auth_url(
+    redirect_uri: Optional[str] = None,
+    scope: ScopeContext = Depends(get_user_scope),
+) -> Dict[str, Any]:
     """
     Generates standard OAuth 2.0 authorization URL for Google Drive & Sheets.
     """

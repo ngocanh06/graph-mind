@@ -57,9 +57,9 @@ router = APIRouter()
 security_bearer = HTTPBearer(auto_error=False)
 
 try:
-    from app.core.rbac import get_request_user, DEPT_CANONICAL, normalize_dept
+    from app.core.rbac import get_request_user, DEPT_CANONICAL, normalize_dept, get_user_scope, ScopeContext
 except ImportError:
-    from core.rbac import get_request_user, DEPT_CANONICAL, normalize_dept
+    from core.rbac import get_request_user, DEPT_CANONICAL, normalize_dept, get_user_scope, ScopeContext
 
 # ── Dữ liệu khởi tạo mặc định (Initial Seed SOPs) ──────────────────────────────
 DEFAULT_SEED_SOPS = [
@@ -194,7 +194,6 @@ async def ensure_initial_seed_sops(db: AsyncSession):
 async def verify_br04_publish_permission(
     user: User,
     target_department: str,
-    x_user_dept: Optional[str],
     db: AsyncSession,
 ):
     """
@@ -204,13 +203,6 @@ async def verify_br04_publish_permission(
     - Standard Users (nhân viên nghiệp vụ) không có quyền xuất bản SOP.
     - Ban Giám Đốc (Executive) và Quản trị viên (Admin) có thẩm quyền toàn hệ thống.
     """
-    if x_user_dept:
-        try:
-            import urllib.parse
-            x_user_dept = urllib.parse.unquote(x_user_dept)
-        except Exception:
-            pass
-
     user_role = (user.role or "").strip().lower()
     is_admin = user.is_superuser or user_role in ["admin", "it_admin"]
     is_exec = user_role in ["executive", "ceo", "cfo"]
@@ -237,8 +229,7 @@ async def verify_br04_publish_permission(
         if row:
             user_dept_name = row[0]
 
-    # Ưu tiên department từ header X-User-Dept nếu có truyền từ giao diện persona
-    effective_dept = x_user_dept or user_dept_name or "Quản Lý Phòng Ban"
+    effective_dept = user_dept_name or "Quản Lý Phòng Ban"
 
     user_canonical = DEPT_CANONICAL.get(effective_dept.strip().lower())
     target_canonical = DEPT_CANONICAL.get(target_department.strip().lower())
@@ -385,6 +376,7 @@ async def list_sops(
     dept: Optional[str] = Query(None, description="Lọc theo phòng ban (hoặc ALL)"),
     status_filter: Optional[str] = Query(None, alias="status", description="Lọc theo trạng thái (published, draft, hoặc ALL)"),
     q: Optional[str] = Query(None, description="Tìm kiếm theo từ khóa tên hoặc mã SOP"),
+    scope: ScopeContext = Depends(get_user_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -426,6 +418,7 @@ async def list_sops(
 @router.get("/{sop_id}", response_model=SopResponse)
 async def get_sop_detail(
     sop_id: str,
+    scope: ScopeContext = Depends(get_user_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Lấy thông tin chi tiết một tài liệu SOP theo Code (ví dụ: SOP-01) hoặc UUID"""
@@ -469,7 +462,6 @@ async def get_sop_detail(
 async def create_or_save_draft(
     payload: SopCreateRequest,
     user: User = Depends(get_request_user),
-    x_user_dept: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -545,7 +537,6 @@ async def publish_sop(
     payload: Optional[SopPublishRequest] = None,
     sop_id: Optional[str] = None,
     user: User = Depends(get_request_user),
-    x_user_dept: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -644,7 +635,6 @@ async def publish_sop(
     await verify_br04_publish_permission(
         user=user,
         target_department=sop.department,
-        x_user_dept=x_user_dept,
         db=db,
     )
 

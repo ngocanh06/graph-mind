@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Set, List, Dict, Any, Tuple
 from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError
 from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -472,84 +473,53 @@ class ScopeContext:
 # ── User Resolution Helper ───────────────────────────────────────────────────
 async def get_request_user(
     auth_header: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
-    x_user_id: Optional[str] = Header(None),
-    x_user_email: Optional[str] = Header(None),
-    x_user_name: Optional[str] = Header(None),
-    x_user_dept: Optional[str] = Header(None),
-    user_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
-    Unified resolver for requesting user:
-    1. JWT Bearer token
-    2. X-User-Id / Query user_id
-    3. X-User-Email
-    4. X-User-Name
-    5. Default fallback to executive user
+    Unified strict resolver for requesting user:
+    1. Validates JWT Bearer token
+    2. Looks up user by sub in DB
+    3. Verifies active and non-locked status
+    Fail-closed: returns 401 if token is missing or invalid.
+    Client-side spoofing headers (X-User-Id, X-User-Role, etc.) are strictly forbidden.
     """
-    u = None
-
-    # 1. Bearer Token
-    if auth_header and auth_header.credentials:
-        try:
-            payload = decode_access_token(auth_header.credentials)
-            if payload and "sub" in payload:
-                uid = uuid.UUID(payload["sub"])
-                res = await db.execute(select(User).where(User.user_id == uid))
-                u = res.scalar_one_or_none()
-        except Exception:
-            pass
-
-    # 2. X-User-Id / Query user_id
-    if not u:
-        uid_candidate = x_user_id or user_id
-        if uid_candidate:
-            try:
-                uid = uuid.UUID(uid_candidate)
-                res = await db.execute(select(User).where(User.user_id == uid))
-                u = res.scalar_one_or_none()
-            except (ValueError, TypeError):
-                pass
-
-    # 3. X-User-Email
-    if not u and x_user_email:
-        clean_email = x_user_email.strip().lower()
-        clean_email = USER_ALIASES.get(clean_email, clean_email)
-        res = await db.execute(
-            select(User).where(
-                User.email.ilike(clean_email),
-                User.deleted_at.is_(None),
-            )
-        )
-        u = res.scalar_one_or_none()
-
-    # 4. X-User-Name
-    if not u and x_user_name:
-        clean_name = x_user_name.strip().lower()
-        clean_name = USER_ALIASES.get(clean_name, clean_name)
-        res = await db.execute(
-            select(User).where(
-                or_(
-                    User.username.ilike(clean_name),
-                    User.email.ilike(f"%{clean_name}%"),
-                ),
-                User.deleted_at.is_(None),
-            )
-        )
-        u = res.scalar_one_or_none()
-
-    # 5. Default fallback to first active user (exec)
-    if not u:
-        res = await db.execute(select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.asc()).limit(1))
-        u = res.scalar_one_or_none()
-
-    if not u:
+    if not auth_header or not auth_header.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Chưa xác định được tài khoản người dùng.",
+            detail="Yêu cầu xác thực tài khoản (Thiếu Bearer Token).",
         )
 
-    if u.deleted_at is not None:
+    try:
+        payload = decode_access_token(auth_header.credentials)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token không hợp lệ hoặc đã hết hạn.",
+        )
+
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token không hợp lệ hoặc đã hết hạn.",
+        )
+
+    try:
+        uid = uuid.UUID(payload["sub"])
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token subject không hợp lệ.",
+        )
+
+    res = await db.execute(
+        select(User).where(
+            User.user_id == uid,
+            User.deleted_at.is_(None)
+        )
+    )
+    u = res.scalar_one_or_none()
+
+    if not u:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Tài khoản không tồn tại trong hệ thống.",
@@ -576,25 +546,24 @@ async def get_request_user(
 # ── Scope Context Dependency ─────────────────────────────────────────────────
 async def get_user_scope(
     user: User = Depends(get_request_user),
-    x_user_role: Optional[str] = Header(None),
-    x_user_dept: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ) -> ScopeContext:
     """
-    Computes effective ScopeContext for current request dynamically reading Granular RBAC Matrix.
+    Computes effective ScopeContext strictly from database User and Granular RBAC Matrix.
+    Client-side role/department header spoofing is strictly prohibited.
     """
-    user_role = (x_user_role or user.role or "").strip()
+    user_role = (user.role or "").strip()
     try:
         from app.modules.m6_admin_security.rbac_matrix_service import normalize_role_code
         role_code = normalize_role_code(user_role)
     except Exception:
         role_code = "STANDARD_USER"
 
-    is_admin = role_code == "ADMIN" or (not x_user_role and getattr(user, "is_superuser", False))
+    is_admin = role_code == "ADMIN" or getattr(user, "is_superuser", False)
     is_exec = role_code == "EXECUTIVE"
     is_unrestricted = is_admin or is_exec
 
-    # Resolve Department Name
+    # Resolve Department Name strictly from DB
     dept_name = None
     if getattr(user, "department_id", None):
         dept_res = await db.execute(
@@ -605,13 +574,7 @@ async def get_user_scope(
         if row:
             dept_name = row[0]
 
-    if x_user_dept:
-        try:
-            x_user_dept = urllib.parse.unquote(x_user_dept)
-        except Exception:
-            pass
-
-    effective_dept = x_user_dept or dept_name or "Ban Giám Đốc"
+    effective_dept = dept_name or ("Ban Giám Đốc" if is_exec else "Kinh doanh")
     canonical = normalize_dept(effective_dept)
 
     # Dynamically read policies from PostgreSQL knowledge_access_policies

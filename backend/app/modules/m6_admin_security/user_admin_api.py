@@ -38,13 +38,16 @@ from app.schemas.user_admin import (
 
 router = APIRouter(prefix="/admin", tags=["M6 Admin"])
 
-# Mapping chuẩn 5 phòng ban doanh nghiệp
+# Mapping chuẩn các phòng ban doanh nghiệp
 DEPT_CODE_TO_ID = {
     "SALES": uuid.UUID("6d04d700-56e6-4d50-88b2-6594013fc8cd"),
     "LEGAL": uuid.UUID("dd99cb37-49d1-4543-99c6-f4787dd19a08"),
+    "ACCOUNTING_PROCUREMENT": uuid.UUID("aa7d6633-dc3f-44b3-a5ad-cb2e08f891cd"),
     "FINANCE": uuid.UUID("aa7d6633-dc3f-44b3-a5ad-cb2e08f891cd"),
     "IT": uuid.UUID("1c51042f-0345-4467-90ca-ef5845822712"),
     "RND": uuid.UUID("eafa81ed-53a7-4275-ba0f-f9ac57eb1ce5"),
+    "BOARD": uuid.UUID("2e047fa3-7d2b-4225-94c9-b0958e27e36b"),
+    "EXECUTIVE": uuid.UUID("2e047fa3-7d2b-4225-94c9-b0958e27e36b"),
 }
 
 
@@ -55,15 +58,15 @@ def normalize_dept_label_and_code(raw_name: Optional[str]) -> Tuple[str, str]:
     if "legal" in r or "pháp chế" in r:
         return "Pháp chế (LEGAL)", "LEGAL"
     if "accounting" in r or "kế toán" in r or "thu mua" in r or "finance" in r:
-        return "Kế toán / Thu mua (FINANCE)", "FINANCE"
+        return "Kế toán / Thu mua (ACCOUNTING_PROCUREMENT)", "ACCOUNTING_PROCUREMENT"
     if "công nghệ" in r or "it" in r or "cntt" in r:
         return "Công nghệ / IT", "IT"
     if "r&d" in r or "rnd" in r or "nghiên cứu" in r:
         return "R&D", "RND"
     if "sales" in r or "kinh doanh" in r:
         return "Kinh doanh (SALES)", "SALES"
-    if "ban giám đốc" in r or "executive" in r:
-        return "Toàn công ty (Global)", "GLOBAL"
+    if "ban giám đốc" in r or "executive" in r or "board" in r:
+        return "Ban Giám Đốc", "BOARD"
     return raw_name, "SALES"
 
 
@@ -88,12 +91,16 @@ async def serialize_user_admin_out(
                 dept_name, dept_code = normalize_dept_label_and_code(row[0])
 
     u_role = canonical_role(u.role)
-    if u_role in ("it_admin", "executive"):
-        dept_code = "GLOBAL"
-        dept_name = "Toàn công ty (Global)"
-    elif not dept_code:
-        dept_code = "SALES"
-        dept_name = "Kinh doanh (SALES)"
+    if not dept_code:
+        if u_role == "executive":
+            dept_code = "BOARD"
+            dept_name = "Ban Giám Đốc"
+        elif u_role == "it_admin":
+            dept_code = "IT"
+            dept_name = "Công nghệ / IT"
+        else:
+            dept_code = "SALES"
+            dept_name = "Kinh doanh (SALES)"
 
     return UserAdminOut(
         user_id=u.user_id,

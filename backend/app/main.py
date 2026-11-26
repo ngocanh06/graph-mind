@@ -466,7 +466,7 @@ def get_health():
     }
 
 @app.get("/api/signals")
-def get_signals():
+def get_signals(scope: ScopeContext = Depends(get_user_scope)):
     signals = []
     try:
         neo4j_client.connect()
@@ -538,7 +538,7 @@ def get_signals():
     return {"success": True, "count": len(signals), "data": signals}
 
 @app.get("/api/connectors")
-def get_connectors():
+def get_connectors(scope: ScopeContext = Depends(get_user_scope)):
     neo_ok = neo4j_client.is_connected or neo4j_client.connect()
     qdrant_ok = qdrant_client.is_connected or qdrant_client.connect()
     nodes = neo4j_client.get_node_count() if neo_ok else 55315
@@ -600,7 +600,7 @@ def get_connectors():
 
 @app.get("/api/llmops")
 @app.get("/api/metrics")
-def get_llmops():
+def get_llmops(scope: ScopeContext = Depends(get_user_scope)):
     pts = qdrant_client.get_points_count() if qdrant_client.is_connected else 35276
     nodes = neo4j_client.get_node_count() if neo4j_client.is_connected else 55315
     return {
@@ -624,7 +624,7 @@ def get_llmops():
 # ============================================================================
 
 @app.get("/api/neo4j/status")
-def get_neo4j_status(role: Optional[str] = Query(default=None)):
+def get_neo4j_status(scope: ScopeContext = Depends(get_user_scope)):
     connected = neo4j_client.is_connected or neo4j_client.connect()
     if not connected:
         return {
@@ -659,7 +659,7 @@ def get_knowledge_graph(
     label: Optional[str] = Query(default=None),
     domain: Optional[str] = Query(default=None),
     rel_type: Optional[str] = Query(default=None),
-    role: Optional[str] = Query(default=None)
+    scope: ScopeContext = Depends(get_user_scope)
 ):
     """Returns nodes and relationships from live Neo4j database with domain and relationship filters, scoped by role RBAC."""
     connected = neo4j_client.is_connected or neo4j_client.connect()
@@ -675,15 +675,14 @@ def get_knowledge_graph(
     label_counts = neo4j_client.get_label_counts()
 
     # Enforce RBAC filtering on nodes, edges, and label taxonomy counts
-    if role:
-        nodes, rels = filter_graph_data_by_scope(nodes, rels, role)
-        label_counts = filter_label_counts_by_scope(label_counts, role)
+    nodes, rels = filter_graph_data_by_scope(nodes, rels, scope.role)
+    label_counts = filter_label_counts_by_scope(label_counts, scope.role)
 
     return {
         "success": True,
         "source": "neo4j",
         "domain": domain or "all",
-        "role": role or "all",
+        "role": scope.role,
         "data": {
             "nodes": nodes,
             "relationships": rels,
@@ -701,7 +700,7 @@ def get_knowledge_graph(
 def expand_neo4j_node(
     node_id: str,
     limit: int = Query(default=25, ge=1, le=100),
-    role: Optional[str] = Query(default=None)
+    scope: ScopeContext = Depends(get_user_scope)
 ):
     """Fetch 1-hop connected neighbor nodes and edges for expanding graph canvas, scoped by RBAC."""
     connected = neo4j_client.is_connected or neo4j_client.connect()
@@ -710,8 +709,7 @@ def expand_neo4j_node(
     result = neo4j_client.expand_node_neighbors(node_id=node_id, limit=limit)
     raw_nodes = result.get("nodes", [])
     raw_rels = result.get("relationships", [])
-    if role:
-        raw_nodes, raw_rels = filter_graph_data_by_scope(raw_nodes, raw_rels, role)
+    raw_nodes, raw_rels = filter_graph_data_by_scope(raw_nodes, raw_rels, scope.role)
     filtered_result = {
         "nodes": raw_nodes,
         "relationships": raw_rels
@@ -725,27 +723,28 @@ def expand_neo4j_node(
     }
 
 @app.get("/api/neo4j/node/{node_id:path}")
-def get_neo4j_node_details(node_id: str, role: Optional[str] = Query(default=None)):
+def get_neo4j_node_details(
+    node_id: str,
+    scope: ScopeContext = Depends(get_user_scope)
+):
     """Get single node by element ID with all properties and immediate relationships, scoped by RBAC."""
     node = neo4j_client.get_node_by_id(node_id)
     if not node:
         raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found in Neo4j.")
-    if role:
-        filtered = filter_graph_entities_by_scope([node], role)
-        if not filtered:
-            raise HTTPException(status_code=403, detail=f"Truy cập thực thể '{node_id}' bị từ chối theo phân quyền RBAC.")
+    filtered = filter_graph_entities_by_scope([node], scope.role)
+    if not filtered:
+        raise HTTPException(status_code=403, detail=f"Truy cập thực thể '{node_id}' bị từ chối theo phân quyền RBAC.")
     return {"success": True, "data": node}
 
 @app.get("/api/neo4j/search")
 def search_neo4j_nodes(
     q: str = Query(..., min_length=1),
     limit: int = Query(default=25, le=100),
-    role: Optional[str] = Query(default=None)
+    scope: ScopeContext = Depends(get_user_scope)
 ):
     """Search nodes across all properties in Neo4j, filtered by RBAC."""
     results = neo4j_client.search_nodes(query=q, limit=limit)
-    if role:
-        results = filter_graph_entities_by_scope(results, role)
+    results = filter_graph_entities_by_scope(results, scope.role)
     return {"success": True, "count": len(results), "data": results}
 
 @app.post("/api/neo4j/cypher")
@@ -770,10 +769,11 @@ def run_cypher_endpoint(
 @app.get("/api/graph/entities")
 @app.get("/api/nodes")
 @app.get("/api/graph")
-def get_entities(limit: int = Query(default=100, le=500)):
+def get_entities(limit: int = Query(default=100, le=500), scope: ScopeContext = Depends(get_user_scope)):
     """Provides entities: uses live Neo4j if available, fallback to mock entities."""
     if neo4j_client.is_connected or neo4j_client.connect():
         nodes = neo4j_client.get_all_nodes(limit=limit)
+        nodes = filter_graph_entities_by_scope(nodes, scope.role)
         # Convert into key-value map for backward compatibility
         entity_map = {}
         for n in nodes:
@@ -783,10 +783,13 @@ def get_entities(limit: int = Query(default=100, le=500)):
     return {"success": True, "source": "mock", "data": ENTITIES}
 
 @app.get("/api/graph/entity/{entity_id}")
-def get_entity_by_id(entity_id: str):
+def get_entity_by_id(entity_id: str, scope: ScopeContext = Depends(get_user_scope)):
     if neo4j_client.is_connected or neo4j_client.connect():
         node = neo4j_client.get_node_by_id(entity_id)
         if node:
+            filtered = filter_graph_entities_by_scope([node], scope.role)
+            if not filtered:
+                raise HTTPException(status_code=403, detail="Truy cập thực thể bị từ chối theo phân quyền RBAC.")
             return {"success": True, "data": node}
     entity = ENTITIES.get(entity_id)
     if not entity:
@@ -798,7 +801,7 @@ def get_entity_by_id(entity_id: str):
 # ============================================================================
 
 @app.get("/api/qdrant/status")
-def get_qdrant_status():
+def get_qdrant_status(scope: ScopeContext = Depends(get_user_scope)):
     connected = qdrant_client.is_connected or qdrant_client.connect()
     host = os.getenv("QDRANT_HOST", "localhost")
     port = int(os.getenv("QDRANT_PORT", "6333"))
@@ -815,7 +818,7 @@ def get_qdrant_status():
     }
 
 @app.get("/api/qdrant/collections")
-def get_qdrant_collections():
+def get_qdrant_collections(scope: ScopeContext = Depends(get_user_scope)):
     connected = qdrant_client.is_connected or qdrant_client.connect()
     if not connected:
         return {"success": False, "data": []}
@@ -1183,8 +1186,6 @@ def multifacet_search(
     status: Optional[str] = Query(default="ALL"),
     category: Optional[str] = Query(default="ALL"),
     limit: int = Query(default=60, ge=1, le=1000),
-    x_user_role: Optional[str] = Header(None),
-    x_user_name: Optional[str] = Header(None),
     scope: ScopeContext = Depends(get_user_scope),
 ):
     """
@@ -1513,17 +1514,7 @@ def multifacet_search(
         documents = [d for d in documents if d.get("dept") == dept]
 
     # Enforce RBAC & Department Data Scope (BR-02 / US20)
-    effective_role = (x_user_role or "").strip().lower()
-    if not effective_role and x_user_name:
-        name_lower = x_user_name.strip().lower()
-        if name_lower in ["sales", "nam", "ops"]:
-            effective_role = "standard"
-        elif name_lower in ["exec", "ceo", "cfo"]:
-            effective_role = "executive"
-        elif name_lower in ["admin", "secops"]:
-            effective_role = "it_admin"
-        elif name_lower in ["manager", "mgr"]:
-            effective_role = "knowledge_manager"
+    effective_role = (scope.role or "standard").strip().lower()
 
     if effective_role in ("standard", "ops") or not scope.is_department_allowed("legal"):
         documents = filter_search_documents_by_scope(documents, "standard")
@@ -2964,14 +2955,15 @@ def download_document_file(
 
 @app.get("/api/contracts/assigned")
 def get_assigned_contracts(
-    role: str = Query(default="standard"),
-    dept: str = Query(default="Kinh doanh"),
+    scope: ScopeContext = Depends(get_user_scope),
     limit: int = Query(default=8, ge=1, le=50)
 ):
     """
     Returns live contracts assigned to user role, querying real CUAD contracts
     from Qdrant and real customer revenue from Neo4j.
     """
+    role = getattr(scope, "role", "standard")
+    dept = getattr(scope, "user_dept", "Kinh doanh")
     cuad_items = _get_cuad_cache()
     # Query top customers from Neo4j
     top_customers = []
@@ -3056,10 +3048,7 @@ _RISK_ALERTS_CACHE_TIME = 0.0
 
 @app.get("/api/risk/alerts")
 def get_risk_alerts(
-    role: Optional[str] = Query(default=None),
-    dept: Optional[str] = Query(default=None),
-    x_user_role: Optional[str] = Header(None),
-    x_user_dept: Optional[str] = Header(None),
+    scope: ScopeContext = Depends(get_user_scope),
 ):
     """
     Returns 100% LIVE risk alerts computed from real Neo4j Knowledge Graph & Qdrant:
@@ -3068,12 +3057,10 @@ def get_risk_alerts(
     Filtered by role/data scope (BR-02, BR-05, UC.20).
     """
     global _RISK_ALERTS_CACHE, _RISK_ALERTS_CACHE_TIME
-    role_val = x_user_role if isinstance(x_user_role, str) else (role if isinstance(role, str) else None)
-    dept_val = x_user_dept if isinstance(x_user_dept, str) else (dept if isinstance(dept, str) else None)
-    effective_role = (role_val or "standard").strip().lower()
-    raw_dept = (dept_val or "Kinh doanh").strip()
+    effective_role = (scope.role or "standard").strip().lower()
+    raw_dept = (scope.department_name or "Kinh doanh").strip()
     
-    is_exec_or_admin = effective_role in ["executive", "it_admin", "admin", "cfo", "ceo"]
+    is_exec_or_admin = effective_role in ["executive", "it_admin", "admin", "cfo", "ceo"] or scope.is_unrestricted
     is_manager = effective_role in ["knowledge_manager", "manager", "lead", "tp"]
     is_standard = not is_exec_or_admin and not is_manager
 

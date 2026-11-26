@@ -189,6 +189,24 @@ Trong SRS Ver 1.2, nhóm tác giả cần thay thế toàn bộ mô tả cũ b�
 | AI Copilot Hỏi đáp Đồ thị (Hybrid GraphRAG) | R (Test) | R (Audit) | **R (All Depts)** | **R (Dept Scope)** | **R (Dept Scope)** |
 | Công tắc Ngắt Khẩn cấp Máy trạm (`kill_switch`) | **C, U (Execute)** | Không | R (Audit) | Không | Không |
 
+### 4.3. Quy định Phân cấp Mức độ Nhạy cảm Dữ liệu (Data Classification Levels) & Chính sách Truy xuất Tri thức (Retrieval Access Policy — BR-02, BR-04, QAS-03a)
+
+Nhằm đảm bảo tuân thủ nguyên tắc Least Privilege, Phân lập nhiệm vụ SoD (BR-04), và chặn triệt để rò rỉ dữ liệu chéo phòng ban (QAS-03a) tại cả hai tầng Vector Search (Qdrant) và Graph Traversal (Neo4j), hệ thống GraphMind chuẩn hóa 3 mức độ nhạy cảm của dữ liệu tri thức:
+
+1. **3 Mức độ Nhạy cảm Tri thức (Data Classification Levels):**
+   - **`PUBLIC`:** Tài liệu và thực thể dùng chung toàn công ty (như Danh mục sản phẩm AdventureWorks, thông tin đại lý công khai, quy chế chung). Mọi Role thuộc mọi phòng ban đều được phép truy vấn và tham chiếu trong RAG.
+   - **`INTERNAL`:** Tài liệu nghiệp vụ nội bộ phòng ban. Nhân viên nghiệp vụ (`Standard User`) và Trưởng phòng (`Department Manager`) thuộc phòng ban sở hữu được phép truy cập. Hệ thống chặn tuyệt đối truy cập chéo giữa các phòng ban khác nhau (Cross-department Isolation).
+   - **`RESTRICTED`:** Tài liệu mật cao cấp (như Hợp đồng pháp chế CUAD nhạy cảm, điều khoản bồi thường thiệt hại vô hạn, thỏa thuận không cạnh tranh, dữ liệu tài chính/lương thưởng). **Chỉ có Trưởng phòng (`Department Manager`) của phòng ban sở hữu và Ban Giám Đốc (`Executive`) mới có quyền truy cập**. Nhân viên nghiệp vụ (`Standard User`) trong cùng phòng ban bị từ chối truy cập (Fail-Closed).
+
+2. **Chính sách Truy cập Tri thức cụ thể cho Phòng Pháp chế (Legal):**
+   - **Standard User (Legal):** Được phép truy vấn và trích xuất các tài liệu/điều khoản ở mức `INTERNAL` của phòng Pháp chế. Không được phép đọc tài liệu `RESTRICTED`.
+   - **Department Manager (Legal Manager):** Được phép truy cập cả mức `INTERNAL` và mức `RESTRICTED` của phòng Pháp chế.
+   - **Executive (Ban Giám Đốc):** Có quyền truy cập không giới hạn (`is_unrestricted = True`, `allowed_depts = {"*"}`) đến toàn bộ tài liệu `INTERNAL` và `RESTRICTED` của tất cả các phòng ban trong doanh nghiệp.
+   - **Các Role ngoài Legal (Sales, R&D, IT...):** Bị chặn 100% đối với tài liệu `INTERNAL` và `RESTRICTED` của Legal ngay từ câu truy vấn tại tầng lưu trữ (Vector payload filtering & Cypher WHERE clause isolation).
+
+3. **Nguyên tắc Fail-Closed cho Dữ liệu chưa gắn nhãn:**
+   - Mọi chunk hoặc node tài liệu chưa được gắn nhãn phòng ban (`department_id` rỗng) hoặc thiếu mức độ nhạy cảm (`classification_level` rỗng) mặc định bị từ chối truy cập đối với tất cả các vai trò không đặc quyền (Non-Executive / Non-Admin).
+
 ---
 
 ## 5. ĐẶC TẢ CHI TIẾT 10 FUNCTIONAL REQUIREMENTS MỚI (FR53 ➔ FR62)
