@@ -299,11 +299,6 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
       icon: Clock,
       badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined
     },
-    ...(isPb56Enabled ? [{
-      id: "workstations",
-      label: isVi ? "Quản lý máy trạm" : "Workstations",
-      icon: Server
-    }] : []),
     { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: Users },
     { id: "audit", label: isVi ? "Nhật ký Kiểm toán" : "Audit Trail", icon: ClipboardList },
   ];
@@ -499,12 +494,6 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
             onPendingCountChange={setPendingApprovalsCount}
           />
         )}
-
-        {isPb56Enabled && activeTab === "workstations" && (
-          <WorkstationsPanel lang={lang} showToast={showToast} />
-        )}
-
-
 
         {activeTab === "roles" && (
           <Card

@@ -343,29 +343,6 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
           }
         />
 
-        {/* ── MODULE 1 SUB-NAVIGATION TABS ─────────────────────── */}
-        <Tabs
-          tabs={[
-            {
-              id: "connectors",
-              label: isVi ? "Kênh Kết nối & Đồng bộ Cloud (Google Drive / Sheets)" : "Cloud Connectors & Pipelines",
-              icon: CloudDownload
-            },
-            {
-              id: "workstations",
-              label: isVi ? "Quản lý máy trạm" : "Workstations",
-              icon: Server
-            }
-          ]}
-          activeTab={mainTab}
-          onChange={setMainTab}
-          variant="pills"
-        />
-
-        {mainTab === "workstations" ? (
-          <WorkstationsPanel lang={lang} showToast={(msg) => setToastMsg(msg)} />
-        ) : (
-          <>
         {/* ── PIPELINE OVERVIEW CARD ──────────────────────────── */}
         <Card padding="20px 24px">
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4, #94A3B8)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>
@@ -701,8 +678,6 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
             </table>
           </div>
         </Card>
-          </>
-        )}
 
         {/* ── GOOGLE OAUTH 2.0 CONFIGURATION MODAL (FR4 & FR19) ── */}
         {showGoogleModal && (
