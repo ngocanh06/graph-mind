@@ -120,6 +120,18 @@ def test_admin_routes_reject_non_admin_roles(non_admin_role):
         dummy_uuid = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
         r3 = client.post(f"/api/admin/upload-approvals/{dummy_uuid}/approve", headers=headers, json={})
         assert r3.status_code == 403, f"Expected 403 for {non_admin_role} on approve, got {r3.status_code}"
+
+        # 4. Audit logs
+        r4 = client.get("/api/v1/admin/audit-logs", headers=headers)
+        assert r4.status_code == 403, f"Expected 403 for {non_admin_role} on audit-logs, got {r4.status_code}"
+
+        # 5. RBAC Matrix
+        r5 = client.get("/api/v1/admin/rbac-matrix", headers=headers)
+        assert r5.status_code == 403, f"Expected 403 for {non_admin_role} on rbac-matrix, got {r5.status_code}"
+
+        # 6. Password reset admin endpoint (PATCH)
+        r6 = client.patch(f"/api/v1/admin/users/{dummy_uuid}/reset-password", headers=headers, json={"new_password": "NewSecurePassword123!"})
+        assert r6.status_code == 403, f"Expected 403 for {non_admin_role} on reset-password, got {r6.status_code}"
     finally:
         app.dependency_overrides.pop(get_db, None)
 

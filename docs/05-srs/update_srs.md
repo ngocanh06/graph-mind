@@ -207,6 +207,14 @@ Nhằm đảm bảo tuân thủ nguyên tắc Least Privilege, Phân lập nhi�
 3. **Nguyên tắc Fail-Closed cho Dữ liệu chưa gắn nhãn:**
    - Mọi chunk hoặc node tài liệu chưa được gắn nhãn phòng ban (`department_id` rỗng) hoặc thiếu mức độ nhạy cảm (`classification_level` rỗng) mặc định bị từ chối truy cập đối với tất cả các vai trò không đặc quyền (Non-Executive / Non-Admin).
 
+4. **Lưu ý Đặc thù về Quyền Hạn Quản trị viên (Admin Temporary Status — TODO P3 / SoD):**
+   - Trong kiến trúc triển khai hiện tại của GraphMind (Pha 2), tài khoản Quản trị viên (`it_admin` / `admin`) tạm thời giữ cờ `is_unrestricted = True` tương đương với `Executive` nhằm phục vụ việc kiểm thử, vận hành và quản lý hạ tầng tập trung của SME (1-2 nhân sự IT kiêm nhiệm).
+   - **Lộ trình tuân thủ Phân lập Nhiệm vụ (SoD - BR-04 / TODO P3):** Ở Pha 3, hệ thống sẽ thực hiện phân tách triệt để: IT Admin sẽ bị tước toàn bộ quyền truy xuất nội dung tài liệu và truy vấn tri thức nghiệp vụ, chỉ giữ quyền cấu hình hệ thống, quản lý tài khoản, ma trận RBAC và giám sát log.
+
+5. **Quy định Chủ sở hữu Dữ liệu Tiền lương & Nhân sự (Payroll & HR Data Ownership):**
+   - **Chủ sở hữu dữ liệu (Data Owner):** Duy nhất thuộc về Phòng Nhân sự (HR Department) và Ban Giám Đốc (`Executive`).
+   - Mọi vai trò khác ngoài HR và Ban Giám Đốc (bao gồm Chuyên viên Kinh doanh `Standard User`, Quản lý các phòng ban khác, và Quản trị viên IT) đều bị chặn tuyệt đối tra cứu thông tin bảng lương, thu nhập, hồ sơ nhân sự cá nhân (tuân thủ Nghị định 13/2023/NĐ-CP và Rule BR-02 qua danh sách `STANDARD_RESTRICTED_KEYWORDS`).
+
 ---
 
 ## 5. ĐẶC TẢ CHI TIẾT 10 FUNCTIONAL REQUIREMENTS MỚI (FR53 ➔ FR62)

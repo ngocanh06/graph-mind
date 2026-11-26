@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Header, Depends, Request
 from fastapi.responses import JSONResponse
 
+from app.core.config import settings
+
 try:
     from app.modules.m6_admin_security.session_service import ConcurrentLoginException
 except ImportError:
@@ -214,6 +216,9 @@ app = FastAPI(
     title="Graph Mind Enterprise Knowledge Observatory API",
     description="Python Backend Engine for Graph Mind (AEGIS EKMP) Platform with live Neo4j & Qdrant",
     version="2.0.0",
+    docs_url=None if settings.APP_ENV == "production" else "/docs",
+    redoc_url=None if settings.APP_ENV == "production" else "/redoc",
+    openapi_url=None if settings.APP_ENV == "production" else "/openapi.json",
     lifespan=lifespan,
 )
 
