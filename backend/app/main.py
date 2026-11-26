@@ -675,7 +675,7 @@ def get_knowledge_graph(
     label_counts = neo4j_client.get_label_counts()
 
     # Enforce RBAC filtering on nodes, edges, and label taxonomy counts
-    nodes, rels = filter_graph_data_by_scope(nodes, rels, scope.role)
+    nodes, rels = filter_graph_data_by_scope(nodes, rels, scope.role, scope=scope)
     label_counts = filter_label_counts_by_scope(label_counts, scope.role)
 
     return {
@@ -709,7 +709,7 @@ def expand_neo4j_node(
     result = neo4j_client.expand_node_neighbors(node_id=node_id, limit=limit)
     raw_nodes = result.get("nodes", [])
     raw_rels = result.get("relationships", [])
-    raw_nodes, raw_rels = filter_graph_data_by_scope(raw_nodes, raw_rels, scope.role)
+    raw_nodes, raw_rels = filter_graph_data_by_scope(raw_nodes, raw_rels, scope.role, scope=scope)
     filtered_result = {
         "nodes": raw_nodes,
         "relationships": raw_rels
@@ -731,7 +731,7 @@ def get_neo4j_node_details(
     node = neo4j_client.get_node_by_id(node_id)
     if not node:
         raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found in Neo4j.")
-    filtered = filter_graph_entities_by_scope([node], scope.role)
+    filtered = filter_graph_entities_by_scope([node], scope.role, scope=scope)
     if not filtered:
         raise HTTPException(status_code=403, detail=f"Truy cập thực thể '{node_id}' bị từ chối theo phân quyền RBAC.")
     return {"success": True, "data": node}
@@ -744,7 +744,7 @@ def search_neo4j_nodes(
 ):
     """Search nodes across all properties in Neo4j, filtered by RBAC."""
     results = neo4j_client.search_nodes(query=q, limit=limit)
-    results = filter_graph_entities_by_scope(results, scope.role)
+    results = filter_graph_entities_by_scope(results, scope.role, scope=scope)
     return {"success": True, "count": len(results), "data": results}
 
 @app.post("/api/neo4j/cypher")

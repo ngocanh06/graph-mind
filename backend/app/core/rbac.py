@@ -102,6 +102,7 @@ def resolve_resource_type(val: Any) -> str:
     """
     Resolves any department name, folder, key, doc dict, or path to one of the 5 canonical RESOURCE_TYPES:
     LEGAL, SALES, ACCOUNTING_PROCUREMENT, IT, RND.
+    Returns 'UNKNOWN' if department cannot be resolved (fail-closed).
     """
     if isinstance(val, dict):
         # 0. Check ERP structured labels and types (Product, Customer, SalesOrder -> SALES; Vendor, PO -> ACCOUNTING_PROCUREMENT)
@@ -116,24 +117,47 @@ def resolve_resource_type(val: Any) -> str:
         if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or str(val.get("document_id", "")).startswith("SYSTEM-") or val.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
             return "SALES"
 
-        dk = (val.get("deptKey") or val.get("dept_key") or "").strip().lower()
-        if dk in FOLDER_TO_RESOURCE:
-            return FOLDER_TO_RESOURCE[dk]
-        path = (val.get("storage_path") or val.get("file") or val.get("source_file") or "").strip().lower()
-        for f, res in FOLDER_TO_RESOURCE.items():
-            if f"/data/{f}" in path or f"\\data\\{f}" in path or f"/{f}/" in path:
-                return res
-        val = (
-            val.get("dept")
-            or val.get("department")
+        # Check explicit department fields FIRST (prevents filename 'Salesforce' spoofing Legal docs)
+        dept_val = (
+            val.get("department")
+            or val.get("dept")
             or val.get("deptLabel")
+            or val.get("deptKey")
+            or val.get("dept_key")
             or val.get("domain")
             or val.get("category")
-            or val.get("name")
-            or ""
         )
+        if dept_val:
+            s_dept = str(dept_val).strip().lower()
+            if s_dept in FOLDER_TO_RESOURCE:
+                return FOLDER_TO_RESOURCE[s_dept]
+            for canonical in CANONICAL_RESOURCE_TYPES:
+                if canonical.lower() == s_dept:
+                    return canonical
+            if any(k in s_dept for k in ["legal", "pháp chế", "phap che", "cuad", "hợp đồng", "contract"]) or re.search(r"(?<![a-z0-9])nda(?![a-z0-9])", s_dept):
+                return "LEGAL"
+            if any(k in s_dept for k in ["sales", "kinh doanh", "kinh_doanh", "bán hàng", "ban hang", "order", "sản phẩm", "product", "hàng hóa", "khách hàng", "customer"]) or re.search(r"(?<![a-z0-9])crm(?![a-z0-9])", s_dept):
+                return "SALES"
+            if any(k in s_dept for k in ["accounting", "procurement", "kế toán", "ke toan", "thu mua", "thu_mua", "hóa đơn", "invoice", "công nợ", "vendor"]):
+                return "ACCOUNTING_PROCUREMENT"
+            if any(k in s_dept for k in ["công nghệ", "cong nghe", "cntt", "secops"]) or re.search(r"(?<![a-z0-9])it(?![a-z0-9])", s_dept):
+                return "IT"
+            if any(k in s_dept for k in ["r&d", "nghiên cứu", "nghien cuu"]) or re.search(r"(?<![a-z0-9])rnd(?![a-z0-9])", s_dept):
+                return "RND"
+
+        # Check storage path
+        path = (val.get("storage_path") or val.get("storagePath") or val.get("file") or val.get("source_file") or "").strip().lower()
+        for f, res in FOLDER_TO_RESOURCE.items():
+            if f"/data/{f}" in path or f"\\data\\{f}" in path or f"/{f}/" in path or f"\\{f}\\" in path:
+                return res
+
+        # If department and storage path are missing, FAIL-CLOSED (do not guess from filename)
+        return "UNKNOWN"
 
     s = str(val or "").strip()
+    if not s:
+        return "UNKNOWN"
+
     s_upper = s.upper()
     if s_upper in CANONICAL_RESOURCE_TYPES:
         return s_upper
@@ -149,7 +173,7 @@ def resolve_resource_type(val: Any) -> str:
         return "IT"
     if any(k in s_lower for k in ["r&d", "nghiên cứu", "nghien cuu"]) or re.search(r"(?<![a-z0-9])rnd(?![a-z0-9])", s_lower):
         return "RND"
-    return "LEGAL"
+    return "UNKNOWN"
 
 
 def check_data_scope_permission(query: str, role: str, scope: Optional[Any] = None) -> Tuple[bool, Optional[str]]:
@@ -214,38 +238,91 @@ def normalize_role_key(role: Optional[str]) -> str:
     return ROLE_STANDARD
 
 
-def filter_graph_entities_by_scope(entities: List[Dict[str, Any]], role: str) -> List[Dict[str, Any]]:
-    """Lọc danh sách các node thực thể Neo4j trả về tuân thủ Data Scope của role"""
+def filter_graph_entities_by_scope(
+    entities: List[Dict[str, Any]],
+    role: str,
+    scope: Optional[Any] = None
+) -> List[Dict[str, Any]]:
+    """
+    Lọc danh sách các node thực thể Neo4j trả về tuân thủ RBAC, Department Scope và Data Classification.
+    Fail-closed khi thiếu metadata phòng ban/phân loại trên các thực thể tài liệu/hợp đồng nhạy cảm.
+    """
     canonical_role = normalize_role_key(role)
-    if is_privileged_role(canonical_role):
+    if (scope and getattr(scope, "is_unrestricted", False)) or is_privileged_role(canonical_role):
         return entities
 
-    allowed = ALLOWED_ENTITY_LABELS.get(canonical_role, ALLOWED_ENTITY_LABELS[ROLE_STANDARD])
+    allowed_labels = ALLOWED_ENTITY_LABELS.get(canonical_role, ALLOWED_ENTITY_LABELS[ROLE_STANDARD])
+
+    if scope and getattr(scope, "allowed_resources", None):
+        allowed_res = set(scope.allowed_resources)
+    else:
+        allowed_depts = ROLE_DEPARTMENT_SCOPE.get(canonical_role, ROLE_DEPARTMENT_SCOPE[ROLE_STANDARD])
+        if "ALL" in allowed_depts:
+            return entities
+        allowed_res = {FOLDER_TO_RESOURCE.get(d.lower(), d.upper()) for d in allowed_depts if d.lower() in FOLDER_TO_RESOURCE}
+        if canonical_role == ROLE_STANDARD:
+            allowed_res = {"SALES", "RND"}
+
     filtered = []
     for ent in entities:
         labels = ent.get("_labels") or []
         if isinstance(labels, str):
             labels = [labels]
-        # Employee excluded for both Standard User and Knowledge Manager
+
+        # 1. Label exclusions
         if "Employee" in labels and canonical_role in [ROLE_STANDARD, ROLE_MANAGER]:
             continue
-        # Vendor/Company excluded for Standard Sales User
         if any(l in ["Vendor", "Company"] for l in labels) and canonical_role == ROLE_STANDARD:
             continue
-        # Must have at least one allowed label
-        if labels and not any(l in allowed for l in labels):
+        if labels and not any(l in allowed_labels for l in labels):
             continue
-        filtered.append(ent)
+
+        # 2. Classification check
+        classification = str(
+            ent.get("classification")
+            or ent.get("classification_level")
+            or ent.get("security_level")
+            or ""
+        ).strip().upper()
+
+        if classification == "PUBLIC":
+            filtered.append(ent)
+            continue
+
+        # 3. Department / Resource Type check (Fail-closed)
+        is_doc_entity = any(l in ["Document", "Contract", "Clause", "File"] for l in labels)
+        node_dept = (
+            ent.get("department")
+            or ent.get("dept")
+            or ent.get("deptKey")
+            or ent.get("dept_key")
+            or ent.get("domain")
+            or ""
+        )
+        storage_path = ent.get("storagePath") or ent.get("storage_path") or ""
+
+        # Sensitive document/clause nodes missing department and path and classification must fail-closed
+        if is_doc_entity and not node_dept and not storage_path and not classification:
+            continue
+
+        res_type = resolve_resource_type(ent)
+        if not res_type or res_type == "UNKNOWN":
+            continue
+
+        if res_type in allowed_res:
+            filtered.append(ent)
+
     return filtered
 
 
 def filter_graph_data_by_scope(
     nodes: List[Dict[str, Any]],
     relationships: List[Dict[str, Any]],
-    role: str
+    role: str,
+    scope: Optional[Any] = None
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Lọc cả node và quan hệ Neo4j theo phân quyền RBAC của role (loại bỏ cạnh treo)."""
-    filtered_nodes = filter_graph_entities_by_scope(nodes, role)
+    filtered_nodes = filter_graph_entities_by_scope(nodes, role, scope=scope)
     allowed_ids = {n["_id"] for n in filtered_nodes if "_id" in n}
     filtered_rels = []
     for r in relationships:
