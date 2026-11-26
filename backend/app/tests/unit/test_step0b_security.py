@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from jose import jwt
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from app.core.config import Settings, settings
 from app.core.security import create_access_token, decode_access_token
 from app.db.postgres.models import User
 from app.db.postgres.database import get_db
+from app.modules.m6_admin_security.rbac_matrix_model import KnowledgeAccessPolicy
 
 client = TestClient(app)
 
@@ -110,28 +111,135 @@ def test_admin_routes_reject_non_admin_roles(non_admin_role):
     try:
         # 1. User management admin list
         r1 = client.get("/api/v1/admin/users", headers=headers)
-        assert r1.status_code == 403, f"Expected 403 for {non_admin_role} on /api/v1/admin/users, got {r1.status_code}"
+        assert r1.status_code == 403, f"Expected 403 for {non_admin_role} on GET /api/v1/admin/users, got {r1.status_code}"
 
         # 2. Create user endpoint
         r2 = client.post("/api/v1/admin/users", headers=headers, json={"email": "new@test.com", "username": "new"})
         assert r2.status_code == 403, f"Expected 403 for {non_admin_role} on POST /api/v1/admin/users, got {r2.status_code}"
 
-        # 3. Document approval
         dummy_uuid = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-        r3 = client.post(f"/api/admin/upload-approvals/{dummy_uuid}/approve", headers=headers, json={})
-        assert r3.status_code == 403, f"Expected 403 for {non_admin_role} on approve, got {r3.status_code}"
 
-        # 4. Audit logs
+        # 3. Delete user
+        r_del = client.delete(f"/api/v1/admin/users/{dummy_uuid}", headers=headers)
+        assert r_del.status_code == 403, f"Expected 403 for {non_admin_role} on DELETE user, got {r_del.status_code}"
+
+        # 4. Change role
+        r_role = client.patch(f"/api/v1/admin/users/{dummy_uuid}/role", headers=headers, json={"role": "admin"})
+        assert r_role.status_code == 403, f"Expected 403 for {non_admin_role} on change role, got {r_role.status_code}"
+
+        # 5. Change department
+        r_dept = client.patch(f"/api/v1/admin/users/{dummy_uuid}/department", headers=headers, json={"department": "legal"})
+        assert r_dept.status_code == 403, f"Expected 403 for {non_admin_role} on change dept, got {r_dept.status_code}"
+
+        # 6. Lock user
+        r_lock = client.patch(f"/api/v1/admin/users/{dummy_uuid}/lock", headers=headers)
+        assert r_lock.status_code == 403, f"Expected 403 for {non_admin_role} on lock user, got {r_lock.status_code}"
+
+        # 7. Unlock user
+        r_unlock = client.patch(f"/api/v1/admin/users/{dummy_uuid}/unlock", headers=headers)
+        assert r_unlock.status_code == 403, f"Expected 403 for {non_admin_role} on unlock user, got {r_unlock.status_code}"
+
+        # 8. Password reset admin endpoint (PATCH)
+        r6 = client.patch(f"/api/v1/admin/users/{dummy_uuid}/reset-password", headers=headers, json={"new_password": "NewSecurePassword123!"})
+        assert r6.status_code == 403, f"Expected 403 for {non_admin_role} on reset-password, got {r6.status_code}"
+
+        # 9. Audit logs
         r4 = client.get("/api/v1/admin/audit-logs", headers=headers)
         assert r4.status_code == 403, f"Expected 403 for {non_admin_role} on audit-logs, got {r4.status_code}"
 
-        # 5. RBAC Matrix
+        # 10. RBAC Matrix GET / PUT / bulk / reset
         r5 = client.get("/api/v1/admin/rbac-matrix", headers=headers)
         assert r5.status_code == 403, f"Expected 403 for {non_admin_role} on rbac-matrix, got {r5.status_code}"
 
-        # 6. Password reset admin endpoint (PATCH)
-        r6 = client.patch(f"/api/v1/admin/users/{dummy_uuid}/reset-password", headers=headers, json={"new_password": "NewSecurePassword123!"})
-        assert r6.status_code == 403, f"Expected 403 for {non_admin_role} on reset-password, got {r6.status_code}"
+        r_put_mat = client.put("/api/v1/admin/rbac-matrix", headers=headers, json={"role": "standard", "resource": "hr", "can_query": True})
+        assert r_put_mat.status_code == 403, f"Expected 403 on PUT rbac-matrix, got {r_put_mat.status_code}"
+
+        r_bulk = client.post("/api/v1/admin/rbac-matrix/bulk-update", headers=headers, json=[])
+        assert r_bulk.status_code == 403, f"Expected 403 on bulk rbac-matrix, got {r_bulk.status_code}"
+
+        r_reset_mat = client.post("/api/v1/admin/rbac-matrix/reset-default", headers=headers)
+        assert r_reset_mat.status_code == 403, f"Expected 403 on reset-default rbac-matrix, got {r_reset_mat.status_code}"
+
+        # 11. Knowledge permissions
+        r_perm = client.get("/api/v1/admin/knowledge-permissions", headers=headers)
+        assert r_perm.status_code == 403, f"Expected 403 on GET permissions, got {r_perm.status_code}"
+
+        r_put_perm = client.put("/api/v1/admin/knowledge-permissions", headers=headers, json={"role": "standard", "resource": "hr", "can_query": True})
+        assert r_put_perm.status_code == 403, f"Expected 403 on PUT permissions, got {r_put_perm.status_code}"
+
+        # 12. Document upload approval endpoints
+        r3 = client.post(f"/api/admin/upload-approvals/{dummy_uuid}/approve", headers=headers, json={})
+        assert r3.status_code == 403, f"Expected 403 for {non_admin_role} on approve, got {r3.status_code}"
+
+        r_rej = client.post(f"/api/admin/upload-approvals/{dummy_uuid}/reject", headers=headers, json={"review_note": "denied"})
+        assert r_rej.status_code == 403, f"Expected 403 for {non_admin_role} on reject, got {r_rej.status_code}"
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+def test_admin_routes_allow_admin_role():
+    """Positive control: Admin role MUST NOT receive 403 Forbidden on admin endpoints."""
+    user_id = str(uuid.uuid4())
+    token = create_access_token(data={"sub": user_id, "role": "admin"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    fake_admin = User(
+        user_id=uuid.UUID(user_id),
+        email="admin@graphmind.ai",
+        username="admin",
+        role="admin",
+        status="active",
+        is_active=True,
+        is_superuser=True,
+        created_at=datetime.now(timezone.utc),
+    )
+    async def override_get_db():
+        session = AsyncMock()
+        async def mock_execute(stmt, *args, **kwargs):
+            res = MagicMock()
+            s_str = str(stmt).lower()
+            if "audit_logs" in s_str:
+                res.scalar_one.return_value = 0
+                res.scalars.return_value.all.return_value = []
+            elif "knowledge_permission" in s_str or "permissions" in s_str:
+                res.scalars.return_value.all.return_value = []
+            elif "count" in s_str:
+                res.scalar.return_value = 1
+                res.scalar_one.return_value = 1
+            else:
+                res.scalar_one_or_none.return_value = fake_admin
+                res.scalars.return_value.all.return_value = [fake_admin]
+                res.scalar.return_value = 1
+            return res
+        session.execute = mock_execute
+        yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        r1 = client.get("/api/v1/admin/users", headers=headers)
+        assert r1.status_code != 403, f"Admin must not receive 403 on /api/v1/admin/users, got {r1.status_code}"
+
+        r4 = client.get("/api/v1/admin/audit-logs", headers=headers)
+        assert r4.status_code != 403, f"Admin must not receive 403 on /api/v1/admin/audit-logs, got {r4.status_code}"
+
+        dummy_policy = KnowledgeAccessPolicy(
+            id=uuid.uuid4(),
+            role_code="STANDARD_USER",
+            department_code="HR",
+            resource_type="EMPLOYEE",
+            can_query=False,
+            can_view_citation=False,
+            can_upload=False,
+            can_edit=False,
+            can_view_sensitive=False,
+            data_scope="NONE",
+        )
+        with patch("app.modules.m6_admin_security.rbac_matrix_router.get_all_policies", new_callable=AsyncMock, return_value=[dummy_policy]):
+            r5 = client.get("/api/v1/admin/rbac-matrix", headers=headers)
+            assert r5.status_code != 403, f"Admin must not receive 403 on /api/v1/admin/rbac-matrix, got {r5.status_code}"
+
+            r_perm = client.get("/api/v1/admin/knowledge-permissions", headers=headers)
+            assert r_perm.status_code != 403, f"Admin must not receive 403 on /api/v1/admin/knowledge-permissions, got {r_perm.status_code}"
     finally:
         app.dependency_overrides.pop(get_db, None)
 

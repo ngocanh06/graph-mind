@@ -650,6 +650,13 @@ async def preview_upload_request(
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy yêu cầu.")
 
+    effective_role = normalize_role_code(getattr(user, "role", "standard"))
+    is_admin = is_system_admin(user) or effective_role == "ADMIN"
+    clean_email = (getattr(user, "email", "") or "").strip().lower()
+
+    if not is_admin and item.uploaded_by_id != user.user_id and (item.uploaded_by_email or "").strip().lower() != clean_email:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Bạn không có quyền xem trước tệp chờ duyệt này.")
+
     preview_content = ""
     lines_count = 0
     if os.path.exists(item.file_path):
