@@ -530,8 +530,10 @@ def get_risk_alerts(
         alert_id = 1
 
         is_scope_obj = scope is not None and not hasattr(scope, "dependency") and hasattr(scope, "role")
-        effective_role = (scope.role if is_scope_obj else role or "standard").strip().lower()
-        effective_dept = (scope.department_name if is_scope_obj else dept or "Kinh doanh").strip()
+        role_val = scope.role if is_scope_obj else (role if isinstance(role, str) else "executive")
+        dept_val = scope.department_name if is_scope_obj else (dept if isinstance(dept, str) else "Ban Giám Đốc")
+        effective_role = (role_val or "standard").strip().lower()
+        effective_dept = (dept_val or "Kinh doanh").strip()
         is_unrestricted = (scope.is_unrestricted if is_scope_obj else False) or (effective_role in ["executive", "it_admin", "admin", "ceo", "cfo"])
         is_manager = effective_role in ["knowledge_manager", "manager", "lead", "tp"]
 
@@ -908,7 +910,7 @@ def generate_executive_briefing(
         # Fetch snapshot of core indicators
         kpis = get_executive_kpis(scope)["data"]
         top_cust = get_top_customers(3)["data"]
-        alerts = get_risk_alerts()["data"]
+        alerts = get_risk_alerts(role="executive", dept="Ban Giám Đốc", scope=scope)["data"]
 
         top_cust_text = ", ".join([f"{c['name']} (${c['totalSpent']:,.0f})" for c in top_cust])
         alert_summary = f"{len([a for a in alerts if a['severity'] == 'CRITICAL'])} rủi ro nghiêm trọng (hợp đồng thiếu điều khoản giới hạn trách nhiệm), {len([a for a in alerts if a['severity'] == 'HIGH'])} cảnh báo bồi thường"
