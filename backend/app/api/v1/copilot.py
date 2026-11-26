@@ -1619,7 +1619,22 @@ async def ask_copilot(
                 if e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail"]:
                     return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
                 return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+
+            # Department / metadata fail-closed check
+            dept = pl.get("department") or pl.get("dept") or pl.get("deptKey") or pl.get("dept_key") or pl.get("domain")
+            storage_path = pl.get("storage_path") or pl.get("storagePath") or pl.get("file") or pl.get("source_file")
+            classification = str(pl.get("classification") or pl.get("classification_level") or "").strip().upper()
+
+            if classification == "PUBLIC":
+                return True
+
+            if not dept and not storage_path:
+                # Missing or empty department metadata on sensitive document -> FAIL-CLOSED
+                return False
+
             rt = resolve_resource_type(vh)
+            if not rt or rt == "UNKNOWN":
+                return False
             return rt in scope.allowed_resources
 
         vector_hits = [vh for vh in vector_hits if _is_v_allowed(vh)]

@@ -865,8 +865,8 @@ def vector_search_endpoint(
         for r in results:
             payload = r.get("payload") or {}
             c_name = payload.get("contract_name") or r.get("contract_name") or ""
-            dept = payload.get("department") or r.get("department") or "legal"
-            if scope.is_document_allowed(c_name, dept):
+            dept = payload.get("department") or r.get("department") or ""
+            if scope.is_document_allowed(c_name, dept, doc_dict=payload):
                 filtered.append(r)
         results = filtered
     return {
@@ -948,7 +948,8 @@ def knowledge_explorer_search(
             r for r in qdrant_results
             if scope.is_document_allowed(
                 (r.get("payload") or {}).get("contract_name") or r.get("contract_name") or "",
-                (r.get("payload") or {}).get("department") or r.get("department") or "legal"
+                (r.get("payload") or {}).get("department") or r.get("department") or "",
+                doc_dict=r.get("payload") or {}
             )
         ]
         # FAIL-CLOSED: if filtered is empty, qdrant_results must be empty list (never fall back to unfiltered results)
@@ -2781,7 +2782,7 @@ def get_document_raw_file(
         ), None)
 
         real_fname = matched["name"] if matched else target_name
-        real_dept = matched["dept_key"] if matched else resolve_canonical_dept(department or "legal")
+        real_dept = matched["dept_key"] if matched else resolve_canonical_dept(department or "")
 
         # Department scope verification (BR-02)
         scope.assert_document_access(real_fname, real_dept)
@@ -2887,7 +2888,7 @@ def download_document_file(
         ), None)
 
         real_fname = matched["name"] if matched else target_name
-        real_dept = matched["dept_key"] if matched else resolve_canonical_dept(department or "legal")
+        real_dept = matched["dept_key"] if matched else resolve_canonical_dept(department or "")
 
         # 1. Try specified or matched department
         content_bytes = read_file_from_storage(real_fname, real_dept)

@@ -105,27 +105,36 @@ def resolve_resource_type(val: Any) -> str:
     Returns 'UNKNOWN' if department cannot be resolved (fail-closed).
     """
     if isinstance(val, dict):
+        payload = val.get("payload") if isinstance(val.get("payload"), dict) else {}
+
         # 0. Check ERP structured labels and types (Product, Customer, SalesOrder -> SALES; Vendor, PO -> ACCOUNTING_PROCUREMENT)
-        labels = val.get("_labels") or []
+        labels = val.get("_labels") or payload.get("_labels") or []
         if isinstance(labels, str):
             labels = [labels]
-        e_type = str(val.get("entity_type") or "")
+        e_type = str(val.get("entity_type") or payload.get("entity_type") or "")
         if any(l in ["Product", "ProductCategory", "ProductSubcategory", "Customer", "SalesOrder", "SalesOrderDetail"] for l in labels) or e_type in ["Product", "ProductCategory", "ProductSubcategory", "Customer", "SalesOrder", "SalesOrderDetail"]:
             return "SALES"
         if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels) or e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"]:
             return "ACCOUNTING_PROCUREMENT"
-        if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or str(val.get("document_id", "")).startswith("SYSTEM-") or val.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
+        if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD"] for l in labels) or str(val.get("document_id") or payload.get("document_id", "")).startswith("SYSTEM-") or val.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
             return "SALES"
 
         # Check explicit department fields FIRST (prevents filename 'Salesforce' spoofing Legal docs)
         dept_val = (
             val.get("department")
+            or payload.get("department")
             or val.get("dept")
+            or payload.get("dept")
             or val.get("deptLabel")
+            or payload.get("deptLabel")
             or val.get("deptKey")
+            or payload.get("deptKey")
             or val.get("dept_key")
+            or payload.get("dept_key")
             or val.get("domain")
+            or payload.get("domain")
             or val.get("category")
+            or payload.get("category")
         )
         if dept_val:
             s_dept = str(dept_val).strip().lower()
@@ -146,7 +155,17 @@ def resolve_resource_type(val: Any) -> str:
                 return "RND"
 
         # Check storage path
-        path = (val.get("storage_path") or val.get("storagePath") or val.get("file") or val.get("source_file") or "").strip().lower()
+        path = (
+            val.get("storage_path")
+            or payload.get("storage_path")
+            or val.get("storagePath")
+            or payload.get("storagePath")
+            or val.get("file")
+            or payload.get("file")
+            or val.get("source_file")
+            or payload.get("source_file")
+            or ""
+        ).strip().lower()
         for f, res in FOLDER_TO_RESOURCE.items():
             if f"/data/{f}" in path or f"\\data\\{f}" in path or f"/{f}/" in path or f"\\{f}\\" in path:
                 return res
