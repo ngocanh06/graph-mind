@@ -836,21 +836,22 @@ def build_document():
         {
             "num": "2.6.4",
             "id": "SCREEN-021",
-            "title": "Data Connectors & External Ingestion Sync View",
+            "title": "Data Connectors & AEGIS PB56 Edge Sync View (Kết nối Dữ liệu & Đồng bộ)",
             "img": "17_data_connectors.png",
-            "desc": "External data connectivity dashboard (UC.16, FR4, FR19). Monitors continuous ingestion pipelines from Google Drive cloud folders and local file system watchdogs (AEGIS).",
-            "role": "Knowledge Manager, Admin",
-            "table_title": "Table 23: Field Specifications for Data Connectors (SCREEN-021)",
+            "desc": "External data connectivity and AEGIS PB56 edge agent workstation management dashboard (UC.16, FR4, FR19, PB56). Manages continuous ingestion pipelines from Google Drive cloud folders, local file system watchdogs (AEGIS), edge workstation agent fleet, two-phase sync mode scheduling, and emergency kill switches.",
+            "role": "IT Admin, Knowledge Manager",
+            "table_title": "Table 23: Field Specifications for Data Connectors & AEGIS PB56 Sync (SCREEN-021)",
             "cols": ["No.", "Field name", "Type", "Require / Styling", "Target / Action / Logic"],
             "col_widths": [0.5, 1.6, 1.0, 1.6, 2.3],
             "fields": [
-                ("1", "Connectors Header", "Page Header", "Title: 'Kết nối Nguồn Dữ liệu Ngoài'", "Central hub for managing automated data pipelines"),
-                ("2", "AEGIS File Watcher Card", "Service Card", "Status: Active (Xanh); Container ID", "Monitors local file system daemon scanning /data volume for new documents"),
-                ("3", "Google Drive Connector Card", "Service Card", "OAuth 2.0 Connected badge", "Cloud folder sync pulling shared corporate spreadsheets and contract PDFs"),
-                ("4", "Sync Health Badge", "Badge", "Green pulse; 'Hoạt động bình thường'", "Indicates real-time webhook availability and event listening status"),
-                ("5", "Last Ingested File Info", "Text Block", "Filename, Timestamp, SHA-256 hash", "Displays the most recent document ingested through the automated pipeline"),
-                ("6", "Manual Sync Trigger", "Action Button", "Text 'Đồng bộ ngay'; Refresh icon", "Forces immediate re-scan of monitored directories and syncs changes"),
-                ("7", "Storage Volume Metric", "Progress Bar", "Value: 71.2 MB / 10 GB used", "Visualizes Central Storage disk consumption and volume headroom")
+                ("1", "Connectors Page Header", "Page Header", "Title: 'Kết nối Nguồn Dữ liệu & Pipeline Thu nạp (M1)'", "Central management view for enterprise continuous ingestion pipelines"),
+                ("2", "Module 1 Sub-Tab Switcher", "Tab Pills", "2 Tabs: 'Kênh Kết nối & Đồng bộ Cloud' / 'Quản lý Máy trạm & Agent (PB56)'", "Switches between remote cloud connectors and local agent fleet control"),
+                ("3", "AEGIS Local Watcher Card", "Service Card", "Status: Active; Live Webhook badge", "Monitors local file system daemon scanning employee directories for new files"),
+                ("4", "Google Drive & Sheets Card", "Service Card", "OAuth 2.0 configuration modal trigger", "Cloud folder sync pulling shared corporate spreadsheets and contract PDFs"),
+                ("5", "Workstation KPI Cards (PB56)", "Metric Cards (x4)", "Workstations (3), Ingested (461), Extracted (18k), Checksum (1)", "Aggregated fleet operational telemetry across distributed corporate endpoints"),
+                ("6", "Workstation Fleet Table (PB56)", "Data Table", "Columns: Status, Hostname, Watched Folder, Sync Mode, Actions", "Displays registered edge agent workstations with heartbeat ping health"),
+                ("7", "Sync Mode Scheduler (PB56)", "Dropdown / Action", "Modes: Realtime, Scheduled (15m, 1h), End-of-Shift", "Orchestrates ingestion frequency with 2-phase ACK confirmation state"),
+                ("8", "Emergency Kill Switch (PB56)", "Action Button", "Red outline / Key icon", "Immediately isolates compromised workstation and invalidates auth token")
             ]
         },
         {

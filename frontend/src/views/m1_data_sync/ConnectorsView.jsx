@@ -42,7 +42,8 @@ const Settings = makeFa("fa-solid fa-gear");
 const X = makeFa("fa-solid fa-xmark");
 const Globe = makeFa("fa-solid fa-globe");
 const Lock = makeFa("fa-solid fa-lock");
-import { PageHeader, Card, Badge, Button } from "../../components/ui";
+import { PageHeader, Card, Badge, Button, Tabs } from "../../components/ui";
+import WorkstationsPanel from "./pb56_workstations/WorkstationsPanel";
 import {
   fetchWatcherSyncStatus,
   triggerMockWatcherDrop,
@@ -56,6 +57,7 @@ import {
 
 export default function ConnectorsView({ t = {}, lang = "vi" }) {
   const isVi = lang === "vi";
+  const [mainTab, setMainTab] = useState("connectors");
   const [syncingId, setSyncingId] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
   const [watcherStatus, setWatcherStatus] = useState(null);
@@ -341,6 +343,29 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
           }
         />
 
+        {/* ── MODULE 1 SUB-NAVIGATION TABS ─────────────────────── */}
+        <Tabs
+          tabs={[
+            {
+              id: "connectors",
+              label: isVi ? "Kênh Kết nối & Đồng bộ Cloud (Google Drive / Sheets)" : "Cloud Connectors & Pipelines",
+              icon: CloudDownload
+            },
+            {
+              id: "workstations",
+              label: isVi ? "Quản lý Máy trạm & Agent (AEGIS PB56 Control)" : "Workstations & Agent Control (PB56)",
+              icon: Server
+            }
+          ]}
+          activeTab={mainTab}
+          onChange={setMainTab}
+          variant="pills"
+        />
+
+        {mainTab === "workstations" ? (
+          <WorkstationsPanel lang={lang} showToast={(msg) => setToastMsg(msg)} />
+        ) : (
+          <>
         {/* ── PIPELINE OVERVIEW CARD ──────────────────────────── */}
         <Card padding="20px 24px">
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4, #94A3B8)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>
@@ -676,6 +701,8 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
             </table>
           </div>
         </Card>
+          </>
+        )}
 
         {/* ── GOOGLE OAUTH 2.0 CONFIGURATION MODAL (FR4 & FR19) ── */}
         {showGoogleModal && (
