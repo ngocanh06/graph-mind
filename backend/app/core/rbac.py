@@ -320,8 +320,8 @@ def filter_graph_entities_by_scope(
         )
         storage_path = ent.get("storagePath") or ent.get("storage_path") or ""
 
-        # Sensitive document/clause nodes missing department and path and classification must fail-closed
-        if is_doc_entity and not node_dept and not storage_path and not classification:
+        # Sensitive document/clause/storage nodes missing department must fail-closed (chặn node chỉ có storagePath mà thiếu department)
+        if (is_doc_entity or storage_path) and not node_dept:
             continue
 
         res_type = resolve_resource_type(ent)
