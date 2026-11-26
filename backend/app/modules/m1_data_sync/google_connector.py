@@ -11,6 +11,7 @@ Implements [FR4 & FR19]:
 import os
 import json
 import time
+import secrets
 import urllib.parse
 import logging
 import requests
@@ -101,6 +102,10 @@ def get_google_status(scope: ScopeContext = Depends(get_user_scope)) -> Dict[str
     }
 
 
+_OAUTH_STATES: Dict[str, Dict[str, Any]] = {}
+_STATE_TTL_SECONDS: float = 600.0  # 10 minutes TTL
+
+
 @router.get("/auth-url")
 def get_google_auth_url(
     redirect_uri: Optional[str] = None,
@@ -108,6 +113,7 @@ def get_google_auth_url(
 ) -> Dict[str, Any]:
     """
     Generates standard OAuth 2.0 authorization URL for Google Drive & Sheets.
+    Binds a cryptographically secure, single-use state token to the user session with a 10-minute TTL.
     """
     cfg = _read_json(_CONFIG_FILE)
     client_id = cfg.get("client_id") or os.getenv("GOOGLE_CLIENT_ID", "")
@@ -120,6 +126,21 @@ def get_google_auth_url(
         "https://www.googleapis.com/auth/userinfo.profile"
     ])
 
+    # Prune expired states
+    now_ts = time.time()
+    for s_key in list(_OAUTH_STATES.keys()):
+        if now_ts > _OAUTH_STATES[s_key].get("expires_at", 0):
+            _OAUTH_STATES.pop(s_key, None)
+
+    # Generate cryptographically secure random state bound to user
+    rand_state = secrets.token_urlsafe(32)
+    u_id = str(scope.user.user_id) if getattr(scope, "user", None) and getattr(scope.user, "user_id", None) else "admin"
+    _OAUTH_STATES[rand_state] = {
+        "user_id": u_id,
+        "role": getattr(scope, "role", ""),
+        "expires_at": now_ts + _STATE_TTL_SECONDS
+    }
+
     base_auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
     params = {
         "client_id": client_id or "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
@@ -128,7 +149,7 @@ def get_google_auth_url(
         "scope": scopes,
         "access_type": "offline",
         "prompt": "consent",
-        "state": f"graphmind_oauth_{int(time.time())}"
+        "state": rand_state
     }
 
     full_url = f"{base_auth_url}?{urllib.parse.urlencode(params)}"
@@ -172,6 +193,22 @@ def handle_google_oauth_callback(code: Optional[str] = None, state: Optional[str
     if error:
         logger.warning(f"[GoogleConnector] OAuth callback error: {error}")
         return RedirectResponse(url="http://localhost:5173/connectors?error=" + urllib.parse.quote(error))
+
+    # Strict CSRF state verification (single-use, 10-minute TTL)
+    if not state or state not in _OAUTH_STATES:
+        logger.warning(f"[GoogleConnector] OAuth callback rejected: Missing or invalid state parameter (CSRF protection)")
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "Invalid or missing OAuth state parameter (CSRF protection)"}
+        )
+
+    state_entry = _OAUTH_STATES.pop(state)  # Immediate one-time use invalidation
+    if time.time() > state_entry.get("expires_at", 0):
+        logger.warning(f"[GoogleConnector] OAuth callback rejected: State expired (>10 minutes)")
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "OAuth state has expired (>10 minutes)"}
+        )
 
     if not code:
         return JSONResponse(status_code=400, content={"success": False, "error": "Missing authorization code"})
