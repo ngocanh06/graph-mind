@@ -301,7 +301,7 @@ export default function AdminView({ onNavigate, t = {}, lang = "vi" }) {
     },
     ...(isPb56Enabled ? [{
       id: "workstations",
-      label: isVi ? "Quản lý Máy trạm & Agent" : "Workstations & Agents",
+      label: isVi ? "Quản lý máy trạm" : "Workstations",
       icon: Server
     }] : []),
     { id: "roles", label: isVi ? "Người dùng & Vai trò" : "Users & Role Personas", icon: Users },

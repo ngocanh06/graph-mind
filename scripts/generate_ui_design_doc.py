@@ -845,7 +845,7 @@ def build_document():
             "col_widths": [0.5, 1.6, 1.0, 1.6, 2.3],
             "fields": [
                 ("1", "Connectors Page Header", "Page Header", "Title: 'Kết nối Nguồn Dữ liệu & Pipeline Thu nạp (M1)'", "Central management view for enterprise continuous ingestion pipelines"),
-                ("2", "Module 1 Sub-Tab Switcher", "Tab Pills", "2 Tabs: 'Kênh Kết nối & Đồng bộ Cloud' / 'Quản lý Máy trạm & Agent (PB56)'", "Switches between remote cloud connectors and local agent fleet control"),
+                ("2", "Module 1 Sub-Tab Switcher", "Tab Pills", "2 Tabs: 'Kênh Kết nối & Đồng bộ Cloud' / 'Quản lý máy trạm'", "Switches between remote cloud connectors and local workstation fleet control"),
                 ("3", "AEGIS Local Watcher Card", "Service Card", "Status: Active; Live Webhook badge", "Monitors local file system daemon scanning employee directories for new files"),
                 ("4", "Google Drive & Sheets Card", "Service Card", "OAuth 2.0 configuration modal trigger", "Cloud folder sync pulling shared corporate spreadsheets and contract PDFs"),
                 ("5", "Workstation KPI Cards (PB56)", "Metric Cards (x4)", "Workstations (3), Ingested (461), Extracted (18k), Checksum (1)", "Aggregated fleet operational telemetry across distributed corporate endpoints"),

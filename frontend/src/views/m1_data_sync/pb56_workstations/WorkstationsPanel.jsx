@@ -340,7 +340,7 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
 
       {/* ── MAIN WORKSTATIONS TABLE CARD ─────────────────────────────────── */}
       <Card
-        title={isVi ? "Danh mục Máy trạm & Đại lý Biên AEGIS" : "AEGIS Workstations & Edge Agents"}
+        title={isVi ? "Danh mục Máy trạm AEGIS" : "AEGIS Workstations"}
         subtitle={isVi ? "Giám sát thời gian thực, điều khiển chế độ đồng bộ và kiểm toán tệp" : "Realtime monitoring, sync mode control & audit metrics"}
         icon={Server}
         actions={
@@ -658,7 +658,7 @@ export default function WorkstationsPanel({ lang = "vi", showToast = () => {} })
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>
-                {isVi ? "Đăng ký Máy trạm / AEGIS Agent Mới" : "Register New Workstation Agent"}
+                {isVi ? "Đăng ký Máy trạm Mới" : "Register New Workstation"}
               </span>
               <button
                 onClick={() => setShowRegisterModal(false)}

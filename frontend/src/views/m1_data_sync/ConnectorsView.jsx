@@ -353,7 +353,7 @@ export default function ConnectorsView({ t = {}, lang = "vi" }) {
             },
             {
               id: "workstations",
-              label: isVi ? "Quản lý Máy trạm & Agent (AEGIS PB56 Control)" : "Workstations & Agent Control (PB56)",
+              label: isVi ? "Quản lý máy trạm" : "Workstations",
               icon: Server
             }
           ]}
