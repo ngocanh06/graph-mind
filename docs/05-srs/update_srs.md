@@ -212,8 +212,15 @@ Nhằm đảm bảo tuân thủ nguyên tắc Least Privilege, Phân lập nhi�
    - **Lộ trình tuân thủ Phân lập Nhiệm vụ (SoD - BR-04 / TODO P3):** Ở Pha 3, hệ thống sẽ thực hiện phân tách triệt để: IT Admin sẽ bị tước toàn bộ quyền truy xuất nội dung tài liệu và truy vấn tri thức nghiệp vụ, chỉ giữ quyền cấu hình hệ thống, quản lý tài khoản, ma trận RBAC và giám sát log.
 
 5. **Quy định Chủ sở hữu Dữ liệu Tiền lương & Nhân sự (Payroll & HR Data Ownership):**
-   - **Chủ sở hữu dữ liệu (Data Owner):** Duy nhất thuộc về Phòng Nhân sự (HR Department) và Ban Giám Đốc (`Executive`).
-   - Mọi vai trò khác ngoài HR và Ban Giám Đốc (bao gồm Chuyên viên Kinh doanh `Standard User`, Quản lý các phòng ban khác, và Quản trị viên IT) đều bị chặn tuyệt đối tra cứu thông tin bảng lương, thu nhập, hồ sơ nhân sự cá nhân (tuân thủ Nghị định 13/2023/NĐ-CP và Rule BR-02 qua danh sách `STANDARD_RESTRICTED_KEYWORDS`).
+   - **Chủ sở hữu dữ liệu (Data Owner):** Thuộc về Phòng Nhân sự (HR Department), Phòng Kế toán / Tài chính (Accounting Department) và Ban Giám Đốc (`Executive`).
+   - Mọi vai trò khác ngoài HR, Accounting và Ban Giám Đốc (bao gồm Chuyên viên Kinh doanh `Standard User`, Quản lý các phòng ban khác, và Quản trị viên IT) đều bị chặn tuyệt đối tra cứu thông tin bảng lương, thu nhập, hồ sơ nhân sự cá nhân (tuân thủ Nghị định 13/2023/NĐ-CP và Rule BR-02 qua danh sách `STANDARD_RESTRICTED_KEYWORDS`).
+
+6. **Điều khoản Cổng Kiểm soát Phát hành (Release Gate Clause — Cấm nạp Dữ liệu Nhân sự & Tiền lương trước Pha 3):**
+   - **Quy tắc an ninh bắt buộc (Security Release Gate):** Tuyệt đối **CẤM** nạp bất kỳ tài liệu, hồ sơ nhân sự, bảng lương hay dữ liệu cá nhân nhạy cảm thực tế nào của Phòng Nhân sự / Kế toán (HR / Payroll Data) vào hệ thống GraphMind (bao gồm Central Storage `/data`, Qdrant Vector Collection, và Neo4j Graph Database) trước khi hoàn tất toàn bộ các mốc phát triển của **Pha 3**.
+   - **Tiêu chí mở cổng phát hành (Release Gate Criteria):** Cổng chỉ được phép mở cho phép ingestion dữ liệu HR/Payroll khi và chỉ khi:
+     1. Cơ chế phân cấp dữ liệu nhạy cảm mức `RESTRICTED` (Data Classification Controls) đã được cấu hình chặt chẽ theo nguyên tắc Fail-Closed tại cả tầng Vector Payload và Cypher WHERE filter.
+     2. Đã triển khai hoàn chỉnh nguyên tắc Phân lập nhiệm vụ SoD (BR-04) tước cờ `is_unrestricted` của tài khoản IT Admin trên tài liệu nghiệp vụ.
+     3. Đã vượt qua 100% các bài kiểm thử hồi quy bảo mật (Automated Security Regression Test Suite) và có biên bản kiểm toán an ninh thông tin độc lập xác nhận không rò rỉ dữ liệu chéo phòng ban (QAS-03a).
 
 ---
 
