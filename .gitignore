@@ -6,8 +6,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 .env
+.env*
 *.env
 backend/.env
+backend/.env*
 .env*.local
 .DS_Store
 

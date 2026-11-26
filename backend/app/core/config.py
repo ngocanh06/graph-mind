@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "12345678"
+    POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = "graph_mind"
 
     @field_validator("POSTGRES_PASSWORD", mode="after")
@@ -86,12 +86,22 @@ class Settings(BaseSettings):
         clean = (v or "").strip()
         import os
         if os.getenv("APP_ENV") == "testing":
-            return clean or "test_pass"
-        forbidden_pw = {"change-me", "password", "postgres", "123456"}
-        if not clean or clean.lower() in forbidden_pw or "change-me" in clean.lower():
+            return clean or "test_secure_postgres_pass_2026"
+        forbidden_pw = {"change-me", "password", "postgres", "123456", "12345678", "admin", "root"}
+        if not clean or clean.lower() in forbidden_pw or "change-me" in clean.lower() or "12345678" in clean:
             raise ValueError(
-                "CRITICAL SECURITY CONFIGURATION ERROR: POSTGRES_PASSWORD must not be empty or use a weak default. "
-                "Set a secure password in .env."
+                "CRITICAL SECURITY CONFIGURATION ERROR: POSTGRES_PASSWORD must not be empty, '12345678', "
+                "or contain weak defaults like 'change-me'. Set a secure password in .env."
+            )
+        if len(clean) < 12:
+            raise ValueError(
+                "CRITICAL SECURITY CONFIGURATION ERROR: POSTGRES_PASSWORD is too short. "
+                "Minimum required length is 12 characters. Set a secure password in .env."
+            )
+        if clean.isdigit():
+            raise ValueError(
+                "CRITICAL SECURITY CONFIGURATION ERROR: POSTGRES_PASSWORD must not be a purely numeric sequence. "
+                "Use a strong alphanumeric password with symbols in .env."
             )
         return clean
 
