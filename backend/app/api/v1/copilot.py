@@ -1025,6 +1025,7 @@ async def ask_copilot(
 
     # Centralized ACL Pre-Filter for Vector & Graph Engines (BR-02, BR-04, Step 2B.3)
     from app.core.rbac import build_acl_filter, record_acl_shadow_block
+    from app.core.grounding_verifier import verify_grounded_figures, is_factual_contract_query
     acl_filter = build_acl_filter(scope)
 
     # 1.1 Greeting Fast-Path Router (0 citations, immediate sub-10ms response)
@@ -2008,9 +2009,10 @@ async def ask_copilot(
     # Enforce Layer-2 Gate: verify ground truth against Neo4j SYNCED state & provenance
     verified_chunks, verified_entities = apply_layer2_context_gate(raw_chunks, raw_entities)
 
-    if not verified_chunks and not verified_entities:
-        # Zero Retrieval: Grounding Refusal without invoking LLM
-        answer_text = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức"
+    requires_grounding = is_factual_contract_query(clean_query) or is_doc_content_query or is_doc_repo_query
+    if (not verified_chunks and not verified_entities) or (requires_grounding and not verified_chunks):
+        # Zero Retrieval or Missing Evidence for Factual Query: Grounding Refusal without invoking LLM (P10)
+        answer_text = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức để trả lời câu hỏi này."
         latency = 0.05
         model_display = f"{llm_client.model} (PR1 Layer-2 Refusal)"
         confidence_score = 0
@@ -2164,6 +2166,15 @@ async def ask_copilot(
             confidence_score = 90 if (is_doc_content_query and verified_chunks) else (80 if fused_results else 60)
             used_chunks = gen_result.get("used_chunks", verified_chunks)
             used_entities = gen_result.get("used_entities", verified_entities)
+
+        # P10 Hallucination Defense: verify numbers/figures in answer against used_chunks/used_entities
+        answer_text, is_grounded, ungrounded_figs = verify_grounded_figures(
+            answer_text,
+            evidence_chunks=used_chunks,
+            graph_entities=used_entities
+        )
+        if not is_grounded:
+            confidence_score = max(0, min(confidence_score, 40))
 
         evidence_chips = []
         citations_detail = []
