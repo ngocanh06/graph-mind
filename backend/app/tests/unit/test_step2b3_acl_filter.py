@@ -70,9 +70,10 @@ def test_build_acl_filter_restricted_standard_sales():
     assert acl.is_unrestricted is False
     assert acl.can_view_sensitive is False
     assert acl.qdrant_filter is not None
-    assert "must_not" in acl.qdrant_filter
-    assert "RESTRICTED" in str(acl.qdrant_filter["must_not"])
-    assert "coalesce(n.classification, 'INTERNAL') <> 'RESTRICTED'" in acl.cypher_where
+    assert "must" in acl.qdrant_filter
+    assert "must_not" not in acl.qdrant_filter
+    assert "INTERNAL" in str(acl.qdrant_filter["must"])
+    assert "toUpper(n.classification) IN" in acl.cypher_where
 
     # 1. Own department + INTERNAL -> Allowed
     assert acl.matches_payload({"department": "Kinh doanh (Sales)", "classification": "INTERNAL"}) is True

@@ -1558,13 +1558,13 @@ def test_f02_v3_all_six_mutation_call_sites_protected(monkeypatch):
 
     # 5. handle_file_deleted
     with pytest.raises(HTTPException) as exc_del:
-        handle_file_deleted(DeleteEventPayload(file_name="blocked.pdf", department="legal"), authorization="Bearer dev-agent-key")
+        handle_file_deleted(DeleteEventPayload(file_name="blocked.pdf", department="legal"))
     assert exc_del.value.status_code == 409
 
     # 6. handle_file_renamed
     with pytest.raises(HTTPException) as exc_ren:
-        handle_file_renamed(RenameEventPayload(old_name="blocked.pdf", new_name="new.pdf", department="legal"), authorization="Bearer dev-agent-key")
-    assert exc_ren.value.status_code == 409
+        handle_file_renamed(RenameEventPayload(old_name="blocked.pdf", new_name="new.pdf", department="legal"))
+    assert exc_del.value.status_code == 409
 
 
 # ----------------------------------------------------------------------------

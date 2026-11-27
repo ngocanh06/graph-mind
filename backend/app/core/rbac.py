@@ -587,7 +587,7 @@ class ACLFilter:
     shadow_blocked_events: List[Dict[str, Any]] = field(default_factory=list)
 
     def _block_or_shadow(self, reason: str, payload: Dict[str, Any]) -> bool:
-        """Helper to enforce hard block or record shadow blocked event."""
+        """Helper to enforce hard block and record shadow blocked event if shadow mode active."""
         if self.shadow_mode:
             actor = getattr(self.scope.user, "user_id", None) if self.scope and self.scope.user else None
             res_id = (
@@ -606,8 +606,7 @@ class ACLFilter:
                 "reason": reason,
                 "payload": payload,
             })
-            return True  # In shadow mode, do not drop
-        return False  # Hard block
+        return False  # Strict fail-closed: NEVER loosen main path, even in shadow mode!
 
     def matches_payload(self, payload: Dict[str, Any]) -> bool:
         """Evaluates whether an arbitrary node, document, or chunk payload passes this ACL filter (fail-closed)."""
@@ -617,16 +616,15 @@ class ACLFilter:
         if not isinstance(payload, dict):
             return False
 
-        # 1. Classification check
-        classification = str(
-            payload.get("classification")
-            or payload.get("classification_level")
-            or "INTERNAL"
-        ).strip().upper()
+        # 1. Classification check (strict fail-closed allowlist)
+        raw_cls = payload.get("classification") or payload.get("classification_level")
+        if not raw_cls:
+            return self._block_or_shadow("Missing classification metadata (fail-closed)", payload)
 
-        if classification in ("RESTRICTED", "CONFIDENTIAL") and not self.can_view_sensitive:
+        classification = str(raw_cls).strip().upper()
+        if classification not in self.allowed_classifications:
             return self._block_or_shadow(
-                f"Classification {classification} restricted for role {self.scope.role}",
+                f"Classification '{classification}' not allowed for role {self.scope.role} (allowed: {self.allowed_classifications})",
                 payload
             )
 
@@ -726,32 +724,22 @@ def build_acl_filter(scope: ScopeContext, shadow_mode: Optional[bool] = None) ->
                 dept_aliases.add(alias_k)
                 dept_aliases.add(alias_k.title())
 
-    must_not_conditions = []
-    if not can_view_sensitive:
-        must_not_conditions.append({"key": "classification", "match": {"value": "RESTRICTED"}})
-        must_not_conditions.append({"key": "classification", "match": {"value": "CONFIDENTIAL"}})
-
-    should_conditions = [
-        {"key": "classification", "match": {"value": "PUBLIC"}},
+    # Strict positive allowlist for Qdrant (fail-closed, eliminate must_not)
+    must_conditions = [
         {"key": "department", "match": {"any": list(dept_aliases)}},
-        {"key": "dept", "match": {"any": list(dept_aliases)}},
-        {"key": "department_id", "match": {"any": list(scope.allowed_depts)}},
+        {"key": "classification", "match": {"any": list(allowed_classifications)}},
     ]
 
     qdrant_filter: Dict[str, Any] = {
-        "should": should_conditions,
+        "must": must_conditions,
     }
-    if must_not_conditions:
-        qdrant_filter["must_not"] = must_not_conditions
 
     cypher_dept_list = [f"'{d.lower()}'" for d in sorted(dept_aliases)]
-    cypher_where = f"(n.classification = 'PUBLIC' OR toLower(coalesce(n.department, '')) IN [{', '.join(cypher_dept_list)}])"
-    if not can_view_sensitive:
-        cypher_where += " AND coalesce(n.classification, 'INTERNAL') <> 'RESTRICTED'"
+    cypher_cls_list = [f"'{c.upper()}'" for c in sorted(allowed_classifications)]
+    cypher_where = f"toLower(n.department) IN [{', '.join(cypher_dept_list)}] AND toUpper(n.classification) IN [{', '.join(cypher_cls_list)}]"
 
-    if shadow_mode:
-        qdrant_filter = None
-        cypher_where = "1=1"
+    # NOTE: shadow_mode NEVER loosens qdrant_filter or cypher_where pre-filters.
+    # Pre-filtering remains strictly enforcing; shadow events are recorded for in-memory checks.
 
     return ACLFilter(
         scope=scope,

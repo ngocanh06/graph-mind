@@ -69,8 +69,9 @@ def test_hard_block_mode_behavior():
 
     assert acl.shadow_mode is False
     assert acl.qdrant_filter is not None
-    assert "must_not" in acl.qdrant_filter
-    assert "<> 'RESTRICTED'" in acl.cypher_where
+    assert "must" in acl.qdrant_filter
+    assert "must_not" not in acl.qdrant_filter
+    assert "toUpper(n.classification) IN" in acl.cypher_where
 
     # 1. Cross-department payload -> Hard Block (False)
     legal_payload = {
@@ -115,11 +116,11 @@ def test_shadow_mode_behavior():
     acl = build_acl_filter(sales_scope, shadow_mode=True)
 
     assert acl.shadow_mode is True
-    # DB pre-filters bypassed so potential matches reach in-memory audit gate
-    assert acl.qdrant_filter is None
-    assert acl.cypher_where == "1=1"
+    # DB pre-filters stay enforcing under strict shadow mode (must not loosen pre-filters)
+    assert acl.qdrant_filter is not None
+    assert acl.cypher_where != "1=1"
 
-    # 1. Cross-department payload -> Permitted in shadow mode, but recorded
+    # 1. Cross-department payload -> Blocked fail-closed in shadow mode, but event recorded
     legal_payload = {
         "id": "chunk_legal_01",
         "logical_chunk_id": "logical_legal_01",
@@ -127,25 +128,25 @@ def test_shadow_mode_behavior():
         "classification": "INTERNAL",
         "text": "Điều khoản pháp lý."
     }
-    assert acl.matches_payload(legal_payload) is True
+    assert acl.matches_payload(legal_payload) is False
     assert len(acl.shadow_blocked_events) == 1
     evt1 = acl.shadow_blocked_events[0]
     assert evt1["actor_id"] == sales_scope.user.user_id
     assert evt1["resource_id"] == "logical_legal_01"
     assert "allowed departments" in evt1["reason"]
 
-    # 2. RESTRICTED payload -> Permitted in shadow mode, but recorded
+    # 2. RESTRICTED payload -> Blocked fail-closed in shadow mode, but event recorded
     sales_restricted_payload = {
         "id": "chunk_sales_secret",
         "department": "Kinh doanh (Sales)",
         "classification": "RESTRICTED",
         "text": "Chiến lược giá tuyệt mật."
     }
-    assert acl.matches_payload(sales_restricted_payload) is True
+    assert acl.matches_payload(sales_restricted_payload) is False
     assert len(acl.shadow_blocked_events) == 2
     evt2 = acl.shadow_blocked_events[1]
     assert evt2["resource_id"] == "chunk_sales_secret"
-    assert "restricted for role standard" in evt2["reason"]
+    assert "not allowed" in evt2["reason"]
 
     # 3. Valid authorized payload -> Permitted with no new shadow event
     sales_internal_payload = {
