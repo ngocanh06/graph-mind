@@ -49,6 +49,7 @@ def _make_otp_app(user_obj=None):
     mock_db = AsyncMock()
     cursor = MagicMock()
     cursor.scalar_one_or_none.return_value = user_obj
+    cursor.scalar_one.return_value = 0
     mock_db.execute.return_value = cursor
     mock_db.commit = AsyncMock()
     mock_db.flush = AsyncMock()
@@ -273,20 +274,22 @@ def test_s2_wb_01_path_coverage_normalize_dept_and_role():
 
 @pytest.mark.asyncio
 async def test_s2_otp_01_forgot_password_unknown_email_returns_404():
-    """S2_OTP_01: POST /api/v1/auth/forgot-password returns 404 for unregistered email."""
+    """S2_OTP_01: POST /api/v1/auth/forgot-password returns 200 with generic message for unregistered email (OWASP anti-enumeration)."""
     app = _make_otp_app(user_obj=None)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/api/v1/auth/forgot-password", json={"email": "nobody@graphmind.ai"})
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    assert "Nếu email tồn tại trong hệ thống" in resp.json().get("message", "")
 
 
 @pytest.mark.asyncio
 async def test_s2_otp_02_forgot_password_locked_user_returns_403():
-    """S2_OTP_02: POST /api/v1/auth/forgot-password rejects locked user with 403 Forbidden."""
+    """S2_OTP_02: POST /api/v1/auth/forgot-password returns 200 with generic message for locked user (OWASP anti-enumeration)."""
     app = _make_otp_app(user_obj=_fake_user(is_active=False))
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/api/v1/auth/forgot-password", json={"email": "staff@graphmind.ai"})
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    assert "Nếu email tồn tại trong hệ thống" in resp.json().get("message", "")
 
 
 @pytest.mark.asyncio

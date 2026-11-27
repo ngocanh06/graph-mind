@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     )
 
     # Application
-    APP_ENV: str = "development"
+    APP_ENV: str = "production"
     PORT: int = 5000
     FRONTEND_PORT: int = 5173
 
@@ -63,8 +63,11 @@ class Settings(BaseSettings):
     @classmethod
     def validate_aegis_agent_api_key(cls, v: str) -> str:
         clean = (v or "").strip()
-        import os
-        if os.getenv("APP_ENV") == "testing":
+        import os, sys
+        is_testing = (os.getenv("APP_ENV") == "testing") and (
+            "pytest" in sys.modules or bool(os.getenv("PYTEST_CURRENT_TEST"))
+        )
+        if is_testing:
             return clean or "test-agent-key"
         if not clean or "change-me" in clean.lower() or clean == "dev-agent-key" or len(clean) < 16:
             raise ValueError(
@@ -84,8 +87,11 @@ class Settings(BaseSettings):
     @classmethod
     def validate_postgres_password(cls, v: str) -> str:
         clean = (v or "").strip()
-        import os
-        if os.getenv("APP_ENV") == "testing":
+        import os, sys
+        is_testing = (os.getenv("APP_ENV") == "testing") and (
+            "pytest" in sys.modules or bool(os.getenv("PYTEST_CURRENT_TEST"))
+        )
+        if is_testing:
             return clean or "test_secure_postgres_pass_2026"
         forbidden_pw = {"change-me", "password", "postgres", "123456", "12345678", "admin", "root"}
         if not clean or clean.lower() in forbidden_pw or "change-me" in clean.lower() or "12345678" in clean:

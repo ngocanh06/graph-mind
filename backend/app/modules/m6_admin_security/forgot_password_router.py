@@ -35,18 +35,13 @@ router = APIRouter(tags=["M6 Forgot Password"])
 
 
 async def _get_active_user(db: AsyncSession, email: str) -> User:
-    """Helper: tìm user active theo email, raise 404/403 nếu không hợp lệ."""
+    """Helper: tìm user active theo email. Trả về user nếu active, raise generic 400 nếu không hợp lệ để tránh enum."""
     result = await db.execute(select(User).where(User.email.ilike(email)))
     user = result.scalar_one_or_none()
-    if not user:
+    if not user or not user.is_active or getattr(user, "deleted_at", None) is not None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Email không tồn tại trong hệ thống.",
-        )
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tài khoản này đã bị khóa. Vui lòng liên hệ Admin.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Yêu cầu không hợp lệ hoặc mã xác thực không đúng.",
         )
     return user
 
@@ -58,20 +53,27 @@ async def forgot_password(
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Kiểm tra email, rate-limit, tạo OTP và gửi email."""
-    user = await _get_active_user(db, body.email)
-
+    """Kiểm tra email, rate-limit, tạo OTP và gửi email (OWASP ASVS anti-enumeration)."""
     if not await check_rate_limit(db, body.email):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau 15 phút.",
         )
 
+    generic_msg = "Nếu email tồn tại trong hệ thống, mã xác thực đã được gửi đến hộp thư của bạn."
+
+    result = await db.execute(select(User).where(User.email.ilike(body.email)))
+    user = result.scalar_one_or_none()
+
+    # Fail silent (anti-enumeration): không lộ 404/403 khi email không tồn tại hoặc tài khoản bị khóa
+    if not user or not user.is_active or getattr(user, "deleted_at", None) is not None:
+        return {"message": generic_msg}
+
     plain_otp = await create_otp(db, body.email)
     await db.commit()
     asyncio.create_task(send_otp_email(body.email, plain_otp))
 
-    return {"message": f"Mã xác thực đã được gửi đến {body.email}. Vui lòng kiểm tra hộp thư."}
+    return {"message": generic_msg}
 
 
 # ── Bước 2: Xác thực OTP ────────────────────────────────────────────────────
@@ -105,7 +107,7 @@ async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Xác thực lại OTP, cập nhật mật khẩu, ghi AuditLog."""
+    """Xác thực lại OTP, cập nhật mật khẩu, hủy toàn bộ phiên đang hoạt động, ghi AuditLog."""
     user = await _get_active_user(db, body.email)
 
     # Xác thực OTP lần cuối (đây là thao tác "consume" token)
@@ -130,6 +132,10 @@ async def reset_password(
     # Cập nhật mật khẩu — chỉ ghi hash, không bao giờ lưu plain text
     user.password_hash = get_password_hash(body.new_password)
 
+    # Invalidate active session(s) to prevent session hijacking
+    from app.modules.m6_admin_security.session_service import clear_active_session
+    await clear_active_session(db, user.user_id)
+
     # Ghi AuditLog (không lưu mật khẩu)
     await log_action(
         db,
@@ -139,5 +145,6 @@ async def reset_password(
         resource_id=str(user.user_id),
         detail=f"Đặt lại mật khẩu thành công qua OTP — email={user.email}",
     )
+    await db.commit()
 
     return {"message": "Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại."}
