@@ -1249,12 +1249,14 @@ async def ask_copilot(
             doc_matches = neo4j_client.run_cypher("""
                 MATCH (d:Document)
                 WHERE d.id = $doc_id AND d.id <> ''
-                RETURN d.name as name, d.id as id
+                OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+                RETURN d.name as name, d.id as id, coalesce(dept.name, d.department, 'unknown') as dept, coalesce(d.classification, 'INTERNAL') as classification
                 LIMIT 1
             """, {"doc_id": req.document_id})
-            if doc_matches:
+            if doc_matches and acl_filter.matches_payload({"id": doc_matches[0].get("id"), "name": doc_matches[0].get("name"), "department": doc_matches[0].get("dept"), "classification": doc_matches[0].get("classification")}):
                 active_target_doc = doc_matches[0]["name"]
                 target_doc_id = doc_matches[0]["id"]
+                target_dept = doc_matches[0].get("dept")
 
         # B. Exact ID or Document Name directly in current query (skip partial token matching for pure ERP queries)
         if not active_target_doc and (is_doc_repo_query or not is_business_semantic_query or any(ext in q_lower for ext in [".pdf", ".docx", ".xlsx", ".txt", ".csv"])):
@@ -1262,7 +1264,8 @@ async def ask_copilot(
                 MATCH (d:Document)
                 WHERE (d.id IS NOT NULL AND d.id <> '' AND toLower($q) CONTAINS toLower(d.id))
                    OR toLower($q) CONTAINS toLower(d.name)
-                RETURN d.name as name, d.id as id
+                OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+                RETURN d.name as name, d.id as id, coalesce(dept.name, d.department, 'unknown') as dept, coalesce(d.classification, 'INTERNAL') as classification
                 LIMIT 1
             """, {"q": clean_query})
             if not doc_matches:
@@ -1275,14 +1278,17 @@ async def ask_copilot(
                     doc_matches = neo4j_client.run_cypher("""
                         MATCH (d:Document)
                         WHERE toLower(d.name) CONTAINS toLower($t)
-                        RETURN d.name as name, d.id as id
+                        OPTIONAL MATCH (d)-[:BELONGS_TO_DEPT]->(dept:Department)
+                        RETURN d.name as name, d.id as id, coalesce(dept.name, d.department, 'unknown') as dept, coalesce(d.classification, 'INTERNAL') as classification
                         LIMIT 2
                     """, {"t": t})
                     if doc_matches:
                         break
 
-            if doc_matches:
+            if doc_matches and acl_filter.matches_payload({"id": doc_matches[0].get("id"), "name": doc_matches[0].get("name"), "department": doc_matches[0].get("dept"), "classification": doc_matches[0].get("classification")}):
                 active_target_doc = doc_matches[0]["name"]
+                target_doc_id = doc_matches[0]["id"]
+                target_dept = doc_matches[0].get("dept")
                 target_doc_id = doc_matches[0]["id"]
 
         # C. Follow-up query in session: inherit active document only when clearly verifiable (Requirement 3)
@@ -1687,10 +1693,14 @@ async def ask_copilot(
         top_score = float(top_hit.get("score") or 0.0)
         is_cuad_doc = (top_hit.get("source") != "adventureworks") and ("entity_type" not in (top_hit.get("payload") or {}))
         if is_cuad_doc and top_name and top_score >= 0.28:
-            # Check relevance: do not lock onto top_name if user asked for specific tokens absent from top_name
-            should_lock = True
-            if candidate_tokens:
-                should_lock = any(tok.lower() in top_name.lower() or tok.lower() in (top_hit.get("text") or "").lower() for tok in candidate_tokens)
+            # Enforce ACL on top_hit before locking (Step 2B.6 Secondary Defense)
+            pl_check = top_hit.get("payload") if isinstance(top_hit.get("payload"), dict) else top_hit
+            if not acl_filter.matches_payload(pl_check):
+                should_lock = False
+            else:
+                should_lock = True
+                if candidate_tokens:
+                    should_lock = any(tok.lower() in top_name.lower() or tok.lower() in (top_hit.get("text") or "").lower() for tok in candidate_tokens)
             if should_lock:
                 active_target_doc = top_name
                 target_doc_id = top_doc_id
@@ -1919,6 +1929,7 @@ async def ask_copilot(
             return allowed
 
         graph_hits = [gh for gh in graph_hits if _is_g_allowed(gh)]
+    graph_hits = [gh for gh in graph_hits if acl_filter.matches_payload(gh)]
 
     # 2.5 GROUNDING GATE (Requirement 5)
     # Empirically calibrated threshold on all-MiniLM-L6-v2 cosine similarity:
@@ -1991,8 +2002,8 @@ async def ask_copilot(
     fused_results = reciprocal_rank_fusion(vector_hits, graph_hits, k=60, top_n=6)
 
     # 4. Context Synthesis & LLM Generation (PR1 Layer-2 Context Gate)
-    raw_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"] or vector_hits
-    raw_entities = [it["raw"] for it in fused_results if it["type"] == "graph"] or graph_hits
+    raw_chunks = [it["raw"] for it in fused_results if it["type"] == "vector"]
+    raw_entities = [it["raw"] for it in fused_results if it["type"] == "graph"]
 
     # Enforce Layer-2 Gate: verify ground truth against Neo4j SYNCED state & provenance
     verified_chunks, verified_entities = apply_layer2_context_gate(raw_chunks, raw_entities)
@@ -2029,7 +2040,7 @@ async def ask_copilot(
         target_dept = d_node_info.get("dept") or "Chung"
 
         # Deduplicate verified chunks by chunk index/id
-        doc_chunks = [ch for ch in verified_chunks if not ((ch.get("payload") or {}).get("source") == "adventureworks" or "entity_type" in (ch.get("payload") or {}))] or verified_chunks
+        doc_chunks = [ch for ch in verified_chunks if not ((ch.get("payload") or {}).get("source") == "adventureworks" or "entity_type" in (ch.get("payload") or {}))]
         unique_doc_chunks = {}
         for ch in doc_chunks:
             c_idx = ch.get("chunk_index") if ch.get("chunk_index") is not None else ch.get("chunk_id", 0)
