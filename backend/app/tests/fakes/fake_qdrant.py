@@ -147,6 +147,12 @@ class FakeQdrantClientWrapper:
     def search(self, *args, **kwargs):
         return self._client.search(*args, **kwargs)
 
+    def vector_search(self, *args, **kwargs):
+        return []
+
+    def get_document_chunks(self, *args, **kwargs):
+        return []
+
     def get_points_count(self, *args, **kwargs):
         return self._client.get_points_count(*args, **kwargs)
 

@@ -933,12 +933,15 @@ def knowledge_explorer_search(
     """
     search_q = expand_query_bilingual(query.strip())
 
+    from app.core.rbac import build_acl_filter
+    acl_filter = build_acl_filter(scope)
+
     # 1. Qdrant vector search
-    qdrant_results = qdrant_client.vector_search(query=search_q, limit=top_k)
+    qdrant_results = qdrant_client.vector_search(query=search_q, limit=top_k, acl_filter=acl_filter)
     # If fewer than 2 results or query relates to enterprise products/customers, also search adventureworks_entities
     if len(qdrant_results) < 3:
         try:
-            erp_results = qdrant_client.vector_search(query=search_q, collection_name="adventureworks_entities", limit=top_k)
+            erp_results = qdrant_client.vector_search(query=search_q, collection_name="adventureworks_entities", limit=top_k, acl_filter=acl_filter)
             if erp_results:
                 for er in erp_results:
                     p = er.get("payload") or {}
@@ -968,7 +971,7 @@ def knowledge_explorer_search(
     seen_ids = set()
 
     for term in search_terms:
-        matches = neo4j_client.search_nodes(query=term, limit=10)
+        matches = neo4j_client.search_nodes(query=term, limit=10, acl_filter=acl_filter)
         for m in matches:
             mid = m.get("_id")
             if mid and mid not in seen_ids:

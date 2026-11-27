@@ -254,6 +254,8 @@ class QdrantClientWrapper:
         contract_name: Optional[str] = None,
         collection_name: str = "cuad_contracts",
         limit: int = 50,
+        *,
+        acl_filter: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """
         Retrieve chunks for a specific document, ordered chronologically by chunk_index/chunk_id.
@@ -275,6 +277,8 @@ class QdrantClientWrapper:
             return []
 
         raw_filter = {"should": conditions} if len(conditions) > 1 else {"must": conditions}
+        if acl_filter and getattr(acl_filter, "qdrant_filter", None):
+            raw_filter = {"must": [raw_filter, acl_filter.qdrant_filter]}
         effective_filter = validate_and_inject_layer1_guard(raw_filter, col)
 
         try:
@@ -301,6 +305,8 @@ class QdrantClientWrapper:
             results = []
             for r in points:
                 payload = r.get("payload", {})
+                if acl_filter and not acl_filter.matches_payload(payload):
+                    continue
                 d_id = payload.get("doc_id") or payload.get("document_id") or doc_id
                 c_name = payload.get("contract_name") or payload.get("source_file") or contract_name or "Document"
                 raw_chunk = payload.get("chunk_id") if payload.get("chunk_id") is not None else payload.get("chunk_index")
@@ -338,11 +344,14 @@ class QdrantClientWrapper:
         query_filter: Optional[Dict[str, Any]] = None,
         entity_type: Optional[Any] = None,
         table: Optional[str] = None,
+        *,
+        acl_filter: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """
         Semantic vector search using SentenceTransformer embedding.
         Falls back to keyword search if model is unavailable.
         Supports Qdrant payload filtering by entity_type (single or list) or table or custom query_filter.
+        Integrates ACL filtering for departmental isolation and sensitive classification defense.
         """
         if not self._connected and not self.connect():
             return []
@@ -362,6 +371,13 @@ class QdrantClientWrapper:
             if table:
                 must_conditions.append({"key": "table", "match": {"value": str(table)}})
             effective_filter = {"must": must_conditions}
+
+        # Inject ACL filter if provided
+        if acl_filter and getattr(acl_filter, "qdrant_filter", None):
+            if effective_filter:
+                effective_filter = {"must": [effective_filter, acl_filter.qdrant_filter]}
+            else:
+                effective_filter = acl_filter.qdrant_filter
 
         # PR1 Layer-1 Server-Side Retrieval Guard: mandatory is_active = True
         effective_filter = validate_and_inject_layer1_guard(effective_filter, col)
@@ -395,6 +411,8 @@ class QdrantClientWrapper:
                     results = []
                     for h in hits:
                         payload = h.get("payload") or {}
+                        if acl_filter and not acl_filter.matches_payload(payload):
+                            continue
                         h_id = str(h.get("id"))
                         doc_id_val = payload.get("document_id") or payload.get("doc_id") or payload.get("contract_id") or h_id
                         file_val = payload.get("source_file") or payload.get("contract_name") or payload.get("name") or "Document"
@@ -419,15 +437,17 @@ class QdrantClientWrapper:
                 print(f"[Qdrant] vector_search error, falling back to text search: {e}")
 
         # Fallback to text search
-        return self.search_by_text(query, col, limit)
+        return self.search_by_text(query, col, limit, acl_filter=acl_filter)
 
     def search_by_text(
         self,
         query: str,
         collection_name: str = None,
         limit: int = 10,
+        *,
+        acl_filter: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
-        """Keyword text search across payloads."""
+        """Keyword text search across payloads with ACL isolation."""
         if not self._connected and not self.connect():
             return []
         col = collection_name or self._collection
@@ -445,6 +465,8 @@ class QdrantClientWrapper:
             matched = []
             for r in results:
                 payload = r.payload or {}
+                if acl_filter and not acl_filter.matches_payload(payload):
+                    continue
                 # PR1 Layer-1 Candidate Retrieval: exclude points where is_active is explicitly False.
                 # Points with is_active=None (legacy) or is_active=True pass to Layer 2 for strict verification.
                 if payload.get("is_active") is False:

@@ -574,6 +574,146 @@ class ScopeContext:
         return filtered
 
 
+@dataclass
+class ACLFilter:
+    scope: ScopeContext
+    is_unrestricted: bool
+    allowed_depts: Set[str]
+    allowed_classifications: Set[str]
+    can_view_sensitive: bool
+    qdrant_filter: Optional[Dict[str, Any]] = None
+    cypher_where: str = "1=1"
+
+    def matches_payload(self, payload: Dict[str, Any]) -> bool:
+        """Evaluates whether an arbitrary node, document, or chunk payload passes this ACL filter (fail-closed)."""
+        if self.is_unrestricted:
+            return True
+
+        if not isinstance(payload, dict):
+            return False
+
+        # 1. Classification check
+        classification = str(
+            payload.get("classification")
+            or payload.get("classification_level")
+            or "INTERNAL"
+        ).strip().upper()
+
+        if classification in ("RESTRICTED", "CONFIDENTIAL") and not self.can_view_sensitive:
+            return False
+
+        if classification == "PUBLIC":
+            return True
+
+        # 2. ERP structured datasets (SalesOrder, Customer -> SALES; Vendor, PO -> ACCOUNTING_PROCUREMENT)
+        if payload.get("source") == "adventureworks" or "entity_type" in payload:
+            e_type = str(payload.get("entity_type", ""))
+            if e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail"]:
+                return "ACCOUNTING_PROCUREMENT" in self.scope.allowed_resources
+            return ("SALES" in self.scope.allowed_resources) or ("RND" in self.scope.allowed_resources)
+
+        # 3. Department matching (fail-closed)
+        raw_dept = (
+            payload.get("department")
+            or payload.get("dept")
+            or payload.get("department_id")
+            or payload.get("deptKey")
+            or payload.get("dept_key")
+            or payload.get("domain")
+        )
+
+        if not raw_dept:
+            spath = payload.get("storage_path") or payload.get("storagePath") or payload.get("file") or payload.get("source_file")
+            if spath:
+                from app.core.central_storage import resolve_canonical_dept
+                raw_dept = resolve_canonical_dept(str(spath))
+                if raw_dept == "unknown":
+                    return False
+            else:
+                return False
+
+        canon_dept = normalize_dept(str(raw_dept))
+        if canon_dept == "unknown":
+            return False
+
+        return canon_dept in self.allowed_depts
+
+
+def build_acl_filter(scope: ScopeContext) -> ACLFilter:
+    """
+    Constructs centralized, multi-engine ACL filters for Qdrant, Neo4j, and in-memory evaluation.
+    Enforces Least Privilege and Department Isolation (fail-closed).
+    """
+    if scope.is_unrestricted and "*" in scope.allowed_depts:
+        return ACLFilter(
+            scope=scope,
+            is_unrestricted=True,
+            allowed_depts={"*"},
+            allowed_classifications={"PUBLIC", "INTERNAL", "RESTRICTED", "CONFIDENTIAL"},
+            can_view_sensitive=True,
+            qdrant_filter=None,
+            cypher_where="1=1",
+        )
+
+    # Determine if user has can_view_sensitive permission
+    can_view_sensitive = (
+        scope.is_unrestricted
+        or scope.role.upper() in ("EXECUTIVE", "ADMIN", "DEPARTMENT_MANAGER", "KNOWLEDGE_MANAGER")
+        or any(r in scope.allowed_resources for r in ["LEGAL"])
+    )
+    if scope.role.upper() == "STANDARD_USER" and scope.canonical_dept != "legal":
+        can_view_sensitive = False
+
+    allowed_classifications = {"PUBLIC", "INTERNAL"}
+    if can_view_sensitive:
+        allowed_classifications.add("RESTRICTED")
+        allowed_classifications.add("CONFIDENTIAL")
+
+    # Expand allowed department names to all known synonyms for Qdrant payload match
+    dept_aliases: Set[str] = set()
+    for d in scope.allowed_depts:
+        dept_aliases.add(d)
+        dept_aliases.add(d.lower())
+        dept_aliases.add(d.upper())
+        for alias_k, canon_v in DEPT_CANONICAL.items():
+            if canon_v == d:
+                dept_aliases.add(alias_k)
+                dept_aliases.add(alias_k.title())
+
+    must_not_conditions = []
+    if not can_view_sensitive:
+        must_not_conditions.append({"key": "classification", "match": {"value": "RESTRICTED"}})
+        must_not_conditions.append({"key": "classification", "match": {"value": "CONFIDENTIAL"}})
+
+    should_conditions = [
+        {"key": "classification", "match": {"value": "PUBLIC"}},
+        {"key": "department", "match": {"any": list(dept_aliases)}},
+        {"key": "dept", "match": {"any": list(dept_aliases)}},
+        {"key": "department_id", "match": {"any": list(scope.allowed_depts)}},
+    ]
+
+    qdrant_filter: Dict[str, Any] = {
+        "should": should_conditions,
+    }
+    if must_not_conditions:
+        qdrant_filter["must_not"] = must_not_conditions
+
+    cypher_dept_list = [f"'{d.lower()}'" for d in sorted(dept_aliases)]
+    cypher_where = f"(n.classification = 'PUBLIC' OR toLower(coalesce(n.department, '')) IN [{', '.join(cypher_dept_list)}])"
+    if not can_view_sensitive:
+        cypher_where += " AND coalesce(n.classification, 'INTERNAL') <> 'RESTRICTED'"
+
+    return ACLFilter(
+        scope=scope,
+        is_unrestricted=False,
+        allowed_depts=scope.allowed_depts,
+        allowed_classifications=allowed_classifications,
+        can_view_sensitive=can_view_sensitive,
+        qdrant_filter=qdrant_filter,
+        cypher_where=cypher_where,
+    )
+
+
 # ── User Resolution Helper ───────────────────────────────────────────────────
 async def get_request_user(
     auth_header: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),

@@ -1023,6 +1023,10 @@ async def ask_copilot(
         db.add(session_obj)
         await db.flush()
 
+    # Centralized ACL Pre-Filter for Vector & Graph Engines (BR-02, BR-04, Step 2B.3)
+    from app.core.rbac import build_acl_filter
+    acl_filter = build_acl_filter(scope)
+
     # 1.1 Greeting Fast-Path Router (0 citations, immediate sub-10ms response)
     user_label = _resolve_user_label(user, scope)
     if _GREETING_RE.match(clean_query):
@@ -1418,7 +1422,7 @@ async def ask_copilot(
             if targeted_doc_term:
                 term_in_docs = False
                 try:
-                    chk_hits = qdrant_client.vector_search(query=targeted_doc_term, collection_name="cuad_contracts", limit=3)
+                    chk_hits = qdrant_client.vector_search(query=targeted_doc_term, collection_name="cuad_contracts", limit=3, acl_filter=acl_filter)
                     for qh in chk_hits:
                         src = (qh.get("source_file") or qh.get("contract_name") or "").lower()
                         txt = (qh.get("text") or "").lower()
@@ -1492,8 +1496,8 @@ async def ask_copilot(
         # Absolutely DO NOT query or mix adventureworks_entities ERP data!
         if is_doc_expiry_query:
             search_query = f"{clean_query} term expiration date hết hạn thời hạn renewal termination 8.1"
-            cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
-            head_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=2)
+            cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter, acl_filter=acl_filter)
+            head_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=2, acl_filter=acl_filter)
             vector_hits = []
             if head_chunks:
                 vector_hits.append(head_chunks[0])
@@ -1505,7 +1509,8 @@ async def ask_copilot(
                 doc_id=target_doc_id,
                 contract_name=active_target_doc,
                 collection_name="cuad_contracts",
-                limit=50
+                limit=50,
+                acl_filter=acl_filter,
             )
             if ordered_chunks:
                 selected = []
@@ -1532,14 +1537,15 @@ async def ask_copilot(
                         selected.append(ch)
                 vector_hits = selected
             else:
-                cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
+                cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter, acl_filter=acl_filter)
                 vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.01]
         elif is_doc_content_query:
             ordered_chunks = qdrant_client.get_document_chunks(
                 doc_id=target_doc_id,
                 contract_name=active_target_doc,
                 collection_name="cuad_contracts",
-                limit=50
+                limit=50,
+                acl_filter=acl_filter,
             )
             if ordered_chunks:
                 if len(ordered_chunks) <= 4:
@@ -1565,11 +1571,11 @@ async def ask_copilot(
                     vector_hits = selected
             else:
                 search_query = active_target_doc if any(k in q_lower for k in ["nội dung", "trình bày", "tóm tắt", "toàn văn", "đọc file", "xem nội dung", "file này", "chứa những gì", "gồm những gì"]) else clean_query
-                cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=12, query_filter=doc_filter)
+                cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=12, query_filter=doc_filter, acl_filter=acl_filter)
                 vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.01]
         elif is_doc_clause_query:
-            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter)
-            head_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=2)
+            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, query_filter=doc_filter, acl_filter=acl_filter)
+            head_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=2, acl_filter=acl_filter)
             vector_hits = []
             if head_chunks:
                 vector_hits.append(head_chunks[0])
@@ -1578,34 +1584,34 @@ async def ask_copilot(
                     vector_hits.append(ch)
         else:
             search_query = active_target_doc if any(k in q_lower for k in ["nội dung", "trình bày", "tóm tắt", "toàn văn", "đọc file", "xem nội dung", "file này", "chứa những gì", "gồm những gì"]) else clean_query
-            cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=12, query_filter=doc_filter)
+            cuad_hits = qdrant_client.vector_search(query=search_query, collection_name="cuad_contracts", limit=12, query_filter=doc_filter, acl_filter=acl_filter)
             min_score = 0.01 if doc_filter else 0.25
             vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
     elif is_doc_repo_query and is_business_semantic_query:
         # Cross-domain query: search both collections and sort by cosine score
-        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
-        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
+        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter, acl_filter=acl_filter)
+        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4, acl_filter=acl_filter)
         combined = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.25] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
         vector_hits = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)[:8]
     elif is_doc_repo_query:
         # User is querying about knowledge repository documents, files, models, or contracts
-        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter, acl_filter=acl_filter)
         min_score = 0.01 if doc_filter else 0.25
         vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= min_score]
         if not vector_hits and not doc_filter:
-            aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=3)
+            aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=3, acl_filter=acl_filter)
             vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.35]
     elif is_business_semantic_query:
         # User is querying specifically about ERP operations, sales, products, orders
-        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=5)
+        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=5, acl_filter=acl_filter)
         vector_hits = [vh for vh in aw_hits if vh.get("score", 0) >= 0.25]
         if not vector_hits:
-            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3)
+            cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=3, acl_filter=acl_filter)
             vector_hits = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.35]
     else:
         # General query: search both collections and pick top matches by similarity
-        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6)
-        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4)
+        cuad_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=6, acl_filter=acl_filter)
+        aw_hits = qdrant_client.vector_search(query=clean_query, collection_name="adventureworks_entities", limit=4, acl_filter=acl_filter)
         combined = [vh for vh in cuad_hits if vh.get("score", 0) >= 0.28] + [vh for vh in aw_hits if vh.get("score", 0) >= 0.28]
         vector_hits = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)[:6]
 
@@ -1670,12 +1676,12 @@ async def ask_copilot(
                     ]
                 }
                 if is_doc_content_query:
-                    ordered_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=50)
+                    ordered_chunks = qdrant_client.get_document_chunks(doc_id=target_doc_id, contract_name=active_target_doc, limit=50, acl_filter=acl_filter)
                     if ordered_chunks:
                         vector_hits = ordered_chunks[:5]
                 else:
                     # Deep semantic chunk retrieval scoped to this exact document (Requirement 4)
-                    deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter)
+                    deep_hits = qdrant_client.vector_search(query=clean_query, collection_name="cuad_contracts", limit=8, query_filter=doc_filter, acl_filter=acl_filter)
                     if deep_hits:
                         vector_hits = deep_hits
 

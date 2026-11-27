@@ -44,6 +44,7 @@ class FakeNeo4jClient:
         query: str,
         params: Optional[Dict[str, Any]] = None,
         raise_errors: bool = False,
+        **kwargs,
     ) -> List[Dict[str, Any]]:
         """
         Record executed query and parameters for test assertion (Spy).

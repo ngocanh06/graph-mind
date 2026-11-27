@@ -476,7 +476,11 @@ class Neo4jClient:
             print(f"[Neo4j] get_node_by_id error: {e}")
             return None
 
-    def search_nodes(self, query: str, limit: int = 25) -> List[Dict[str, Any]]:
+    def search_nodes(
+        self, query: str, limit: int = 25,
+        *,
+        acl_filter: Optional[Any] = None,
+    ) -> List[Dict[str, Any]]:
         """Search nodes matching keyword in any property."""
         if not self._connected and not self.connect():
             return []
@@ -503,6 +507,8 @@ class Neo4jClient:
                 for record in result:
                     raw_props = dict(record["n"])
                     props = {k: _clean_val(v) for k, v in raw_props.items()}
+                    if acl_filter and not acl_filter.matches_payload(props):
+                        continue
                     labels = record["labels"] or []
                     elem_id = record["n"].element_id
                     nodes.append({
@@ -517,7 +523,9 @@ class Neo4jClient:
             return []
 
     def run_cypher(
-        self, cypher: str, params: Dict = None, raise_errors: bool = False
+        self, cypher: str, params: Dict = None, raise_errors: bool = False,
+        *,
+        acl_filter: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """Execute a raw Cypher query and return serializable records."""
         if not self._connected and not self.connect():
@@ -528,16 +536,23 @@ class Neo4jClient:
                 cleaned = []
                 for record in result:
                     d = {}
+                    skip_record = False
                     for k, v in record.items():
                         if hasattr(v, "element_id"): # Node or Rel
+                            props = {pk: _clean_val(pv) for pk, pv in dict(v).items()}
+                            if acl_filter and not acl_filter.matches_payload(props):
+                                skip_record = True
+                                break
                             d[k] = {
                                 "_id": v.element_id,
                                 "_labels": list(v.labels) if hasattr(v, "labels") else [],
                                 "type": v.type if hasattr(v, "type") else None,
-                                "properties": {pk: _clean_val(pv) for pk, pv in dict(v).items()}
+                                "properties": props
                             }
                         else:
                             d[k] = _clean_val(v)
+                    if skip_record:
+                        continue
                     cleaned.append(d)
                 return cleaned
         except Exception as e:
