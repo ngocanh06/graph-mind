@@ -65,8 +65,11 @@ def verify_grounded_figures(
     if not evidence_blob:
         figures = extract_answer_figures(answer_text)
         if figures:
-            disclaimer = "\n\n⚠️ [Kiểm định độ tin cậy P10]: Câu trả lời chứa số liệu nhưng không có văn bản đối chứng trực tiếp trong kho tri thức."
-            return answer_text + disclaimer, False, list(figures)
+            refusal = (
+                f"⚠️ [Kiểm định độ tin cậy P10]: Phát hiện số liệu/thông tin ({', '.join(list(figures)[:3])}) nhưng không có "
+                "văn bản đối chứng trong kho tri thức. Hệ thống từ chối câu trả lời để đảm bảo an toàn dữ liệu (P10 Refusal)."
+            )
+            return refusal, False, list(figures)
         return answer_text, True, []
 
     figures = extract_answer_figures(answer_text)
@@ -83,25 +86,39 @@ def verify_grounded_figures(
             ungrounded.append(fig)
 
     if ungrounded:
-        disclaimer = (
-            f"\n\n⚠️ [Kiểm định độ tin cậy P10]: Phát hiện số liệu ({', '.join(ungrounded[:4])}) "
-            "chưa được đối chứng trực tiếp trong tài liệu trích dẫn. Vui lòng kiểm tra văn bản gốc."
+        refusal = (
+            f"⚠️ [Kiểm định độ tin cậy P10]: Phát hiện số liệu/điều khoản ({', '.join(ungrounded[:4])}) "
+            "chưa được đối chứng trực tiếp trong tài liệu trích dẫn đã xác minh. "
+            "Hệ thống từ chối câu trả lời để ngăn ngừa sai lệch dữ liệu (P10 Grounding Refusal)."
         )
-        return answer_text + disclaimer, False, ungrounded
+        return refusal, False, ungrounded
 
     return answer_text, True, []
 
 
 def is_factual_contract_query(query: str) -> bool:
-    """Detects whether a user query is asking for factual, contractual, or numerical data."""
+    """
+    Detects whether a user query requires grounded evidence in knowledge store (fail-closed against hallucination).
+    Enterprise rule (Item 5): All enterprise queries require strict grounding UNLESS they are simple
+    conversational greetings or meta assistant identity questions.
+    """
     if not query:
         return False
-    q_lower = query.lower()
-    factual_keywords = [
-        "hợp đồng", "contract", "điều khoản", "clause", "bồi thường", "indemnif",
-        "trách nhiệm", "liability", "phạt", "penalty", "thanh toán", "payment",
-        "bảo mật", "confidential", "thời hạn", "hiệu lực", "giá trị", "chi phí",
-        "doanh thu", "số tiền", "bao nhiêu", "ai chịu trách nhiệm", "quy định",
-        "chính sách", "phụ lục", "cam kết", "mức phạt"
-    ]
-    return any(k in q_lower for k in factual_keywords)
+    # Normalize query by lowercasing and stripping punctuation
+    q_clean = re.sub(r'[^\w\s]', ' ', query.lower()).strip()
+    q_clean = re.sub(r'\s+', ' ', q_clean)
+
+    # Conversational greetings and self-meta questions that don't need doc grounding
+    greetings = {
+        "xin chào", "chào bạn", "hello", "hi", "hey", "good morning", "good afternoon",
+        "bạn là ai", "who are you", "bạn có thể làm gì", "what can you do", "giúp gì cho tôi",
+        "tạm biệt", "bye", "cảm ơn", "cảm ơn bạn nhiều nhé", "thank you", "thanks",
+        "hôm nay thời tiết thế nào"
+    }
+    if q_clean in greetings:
+        return False
+    if len(q_clean.split()) <= 2 and any(g in q_clean for g in ["chào", "hello", "hi", "hey"]):
+        return False
+
+    # All domain queries, questions, or analytical requests require grounded evidence
+    return True

@@ -2174,7 +2174,9 @@ async def ask_copilot(
             graph_entities=used_entities
         )
         if not is_grounded:
-            confidence_score = max(0, min(confidence_score, 40))
+            confidence_score = 0
+            citations_detail = []
+            evidence_chips = []
 
         evidence_chips = []
         citations_detail = []
@@ -2419,7 +2421,11 @@ async def ask_copilot(
         "id": f"c_{int(time.time()*1000)}",
         "sender": "copilot",
         "time": now_str,
-        "verifiedBadge": "Hybrid GraphRAG Verified" if (citations_detail or verified_entities) else "GraphMind AI Local",
+        "verifiedBadge": (
+            "Hybrid GraphRAG Verified"
+            if (is_grounded and confidence_score >= 70 and citations_detail)
+            else ("Refused (Ungrounded / ACL Restricted)" if (confidence_score == 0 or not is_grounded) else "GraphMind AI Local")
+        ),
         "confidence": f"{confidence_score}%",
         "citationCount": len(citations_detail),
         "latency": f"{latency}s latency (Hybrid Vector-Graph Fusion)",
