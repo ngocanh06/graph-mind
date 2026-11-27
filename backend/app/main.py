@@ -3152,7 +3152,7 @@ def get_risk_alerts(
                 q_it_doc = """
                     MATCH (d:Document)
                     WHERE d.name CONTAINS 'Hop_Dong' OR d.name CONTAINS 'Phan_Mem'
-                    RETURN d.name as doc_name, d.id as doc_id, coalesce(d.department, 'Công nghệ / IT') as dept
+                    RETURN d.name as doc_name, d.id as doc_id, d.department as dept
                     LIMIT 1
                 """
                 res_it_doc = neo4j_client.run_cypher(q_it_doc)
@@ -3160,7 +3160,9 @@ def get_risk_alerts(
                     it_row = res_it_doc[0]
                     it_doc_name = it_row["doc_name"]
                     it_doc_id = it_row["doc_id"]
-                    legal_alerts.append({
+                    it_dept = it_row.get("dept")
+                    if it_dept and any(k in it_dept.lower() for k in ["it", "công nghệ", "cntt"]):
+                        legal_alerts.append({
                         "id": "ALERT-IT-CONTRACT-SLA",
                         "category": "legal_risk",
                         "dept": "it",

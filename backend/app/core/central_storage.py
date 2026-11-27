@@ -59,7 +59,9 @@ def sanitize_filename(filename: str) -> str:
 
 
 def resolve_canonical_dept(dept: str) -> str:
-    """Map any department string or alias to one of the 5 canonical folder keys."""
+    """Map any department string or alias to one of the 5 canonical folder keys. Fail-closed on empty or unknown."""
+    if not dept:
+        return "unknown"
     dept_lower = (dept or "").lower().strip()
     if any(k in dept_lower for k in ["legal", "pháp chế", "phap che", "phap_che"]):
         return "legal"
@@ -71,7 +73,7 @@ def resolve_canonical_dept(dept: str) -> str:
         return "it"
     if any(k in dept_lower for k in ["rnd", "r&d", "nghiên cứu", "production"]):
         return "rnd"
-    return "legal"
+    return "unknown"
 
 
 def is_direct_storage_available() -> bool:

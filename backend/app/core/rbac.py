@@ -384,6 +384,8 @@ DEPT_CANONICAL: Dict[str, str] = {
     # Legal / Pháp chế
     "pháp chế": "legal",
     "legal": "legal",
+    "pháp chế (legal)": "legal",
+    "phap che": "legal",
     "pháp chế & r&d": "legal",
     "phòng pháp chế": "legal",
     "phòng pháp chế & hợp đồng": "legal",
@@ -391,6 +393,7 @@ DEPT_CANONICAL: Dict[str, str] = {
     # Sales / Kinh doanh
     "kinh doanh": "sales",
     "sales": "sales",
+    "kinh doanh (sales)": "sales",
     "bán hàng": "sales",
     "bán hàng (sales)": "sales",
     "phòng kinh doanh": "sales",
@@ -404,6 +407,7 @@ DEPT_CANONICAL: Dict[str, str] = {
     "công nghệ / it": "it",
     "công nghệ thông tin": "it",
     "it": "it",
+    "cntt": "it",
     "phòng cntt": "it",
     "khối công nghệ, dữ liệu & quản trị tri thức": "it",
     "it_admin": "it",
@@ -415,10 +419,14 @@ DEPT_CANONICAL: Dict[str, str] = {
     "ops": "operations",
     # R&D
     "r&d": "rnd",
+    "rnd": "rnd",
     "nghiên cứu": "rnd",
-    # Accounting / Tài chính
+    # Accounting / Tài chính / Thu mua
     "kế toán": "accounting",
     "accounting": "accounting",
+    "accounting_procurement": "accounting",
+    "kế toán / thu mua": "accounting",
+    "thu mua": "accounting",
     "phòng kế toán & tài chính": "accounting",
     # HR / Nhân sự
     "nhân sự": "hr",
@@ -461,11 +469,11 @@ USER_ALIASES: Dict[str, str] = {
 
 
 def normalize_dept(dept: Optional[str]) -> str:
-    """Normalize raw department string into canonical department key."""
+    """Normalize raw department string into canonical department key. Fail-closed on empty/unknown."""
     if not dept:
-        return "all"
+        return "unknown"
     d = dept.strip().lower()
-    return DEPT_CANONICAL.get(d, d)
+    return DEPT_CANONICAL.get(d, "unknown")
 
 
 @dataclass
@@ -483,9 +491,9 @@ class ScopeContext:
         return self.canonical_dept
 
     def is_department_allowed(self, target_dept: Optional[str]) -> bool:
-        """Check if access to target department data is permitted under Admin RBAC."""
+        """Check if access to target department data is permitted under Admin RBAC (fail-closed)."""
         if not target_dept or str(target_dept).upper() in ("ALL", "ALL_DEPARTMENTS"):
-            return True
+            return self.is_unrestricted and "*" in self.allowed_depts
         if self.is_unrestricted and "*" in self.allowed_depts:
             return True
         d_lower = target_dept.strip().lower()
