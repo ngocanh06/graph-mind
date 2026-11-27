@@ -51,6 +51,36 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv", ".txt"}
 # ============================================================================
 GRAPHMIND_CHUNK_NAMESPACE = uuid.UUID("a3b2c1d0-e9f8-4a7b-8c5d-4e3f2a1b0c9d")
 
+# ============================================================================
+# DATA CLASSIFICATION (Step 2B.4 - Fail-Closed Sensitive Content Detection)
+# ============================================================================
+SENSITIVE_PATTERNS = [
+    re.compile(r"uncapped\s+liability", re.IGNORECASE),
+    re.compile(r"unlimited\s+liability", re.IGNORECASE),
+    re.compile(r"non[\s-]compete", re.IGNORECASE),
+    re.compile(r"non[\s-]competition", re.IGNORECASE),
+    re.compile(r"indemnif(?:y|ication|ied)", re.IGNORECASE),
+    re.compile(r"bồi\s+thường\s+vô\s+hạn", re.IGNORECASE),
+    re.compile(r"trách\s+nhiệm\s+vô\s+hạn", re.IGNORECASE),
+    re.compile(r"exclusivity", re.IGNORECASE),
+    re.compile(r"trade\s+secret", re.IGNORECASE),
+    re.compile(r"bí\s+mật\s+kinh\s+doanh", re.IGNORECASE),
+    re.compile(r"change\s+of\s+control", re.IGNORECASE),
+    re.compile(r"bồi\s+thường\s+&\s+phạt", re.IGNORECASE),
+    re.compile(r"điều\s+khoản\s+bảo\s+mật", re.IGNORECASE),
+    re.compile(r"bảo\s+mật\s+thông\s+tin", re.IGNORECASE),
+    re.compile(r"confidentiality", re.IGNORECASE),
+    re.compile(r"liability", re.IGNORECASE),
+]
+
+def classify_chunk_content(text: str) -> str:
+    """Classifies chunk or clause content into RESTRICTED or INTERNAL."""
+    if not text:
+        return "INTERNAL"
+    if any(p.search(text) for p in SENSITIVE_PATTERNS):
+        return "RESTRICTED"
+    return "INTERNAL"
+
 class FencedOperationError(Exception):
     """Raised when an operation is fenced out or CAS validation fails."""
     pass
@@ -804,6 +834,7 @@ def process_document_ingestion(
                             d.department = $dept,
                             d.deptKey = $dept_key,
                             d.domain = $domain,
+                            d.classification = coalesce(d.classification, 'INTERNAL'),
                             d.active_op_id = $op_id,
                             d.fencing_generation = $next_gen,
                             d.op_stage = 'STAGING',
@@ -845,6 +876,7 @@ def process_document_ingestion(
                             department: $dept,
                             deptKey: $dept_key,
                             domain: $domain,
+                            classification: 'INTERNAL',
                             active_op_id: $op_id,
                             fencing_generation: $fencing_gen,
                             op_stage: 'STAGING',
@@ -943,6 +975,7 @@ def process_document_ingestion(
                             "text": ch,
                             "department": dept_name,
                             "department_key": dept_key,
+                            "classification": classify_chunk_content(ch),
                             "source": "aegis_local_file_watcher",
                             "ingested_at": timestamp_str
                         }
@@ -1048,6 +1081,8 @@ def process_document_ingestion(
 
                 for idx, cl in enumerate(entities.get("clauses", [])):
                     snippet_text = chunks[0][:300] if chunks else ""
+                    cl_meta = f"{cl.get('name', '')} {cl.get('type', '')} {cl.get('title', '')} {snippet_text}"
+                    cl_classification = classify_chunk_content(cl_meta)
                     neo4j_client.run_cypher("""
                         MATCH (d:Document)
                         WHERE elementId(d) = $elem_id
@@ -1058,7 +1093,9 @@ def process_document_ingestion(
                             cl.source_document_id = $doc_id,
                             cl.source_file = $name,
                             cl.evidence_text = $cl_snippet,
-                            cl.domain = $domain
+                            cl.domain = $domain,
+                            cl.department = $dept,
+                            cl.classification = $cl_classification
                         MERGE (d)-[r:CONTAINS_CLAUSE]->(cl)
                         SET r.source_document_id = $doc_id,
                             r.source_file = $name,
@@ -1072,7 +1109,9 @@ def process_document_ingestion(
                         "cl_type": cl["type"],
                         "cl_title": cl["title"],
                         "cl_snippet": snippet_text,
-                        "domain": target_domain
+                        "domain": target_domain,
+                        "dept": dept_name,
+                        "cl_classification": cl_classification
                     })
                 neo4j_synced = True
         except FencedOperationError:

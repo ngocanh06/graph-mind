@@ -655,13 +655,12 @@ def build_acl_filter(scope: ScopeContext) -> ACLFilter:
             cypher_where="1=1",
         )
 
-    # Determine if user has can_view_sensitive permission
+    # Determine if user has can_view_sensitive permission (Least Privilege: Executive and Managers only)
     can_view_sensitive = (
         scope.is_unrestricted
-        or scope.role.upper() in ("EXECUTIVE", "ADMIN", "DEPARTMENT_MANAGER", "KNOWLEDGE_MANAGER")
-        or any(r in scope.allowed_resources for r in ["LEGAL"])
+        or scope.role.upper() in ("EXECUTIVE", "ADMIN", "DEPARTMENT_MANAGER", "KNOWLEDGE_MANAGER", "MANAGER")
     )
-    if scope.role.upper() == "STANDARD_USER" and scope.canonical_dept != "legal":
+    if scope.role.upper() in ("STANDARD", "STANDARD_USER"):
         can_view_sensitive = False
 
     allowed_classifications = {"PUBLIC", "INTERNAL"}
