@@ -583,6 +583,31 @@ class ACLFilter:
     can_view_sensitive: bool
     qdrant_filter: Optional[Dict[str, Any]] = None
     cypher_where: str = "1=1"
+    shadow_mode: bool = False
+    shadow_blocked_events: List[Dict[str, Any]] = field(default_factory=list)
+
+    def _block_or_shadow(self, reason: str, payload: Dict[str, Any]) -> bool:
+        """Helper to enforce hard block or record shadow blocked event."""
+        if self.shadow_mode:
+            actor = getattr(self.scope.user, "user_id", None) if self.scope and self.scope.user else None
+            res_id = (
+                payload.get("logical_chunk_id")
+                or payload.get("id")
+                or payload.get("doc_id")
+                or payload.get("document_id")
+                or payload.get("source_file")
+                or payload.get("name")
+                or "unknown"
+            )
+            self.shadow_blocked_events.append({
+                "actor_id": actor,
+                "resource_id": str(res_id),
+                "resource_type": "DOCUMENT_CHUNK",
+                "reason": reason,
+                "payload": payload,
+            })
+            return True  # In shadow mode, do not drop
+        return False  # Hard block
 
     def matches_payload(self, payload: Dict[str, Any]) -> bool:
         """Evaluates whether an arbitrary node, document, or chunk payload passes this ACL filter (fail-closed)."""
@@ -600,7 +625,10 @@ class ACLFilter:
         ).strip().upper()
 
         if classification in ("RESTRICTED", "CONFIDENTIAL") and not self.can_view_sensitive:
-            return False
+            return self._block_or_shadow(
+                f"Classification {classification} restricted for role {self.scope.role}",
+                payload
+            )
 
         if classification == "PUBLIC":
             return True
@@ -609,8 +637,12 @@ class ACLFilter:
         if payload.get("source") == "adventureworks" or "entity_type" in payload:
             e_type = str(payload.get("entity_type", ""))
             if e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail"]:
-                return "ACCOUNTING_PROCUREMENT" in self.scope.allowed_resources
-            return ("SALES" in self.scope.allowed_resources) or ("RND" in self.scope.allowed_resources)
+                if "ACCOUNTING_PROCUREMENT" not in self.scope.allowed_resources:
+                    return self._block_or_shadow(f"ERP entity {e_type} requires ACCOUNTING_PROCUREMENT", payload)
+                return True
+            if ("SALES" not in self.scope.allowed_resources) and ("RND" not in self.scope.allowed_resources):
+                return self._block_or_shadow(f"ERP entity {e_type} requires SALES or RND", payload)
+            return True
 
         # 3. Department matching (fail-closed)
         raw_dept = (
@@ -628,22 +660,36 @@ class ACLFilter:
                 from app.core.central_storage import resolve_canonical_dept
                 raw_dept = resolve_canonical_dept(str(spath))
                 if raw_dept == "unknown":
-                    return False
+                    return self._block_or_shadow("Unknown department from storage path", payload)
             else:
-                return False
+                return self._block_or_shadow("Missing department metadata (fail-closed)", payload)
 
         canon_dept = normalize_dept(str(raw_dept))
         if canon_dept == "unknown":
-            return False
+            return self._block_or_shadow(f"Unrecognized department '{raw_dept}'", payload)
 
-        return canon_dept in self.allowed_depts
+        if canon_dept not in self.allowed_depts:
+            return self._block_or_shadow(
+                f"Department '{canon_dept}' not in user allowed departments {self.allowed_depts}",
+                payload
+            )
+
+        return True
 
 
-def build_acl_filter(scope: ScopeContext) -> ACLFilter:
+def build_acl_filter(scope: ScopeContext, shadow_mode: Optional[bool] = None) -> ACLFilter:
     """
     Constructs centralized, multi-engine ACL filters for Qdrant, Neo4j, and in-memory evaluation.
     Enforces Least Privilege and Department Isolation (fail-closed).
+    Supports ACL_SHADOW_MODE for audit-only shadow execution without dropping chunks.
     """
+    if shadow_mode is None:
+        try:
+            from app.core.config import settings
+            shadow_mode = bool(getattr(settings, "ACL_SHADOW_MODE", False))
+        except Exception:
+            shadow_mode = False
+
     if scope.is_unrestricted and "*" in scope.allowed_depts:
         return ACLFilter(
             scope=scope,
@@ -653,6 +699,7 @@ def build_acl_filter(scope: ScopeContext) -> ACLFilter:
             can_view_sensitive=True,
             qdrant_filter=None,
             cypher_where="1=1",
+            shadow_mode=shadow_mode,
         )
 
     # Determine if user has can_view_sensitive permission (Least Privilege: Executive and Managers only)
@@ -702,6 +749,10 @@ def build_acl_filter(scope: ScopeContext) -> ACLFilter:
     if not can_view_sensitive:
         cypher_where += " AND coalesce(n.classification, 'INTERNAL') <> 'RESTRICTED'"
 
+    if shadow_mode:
+        qdrant_filter = None
+        cypher_where = "1=1"
+
     return ACLFilter(
         scope=scope,
         is_unrestricted=False,
@@ -710,7 +761,34 @@ def build_acl_filter(scope: ScopeContext) -> ACLFilter:
         can_view_sensitive=can_view_sensitive,
         qdrant_filter=qdrant_filter,
         cypher_where=cypher_where,
+        shadow_mode=shadow_mode,
     )
+
+
+async def record_acl_shadow_block(
+    db: Any,
+    *,
+    actor_id: Optional[uuid.UUID],
+    resource_type: str,
+    resource_id: str,
+    reason: str,
+    query: Optional[str] = None
+) -> None:
+    """Records would-be blocked query or chunk in PostgreSQL audit_logs (action=ACL_SHADOW_BLOCKED)."""
+    try:
+        from app.db.postgres.models.audit_log import AuditLog
+        entry = AuditLog(
+            action="ACL_SHADOW_BLOCKED",
+            actor_id=actor_id,
+            resource_type=resource_type,
+            resource_id=resource_id[:150] if resource_id else None,
+            status="SHADOW_PERMITTED",
+            detail=f"Shadow blocked: {reason} | query={query or ''}"[:500]
+        )
+        db.add(entry)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[ACL Shadow] Failed to record shadow audit event: {e}")
 
 
 # ── User Resolution Helper ───────────────────────────────────────────────────

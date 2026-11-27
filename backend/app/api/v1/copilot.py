@@ -1024,7 +1024,7 @@ async def ask_copilot(
         await db.flush()
 
     # Centralized ACL Pre-Filter for Vector & Graph Engines (BR-02, BR-04, Step 2B.3)
-    from app.core.rbac import build_acl_filter
+    from app.core.rbac import build_acl_filter, record_acl_shadow_block
     acl_filter = build_acl_filter(scope)
 
     # 1.1 Greeting Fast-Path Router (0 citations, immediate sub-10ms response)
@@ -1146,6 +1146,18 @@ async def ask_copilot(
         })
         session_obj.messages = new_msgs
         session_obj.updated_at = datetime.now()
+
+        if acl_filter.shadow_blocked_events:
+            for evt in acl_filter.shadow_blocked_events:
+                await record_acl_shadow_block(
+                    db,
+                    actor_id=evt.get("actor_id"),
+                    resource_type=evt.get("resource_type", "DOCUMENT_CHUNK"),
+                    resource_id=evt.get("resource_id", "unknown"),
+                    reason=evt.get("reason", "ACL violation"),
+                    query=clean_query,
+                )
+
         await db.commit()
         await db.refresh(session_obj)
         blocked_msg["session"] = session_obj.to_dict()
@@ -1623,8 +1635,13 @@ async def ask_copilot(
             if pl.get("source") == "adventureworks" or "entity_type" in pl:
                 e_type = pl.get("entity_type", "")
                 if e_type in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail"]:
-                    return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
-                return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+                    allowed = "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
+                else:
+                    allowed = "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+                if not allowed and acl_filter.shadow_mode:
+                    acl_filter._block_or_shadow(f"ERP entity {e_type} access restricted", pl)
+                    return True
+                return allowed
 
             # Department / metadata fail-closed check
             dept = pl.get("department") or pl.get("dept") or pl.get("deptKey") or pl.get("dept_key") or pl.get("domain")
@@ -1636,12 +1653,22 @@ async def ask_copilot(
 
             if not dept and not storage_path:
                 # Missing or empty department metadata on sensitive document -> FAIL-CLOSED
+                if acl_filter.shadow_mode:
+                    acl_filter._block_or_shadow("Missing department metadata on vector chunk", pl)
+                    return True
                 return False
 
             rt = resolve_resource_type(vh)
             if not rt or rt == "UNKNOWN":
+                if acl_filter.shadow_mode:
+                    acl_filter._block_or_shadow("Unknown resource type on vector chunk", pl)
+                    return True
                 return False
-            return rt in scope.allowed_resources
+            allowed = rt in scope.allowed_resources
+            if not allowed and acl_filter.shadow_mode:
+                acl_filter._block_or_shadow(f"Resource type {rt} not in allowed resources {scope.allowed_resources}", pl)
+                return True
+            return allowed
 
         vector_hits = [vh for vh in vector_hits if _is_v_allowed(vh)]
 
@@ -1873,11 +1900,23 @@ async def ask_copilot(
             if any(l in ["DocumentSummary", "SystemStats", "ContractPortfolio", "ComplianceReport", "CUAD", "SchemaBoundary", "Clarification", "ExecutiveReport"] for l in labels) or gh.get("_id") in ["total-documents-summary", "portfolio-breakdown", "compliance-stats"]:
                 return True
             if any(l in ["Vendor", "PurchaseOrder", "PurchaseOrderDetail", "Store", "Supplier"] for l in labels):
-                return "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
+                allowed = "ACCOUNTING_PROCUREMENT" in scope.allowed_resources
+                if not allowed and acl_filter.shadow_mode:
+                    acl_filter._block_or_shadow(f"Graph node {gh.get('name')} requires ACCOUNTING_PROCUREMENT", gh)
+                    return True
+                return allowed
             if any(l in ["Customer", "SalesOrder", "Product", "ProductCategory", "ProductSubcategory", "Category", "SubCategory", "FinancialTrend", "BusinessKPI"] for l in labels):
-                return "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+                allowed = "SALES" in scope.allowed_resources or "RND" in scope.allowed_resources
+                if not allowed and acl_filter.shadow_mode:
+                    acl_filter._block_or_shadow(f"Graph node {gh.get('name')} requires SALES or RND", gh)
+                    return True
+                return allowed
             rt = resolve_resource_type(gh)
-            return rt in scope.allowed_resources
+            allowed = rt in scope.allowed_resources
+            if not allowed and acl_filter.shadow_mode:
+                acl_filter._block_or_shadow(f"Graph node {gh.get('name')} resource {rt} not in allowed", gh)
+                return True
+            return allowed
 
         graph_hits = [gh for gh in graph_hits if _is_g_allowed(gh)]
 
@@ -1931,6 +1970,18 @@ async def ask_copilot(
         })
         session_obj.messages = new_msgs
         session_obj.updated_at = datetime.now()
+
+        if acl_filter.shadow_blocked_events:
+            for evt in acl_filter.shadow_blocked_events:
+                await record_acl_shadow_block(
+                    db,
+                    actor_id=evt.get("actor_id"),
+                    resource_type=evt.get("resource_type", "DOCUMENT_CHUNK"),
+                    resource_id=evt.get("resource_id", "unknown"),
+                    reason=evt.get("reason", "ACL violation"),
+                    query=clean_query,
+                )
+
         await db.commit()
         await db.refresh(session_obj)
         blocked_msg["session"] = session_obj.to_dict()
@@ -2367,6 +2418,17 @@ async def ask_copilot(
         session_obj.title = clean_query[:40] + ("..." if len(clean_query) > 40 else "")
 
     session_obj.updated_at = datetime.now()
+
+    if acl_filter.shadow_blocked_events:
+        for evt in acl_filter.shadow_blocked_events:
+            await record_acl_shadow_block(
+                db,
+                actor_id=evt.get("actor_id"),
+                resource_type=evt.get("resource_type", "DOCUMENT_CHUNK"),
+                resource_id=evt.get("resource_id", "unknown"),
+                reason=evt.get("reason", "ACL violation"),
+                query=clean_query,
+            )
 
     await db.commit()
     await db.refresh(session_obj)

@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     FRONTEND_PORT: int = 5173
 
     # Feature Flags
+    # Feature Flags
     PB56_WORKSTATIONS_ENABLED: bool = True
+    ACL_SHADOW_MODE: bool = False
 
     # Security & Authentication — Read strictly from environment (.env), never hardcoded
     SECRET_KEY: str = ""
