@@ -358,6 +358,7 @@ def test_standing_api_security_guard_all_routes_authenticated():
         "/api/v1/auth/reset-password",
         "/api/v1/auth/verify-otp",
         "/api/v1/connectors/google/callback",
+        "/api/v1/workstations/status",
     }
 
     AUTH_DEP_NAMES = {
@@ -372,6 +373,8 @@ def test_standing_api_security_guard_all_routes_authenticated():
         "verify_agent_token",
         "HTTPBearer",
         "security_bearer",
+        "require_pb56_admin",
+        "get_agent_token_header",
     }
 
     def walk_routes(routes, prefix=""):
