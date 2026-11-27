@@ -665,7 +665,8 @@ async def get_user_scope(
 
     is_admin = role_code == "ADMIN" or getattr(user, "is_superuser", False)
     is_exec = role_code == "EXECUTIVE"
-    is_unrestricted = is_admin or is_exec
+    # TODO(P4): Separate SoD for IT Admin vs Executive; Admin currently retains legacy unrestricted knowledge access.
+    is_unrestricted = is_exec or is_admin
 
     # Resolve Department Name strictly from DB
     dept_name = None
@@ -685,27 +686,35 @@ async def get_user_scope(
     allowed_resources = set()
     try:
         from app.modules.m6_admin_security.rbac_matrix_model import KnowledgeAccessPolicy
+        from app.modules.m6_admin_security.rbac_matrix_service import normalize_dept_code
+        user_dept_code = normalize_dept_code(effective_dept)
+
         stmt = select(KnowledgeAccessPolicy).where(
-            KnowledgeAccessPolicy.role_code == role_code
+            KnowledgeAccessPolicy.role_code == role_code,
+            KnowledgeAccessPolicy.department_code.in_([user_dept_code, "ALL"]),
         )
         res = await db.execute(stmt)
         policies = res.scalars().all()
         if not policies:
             from app.modules.m6_admin_security.rbac_matrix_service import seed_default_matrix
-            policies = await seed_default_matrix(db)
-            policies = [p for p in policies if p.role_code == role_code]
+            all_seeded = await seed_default_matrix(db)
+            policies = [
+                p for p in all_seeded
+                if p.role_code == role_code and p.department_code in (user_dept_code, "ALL")
+            ]
 
         allowed_resources = {p.resource_type for p in policies if p.can_query}
     except Exception as e:
-        # Fallback to standard defaults
+        # Fallback strictly fail-closed based on user department
         if is_unrestricted:
             allowed_resources = set(CANONICAL_RESOURCE_TYPES)
-        elif role_code == "DEPARTMENT_MANAGER":
-            allowed_resources = {"SALES", "ACCOUNTING_PROCUREMENT", "IT", "RND"}
         else:
-            allowed_resources = {"SALES", "IT", "RND"}
+            user_res = FOLDER_TO_RESOURCE.get(canonical)
+            allowed_resources = {user_res} if user_res else set()
 
     allowed_depts = {RESOURCE_TO_FOLDER[r] for r in allowed_resources if r in RESOURCE_TO_FOLDER}
+    if "accounting_procurement" in allowed_depts:
+        allowed_depts.add("accounting")
     if is_unrestricted:
         allowed_depts.add("*")
 
