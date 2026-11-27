@@ -2010,6 +2010,7 @@ async def ask_copilot(
     verified_chunks, verified_entities = apply_layer2_context_gate(raw_chunks, raw_entities)
 
     requires_grounding = is_factual_contract_query(clean_query) or is_doc_content_query or is_doc_repo_query
+    is_grounded = False
     if (not verified_chunks and not verified_entities) or (requires_grounding and not verified_chunks):
         # Zero Retrieval or Missing Evidence for Factual Query: Grounding Refusal without invoking LLM (P10)
         answer_text = "Không tìm thấy bằng chứng đủ tin cậy trong kho tri thức để trả lời câu hỏi này."
@@ -2018,6 +2019,7 @@ async def ask_copilot(
         confidence_score = 0
         citations_detail = []
         evidence_chips = []
+        is_grounded = False
     else:
         # Check if query is requesting to read, inspect, display, or summarize a specific document
         is_file_inspection = bool(
