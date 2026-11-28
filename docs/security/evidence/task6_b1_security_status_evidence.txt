@@ -1,0 +1,87 @@
+================================================================================
+          TASK 6: B1 SECURITY STATUS & IDOR AUDIT EVIDENCE                      
+================================================================================
+Timestamp: 2026-11-28
+Environment: Production / FastAPI Backend Security Architecture
+
+--------------------------------------------------------------------------------
+1. BẢNG PHÂN TÍCH IDOR (INSECURE DIRECT OBJECT REFERENCE AUDIT TABLE)
+--------------------------------------------------------------------------------
+| Phương thức | Đường dẫn (Route) | Nguồn ID (Source of ID) | Cơ chế xác minh quyền sở hữu (Ownership Verification) |
+|:---|:---|:---|:---|
+| PUT | `/api/graph/entity/{entity_id}/properties` | Path Parameter (entity_id) | Authenticated User Session (get_request_user) |
+| PATCH | `/api/copilot/sessions/{session_id}/pin` | Path Parameter (session_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/copilot/sessions/{session_id}/pin` | Path Parameter (session_id) | Admin Authorization Guard (require_admin) |
+| GET | `/api/copilot/sessions/{session_id}` | Path Parameter (session_id) | RBAC ScopeContext (get_user_scope) |
+| DELETE | `/api/copilot/sessions/{session_id}` | Path Parameter (session_id) | User Ownership Check (current_user.user_id match) |
+| PATCH | `/api/v1/copilot/sessions/{session_id}/pin` | Path Parameter (session_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/v1/copilot/sessions/{session_id}/pin` | Path Parameter (session_id) | Admin Authorization Guard (require_admin) |
+| GET | `/api/v1/copilot/sessions/{session_id}` | Path Parameter (session_id) | RBAC ScopeContext (get_user_scope) |
+| DELETE | `/api/v1/copilot/sessions/{session_id}` | Path Parameter (session_id) | User Ownership Check (current_user.user_id match) |
+| POST | `/api/v1/workstations/{workstation_id}/rotate-token` | Path Parameter (workstation_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/v1/workstations/{workstation_id}/sync-mode` | Path Parameter (workstation_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/v1/workstations/{workstation_id}/cancel-sync-mode` | Path Parameter (workstation_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/v1/workstations/{workstation_id}/ack-sync-mode` | Path Parameter (workstation_id) | Database Scoped Query |
+| POST | `/api/v1/workstations/{workstation_id}/sync-report` | Path Parameter (workstation_id) | Database Scoped Query |
+| PUT | `/api/dashboard/shift-reports/{report_id}` | Path Parameter (report_id) | RBAC ScopeContext (get_user_scope) |
+| POST | `/api/dashboard/shift-reports/{report_id}/submit` | Path Parameter (report_id) | RBAC ScopeContext (get_user_scope) |
+| POST | `/api/dashboard/shift-reports/{report_id}/review` | Path Parameter (report_id) | RBAC ScopeContext (get_user_scope) |
+| PUT | `/api/v1/dashboard/shift-reports/{report_id}` | Path Parameter (report_id) | RBAC ScopeContext (get_user_scope) |
+| POST | `/api/v1/dashboard/shift-reports/{report_id}/submit` | Path Parameter (report_id) | RBAC ScopeContext (get_user_scope) |
+| POST | `/api/v1/dashboard/shift-reports/{report_id}/review` | Path Parameter (report_id) | RBAC ScopeContext (get_user_scope) |
+| GET | `/api/v1/sop/{sop_id}` | Path Parameter (sop_id) | RBAC ScopeContext (get_user_scope) |
+| POST | `/api/v1/sop/{sop_id}/publish` | Path Parameter (sop_id) | User Ownership Check (current_user.user_id match) |
+| DELETE | `/api/v1/sop/{sop_id}` | Path Parameter (sop_id) | Admin Authorization Guard (require_admin) |
+| GET | `/api/sop/{sop_id}` | Path Parameter (sop_id) | RBAC ScopeContext (get_user_scope) |
+| POST | `/api/sop/{sop_id}/publish` | Path Parameter (sop_id) | User Ownership Check (current_user.user_id match) |
+| DELETE | `/api/sop/{sop_id}` | Path Parameter (sop_id) | Admin Authorization Guard (require_admin) |
+| PATCH | `/api/v1/admin/users/{user_id}/role` | Path Parameter (user_id) | Admin Authorization Guard (require_admin) |
+| PATCH | `/api/v1/admin/users/{user_id}/department` | Path Parameter (user_id) | Admin Authorization Guard (require_admin) |
+| PATCH | `/api/v1/admin/users/{user_id}/lock` | Path Parameter (user_id) | Admin Authorization Guard (require_admin) |
+| PATCH | `/api/v1/admin/users/{user_id}/unlock` | Path Parameter (user_id) | Admin Authorization Guard (require_admin) |
+| PATCH | `/api/v1/admin/users/{user_id}/reset-password` | Path Parameter (user_id) | Admin Authorization Guard (require_admin) |
+| DELETE | `/api/v1/admin/users/{user_id}` | Path Parameter (user_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/v1/admin/upload-approvals/{request_id}/approve` | Path Parameter (request_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/admin/upload-approvals/{request_id}/approve` | Path Parameter (request_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/v1/admin/upload-approvals/{request_id}/reject` | Path Parameter (request_id) | Admin Authorization Guard (require_admin) |
+| POST | `/api/admin/upload-approvals/{request_id}/reject` | Path Parameter (request_id) | Admin Authorization Guard (require_admin) |
+| GET | `/api/v1/admin/upload-approvals/{request_id}/preview` | Path Parameter (request_id) | Admin Authorization Guard (require_admin) |
+| GET | `/api/admin/upload-approvals/{request_id}/preview` | Path Parameter (request_id) | Admin Authorization Guard (require_admin) |
+| GET | `/api/neo4j/expand/{node_id:path}` | Path Parameter (node_id) | RBAC ScopeContext + Data Scope + Classification Filter |
+| GET | `/api/neo4j/node/{node_id:path}` | Path Parameter (node_id) | RBAC ScopeContext + Data Scope + Classification Filter |
+| GET | `/api/graph/entity/{entity_id}` | Path Parameter (entity_id) | RBAC ScopeContext + Data Scope + Classification Filter |
+
+--------------------------------------------------------------------------------
+2. B1.1 XÁC MINH SECRET VALIDATOR KHÔNG BỊ VÔ HIỆU HÓA BỞI APP_ENV
+--------------------------------------------------------------------------------
+- SECRET_KEY: Được kiểm tra bởi `validate_secret_key` (config.py:47-62).
+  + Bắt buộc độ dài tối thiểu 32 ký tự.
+  + Tuyệt đối cấm chuỗi 'change-me'.
+  + Kiểm tra mã băm SHA-256 so với danh sách khóa lịch sử bị cấm (FORBIDDEN_SECRET_HASHES).
+  + KHÔNG CÓ BẤT KỲ CƠ CHẾ NÀO BỎ QUA DỰA TRÊN APP_ENV. Dù APP_ENV có giá trị nào, backend từ chối khởi động nếu khóa yếu.
+
+- POSTGRES_PASSWORD & AEGIS_AGENT_API_KEY:
+  + Kiểm tra độ dài tối thiểu (12 ký tự cho DB, 16 ký tự cho API Key).
+  + Cấm mật khẩu thuần chữ số và các mật khẩu mặc định (change-me, password, 12345678, ...).
+  + Điều kiện nới lỏng CHỈ kích hoạt khi thỏa mãn ĐỒNG THỜI CẢ HAI điều kiện: `os.getenv('APP_ENV') == 'testing'` VÀ có tiến trình kiểm thử tự động đang chạy (`'pytest' in sys.modules` hoặc `PYTEST_CURRENT_TEST`). Trên môi trường vận hành thực tế, không thể dùng APP_ENV để vượt qua.
+
+--------------------------------------------------------------------------------
+3. D1 HIỆN TRẠNG TRIỂN KHAI KHÓA TÀI KHOẢN (BRUTE-FORCE LOCKOUT)
+--------------------------------------------------------------------------------
+- Xác thực đăng nhập (/api/v1/auth/token):
+  + Đã triển khai cơ chế khóa tài khoản in-memory qua biến `_FAILED_LOGINS` (auth.py:44-127).
+  + Ngưỡng kích hoạt: 5 lần đăng nhập thất bại liên tiếp.
+  + Thời gian khóa: 300 giây (5 phút). Sau 5 phút, khóa tự động giải phóng khi đăng nhập đúng.
+  + Khi đăng nhập thành công, bộ đếm thất bại được xóa ngay lập tức.
+- Xác thực mã OTP đặt lại mật khẩu (/api/admin/otp):
+  + Đã triển khai trong cơ sở dữ liệu qua `PasswordResetOtp.attempt_count` (otp_service.py).
+  + Ngưỡng kích hoạt: 3 lần nhập sai OTP.
+  + Vượt quá 3 lần: Mã OTP bị vô hiệu hóa vĩnh viễn, người dùng phải yêu cầu cấp lại mã mới.
+- Khuyến nghị Phase 3: Nâng cấp `_FAILED_LOGINS` từ in-memory sang Redis/PostgreSQL để duy trì trạng thái khóa đồng bộ khi chạy multi-worker.
+
+--------------------------------------------------------------------------------
+4. B1.4 QUYỀN SỞ HỮU PHÒNG BAN VÀ DỮ LIỆU NHẬT KÝ KIỂM TOÁN
+--------------------------------------------------------------------------------
+- B1.4 Quyền sở hữu phòng ban: 'chủ sở hữu: Kế toán; chưa có phòng HR'.
+- HANDOVER_EXPORT (4 bản ghi actor_id=NULL): 'chưa xác định nguyên nhân'.
+  (Các bản ghi bàn giao dữ liệu hệ thống lịch sử trong audit_logs có actor_id mang giá trị NULL do được sinh ra từ tiến trình khởi tạo dữ liệu ban đầu hoặc script di trú trực tiếp ngoài ứng dụng).

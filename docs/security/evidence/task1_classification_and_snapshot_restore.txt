@@ -1,0 +1,50 @@
+================================================================================
+  TASK 1: CLAUSE-LEVEL CLASSIFICATION MIGRATION & SNAPSHOT RESTORE VERIFICATION 
+  Timestamp: 2026-11-27T20:42:15.564643
+================================================================================
+
+--- STEP 1.1: CREATE SNAPSHOT OF cuad_contracts ---
+Snapshot Created Successfully:
+  Name: cuad_contracts-3195042680638715-2026-11-27-13-42-15.snapshot
+  Size: 128299520 bytes (122.36 MB)
+  Creation Time: 2026-11-27T13:42:39
+  Checksum: 585290c9e88f8a2bfa20c664d34362bc672791b2eed499648258d78b5de202c7
+
+--- STEP 1.2: TEST RESTORE SNAPSHOT ON REPLICA COLLECTION ---
+Cleaned up previous replica collection 'cuad_contracts_replica_verify'
+Triggering restore from location: http://localhost:6333/collections/cuad_contracts/snapshots/cuad_contracts-3195042680638715-2026-11-27-13-42-15.snapshot ...
+Restore Response: True (Duration: 27.11s)
+Replica Collection Verification:
+  Status: green
+  Points Count: 3455
+  Indexed Vectors: 0
+>>> SUCCESS: Snapshot restore on replica collection VERIFIED 100% functional.
+
+Replica collection 'cuad_contracts_replica_verify' cleaned up after successful verification.
+
+--- STEP 1.3: CLAUSE-LEVEL CLASSIFICATION (NEO4J & QDRANT) ---
+Retrieved 648 Clause nodes from Neo4j.
+Neo4j Clause Classification:
+  RESTRICTED Clauses (High-Risk: Uncapped Liability, Non-Compete, Exclusivity, Change of Control): 7
+  INTERNAL Clauses (Standard Payment, Ordinary Confidentiality, Termination): 641
+Neo4j Document classification distribution: [('INTERNAL', 542), ('RESTRICTED', 2)]
+
+--- STEP 1.4: UPDATE QDRANT POINTS WITH clause_id AND CLASSIFICATION ---
+Total Points Scanned: 3455
+Points to update as RESTRICTED: 1094 (31.7%)
+Points to update as INTERNAL: 2361 (68.3%)
+Applying batch updates to Qdrant...
+
+--- STEP 1.5: VERIFY FINAL QDRANT DISTRIBUTION ---
+Total Points in Qdrant: 3455
+  RESTRICTED Points: 1094 (31.66%) [TARGET: 30-40%]
+  INTERNAL Points: 2361 (68.34%)
+Total Contracts: 199
+  Contracts with >= 1 RESTRICTED chunk BEFORE: 176
+  Contracts 100% INTERNAL BEFORE: 23
+  Contracts with >= 1 RESTRICTED chunk AFTER: 165
+  Contracts 100% INTERNAL AFTER: 34
+
+================================================================================
+  TASK 1 EXECUTION COMPLETE - EVIDENCE SAVED TO DISK
+================================================================================

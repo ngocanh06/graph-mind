@@ -1420,23 +1420,27 @@ async def ask_copilot(
             # 2.0.1 ENTITY EXISTENCE GATE: If user explicitly asks about a specific named document/file/contract
             # but it does not exist anywhere in Neo4j or Qdrant, refuse immediately to avoid false-positive hallucinations
             targeted_doc_term = None
-            is_inventory_early = any(k in q_lower for k in [
-                "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
-                "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
-            ])
-            is_agg_query = any(k in q_lower for k in [
-                "cơ cấu", "phân bố", "danh mục", "bao nhiêu", "thống kê", "tổng cộng", "tổng số",
-                "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số", "tuân thủ", "compliance",
-                "an toàn", "đánh giá", "điều khoản", "quy định", "bảo vệ"
-            ])
-            if not is_inventory_early and not is_agg_query and not is_recent_doc_query:
-                t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract)\s+([\w\.-]{3,})", clean_query, re.IGNORECASE | re.UNICODE)
-                if t_match:
-                    cand = t_match.group(1).strip()
-                    if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
-                        targeted_doc_term = cand
-                elif candidate_tokens and is_doc_repo_query:
-                    targeted_doc_term = candidate_tokens[0]
+            explicit_id_match = re.search(r"\b(DOC_[A-Za-z0-9_]+|[A-Za-z0-9_]+(?:_[A-Za-z0-9_]+){2,}|[0-9]{3,}(?:\/[0-9A-Za-z]+){2,})\b", clean_query, re.IGNORECASE)
+            if explicit_id_match:
+                targeted_doc_term = explicit_id_match.group(1).strip()
+            else:
+                is_inventory_early = any(k in q_lower for k in [
+                    "bao nhiêu", "tổng số", "tổng cộng", "số lượng", "thống kê", "cơ cấu", "phân bố", "danh mục",
+                    "tuân thủ", "compliance", "an toàn", "đánh giá", "điều khoản bảo vệ"
+                ])
+                is_agg_query = any(k in q_lower for k in [
+                    "cơ cấu", "phân bố", "danh mục", "bao nhiêu", "thống kê", "tổng cộng", "tổng số",
+                    "tài liệu trong hệ thống", "kho tài liệu", "phổ biến", "chỉ số", "tuân thủ", "compliance",
+                    "an toàn", "đánh giá", "bảo vệ"
+                ])
+                if not is_inventory_early and not is_agg_query and not is_recent_doc_query:
+                    t_match = re.search(r"(?:tài liệu|văn bản|file|hồ sơ|hợp đồng|contract|thỏa thuận|phụ lục)\s+(?:số\s+|mã\s+|mã hiệu\s+)?([\w\.\/-]{3,})", clean_query, re.IGNORECASE | re.UNICODE)
+                    if t_match:
+                        cand = t_match.group(1).strip()
+                        if cand.lower() not in GENERIC_STOP and len(cand) >= 4:
+                            targeted_doc_term = cand
+                    elif candidate_tokens and is_doc_repo_query:
+                        targeted_doc_term = candidate_tokens[0]
 
             if targeted_doc_term:
                 term_in_docs = False
@@ -1903,7 +1907,7 @@ async def ask_copilot(
                 break
 
     # Lọc node thực thể theo Data Scope & Admin RBAC Matrix của vai trò
-    graph_hits = filter_graph_entities_by_scope(graph_hits, user_role)
+    graph_hits = filter_graph_entities_by_scope(graph_hits, user_role, scope=scope)
     if scope.allowed_resources and not scope.is_unrestricted:
         from app.core.rbac import resolve_resource_type
         def _is_g_allowed(gh):

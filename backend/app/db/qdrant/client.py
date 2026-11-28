@@ -382,13 +382,37 @@ class QdrantClientWrapper:
         # PR1 Layer-1 Server-Side Retrieval Guard: mandatory is_active = True
         effective_filter = validate_and_inject_layer1_guard(effective_filter, col)
 
-        model = get_embed_model()
-        if model:
+        col_info = self.get_collection_info(col)
+        target_dim = col_info.get("vector_size") or 768
+
+        query_vec = None
+        if target_dim == 768:
             try:
                 import urllib.request
                 import json
+                req_ollama = urllib.request.Request(
+                    "http://localhost:11434/api/embeddings",
+                    data=json.dumps({"model": "nomic-embed-text", "prompt": query.strip()}).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req_ollama, timeout=5) as r_ol:
+                    res_ol = json.loads(r_ol.read().decode("utf-8"))
+                    query_vec = res_ol.get("embedding")
+            except Exception as e_ol:
+                print(f"[Qdrant] Ollama embedding failed: {e_ol}")
 
-                query_vec = model.encode(query.strip()).tolist()
+        if not query_vec:
+            model = get_embed_model()
+            if model:
+                try:
+                    query_vec = model.encode(query.strip()).tolist()
+                except Exception:
+                    query_vec = None
+
+        if query_vec:
+            try:
+                import urllib.request
+                import json
                 url = f"http://{self._host}:{self._port}/collections/{col}/points/search"
                 search_payload = {
                     "vector": query_vec,

@@ -1,0 +1,49 @@
+================================================================================
+  TASK 2: GIẢI THÍCH MÂU THUẪN SỐ LIỆU (199 vs 509) VÀ CÔ LẬP 35 NODE FAILED
+  Thời gian tạo: 2026-11-27T20:44:00+07:00
+================================================================================
+
+1. NGUYÊN NHÂN MÂU THUẪN SỐ LIỆU "TRƯỚC DI TRÚ" (BÁO CÁO 2B.4 vs BÁO CÁO 2B):
+--------------------------------------------------------------------------------
+- Báo cáo 2B.4 (di trú theo regex từ khóa trên từng chunk độc lập):
+  * Dò trên tập 199 hợp đồng CUAD thực tế có trong Qdrant.
+  * 168 hợp đồng có ít nhất 1 chunk chứa từ khóa nghiêm trọng -> gán RESTRICTED cho chunk đó.
+  * 31 hợp đồng không có chunk nào chứa từ khóa -> 100% chunk là INTERNAL.
+  * Tổng: 168 + 31 = 199 hợp đồng (khớp với 199 hợp đồng trong Qdrant).
+  * Trong phần mô tả bối cảnh có nhắc tới "509 tài liệu CUAD", gây hiểu lầm là 509 tài liệu này đều đã được embedding vào Qdrant.
+
+- Báo cáo 2B (di trú cấp Document theo nhãn CUAD Neo4j):
+  * Dò trên các node Document trong Neo4j: có 176 tài liệu gắn với các Clause nhạy cảm (164 Liability, 148 Confidentiality) và 23 tài liệu không có Clause nhạy cảm.
+  * Do áp dụng nhãn bao trùm cấp Document, toàn bộ 3,397 chunk của 176 tài liệu bị nâng lên RESTRICTED, chỉ 23 tài liệu (58 chunk) còn lại là INTERNAL.
+  * Sau khi thực hiện Task 1 chuyển chuẩn hóa xuống cấp Clause (uncapped liability, non-compete, exclusivity, change of control), phân bố chuẩn xác đạt 1,094 chunks RESTRICTED (31.66% - chuẩn theo mục tiêu 30-40%) và 2,361 chunks INTERNAL (68.34%).
+
+2. HIỆN TRẠNG 199/509 HỢP ĐỒNG TRONG QDRANT: 310 HỢP ĐỒNG CÒN LẠI ĐÃ CÓ VECTOR CHƯA?
+--------------------------------------------------------------------------------
+- Kiểm tra toàn diện trên cơ sở dữ liệu Neo4j và Qdrant:
+  * Neo4j Document nodes: Tổng số 544 nodes:
+    + 199 nodes: status = 'SYNCED', op_stage = 'TERMINAL_SYNCED', qdrantIndexed = true.
+    + 310 nodes: status = 'active', op_stage = null, qdrantIndexed = true (cờ metadata cũ).
+    + 35 nodes: status = 'FAILED', op_stage = 'TERMINAL_FAILED', qdrantIndexed = null.
+  * Kiểm tra thực tế trong collection `cuad_contracts` trên Qdrant:
+    + Tổng số điểm vector: 3,455 điểm.
+    + Tổng số hợp đồng riêng biệt (distinct contract_name / doc_id): Đúng 199 hợp đồng.
+    + Tỷ lệ xuất hiện của 199 node TERMINAL_SYNCED trong Qdrant: 199 / 199 (100%).
+    + Tỷ lệ xuất hiện của 310 node còn lại (op_stage = null) trong Qdrant: 0 / 310 (0%).
+  * KẾT LUẬN: 310 tài liệu còn lại mới chỉ tồn tại ở dạng node siêu dữ liệu (metadata) trên đồ thị tri thức Neo4j từ đợt nhập ban đầu, HOÀN TOÀN CHƯA ĐƯỢC PHÂN ĐOẠN (CHUNKING) VÀ TẠO VECTOR EMBEDDING trong kho Qdrant `cuad_contracts`.
+
+3. KIỂM TRA 35 NODE FAILED: CÓ LỌT VÀO TÌM KIẾM / BỘ LỌC ACL KHÔNG?
+--------------------------------------------------------------------------------
+- Bản chất 35 node FAILED:
+  * Mang nhãn `status: 'FAILED', op_stage: 'TERMINAL_FAILED'`.
+  * Là các bản ghi kiểm soát giao dịch lỗi (error staging journal nodes) từ các lần chạy thử nghiệm nạp dữ liệu bị hủy/rollback trước đây.
+  * Hoàn toàn không có vector nào trong Qdrant (0 / 35).
+- Nguy cơ phát hiện:
+  * Trước Task 2: Phương thức `search_nodes` trong `backend/app/db/neo4j/client.py` thực thi Cypher `MATCH (n) WHERE any(prop IN keys(n) ...)` mà không có điều kiện loại trừ `n.status = 'FAILED'`.
+  * Do đó, nếu người dùng tìm kiếm từ khóa khớp với tên file của 35 node này (ví dụ `HumanResources_Department.csv`), node FAILED có nguy cơ hiển thị nếu phòng ban khớp.
+- Khắc phục triệt để:
+  * Đã bổ sung điều kiện loại trừ trực tiếp trong Cypher tại `backend/app/db/neo4j/client.py`:
+    `WHERE coalesce(n.status, '') <> 'FAILED' AND coalesce(n.op_stage, '') <> 'TERMINAL_FAILED'`
+  * Đã bổ sung điều kiện fail-closed tại `filter_graph_entities_by_scope` trong `backend/app/core/rbac.py`:
+    `if ent.get("status") == "FAILED" or ent.get("op_stage") == "TERMINAL_FAILED": continue`
+  * Đảm bảo 100% các node FAILED bị chặn hoàn toàn khỏi giao diện người dùng và kiểm toán RBAC.
+================================================================================

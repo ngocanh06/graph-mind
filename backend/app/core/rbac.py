@@ -284,6 +284,10 @@ def filter_graph_entities_by_scope(
 
     filtered = []
     for ent in entities:
+        # 0. Exclude failed or invalid staging journal nodes (Task 2 fail-closed)
+        if ent.get("status") == "FAILED" or ent.get("op_stage") == "TERMINAL_FAILED":
+            continue
+
         labels = ent.get("_labels") or []
         if isinstance(labels, str):
             labels = [labels]
@@ -296,13 +300,27 @@ def filter_graph_entities_by_scope(
         if labels and not any(l in allowed_labels for l in labels):
             continue
 
-        # 2. Classification check
+        # 2. Classification check (Fail-closed)
         classification = str(
             ent.get("classification")
             or ent.get("classification_level")
             or ent.get("security_level")
             or ""
         ).strip().upper()
+
+        allowed_cls = getattr(scope, "allowed_classifications", None) if scope else None
+        if not allowed_cls:
+            if canonical_role in [ROLE_EXECUTIVE, ROLE_MANAGER]:
+                allowed_cls = {"PUBLIC", "INTERNAL", "RESTRICTED", "CONFIDENTIAL"}
+            else:
+                allowed_cls = {"PUBLIC", "INTERNAL"}
+
+        is_doc_entity = any(l in ["Document", "Contract", "Clause", "File"] for l in labels)
+        if classification:
+            if classification not in allowed_cls:
+                continue
+        elif is_doc_entity:
+            continue
 
         if classification == "PUBLIC":
             filtered.append(ent)
@@ -642,13 +660,14 @@ class ACLFilter:
                 return self._block_or_shadow(f"ERP entity {e_type} requires SALES or RND", payload)
             return True
 
-        # 3. Department matching (fail-closed)
+        # 3. Department matching (fail-closed using canonical keys)
         raw_dept = (
-            payload.get("department")
-            or payload.get("dept")
-            or payload.get("department_id")
-            or payload.get("deptKey")
+            payload.get("department_key")
             or payload.get("dept_key")
+            or payload.get("deptKey")
+            or payload.get("department_id")
+            or payload.get("department")
+            or payload.get("dept")
             or payload.get("domain")
         )
 
@@ -666,7 +685,11 @@ class ACLFilter:
         if canon_dept == "unknown":
             return self._block_or_shadow(f"Unrecognized department '{raw_dept}'", payload)
 
-        if canon_dept not in self.allowed_depts:
+        # Common and public resources are accessible across all departments
+        if canon_dept in ("common", "public", "general"):
+            return True
+
+        if canon_dept not in self.allowed_depts and not (self.is_unrestricted and "*" in self.allowed_depts):
             return self._block_or_shadow(
                 f"Department '{canon_dept}' not in user allowed departments {self.allowed_depts}",
                 payload
@@ -713,30 +736,34 @@ def build_acl_filter(scope: ScopeContext, shadow_mode: Optional[bool] = None) ->
         allowed_classifications.add("RESTRICTED")
         allowed_classifications.add("CONFIDENTIAL")
 
-    # Expand allowed department names to all known synonyms for Qdrant payload match
-    dept_aliases: Set[str] = set()
+    # Task 3: Filter using standardized canonical department_key / department_id
+    # Never match on unstructured localized display strings!
+    canon_keys: Set[str] = set()
     for d in scope.allowed_depts:
-        dept_aliases.add(d)
-        dept_aliases.add(d.lower())
-        dept_aliases.add(d.upper())
-        for alias_k, canon_v in DEPT_CANONICAL.items():
-            if canon_v == d:
-                dept_aliases.add(alias_k)
-                dept_aliases.add(alias_k.title())
+        k = normalize_dept(d)
+        if k != "unknown":
+            canon_keys.add(k)
+        else:
+            canon_keys.add(d.strip().lower())
 
-    # Strict positive allowlist for Qdrant (fail-closed, eliminate must_not)
+    # Confirm COMMON and PUBLIC are in allowlist of all users
+    canon_keys.add("common")
+    canon_keys.add("public")
+    canon_keys.add("general")
+
+    # Strict positive allowlist for Qdrant (fail-closed, canonical key)
     must_conditions = [
-        {"key": "department", "match": {"any": list(dept_aliases)}},
-        {"key": "classification", "match": {"any": list(allowed_classifications)}},
+        {"key": "department_key", "match": {"any": sorted(canon_keys)}},
+        {"key": "classification", "match": {"any": sorted(allowed_classifications)}},
     ]
 
     qdrant_filter: Dict[str, Any] = {
         "must": must_conditions,
     }
 
-    cypher_dept_list = [f"'{d.lower()}'" for d in sorted(dept_aliases)]
+    cypher_dept_list = [f"'{k}'" for k in sorted(canon_keys)]
     cypher_cls_list = [f"'{c.upper()}'" for c in sorted(allowed_classifications)]
-    cypher_where = f"toLower(n.department) IN [{', '.join(cypher_dept_list)}] AND toUpper(n.classification) IN [{', '.join(cypher_cls_list)}]"
+    cypher_where = f"toLower(coalesce(n.deptKey, n.department_id, n.domain, '')) IN [{', '.join(cypher_dept_list)}] AND toUpper(n.classification) IN [{', '.join(cypher_cls_list)}]"
 
     # NOTE: shadow_mode NEVER loosens qdrant_filter or cypher_where pre-filters.
     # Pre-filtering remains strictly enforcing; shadow events are recorded for in-memory checks.
@@ -908,7 +935,14 @@ async def get_user_scope(
                 if p.role_code == role_code and p.department_code in (user_dept_code, "ALL")
             ]
 
-        allowed_resources = {p.resource_type for p in policies if p.can_query}
+        dept_policies = [p for p in policies if p.department_code == user_dept_code]
+        effective_policies = dept_policies if dept_policies else policies
+        allowed_resources = {p.resource_type for p in effective_policies if p.can_query}
+
+        if not allowed_resources and role_code == "STANDARD_USER":
+            user_res = FOLDER_TO_RESOURCE.get(canonical)
+            if user_res:
+                allowed_resources = {user_res}
     except Exception as e:
         # Fallback strictly fail-closed based on user department
         if is_unrestricted:
@@ -920,6 +954,10 @@ async def get_user_scope(
     allowed_depts = {RESOURCE_TO_FOLDER[r] for r in allowed_resources if r in RESOURCE_TO_FOLDER}
     if "accounting_procurement" in allowed_depts:
         allowed_depts.add("accounting")
+    # Task 3: Standard user allowlist includes common/public/general
+    allowed_depts.add("common")
+    allowed_depts.add("public")
+    allowed_depts.add("general")
     if is_unrestricted:
         allowed_depts.add("*")
 

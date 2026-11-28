@@ -778,7 +778,7 @@ def get_entities(limit: int = Query(default=100, le=500), scope: ScopeContext = 
     """Provides entities: uses live Neo4j if available, fallback to mock entities."""
     if neo4j_client.is_connected or neo4j_client.connect():
         nodes = neo4j_client.get_all_nodes(limit=limit)
-        nodes = filter_graph_entities_by_scope(nodes, scope.role)
+        nodes = filter_graph_entities_by_scope(nodes, scope.role, scope=scope)
         # Convert into key-value map for backward compatibility
         entity_map = {}
         for n in nodes:
@@ -792,7 +792,7 @@ def get_entity_by_id(entity_id: str, scope: ScopeContext = Depends(get_user_scop
     if neo4j_client.is_connected or neo4j_client.connect():
         node = neo4j_client.get_node_by_id(entity_id)
         if node:
-            filtered = filter_graph_entities_by_scope([node], scope.role)
+            filtered = filter_graph_entities_by_scope([node], scope.role, scope=scope)
             if not filtered:
                 raise HTTPException(status_code=403, detail="Truy cập thực thể bị từ chối theo phân quyền RBAC.")
             return {"success": True, "data": node}
@@ -937,7 +937,7 @@ def knowledge_explorer_search(
     acl_filter = build_acl_filter(scope)
 
     # 1. Qdrant vector search
-    qdrant_results = qdrant_client.vector_search(query=search_q, limit=top_k, acl_filter=acl_filter)
+    qdrant_results = qdrant_client.vector_search(query=search_q, collection_name="cuad_contracts", limit=top_k, acl_filter=acl_filter)
     # If fewer than 2 results or query relates to enterprise products/customers, also search adventureworks_entities
     if len(qdrant_results) < 3:
         try:
@@ -985,7 +985,7 @@ def knowledge_explorer_search(
         neo4j_nodes = neo4j_client.get_all_nodes(limit=15, label="Product")
 
     if not scope.is_unrestricted and neo4j_nodes:
-        neo4j_nodes = filter_graph_entities_by_scope(neo4j_nodes, scope.role)
+        neo4j_nodes = filter_graph_entities_by_scope(neo4j_nodes, scope.role, scope=scope)
 
     # 3. Fetch relationships connecting these nodes or their neighbors
     relationships = []

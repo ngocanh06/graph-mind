@@ -57,11 +57,19 @@ def test_qdrant_filter_uses_strict_allowlist_and_no_must_not():
     assert "must" in acl.qdrant_filter, "Qdrant filter MUST use positive allowlist!"
     assert "must_not" not in acl.qdrant_filter, "must_not blocklist must be eliminated in favor of positive allowlist!"
 
-    # Verify must contains department allowlist and classification allowlist
+    # Verify must contains department_key allowlist and classification allowlist (Task 3)
     must_conditions = acl.qdrant_filter["must"]
     keys = [c["key"] for c in must_conditions]
-    assert "department" in keys
+    assert "department_key" in keys
     assert "classification" in keys
+
+    # Verify common and public are included in department_key allowlist
+    dept_cond = next(c for c in must_conditions if c["key"] == "department_key")
+    allowed_d_keys = dept_cond["match"]["any"]
+    assert "common" in allowed_d_keys
+    assert "public" in allowed_d_keys
+    assert "general" in allowed_d_keys
+    assert "sales" in allowed_d_keys
 
     cls_cond = next(c for c in must_conditions if c["key"] == "classification")
     allowed_cls = cls_cond["match"]["any"]

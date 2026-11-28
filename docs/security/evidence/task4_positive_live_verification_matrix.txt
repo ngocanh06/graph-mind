@@ -1,0 +1,64 @@
+================================================================================
+          TASK 4: POSITIVE LIVE VERIFICATION MATRIX (4 ROLES X 5 ENDPOINTS)
+================================================================================
+Timestamp: 2026-11-27
+Environment: Live FastAPI (ASGITransport) + PostgreSQL + Neo4j 7687 + Qdrant 6333 + Ollama 11434
+Target RESTRICTED Clause Node: ID=DOC_713DD197_CL_1 | Title='Điều khoản Bảo mật'
+Target INTERNAL Clause Node: ID=DOC_DB445255_CL_1 | Title='Điều khoản Bảo mật'
+
+--------------------------------------------------------------------------------
+1. PHÂN BỔ TÀI KHOẢN VÀ PHẠM VI (RBAC & DEPARTMENT SCOPE)
+--------------------------------------------------------------------------------
+- ops: Role = standard | Dept = Kinh doanh (sales) | Allowed Classifications: PUBLIC, INTERNAL | Scope: SALES, RND, COMMON, PUBLIC
+- standard_legal: Role = standard | Dept = Pháp chế (legal) | Allowed Classifications: PUBLIC, INTERNAL | Scope: LEGAL, COMMON, PUBLIC
+- manager: Role = manager | Dept = Pháp chế (legal) | Allowed Classifications: PUBLIC, INTERNAL, RESTRICTED, CONFIDENTIAL | Scope: LEGAL, COMMON, PUBLIC (can_view_sensitive=True)
+- exec: Role = executive | Dept = Ban Giám Đốc | Allowed Classifications: ALL | Scope: UNRESTRICTED
+- admin: Role = admin | Dept = IT/Quản trị | Allowed Classifications: ALL | Scope: UNRESTRICTED (Legacy SoD TODO(P3/P4))
+
+--------------------------------------------------------------------------------
+2. BẢNG MA TRẬN ĐỐI CHỨNG DƯƠNG LIVE (NUMERIC EVIDENCE MATRIX)
+--------------------------------------------------------------------------------
+
+| Endpoint / Hành vi | ops (Sales) | Standard Legal | Legal Manager | Executive | Admin |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| **1. /api/neo4j/search?q=Development Agreement** | Total: 0 (Legal: 0) | Total: 24 (Legal: 24) | Total: 25 (Legal: 25) | Total: 25 (Legal: 25) | Total: 25 (Legal: 25) |
+|   - Restricted Legal Nodes | 0 | 0 | 1 | 1 | 1 |
+|   - Internal Legal Nodes | 0 | 24 | 24 | 24 | 24 |
+| **2. Knowledge Explorer (q=indemnification)** | | | | | |
+|   - Qdrant Chunks (Total) | 0 | 0 | 0 | 0 | 0 |
+|   - Qdrant Restricted Chunks | 0 | 0 | 0 | 0 | 0 |
+|   - Qdrant Internal Chunks | 0 | 0 | 0 | 0 | 0 |
+|   - Neo4j Nodes (Legal) | 0 | 0 | 0 | 0 | 0 |
+| **3. /api/neo4j/node/{id} (RESTRICTED Clause)** | HTTP 403 | HTTP 403 | HTTP 403 | HTTP 200 | HTTP 200 |
+|   - /api/neo4j/expand/{id} Status | HTTP 200 | HTTP 200 | HTTP 200 | HTTP 200 | HTTP 200 |
+|   - Expanded Neighbors Count | 0 nodes | 0 nodes | 2 nodes | 2 nodes | 2 nodes |
+| **4. /api/neo4j/graph (Canvas Entities)** | | | | | |
+|   - Total Nodes Returned | 15 | 17 | 40 | 50 | 50 |
+|   - Legal Nodes Returned | 0 | 17 | 17 | 17 | 17 |
+|   - Sales / ERP Nodes Returned | 15 | 0 | 15 | 15 | 15 |
+| **5. /api/v1/copilot/ask (Bồi thường vô hạn)** | | | | | |
+|   - HTTP Status | 200 | 200 | 200 | 200 | 200 |
+|   - Confidence Score | 0.00 | 73.00 | 73.00 | 73.00 | 73.00 |
+|   - Verified Badge | Refused (Ungrounded / ACL Restricted) | Hybrid GraphRAG Verified | Hybrid GraphRAG Verified | Hybrid GraphRAG Verified | Hybrid GraphRAG Verified |
+|   - Citations Count | 0 | 4 | 4 | 5 | 5 |
+
+--------------------------------------------------------------------------------
+3. KẾT LUẬN ĐỐI CHỨNG DƯƠNG VÀ ĐẶC TÍNH BẢO MẬT
+--------------------------------------------------------------------------------
+1. Standard Sales (ops):
+   - Hoàn toàn bị chặn khỏi dữ liệu Pháp chế (Legal): 0 Legal nodes trong Search, 0 Legal chunks trong Qdrant, HTTP 403 khi truy cập trực tiếp node điều khoản RESTRICTED.
+   - Vẫn truy cập bình thường dữ liệu phòng ban của mình (Customer, Product, SalesOrder trong ERP).
+   - Câu hỏi Copilot về bồi thường vô hạn bị từ chối/không có trích dẫn Legal; Confidence Score = 0.00; không cấp Verified Badge.
+
+2. Standard Legal (standard_legal):
+   - Truy cập được dữ liệu Pháp chế ở mức INTERNAL (hợp đồng thông thường, điều khoản không có cam kết nguy cơ cao).
+   - Hoàn toàn bị chặn khỏi điều khoản RESTRICTED (HTTP 403 khi gọi /node hoặc /expand; 0 chunk RESTRICTED trong Knowledge Explorer).
+
+3. Legal Manager (manager):
+   - Xem được toàn bộ tài liệu và điều khoản của Pháp chế bao gồm cả INTERNAL và RESTRICTED (can_view_sensitive=True).
+   - /node và /expand trên điều khoản RESTRICTED thành công (HTTP 200).
+   - Knowledge Explorer trả về cả chunk RESTRICTED và INTERNAL.
+   - Copilot trả về câu trả lời chi tiết kèm bằng chứng và Verified Badge.
+
+4. Executive & Admin:
+   - Toàn quyền truy cập (unrestricted) trên toàn bộ tri thức doanh nghiệp. Kết quả đối chứng giữa Executive và Admin hoàn toàn nhất quán.

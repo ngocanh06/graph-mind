@@ -1,0 +1,45 @@
+================================================================================
+  TASK 3: BỘ LỌC ACL THEO ĐỊNH DANH PHÒNG BAN CHUẨN VÀ CHO PHÉP COMMON/PUBLIC
+  Thời gian tạo: 2026-11-27T20:46:15+07:00
+================================================================================
+
+1. TÁI CẤU TRÚC BỘ LỌC ACL SANG DEPARTMENT_KEY VÀ DEPARTMENT_ID CHUẨN:
+--------------------------------------------------------------------------------
+- Loại bỏ hoàn toàn việc đối sánh trên chuỗi hiển thị bản địa ("Pháp chế (Legal)", "Kinh doanh (Sales)").
+- Chuyển đổi toàn bộ các bộ lọc Qdrant sang trường `department_key`:
+  * Qdrant filter:
+    {
+      "must": [
+        {"key": "department_key", "match": {"any": ["common", "general", "public", "sales"]}},
+        {"key": "classification", "match": {"any": ["INTERNAL", "PUBLIC"]}}
+      ]
+    }
+  * Cypher where clause:
+    toLower(coalesce(n.deptKey, n.department_id, n.domain, '')) IN ['common', 'general', 'public', 'sales']
+    AND toUpper(n.classification) IN ['INTERNAL', 'PUBLIC']
+- Bộ nhớ (`matches_payload`):
+  * Dò `department_key` / `department_id` / `deptKey` trước khi rơi về tên chuẩn hóa `normalize_dept`.
+  * Fail-closed đối với mọi giá trị không nhận diện được (`"unknown"`).
+
+2. XÁC NHẬN COMMON VÀ PUBLIC TRONG DANH SÁCH CHO PHÉP CỦA STANDARD USER:
+--------------------------------------------------------------------------------
+- Quyền phân loại (Classification):
+  * Standard User mặc định được truy cập: `{"PUBLIC", "INTERNAL"}`.
+  * Các tài liệu/chunk mang nhãn `classification = "PUBLIC"` được cho phép truy cập xuyên suốt toàn doanh nghiệp.
+- Quyền phòng ban (Department Allowlist):
+  * Cấu hình trong `get_user_scope`:
+    Mọi tài khoản người dùng thông thường (`STANDARD_USER`) đều tự động được nạp:
+    + `"common"` (Quy định, chính sách chung công ty)
+    + `"public"` (Văn bản công khai, thông cáo báo chí)
+    + `"general"` (Hướng dẫn sử dụng, tài liệu nền tảng)
+  * Kiểm định qua Unit Test `test_qdrant_acl_allowlist.py`:
+    `assert "common" in allowed_d_keys` -> PASSED
+    `assert "public" in allowed_d_keys` -> PASSED
+    `assert "general" in allowed_d_keys` -> PASSED
+    `assert "sales" in allowed_d_keys` -> PASSED
+
+3. KẾT QUẢ KIỂM THỬ:
+--------------------------------------------------------------------------------
+- Unit test `test_qdrant_acl_allowlist.py`: 4/4 PASSED.
+- Matrix suite `test_step2b8_matrix_suite.py`: 63/63 PASSED.
+================================================================================

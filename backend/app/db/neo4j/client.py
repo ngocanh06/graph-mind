@@ -421,7 +421,7 @@ class Neo4jClient:
             with self._driver.session() as session:
                 # 1. Fetch node
                 res = session.run(
-                    "MATCH (n) WHERE elementId(n) = $id RETURN n, labels(n) as labels",
+                    "MATCH (n) WHERE elementId(n) = $id OR n.id = $id OR n.name = $id RETURN n, labels(n) as labels",
                     id=node_id
                 )
                 rec = res.single()
@@ -437,12 +437,12 @@ class Neo4jClient:
                 # 2. Fetch neighbor relationships (up to 30)
                 n_res = session.run("""
                     MATCH (n)-[r]-(m)
-                    WHERE elementId(n) = $id
+                    WHERE elementId(n) = $id OR n.id = $id OR n.name = $id
                     RETURN 
                         elementId(n) as nid,
                         type(r) as rel_type,
                         properties(r) as r_props,
-                        elementId(startNode(r)) = $id as is_outgoing,
+                        (elementId(startNode(r)) = elementId(n)) as is_outgoing,
                         elementId(m) as mid,
                         labels(m) as m_labels,
                         properties(m) as m_props
@@ -490,7 +490,9 @@ class Neo4jClient:
             params: Dict[str, Any] = {"limit": limit}
             cypher = """
                 MATCH (n)
-                WHERE any(prop IN keys(n) WHERE 
+                WHERE coalesce(n.status, '') <> 'FAILED'
+                  AND coalesce(n.op_stage, '') <> 'TERMINAL_FAILED'
+                  AND any(prop IN keys(n) WHERE 
                     CASE 
                         WHEN n[prop] IS :: LIST<ANY> THEN any(item IN n[prop] WHERE toLower(toString(item)) CONTAINS toLower($q))
                         ELSE toLower(toString(n[prop])) CONTAINS toLower($q)

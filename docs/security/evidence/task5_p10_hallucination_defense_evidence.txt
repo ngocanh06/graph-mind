@@ -1,0 +1,64 @@
+================================================================================
+        TASK 5: P10 HALLUCINATION DEFENSE & VERIFIED BADGE BENCHMARK EVIDENCE  
+================================================================================
+Timestamp: 2026-11-28
+Model: Ollama qwen2.5-7b-graphmind + nomic-embed-text (768 dims) + Neo4j + Qdrant
+Tested Role: Executive (Full enterprise knowledge access)
+
+--------------------------------------------------------------------------------
+1. KẾT QUẢ KIỂM THỬ BỘ CÂU HỎI HỢP LỆ (VALID QUERIES SUITE - 20 CÂU)
+--------------------------------------------------------------------------------
+| ID | Lĩnh vực | Câu hỏi | Trạng thái | Điểm tin cậy | Huy hiệu (Badge) | Trích dẫn |
+|:---|:---|:---|:---:|:---:|:---:|:---:|
+| V01 | Legal | Quy định về thời hạn hợp đồng và gia hạn tự động | Đã trả lời | 100.00 | Hybrid GraphRAG Verified | 6 |
+| V02 | Legal | Trách nhiệm bồi thường thiệt hại và giới hạn bồi thường trong hợp đồng | Đã trả lời | 73.00 | Hybrid GraphRAG Verified | 5 |
+| V03 | Legal | Nghĩa vụ bảo mật thông tin và bảo vệ quyền sở hữu trí tuệ | Đã trả lời | 74.00 | Hybrid GraphRAG Verified | 6 |
+| V04 | Legal | Điều khoản chấm dứt hợp đồng trước hạn do vi phạm nghĩa vụ | Đã trả lời | 73.00 | Hybrid GraphRAG Verified | 5 |
+| V05 | Legal | Quy định về cơ chế giải quyết tranh chấp thương mại | Đã trả lời | 74.00 | Hybrid GraphRAG Verified | 6 |
+| V06 | Sales | Danh sách các khách hàng lớn và tổng giá trị đơn hàng | Đã trả lời | 89.00 | Hybrid GraphRAG Verified | 6 |
+| V07 | Sales | Thông tin về sản phẩm xe đạp và các loại phụ tùng kinh doanh | Đã trả lời | 90.00 | Hybrid GraphRAG Verified | 6 |
+| V08 | Sales | Quy trình tạo và theo dõi đơn đặt hàng SalesOrder | Đã trả lời | 90.00 | Hybrid GraphRAG Verified | 6 |
+| V09 | Sales | Chính sách giá và chiết khấu thương mại cho khách hàng | Đã trả lời | 89.00 | Hybrid GraphRAG Verified | 6 |
+| V10 | Sales | Phân loại khách hàng cá nhân và đối tác doanh nghiệp | Đã trả lời | 89.00 | Hybrid GraphRAG Verified | 6 |
+| V11 | Accounting | Tình hình công nợ và các khoản thanh toán đơn hàng | Đã trả lời | 89.00 | Hybrid GraphRAG Verified | 6 |
+| V12 | Accounting | Quy trình đối soát hóa đơn và chứng từ mua hàng | Đã trả lời | 73.00 | Hybrid GraphRAG Verified | 5 |
+| V13 | Accounting | Báo cáo doanh thu bán hàng và chi phí theo kỳ | Đã trả lời | 89.00 | Hybrid GraphRAG Verified | 6 |
+| V14 | ERP | Mã định danh sản phẩm ProductID và danh mục ngành hàng | Đã trả lời | 90.00 | Hybrid GraphRAG Verified | 6 |
+| V15 | Architecture | Kiến trúc tích hợp cơ sở dữ liệu đồ thị Neo4j và vector Qdrant | Đã trả lời | 90.00 | Hybrid GraphRAG Verified | 6 |
+| V16 | Security | Cơ chế phân quyền Least Privilege và kiểm soát truy cập RBAC | Đã trả lời | 90.00 | Hybrid GraphRAG Verified | 5 |
+| V17 | Security | Quy định về ghi nhật ký kiểm toán và theo dõi hoạt động | Đã trả lời | 73.00 | Hybrid GraphRAG Verified | 5 |
+| V18 | Security | Chính sách quản lý khóa bí mật và chứng thực người dùng | Đã trả lời | 74.00 | Hybrid GraphRAG Verified | 5 |
+| V19 | Security | Phân cấp dữ liệu bảo mật Public, Internal và Restricted | Đã trả lời | 90.00 | Hybrid GraphRAG Verified | 6 |
+| V20 | Operations | Quy trình sao lưu dự phòng dữ liệu và xử lý sự cố hệ thống | Đã trả lời | 77.00 | Hybrid GraphRAG Verified | 6 |
+
+Tổng số câu hợp lệ: 20
+Số câu trả lời thành công kèm bằng chứng: 20
+Tỷ lệ trả lời được (Answerable Rate): 100.0%
+
+--------------------------------------------------------------------------------
+2. KẾT QUẢ KIỂM THỬ ĐỊNH DANH HỢP ĐỒNG GIẢ MẠO / BỊA ĐẶT (FABRICATED IDENTIFIERS - 5 CÂU)
+--------------------------------------------------------------------------------
+| ID | Mã định danh giả mạo | Câu hỏi | Bị từ chối? | Điểm | Huy hiệu (Badge) | Trích dẫn |
+|:---|:---|:---|:---:|:---:|:---:|:---:|
+| F01 | DOC_99999999 | Tóm tắt các điều khoản chính trong hợp đồng mã hiệu DOC_99999999 | THÀNH CÔNG (Từ chối) | 0.00 | Entity Gate Refusal | 0 |
+| F02 | 999/2026/XYZ | Điều khoản cam kết bảo mật và mức phạt tại Hợp đồng số 999/2026/XYZ | THÀNH CÔNG (Từ chối) | 0.00 | Entity Gate Refusal | 0 |
+| F03 | DOC_FAKE_AGREEMENT | Mức bồi thường tối đa trong thỏa thuận dịch vụ DOC_FAKE_AGREEMENT | THÀNH CÔNG (Từ chối) | 0.00 | Entity Gate Refusal | 0 |
+| F04 | DOC_NONEXISTENT_404 | Trách nhiệm pháp lý của các bên theo hợp đồng DOC_NONEXISTENT_404 | THÀNH CÔNG (Từ chối) | 0.00 | Entity Gate Refusal | 0 |
+| F05 | FAKE_CONTRACT_99999 | Ngày ký kết và thời hạn hiệu lực của phụ lục FAKE_CONTRACT_99999 | THÀNH CÔNG (Từ chối) | 0.00 | Entity Gate Refusal | 0 |
+
+Tổng số câu định danh giả: 5
+Số câu bị từ chối chính xác: 5 (Tỷ lệ từ chối: 100.0%)
+Tỷ lệ cấp nhãn 'Hybrid GraphRAG Verified' cho định danh giả: 0.0% (CẤM TUYỆT ĐỐI)
+
+--------------------------------------------------------------------------------
+3. KẾT LUẬN VỀ BẢO VỆ CHỐNG HALLUCINATION (P10 DEFENSE)
+--------------------------------------------------------------------------------
+1. Kiểm soát định danh giả (Deterministic Grounding Gate):
+   - Toàn bộ 5/5 (100.0%) câu hỏi chứa mã định danh hợp đồng giả mạo (DOC_99999999, DOC_FAKE_AGREEMENT, Hợp đồng số 999/2026/XYZ, DOC_NONEXISTENT_404, FAKE_CONTRACT_99999) đều bị hệ thống phát hiện sớm và TỪ CHỐI dứt khoát tại Layer-2 Grounding Gate.
+   - Điểm tin cậy (Confidence Score) cho toàn bộ 5 câu này là 0.00.
+   - Trích dẫn (Citations) = 0, Evidence Chips = 0.
+   - Tuyệt đối KHÔNG gán nhãn 'Hybrid GraphRAG Verified'. Huy hiệu hiển thị đúng bản chất: 'Entity Gate Refusal'.
+
+2. Khả năng trả lời các câu hỏi nghiệp vụ hợp lệ:
+   - Tỷ lệ trả lời được đạt 100.0% trên tập 20 câu hỏi đa dạng (Pháp lý, Kinh doanh, Kế toán, Kỹ thuật).
+   - Khi có đầy đủ bằng chứng đối soát trong đồ thị và vector, hệ thống trả lời chi tiết và gán nhãn 'Hybrid GraphRAG Verified'.
